@@ -62,9 +62,9 @@ DonorCRM solves these problems by:
 
 *(To be determined based on implementation)*
 
-- **Backend**: [Python/Node.js/etc.]
+- **Backend**: Django (Python)
 - **Database**: PostgreSQL (recommended for data integrity)
-- **Frontend**: [React/Vue/etc.]
+- **Frontend**: React
 - **Authentication**: Role-based access control
 
 ## Data Model
