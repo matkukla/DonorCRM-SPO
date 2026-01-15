@@ -1,0 +1,92 @@
+# Render Blueprint for DonorCRM
+# https://render.com/docs/blueprint-spec
+
+services:
+  # Web Service
+  - type: web
+    name: donorcrm-web
+    env: python
+    buildCommand: pip install -r requirements/prod.txt && python manage.py collectstatic --noinput
+    startCommand: gunicorn config.wsgi:application
+    healthCheckPath: /api/v1/auth/login/
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings.prod
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        fromService:
+          type: web
+          name: donorcrm-web
+          property: host
+      - key: DATABASE_URL
+        fromDatabase:
+          name: donorcrm-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: donorcrm-redis
+          property: connectionString
+
+  # Background Worker
+  - type: worker
+    name: donorcrm-worker
+    env: python
+    buildCommand: pip install -r requirements/prod.txt
+    startCommand: celery -A config worker -l info
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings.prod
+      - key: SECRET_KEY
+        fromService:
+          type: web
+          name: donorcrm-web
+          envVarKey: SECRET_KEY
+      - key: DATABASE_URL
+        fromDatabase:
+          name: donorcrm-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: donorcrm-redis
+          property: connectionString
+
+  # Celery Beat Scheduler
+  - type: worker
+    name: donorcrm-beat
+    env: python
+    buildCommand: pip install -r requirements/prod.txt
+    startCommand: celery -A config beat -l info
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings.prod
+      - key: SECRET_KEY
+        fromService:
+          type: web
+          name: donorcrm-web
+          envVarKey: SECRET_KEY
+      - key: DATABASE_URL
+        fromDatabase:
+          name: donorcrm-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: donorcrm-redis
+          property: connectionString
+
+  # Redis
+  - type: redis
+    name: donorcrm-redis
+    plan: starter
+
+databases:
+  # PostgreSQL Database
+  - name: donorcrm-db
+    plan: starter
+    databaseName: donorcrm
+    user: donorcrm

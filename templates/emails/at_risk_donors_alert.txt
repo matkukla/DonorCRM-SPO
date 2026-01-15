@@ -1,0 +1,17 @@
+Hello {{ user.first_name }},
+
+{{ count }} of your donors may be at risk of lapsing.
+
+These donors have given multiple times in the past but haven't given in over 60 days:
+
+{% for contact in contacts %}
+- {{ contact.full_name }} (Last gift: {{ contact.last_gift_date }}, Total given: ${{ contact.total_given }})
+{% endfor %}
+
+Consider reaching out to reconnect with these supporters.
+
+---
+Log in to DonorCRM to view full details and take action.
+
+Best,
+DonorCRM Team

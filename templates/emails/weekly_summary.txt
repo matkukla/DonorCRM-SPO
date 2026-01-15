@@ -1,0 +1,44 @@
+Hello {{ user.first_name }},
+
+Here's your weekly DonorCRM summary:
+
+{% if what_changed.total_new > 0 %}
+WHAT'S NEW
+----------
+You have {{ what_changed.total_new }} new notifications since your last visit.
+{% endif %}
+
+{% if needs_attention.late_pledge_count > 0 or needs_attention.overdue_task_count > 0 %}
+NEEDS ATTENTION
+---------------
+{% if needs_attention.late_pledge_count > 0 %}- {{ needs_attention.late_pledge_count }} late pledge(s){% endif %}
+{% if needs_attention.overdue_task_count > 0 %}- {{ needs_attention.overdue_task_count }} overdue task(s){% endif %}
+{% if needs_attention.tasks_due_today_count > 0 %}- {{ needs_attention.tasks_due_today_count }} task(s) due today{% endif %}
+{% endif %}
+
+{% if at_risk_count > 0 %}
+AT-RISK DONORS
+--------------
+{{ at_risk_count }} donor(s) haven't given in 60+ days and may need follow-up.
+{% endif %}
+
+{% if thank_you_count > 0 %}
+THANK YOU QUEUE
+---------------
+{{ thank_you_count }} contact(s) are waiting for thank-you acknowledgment.
+{% endif %}
+
+{% if support_progress %}
+SUPPORT PROGRESS
+----------------
+Current Monthly Support: ${{ support_progress.current_monthly_support|floatformat:2 }}
+Monthly Goal: ${{ support_progress.monthly_goal|floatformat:2 }}
+Progress: {{ support_progress.percentage|floatformat:0 }}%
+{% if support_progress.gap > 0 %}Gap to Goal: ${{ support_progress.gap|floatformat:2 }}{% endif %}
+{% endif %}
+
+---
+Log in to DonorCRM to see full details and take action.
+
+Best,
+DonorCRM Team

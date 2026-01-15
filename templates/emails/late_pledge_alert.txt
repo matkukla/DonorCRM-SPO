@@ -1,0 +1,21 @@
+Hello {{ user.first_name }},
+
+A pledge from {{ contact.full_name }} is now {{ days_late }} days late.
+
+PLEDGE DETAILS
+--------------
+Contact: {{ contact.full_name }}
+Amount: ${{ pledge.amount }}
+Frequency: {{ pledge.get_frequency_display }}
+Days Late: {{ days_late }}
+
+Consider reaching out to {{ contact.first_name }} to check on their situation.
+
+{% if contact.phone %}Phone: {{ contact.phone }}{% endif %}
+{% if contact.email %}Email: {{ contact.email }}{% endif %}
+
+---
+Log in to DonorCRM to view full details and take action.
+
+Best,
+DonorCRM Team

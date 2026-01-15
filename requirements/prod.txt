@@ -1,0 +1,10 @@
+-r base.txt
+
+# Production server
+gunicorn>=21.0,<22.0
+
+# Static files
+whitenoise>=6.6,<7.0
+
+# Error tracking
+sentry-sdk>=1.30,<2.0
