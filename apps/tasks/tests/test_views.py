@@ -20,7 +20,7 @@ class TestTaskListCreateView:
 
     def test_list_tasks_authenticated(self):
         """Test listing tasks for authenticated user."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
         TaskFactory.create_batch(3, owner=user)
 
         client = APIClient()
@@ -39,7 +39,7 @@ class TestTaskListCreateView:
 
     def test_create_task(self):
         """Test creating a task."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
         contact = ContactFactory(owner=user)
 
         client = APIClient()
@@ -61,7 +61,7 @@ class TestTaskListCreateView:
 
     def test_create_task_without_contact(self):
         """Test creating a task without contact link."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
 
         client = APIClient()
         client.force_authenticate(user=user)
@@ -78,10 +78,10 @@ class TestTaskListCreateView:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data['contact'] is None
 
-    def test_fundraiser_only_sees_own_tasks(self):
-        """Test that fundraiser only sees their own tasks."""
-        user1 = UserFactory(role='fundraiser')
-        user2 = UserFactory(role='fundraiser')
+    def test_staff_only_sees_own_tasks(self):
+        """Test that staff only sees their own tasks."""
+        user1 = UserFactory(role='staff')
+        user2 = UserFactory(role='staff')
         TaskFactory.create_batch(2, owner=user1)
         TaskFactory.create_batch(3, owner=user2)
 
@@ -100,7 +100,7 @@ class TestTaskDetailView:
 
     def test_get_task_detail(self):
         """Test getting task detail."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
         task = TaskFactory(owner=user, title='Important task')
 
         client = APIClient()
@@ -113,7 +113,7 @@ class TestTaskDetailView:
 
     def test_update_task(self):
         """Test updating a task."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
         task = TaskFactory(owner=user, priority='medium')
 
         client = APIClient()
@@ -130,7 +130,7 @@ class TestTaskDetailView:
 
     def test_delete_task(self):
         """Test deleting a task."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
         task = TaskFactory(owner=user)
 
         client = APIClient()
@@ -148,7 +148,7 @@ class TestTaskCompleteView:
 
     def test_complete_task(self):
         """Test marking a task as complete."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
         task = TaskFactory(owner=user, status=TaskStatus.PENDING)
 
         client = APIClient()
@@ -168,7 +168,7 @@ class TestOverdueTasksView:
 
     def test_list_overdue_tasks(self):
         """Test listing overdue tasks."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
 
         # Create one overdue task
         overdue_task = OverdueTaskFactory(owner=user)
@@ -192,7 +192,7 @@ class TestUpcomingTasksView:
 
     def test_list_upcoming_tasks(self):
         """Test listing upcoming tasks."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
 
         # Create tasks for today and next few days
         TaskFactory(owner=user, due_date=timezone.now().date())

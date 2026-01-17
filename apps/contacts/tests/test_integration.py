@@ -183,8 +183,8 @@ class TestPermissionBoundaries:
     Test that permission boundaries are enforced.
     """
 
-    def test_fundraiser_cannot_see_other_contacts(self, authenticated_client, user_factory):
-        """Test fundraisers can only see their own contacts."""
+    def test_staff_cannot_see_other_contacts(self, authenticated_client, user_factory):
+        """Test staff users can only see their own contacts."""
         client, user1 = authenticated_client
 
         # User 1 creates a contact
@@ -196,7 +196,7 @@ class TestPermissionBoundaries:
         contact_id = response.data['id']
 
         # Create another user and authenticate as them
-        user2 = user_factory(role='fundraiser')
+        user2 = user_factory(role='staff')
         client.force_authenticate(user=user2)
 
         # User 2 tries to access User 1's contact
@@ -237,7 +237,7 @@ class TestPermissionBoundaries:
         client, user = authenticated_client
         finance_cli, finance_user = finance_client
 
-        # Create contact as fundraiser
+        # Create contact as staff
         response = client.post('/api/v1/contacts/', {
             'first_name': 'Finance',
             'last_name': 'Readonly',

@@ -21,7 +21,7 @@ class ContactStatus(models.TextChoices):
 class Contact(TimeStampedModel):
     """
     Represents a donor or prospect.
-    Each contact is owned by a specific fundraiser.
+    Each contact is owned by a specific staff member.
     """
     # Ownership
     owner = models.ForeignKey(
@@ -29,7 +29,7 @@ class Contact(TimeStampedModel):
         on_delete=models.PROTECT,
         related_name='contacts',
         db_index=True,
-        help_text='Fundraiser who owns this contact'
+        help_text='Staff member who owns this contact'
     )
 
     # Basic information

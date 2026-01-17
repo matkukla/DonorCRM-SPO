@@ -15,7 +15,7 @@ export interface User {
   email: string
   first_name: string
   last_name: string
-  role: "admin" | "fundraiser" | "finance" | "read_only"
+  role: "admin" | "staff" | "finance" | "read_only"
   is_active: boolean
 }
 

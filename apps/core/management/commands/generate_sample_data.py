@@ -45,29 +45,29 @@ class Command(BaseCommand):
 
         # Create users
         users = self._create_users()
-        fundraiser = users['fundraiser']
+        staff_user = users['staff']
 
         # Create groups
-        groups = self._create_groups(fundraiser)
+        groups = self._create_groups(staff_user)
 
         # Create contacts
-        contacts = self._create_contacts(fundraiser, options['contacts'], groups)
+        contacts = self._create_contacts(staff_user, options['contacts'], groups)
 
         # Create donations and pledges
         self._create_donations_and_pledges(contacts)
 
         # Create tasks
-        self._create_tasks(fundraiser, contacts)
+        self._create_tasks(staff_user, contacts)
 
         self.stdout.write(self.style.SUCCESS('Sample data generated successfully!'))
         self.stdout.write('')
         self.stdout.write('Login credentials:')
-        self.stdout.write(f'  Fundraiser: fundraiser@example.com / testpass123')
+        self.stdout.write(f'  Staff: staff@example.com / testpass123')
         self.stdout.write(f'  Admin: admin@example.com / testpass123')
         self.stdout.write(f'  Finance: finance@example.com / testpass123')
         self.stdout.write('')
         self.stdout.write(f'Created:')
-        self.stdout.write(f'  - 3 users (fundraiser, admin, finance)')
+        self.stdout.write(f'  - 3 users (staff, admin, finance)')
         self.stdout.write(f'  - {len(groups)} groups')
         self.stdout.write(f'  - {len(contacts)} contacts')
         self.stdout.write(f'  - {Donation.objects.count()} donations')
@@ -89,20 +89,20 @@ class Command(BaseCommand):
         """Create sample users."""
         users = {}
 
-        # Fundraiser user
-        fundraiser, _ = User.objects.get_or_create(
-            email='fundraiser@example.com',
+        # Staff user
+        staff_user, _ = User.objects.get_or_create(
+            email='staff@example.com',
             defaults={
                 'first_name': 'Sarah',
                 'last_name': 'Smith',
-                'role': UserRole.FUNDRAISER,
+                'role': UserRole.STAFF,
                 'monthly_goal': Decimal('5000.00'),
                 'is_active': True,
             }
         )
-        fundraiser.set_password('testpass123')
-        fundraiser.save()
-        users['fundraiser'] = fundraiser
+        staff_user.set_password('testpass123')
+        staff_user.save()
+        users['staff'] = staff_user
 
         # Admin user
         admin, _ = User.objects.get_or_create(

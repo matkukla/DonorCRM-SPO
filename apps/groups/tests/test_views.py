@@ -17,7 +17,7 @@ class TestGroupListCreateView:
 
     def test_list_groups_authenticated(self):
         """Test listing groups for authenticated user."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
         GroupFactory.create_batch(3, owner=user)
 
         client = APIClient()
@@ -39,7 +39,7 @@ class TestGroupListCreateView:
 
     def test_create_group(self):
         """Test creating a group."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
 
         client = APIClient()
         client.force_authenticate(user=user)
@@ -63,7 +63,7 @@ class TestGroupDetailView:
 
     def test_get_group_detail(self):
         """Test getting group detail."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
         group = GroupFactory(owner=user, name='My Group')
 
         client = APIClient()
@@ -76,7 +76,7 @@ class TestGroupDetailView:
 
     def test_update_group(self):
         """Test updating a group."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
         group = GroupFactory(owner=user)
 
         client = APIClient()
@@ -93,7 +93,7 @@ class TestGroupDetailView:
 
     def test_delete_group(self):
         """Test deleting a group."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
         group = GroupFactory(owner=user)
 
         client = APIClient()
@@ -111,7 +111,7 @@ class TestGroupContactsView:
 
     def test_list_contacts_in_group(self):
         """Test listing contacts in a group."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
         group = GroupFactory(owner=user)
         contact1 = ContactFactory(owner=user)
         contact2 = ContactFactory(owner=user)
@@ -129,7 +129,7 @@ class TestGroupContactsView:
 
     def test_add_contact_to_group(self):
         """Test adding a contact to a group via POST."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
         group = GroupFactory(owner=user)
         contact = ContactFactory(owner=user)
 
@@ -148,7 +148,7 @@ class TestGroupContactsView:
 
     def test_remove_contact_from_group(self):
         """Test removing a contact from a group via DELETE."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
         group = GroupFactory(owner=user)
         contact = ContactFactory(owner=user)
         contact.groups.add(group)

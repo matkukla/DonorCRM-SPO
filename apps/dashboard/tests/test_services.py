@@ -55,7 +55,7 @@ class TestGetNeedsAttention:
 
     def test_get_needs_attention_late_pledges(self):
         """Test getting needs attention with late pledges."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
         contact = ContactFactory(owner=user)
         PledgeFactory(contact=contact, is_late=True)
 
@@ -65,7 +65,7 @@ class TestGetNeedsAttention:
 
     def test_get_needs_attention_overdue_tasks(self):
         """Test getting needs attention with overdue tasks."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
         OverdueTaskFactory(owner=user)
 
         result = get_needs_attention(user)
@@ -74,7 +74,7 @@ class TestGetNeedsAttention:
 
     def test_get_needs_attention_thank_you_needed(self):
         """Test getting needs attention with thank-you needed."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
         ContactFactory(owner=user, needs_thank_you=True)
 
         result = get_needs_attention(user)
@@ -88,7 +88,7 @@ class TestGetAtRiskDonors:
 
     def test_get_at_risk_donors(self):
         """Test getting at-risk donors."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
 
         # Create at-risk donor (no gift in 60+ days, multiple gifts)
         at_risk = ContactFactory(
@@ -113,7 +113,7 @@ class TestGetAtRiskDonors:
 
     def test_get_at_risk_donors_excludes_one_time_givers(self):
         """Test at-risk excludes one-time givers."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
 
         # One-time giver (gift_count=1) should not be at-risk
         ContactFactory(
@@ -134,7 +134,7 @@ class TestGetThankYouQueue:
 
     def test_get_thank_you_queue(self):
         """Test getting thank you queue."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
         ContactFactory.create_batch(2, owner=user, needs_thank_you=True)
         ContactFactory(owner=user, needs_thank_you=False)
 
@@ -149,7 +149,7 @@ class TestGetSupportProgress:
 
     def test_get_support_progress(self):
         """Test getting support progress."""
-        user = UserFactory(role='fundraiser', monthly_goal=Decimal('5000.00'))
+        user = UserFactory(role='staff', monthly_goal=Decimal('5000.00'))
         contact = ContactFactory(owner=user)
 
         # Create $100/month pledge
@@ -170,7 +170,7 @@ class TestGetRecentGifts:
 
     def test_get_recent_gifts(self):
         """Test getting recent gifts."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
         contact = ContactFactory(owner=user)
 
         # Recent donation
@@ -190,7 +190,7 @@ class TestGetDashboardSummary:
 
     def test_get_dashboard_summary(self):
         """Test getting complete dashboard summary."""
-        user = UserFactory(role='fundraiser', monthly_goal=Decimal('3000.00'))
+        user = UserFactory(role='staff', monthly_goal=Decimal('3000.00'))
 
         result = get_dashboard_summary(user)
 
@@ -205,7 +205,7 @@ class TestGetDashboardSummary:
         """Test that dashboard summary returns JSON-serializable data."""
         import json
 
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
 
         result = get_dashboard_summary(user)
 

@@ -58,7 +58,7 @@ class DonationCreateSerializer(serializers.ModelSerializer):
             # Admin and Finance can add donations to any contact
             if user.role in ['admin', 'finance']:
                 return value
-            # Fundraisers can only add to their own contacts
+            # Staffs can only add to their own contacts
             if value.owner != user:
                 raise serializers.ValidationError(
                     'You can only add donations to your own contacts.'

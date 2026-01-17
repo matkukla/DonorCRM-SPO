@@ -20,7 +20,7 @@ class TestPledgeListCreateView:
 
     def test_list_pledges_authenticated(self):
         """Test listing pledges for authenticated user."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
         contact = ContactFactory(owner=user)
         PledgeFactory.create_batch(3, contact=contact)
 
@@ -40,7 +40,7 @@ class TestPledgeListCreateView:
 
     def test_create_pledge(self):
         """Test creating a pledge."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
         contact = ContactFactory(owner=user)
 
         client = APIClient()
@@ -59,10 +59,10 @@ class TestPledgeListCreateView:
         assert response.data['amount'] == '150.00'
         assert response.data['status'] == 'active'
 
-    def test_fundraiser_only_sees_own_contacts_pledges(self):
-        """Test that fundraiser only sees pledges from their contacts."""
-        user1 = UserFactory(role='fundraiser')
-        user2 = UserFactory(role='fundraiser')
+    def test_staff_only_sees_own_contacts_pledges(self):
+        """Test that staff only sees pledges from their contacts."""
+        user1 = UserFactory(role='staff')
+        user2 = UserFactory(role='staff')
         contact1 = ContactFactory(owner=user1)
         contact2 = ContactFactory(owner=user2)
         PledgeFactory.create_batch(2, contact=contact1)
@@ -83,7 +83,7 @@ class TestPledgeDetailView:
 
     def test_get_pledge_detail(self):
         """Test getting pledge detail."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
         contact = ContactFactory(owner=user)
         pledge = PledgeFactory(contact=contact, amount=Decimal('200.00'))
 
@@ -97,7 +97,7 @@ class TestPledgeDetailView:
 
     def test_update_pledge(self):
         """Test updating a pledge."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
         contact = ContactFactory(owner=user)
         pledge = PledgeFactory(contact=contact)
 
@@ -120,7 +120,7 @@ class TestPledgeActionViews:
 
     def test_pause_pledge(self):
         """Test pausing a pledge."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
         contact = ContactFactory(owner=user)
         pledge = PledgeFactory(contact=contact, status=PledgeStatus.ACTIVE)
 
@@ -135,7 +135,7 @@ class TestPledgeActionViews:
 
     def test_resume_pledge(self):
         """Test resuming a paused pledge."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
         contact = ContactFactory(owner=user)
         pledge = PledgeFactory(contact=contact, status=PledgeStatus.PAUSED)
 
@@ -150,7 +150,7 @@ class TestPledgeActionViews:
 
     def test_cancel_pledge(self):
         """Test cancelling a pledge."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
         contact = ContactFactory(owner=user)
         pledge = PledgeFactory(contact=contact, status=PledgeStatus.ACTIVE)
 
@@ -170,7 +170,7 @@ class TestLatePledgesView:
 
     def test_list_late_pledges(self):
         """Test listing late pledges."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
         contact = ContactFactory(owner=user)
 
         # Create one late pledge

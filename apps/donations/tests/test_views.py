@@ -21,7 +21,7 @@ class TestDonationListCreateView:
 
     def test_list_donations_authenticated(self):
         """Test listing donations for authenticated user."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
         contact = ContactFactory(owner=user)
         DonationFactory.create_batch(3, contact=contact)
 
@@ -41,7 +41,7 @@ class TestDonationListCreateView:
 
     def test_create_donation(self):
         """Test creating a donation."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
         contact = ContactFactory(owner=user)
 
         client = APIClient()
@@ -61,10 +61,10 @@ class TestDonationListCreateView:
         assert response.data['amount'] == '100.00'
         assert 'id' in response.data
 
-    def test_fundraiser_only_sees_own_contacts_donations(self):
-        """Test that fundraiser only sees donations from their contacts."""
-        user1 = UserFactory(role='fundraiser')
-        user2 = UserFactory(role='fundraiser')
+    def test_staff_only_sees_own_contacts_donations(self):
+        """Test that staff only sees donations from their contacts."""
+        user1 = UserFactory(role='staff')
+        user2 = UserFactory(role='staff')
         contact1 = ContactFactory(owner=user1)
         contact2 = ContactFactory(owner=user2)
         DonationFactory.create_batch(2, contact=contact1)
@@ -85,7 +85,7 @@ class TestDonationDetailView:
 
     def test_get_donation_detail(self):
         """Test getting donation detail."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
         contact = ContactFactory(owner=user)
         donation = DonationFactory(contact=contact, amount=Decimal('250.00'))
 
@@ -136,7 +136,7 @@ class TestDonationThankView:
 
     def test_mark_donation_thanked(self):
         """Test marking a donation as thanked."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
         contact = ContactFactory(owner=user)
         donation = DonationFactory(contact=contact, thanked=False)
 
@@ -157,7 +157,7 @@ class TestDonationSummaryView:
 
     def test_donation_summary(self):
         """Test getting donation summary statistics."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
         contact = ContactFactory(owner=user)
         DonationFactory(contact=contact, amount=Decimal('100.00'))
         DonationFactory(contact=contact, amount=Decimal('200.00'))

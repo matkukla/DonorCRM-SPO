@@ -89,7 +89,7 @@ class TestDonationImport:
 
     def test_parse_valid_donations_csv(self):
         """Test parsing valid donations CSV."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
         contact = ContactFactory(owner=user, email='john@example.com')
 
         csv_content = """contact_email,amount,date
@@ -142,7 +142,7 @@ nonexistent@example.com,100,2024-01-15"""
 
     def test_parse_donations_by_name(self):
         """Test parsing donations using contact name."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
         contact = ContactFactory(owner=user, first_name='John', last_name='Doe')
 
         csv_content = """contact_first_name,contact_last_name,amount,date

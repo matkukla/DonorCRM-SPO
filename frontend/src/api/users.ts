@@ -3,7 +3,7 @@
  */
 import { apiClient } from "./client"
 
-export type UserRole = "admin" | "fundraiser" | "finance" | "read_only"
+export type UserRole = "admin" | "staff" | "finance" | "read_only"
 
 export interface User {
   id: string
@@ -44,7 +44,7 @@ export interface UserUpdate {
 // Labels for display
 export const userRoleLabels: Record<UserRole, string> = {
   admin: "Administrator",
-  fundraiser: "Fundraiser",
+  staff: "Staff",
   finance: "Finance",
   read_only: "Read Only",
 }

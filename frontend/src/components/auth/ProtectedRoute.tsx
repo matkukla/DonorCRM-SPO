@@ -4,7 +4,7 @@ import type { ReactNode } from "react"
 
 interface ProtectedRouteProps {
   children: ReactNode
-  requiredRole?: "admin" | "fundraiser" | "finance" | "read_only"
+  requiredRole?: "admin" | "staff" | "finance" | "read_only"
 }
 
 /**
@@ -31,7 +31,7 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
 
   // Check role if required
   if (requiredRole && user) {
-    const roleHierarchy: Record<string, number> = { admin: 4, finance: 3, fundraiser: 2, read_only: 1 }
+    const roleHierarchy: Record<string, number> = { admin: 4, finance: 3, staff: 2, read_only: 1 }
     const userLevel = roleHierarchy[user.role]
     const requiredLevel = roleHierarchy[requiredRole]
 

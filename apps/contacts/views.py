@@ -14,7 +14,7 @@ from apps.contacts.serializers import (
     ContactDetailSerializer,
     ContactListSerializer,
 )
-from apps.core.permissions import IsContactOwnerOrReadAccess, IsFundraiserOrAbove
+from apps.core.permissions import IsContactOwnerOrReadAccess, IsStaffOrAbove
 
 
 @extend_schema_view(
@@ -38,10 +38,10 @@ from apps.core.permissions import IsContactOwnerOrReadAccess, IsFundraiserOrAbov
 )
 class ContactListCreateView(generics.ListCreateAPIView):
     """
-    GET: List contacts (filtered by ownership for fundraisers)
+    GET: List contacts (filtered by ownership for staff users)
     POST: Create a new contact
     """
-    permission_classes = [permissions.IsAuthenticated, IsFundraiserOrAbove]
+    permission_classes = [permissions.IsAuthenticated, IsStaffOrAbove]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['first_name', 'last_name', 'email']
     ordering_fields = ['last_name', 'first_name', 'created_at', 'last_gift_date', 'total_given']
@@ -55,7 +55,7 @@ class ContactListCreateView(generics.ListCreateAPIView):
         if user.role in ['admin', 'finance', 'read_only']:
             queryset = Contact.objects.all()
         else:
-            # Fundraisers see only their own contacts
+            # Staffs see only their own contacts
             queryset = Contact.objects.filter(owner=user)
 
         # Optional owner filter for admin

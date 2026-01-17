@@ -53,8 +53,8 @@ class TestUserListView:
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data['results']) >= 5
 
-    def test_fundraiser_cannot_list_users(self, authenticated_client):
-        """Test fundraiser cannot list users."""
+    def test_staff_cannot_list_users(self, authenticated_client):
+        """Test staff cannot list users."""
         client, user = authenticated_client
         response = client.get('/api/v1/users/')
 
@@ -69,7 +69,7 @@ class TestUserListView:
             'last_name': 'User',
             'password': 'securePass123!',
             'password_confirm': 'securePass123!',
-            'role': 'fundraiser'
+            'role': 'staff'
         })
 
         assert response.status_code == status.HTTP_201_CREATED

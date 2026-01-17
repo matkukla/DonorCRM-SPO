@@ -20,9 +20,9 @@ def user_factory():
 
 @pytest.fixture
 def authenticated_client(user_factory):
-    """Return an API client authenticated as a fundraiser."""
+    """Return an API client authenticated as a staff user."""
     client = APIClient()
-    user = user_factory(role='fundraiser')
+    user = user_factory(role='staff')
     client.force_authenticate(user=user)
     return client, user
 

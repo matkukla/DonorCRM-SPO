@@ -33,7 +33,7 @@ class PledgeListCreateView(generics.ListCreateAPIView):
         if user.role in ['admin', 'finance', 'read_only']:
             queryset = Pledge.objects.all()
         else:
-            # Fundraisers see only pledges for their contacts
+            # Staffs see only pledges for their contacts
             queryset = Pledge.objects.filter(contact__owner=user)
 
         # Contact filter

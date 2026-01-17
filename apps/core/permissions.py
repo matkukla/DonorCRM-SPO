@@ -26,9 +26,9 @@ class IsFinanceOrAdmin(permissions.BasePermission):
         )
 
 
-class IsFundraiserOrAbove(permissions.BasePermission):
+class IsStaffOrAbove(permissions.BasePermission):
     """
-    Permission class that allows Fundraiser, Finance, or Admin users.
+    Permission class that allows Staff, Finance, or Admin users.
     Excludes read-only users from write operations.
     """
     def has_permission(self, request, view):
@@ -39,7 +39,7 @@ class IsFundraiserOrAbove(permissions.BasePermission):
         if request.user.role == 'read_only':
             return request.method in permissions.SAFE_METHODS
 
-        return request.user.role in ['admin', 'finance', 'fundraiser']
+        return request.user.role in ['admin', 'finance', 'staff']
 
 
 class IsOwnerOrAdmin(permissions.BasePermission):

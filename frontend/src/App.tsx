@@ -30,7 +30,7 @@ import ImportExport from "@/pages/imports/ImportExport"
 /**
  * Wrap a page with protected route and app layout
  */
-function ProtectedPage({ children, requiredRole }: { children: React.ReactNode; requiredRole?: "admin" | "fundraiser" | "finance" | "read_only" }) {
+function ProtectedPage({ children, requiredRole }: { children: React.ReactNode; requiredRole?: "admin" | "staff" | "finance" | "read_only" }) {
   return (
     <ProtectedRoute requiredRole={requiredRole}>
       <AppLayout>{children}</AppLayout>

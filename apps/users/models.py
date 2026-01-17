@@ -14,7 +14,7 @@ class UserRole(models.TextChoices):
     """
     User roles determine permissions across the system.
     """
-    FUNDRAISER = 'fundraiser', 'Fundraiser'
+    STAFF = 'staff', 'Staff'
     ADMIN = 'admin', 'Admin'
     FINANCE = 'finance', 'Finance'
     READ_ONLY = 'read_only', 'Read Only'
@@ -25,7 +25,7 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
     Custom User model using email as the primary identifier.
 
     Roles:
-    - Fundraiser: Manages their own donors, pledges, and tasks
+    - Staff: Manages their own donors, pledges, and tasks
     - Admin: Full system access, user management, data imports
     - Finance: Import donations, view giving across organization
     - Read-Only: View-only access for coaches/supervisors
@@ -43,11 +43,11 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
         'role',
         max_length=20,
         choices=UserRole.choices,
-        default=UserRole.FUNDRAISER,
+        default=UserRole.STAFF,
         db_index=True
     )
 
-    # Support goal tracking for fundraisers
+    # Support goal tracking for staff users
     monthly_goal = models.DecimalField(
         'monthly support goal',
         max_digits=10,
@@ -113,9 +113,9 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
         return self.role == UserRole.FINANCE
 
     @property
-    def is_fundraiser(self):
-        """Check if user has fundraiser role."""
-        return self.role == UserRole.FUNDRAISER
+    def is_staff_role(self):
+        """Check if user has staff role."""
+        return self.role == UserRole.STAFF
 
     @property
     def is_read_only(self):

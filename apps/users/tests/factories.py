@@ -19,7 +19,7 @@ class UserFactory(factory.django.DjangoModelFactory):
     first_name = factory.LazyFunction(fake.first_name)
     last_name = factory.LazyFunction(fake.last_name)
     phone = factory.LazyFunction(lambda: fake.numerify('###-###-####'))
-    role = UserRole.FUNDRAISER
+    role = UserRole.STAFF
     monthly_goal = factory.LazyFunction(lambda: fake.pydecimal(min_value=1000, max_value=10000, right_digits=2))
     is_active = True
     password = factory.PostGenerationMethodCall('set_password', 'testpass123')

@@ -14,7 +14,7 @@ class TestDashboardView:
 
     def test_get_dashboard(self):
         """Test getting full dashboard data."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
 
         client = APIClient()
         client.force_authenticate(user=user)
@@ -39,7 +39,7 @@ class TestWhatChangedView:
 
     def test_get_what_changed(self):
         """Test getting what changed data."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
 
         client = APIClient()
         client.force_authenticate(user=user)
@@ -56,7 +56,7 @@ class TestNeedsAttentionView:
 
     def test_get_needs_attention(self):
         """Test getting needs attention data."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
 
         client = APIClient()
         client.force_authenticate(user=user)
@@ -74,7 +74,7 @@ class TestAtRiskView:
 
     def test_get_at_risk(self):
         """Test getting at-risk donors."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
 
         client = APIClient()
         client.force_authenticate(user=user)
@@ -93,7 +93,7 @@ class TestThankYouQueueView:
 
     def test_get_thank_you_queue(self):
         """Test getting thank you queue."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
 
         client = APIClient()
         client.force_authenticate(user=user)
@@ -109,7 +109,7 @@ class TestSupportProgressView:
 
     def test_get_support_progress(self):
         """Test getting support progress."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
 
         client = APIClient()
         client.force_authenticate(user=user)

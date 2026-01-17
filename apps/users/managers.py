@@ -50,9 +50,9 @@ class UserManager(BaseUserManager):
         """Return only active users."""
         return self.filter(is_active=True)
 
-    def fundraisers(self):
-        """Return active fundraiser users."""
-        return self.active().filter(role='fundraiser')
+    def staff_users(self):
+        """Return active staff users."""
+        return self.active().filter(role='staff')
 
     def admins(self):
         """Return active admin users."""

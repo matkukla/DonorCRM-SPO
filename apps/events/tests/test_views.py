@@ -16,7 +16,7 @@ class TestEventListView:
 
     def test_list_events_authenticated(self):
         """Test listing events for authenticated user."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
         EventFactory.create_batch(3, user=user)
 
         client = APIClient()
@@ -35,8 +35,8 @@ class TestEventListView:
 
     def test_user_only_sees_own_events(self):
         """Test that users only see their own events."""
-        user1 = UserFactory(role='fundraiser')
-        user2 = UserFactory(role='fundraiser')
+        user1 = UserFactory(role='staff')
+        user2 = UserFactory(role='staff')
         EventFactory.create_batch(2, user=user1)
         EventFactory.create_batch(3, user=user2)
 
@@ -55,7 +55,7 @@ class TestEventDetailView:
 
     def test_get_event_detail(self):
         """Test getting event detail."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
         event = EventFactory(user=user, title='Important event')
 
         client = APIClient()
@@ -73,7 +73,7 @@ class TestEventMarkReadView:
 
     def test_mark_event_read(self):
         """Test marking a single event as read."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
         event = EventFactory(user=user, is_read=False)
 
         client = APIClient()
@@ -92,7 +92,7 @@ class TestEventMarkAllReadView:
 
     def test_mark_all_events_read(self):
         """Test marking all events as read."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
         EventFactory.create_batch(5, user=user, is_read=False)
 
         client = APIClient()
@@ -113,7 +113,7 @@ class TestUnreadEventCountView:
 
     def test_get_unread_count(self):
         """Test getting unread event count."""
-        user = UserFactory(role='fundraiser')
+        user = UserFactory(role='staff')
         EventFactory.create_batch(3, user=user, is_read=False)
         EventFactory.create_batch(2, user=user, is_read=True)
 

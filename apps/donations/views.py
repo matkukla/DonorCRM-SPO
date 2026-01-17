@@ -54,7 +54,7 @@ class DonationListCreateView(generics.ListCreateAPIView):
         if user.role in ['admin', 'finance', 'read_only']:
             queryset = Donation.objects.all()
         else:
-            # Fundraisers see only donations to their contacts
+            # Staffs see only donations to their contacts
             queryset = Donation.objects.filter(contact__owner=user)
 
         # Date range filter
