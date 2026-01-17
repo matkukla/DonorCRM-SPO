@@ -9,6 +9,7 @@ interface AuthContextType {
   isAuthenticated: boolean
   login: (credentials: LoginCredentials) => Promise<void>
   logout: () => void
+  refreshUser: () => Promise<void>
   error: string | null
 }
 
@@ -61,12 +62,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setUser(null)
   }, [])
 
+  const refreshUser = useCallback(async () => {
+    try {
+      const currentUser = await getCurrentUser()
+      setUser(currentUser)
+    } catch {
+      // Token invalid or expired
+      apiLogout()
+      setUser(null)
+    }
+  }, [])
+
   const value: AuthContextType = {
     user,
     isLoading,
     isAuthenticated: !!user,
     login,
     logout,
+    refreshUser,
     error,
   }
 

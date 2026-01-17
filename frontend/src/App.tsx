@@ -15,8 +15,14 @@ import DonationList from "@/pages/donations/DonationList"
 import DonationDetail from "@/pages/donations/DonationDetail"
 import DonationForm from "@/pages/donations/DonationForm"
 import PledgeList from "@/pages/pledges/PledgeList"
+import PledgeDetail from "@/pages/pledges/PledgeDetail"
+import PledgeForm from "@/pages/pledges/PledgeForm"
 import TaskList from "@/pages/tasks/TaskList"
+import TaskDetail from "@/pages/tasks/TaskDetail"
+import TaskForm from "@/pages/tasks/TaskForm"
 import GroupList from "@/pages/groups/GroupList"
+import GroupDetail from "@/pages/groups/GroupDetail"
+import GroupForm from "@/pages/groups/GroupForm"
 import Settings from "@/pages/settings/Settings"
 import AdminUsers from "@/pages/admin/AdminUsers"
 
@@ -57,8 +63,16 @@ function App() {
             <Route path="/donations/:id" element={<ProtectedPage><DonationDetail /></ProtectedPage>} />
             <Route path="/donations/:id/edit" element={<ProtectedPage><DonationForm /></ProtectedPage>} />
             <Route path="/pledges" element={<ProtectedPage><PledgeList /></ProtectedPage>} />
+            <Route path="/pledges/new" element={<ProtectedPage><PledgeForm /></ProtectedPage>} />
+            <Route path="/pledges/:id" element={<ProtectedPage><PledgeDetail /></ProtectedPage>} />
+            <Route path="/pledges/:id/edit" element={<ProtectedPage><PledgeForm /></ProtectedPage>} />
             <Route path="/tasks" element={<ProtectedPage><TaskList /></ProtectedPage>} />
+            <Route path="/tasks/new" element={<ProtectedPage><TaskForm /></ProtectedPage>} />
+            <Route path="/tasks/:id" element={<ProtectedPage><TaskDetail /></ProtectedPage>} />
+            <Route path="/tasks/:id/edit" element={<ProtectedPage><TaskForm /></ProtectedPage>} />
             <Route path="/groups" element={<ProtectedPage><GroupList /></ProtectedPage>} />
+            <Route path="/groups/:id" element={<ProtectedPage><GroupDetail /></ProtectedPage>} />
+            <Route path="/groups/:id/edit" element={<ProtectedPage><GroupForm /></ProtectedPage>} />
             <Route path="/settings" element={<ProtectedPage><Settings /></ProtectedPage>} />
             <Route path="/admin" element={<ProtectedPage requiredRole="admin"><AdminUsers /></ProtectedPage>} />
 
