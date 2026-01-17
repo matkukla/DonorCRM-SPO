@@ -129,9 +129,6 @@ class TestPledgeWorkflow:
         })
         assert response.status_code == status.HTTP_201_CREATED
 
-        print("Donation response.data:", response.data)
-        print("Donation raw content:", response.content.decode())
-
         # Verify pledge updated
         response = client.get(f'/api/v1/pledges/{pledge_id}/')
         assert Decimal(response.data['total_received']) == Decimal('100.00')
