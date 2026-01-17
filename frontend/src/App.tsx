@@ -9,6 +9,8 @@ import Login from "@/pages/Login"
 import Dashboard from "@/pages/Dashboard"
 import Styleguide from "@/pages/Styleguide"
 import ContactList from "@/pages/contacts/ContactList"
+import ContactDetail from "@/pages/contacts/ContactDetail"
+import ContactForm from "@/pages/contacts/ContactForm"
 import DonationList from "@/pages/donations/DonationList"
 import PledgeList from "@/pages/pledges/PledgeList"
 import TaskList from "@/pages/tasks/TaskList"
@@ -45,6 +47,9 @@ function App() {
             {/* Protected routes with app layout */}
             <Route path="/" element={<ProtectedPage><Dashboard /></ProtectedPage>} />
             <Route path="/contacts" element={<ProtectedPage><ContactList /></ProtectedPage>} />
+            <Route path="/contacts/new" element={<ProtectedPage><ContactForm /></ProtectedPage>} />
+            <Route path="/contacts/:id" element={<ProtectedPage><ContactDetail /></ProtectedPage>} />
+            <Route path="/contacts/:id/edit" element={<ProtectedPage><ContactForm /></ProtectedPage>} />
             <Route path="/donations" element={<ProtectedPage><DonationList /></ProtectedPage>} />
             <Route path="/pledges" element={<ProtectedPage><PledgeList /></ProtectedPage>} />
             <Route path="/tasks" element={<ProtectedPage><TaskList /></ProtectedPage>} />
