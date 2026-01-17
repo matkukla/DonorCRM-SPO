@@ -12,6 +12,8 @@ import ContactList from "@/pages/contacts/ContactList"
 import ContactDetail from "@/pages/contacts/ContactDetail"
 import ContactForm from "@/pages/contacts/ContactForm"
 import DonationList from "@/pages/donations/DonationList"
+import DonationDetail from "@/pages/donations/DonationDetail"
+import DonationForm from "@/pages/donations/DonationForm"
 import PledgeList from "@/pages/pledges/PledgeList"
 import TaskList from "@/pages/tasks/TaskList"
 import GroupList from "@/pages/groups/GroupList"
@@ -51,6 +53,9 @@ function App() {
             <Route path="/contacts/:id" element={<ProtectedPage><ContactDetail /></ProtectedPage>} />
             <Route path="/contacts/:id/edit" element={<ProtectedPage><ContactForm /></ProtectedPage>} />
             <Route path="/donations" element={<ProtectedPage><DonationList /></ProtectedPage>} />
+            <Route path="/donations/new" element={<ProtectedPage><DonationForm /></ProtectedPage>} />
+            <Route path="/donations/:id" element={<ProtectedPage><DonationDetail /></ProtectedPage>} />
+            <Route path="/donations/:id/edit" element={<ProtectedPage><DonationForm /></ProtectedPage>} />
             <Route path="/pledges" element={<ProtectedPage><PledgeList /></ProtectedPage>} />
             <Route path="/tasks" element={<ProtectedPage><TaskList /></ProtectedPage>} />
             <Route path="/groups" element={<ProtectedPage><GroupList /></ProtectedPage>} />
