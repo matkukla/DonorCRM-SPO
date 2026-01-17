@@ -36,8 +36,9 @@ import { userRoleLabels } from "@/api/users"
 
 const roleVariants: Record<UserRole, "default" | "secondary" | "success" | "warning" | "info" | "destructive"> = {
   admin: "destructive",
-  staff: "default",
-  viewer: "secondary",
+  fundraiser: "default",
+  finance: "info",
+  read_only: "secondary",
 }
 
 function formatDate(dateStr: string | null): string {
@@ -62,7 +63,7 @@ export default function AdminUsers() {
   const [newEmail, setNewEmail] = useState("")
   const [newFirstName, setNewFirstName] = useState("")
   const [newLastName, setNewLastName] = useState("")
-  const [newRole, setNewRole] = useState<UserRole>("staff")
+  const [newRole, setNewRole] = useState<UserRole>("fundraiser")
   const [newPassword, setNewPassword] = useState("")
   const [newPasswordConfirm, setNewPasswordConfirm] = useState("")
   const [createError, setCreateError] = useState("")
@@ -70,14 +71,14 @@ export default function AdminUsers() {
   // Edit form state
   const [editFirstName, setEditFirstName] = useState("")
   const [editLastName, setEditLastName] = useState("")
-  const [editRole, setEditRole] = useState<UserRole>("staff")
+  const [editRole, setEditRole] = useState<UserRole>("fundraiser")
   const [editError, setEditError] = useState("")
 
   const resetCreateForm = () => {
     setNewEmail("")
     setNewFirstName("")
     setNewLastName("")
-    setNewRole("staff")
+    setNewRole("fundraiser")
     setNewPassword("")
     setNewPasswordConfirm("")
     setCreateError("")

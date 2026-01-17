@@ -9,6 +9,7 @@ import {
   UsersRound,
   Settings,
   ShieldCheck,
+  FileUp,
 } from "lucide-react"
 import { useAuth } from "@/providers/AuthProvider"
 
@@ -16,7 +17,7 @@ interface NavItem {
   label: string
   href: string
   icon: React.ReactNode
-  requiredRole?: "admin" | "staff" | "viewer"
+  requiredRole?: "admin" | "fundraiser" | "finance" | "read_only"
 }
 
 const navItems: NavItem[] = [
@@ -29,6 +30,7 @@ const navItems: NavItem[] = [
 ]
 
 const bottomNavItems: NavItem[] = [
+  { label: "Import/Export", href: "/import-export", icon: <FileUp className="h-5 w-5" /> },
   { label: "Settings", href: "/settings", icon: <Settings className="h-5 w-5" /> },
   { label: "Admin", href: "/admin", icon: <ShieldCheck className="h-5 w-5" />, requiredRole: "admin" },
 ]
@@ -44,7 +46,7 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
   const canAccess = (item: NavItem) => {
     if (!item.requiredRole) return true
     if (!user) return false
-    const roleHierarchy = { admin: 3, staff: 2, viewer: 1 }
+    const roleHierarchy: Record<string, number> = { admin: 4, finance: 3, fundraiser: 2, read_only: 1 }
     return roleHierarchy[user.role] >= roleHierarchy[item.requiredRole]
   }
 
