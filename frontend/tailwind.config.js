@@ -19,6 +19,13 @@ export default {
     },
     extend: {
       colors: {
+        // SPO Brand Colors (can use as bg-spo-blue, text-spo-red, etc.)
+        spo: {
+          blue: "#3A4D75",
+          red: "#D74F59",
+          white: "#FFFFFF",
+        },
+        // Shadcn UI colors
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

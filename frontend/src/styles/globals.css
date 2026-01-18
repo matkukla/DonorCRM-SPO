@@ -4,47 +4,53 @@
 
 /*
  * SPO Design System - Light Only
+ * Colors: SPO Blue (#3A4D75), SPO Red (#D74F59), SPO White (#FFFFFF)
  * No dark mode. Clean, calm, nonprofit aesthetic.
  */
 
 @layer base {
   :root {
+    /* SPO Brand Colors */
+    --spo-blue: 220 34% 34%;          /* #3A4D75 */
+    --spo-red: 355 62% 58%;           /* #D74F59 */
+    --spo-white: 0 0% 100%;           /* #FFFFFF */
+
     /* Background & Foreground */
-    --background: 0 0% 100%;
-    --foreground: 222 47% 11%;
+    --background: 0 0% 100%;          /* White background */
+    --foreground: 220 34% 34%;        /* SPO Blue for text */
 
     /* Card */
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 220 34% 34%;   /* SPO Blue */
 
     /* Popover */
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 220 34% 34%;
 
-    /* Primary - Strong Red (SPO brand) */
-    --primary: 351 74% 47%;           /* #D11F3A */
+    /* Primary - SPO Blue (main brand color for buttons, links) */
+    --primary: 220 34% 34%;           /* #3A4D75 */
     --primary-foreground: 0 0% 100%;  /* white */
 
-    /* Secondary - Subtle neutral */
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
+    /* Secondary - Light blue tint */
+    --secondary: 220 30% 95%;
+    --secondary-foreground: 220 34% 34%;
 
     /* Muted */
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
+    --muted: 220 20% 96%;
+    --muted-foreground: 220 20% 46%;
 
-    /* Accent */
-    --accent: 210 40% 96%;
-    --accent-foreground: 222 47% 11%;
+    /* Accent - SPO Red (for highlights, CTAs) */
+    --accent: 355 62% 58%;            /* #D74F59 */
+    --accent-foreground: 0 0% 100%;   /* white */
 
-    /* Destructive */
-    --destructive: 0 84% 60%;
+    /* Destructive - SPO Red */
+    --destructive: 355 62% 58%;       /* #D74F59 */
     --destructive-foreground: 0 0% 100%;
 
     /* Border, Input, Ring */
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 351 74% 47%;              /* Primary red for focus rings */
+    --border: 220 20% 88%;
+    --input: 220 20% 88%;
+    --ring: 220 34% 34%;              /* SPO Blue for focus rings */
 
     /* Border Radius - 12px, NOT pill */
     --radius: 0.75rem;
