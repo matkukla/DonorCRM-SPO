@@ -2,6 +2,28 @@
 # https://render.com/docs/blueprint-spec
 
 services:
+  # Frontend (React/Vite)
+  - type: web
+    name: donorcrm-frontend
+    env: static
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/dist
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: no-cache
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE_URL
+        fromService:
+          type: web
+          name: donorcrm-web
+          property: hostURL
+        transform: '%s/api/v1'
+
   # Web Service
   - type: web
     name: donorcrm-web
