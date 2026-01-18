@@ -24,7 +24,7 @@ export interface User {
  */
 export async function login(credentials: LoginCredentials): Promise<User> {
   // Get tokens
-  const tokenResponse = await apiClient.post<TokenResponse>("/auth/token/", credentials)
+  const tokenResponse = await apiClient.post<TokenResponse>("/auth/login/", credentials)
   setTokens(tokenResponse.data.access, tokenResponse.data.refresh)
 
   // Fetch user profile
