@@ -1,6 +1,9 @@
 """
 Views for CSV import/export.
 """
+import logging
+import uuid
+
 from django.http import HttpResponse
 from rest_framework import permissions, status
 from rest_framework.parsers import MultiPartParser
@@ -18,11 +21,25 @@ from apps.imports.services import (
     parse_contacts_csv,
     parse_donations_csv,
 )
+from apps.imports.tasks import (
+    get_import_progress,
+    import_contacts_async,
+    import_donations_async,
+)
+
+logger = logging.getLogger(__name__)
+
+# Threshold for using async import (number of rows)
+ASYNC_THRESHOLD = 50
 
 
 class ContactImportView(APIView):
     """
     POST: Import contacts from CSV file (admin only)
+
+    Query params:
+        validate_only: If 'true', only validate without importing
+        async: If 'true', process import asynchronously (recommended for large files)
     """
     permission_classes = [permissions.IsAuthenticated, IsAdmin]
     parser_classes = [MultiPartParser]
@@ -50,6 +67,8 @@ class ContactImportView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        logger.info(f'Contact import started by user {request.user.email}')
+
         # Parse CSV
         valid_records, errors = parse_contacts_csv(content, request.user)
 
@@ -61,11 +80,31 @@ class ContactImportView(APIView):
                 'errors': errors[:20]  # Limit errors in response
             })
 
-        # Import valid records
+        # Use async import for large files
+        use_async = (
+            request.query_params.get('async') == 'true' or
+            len(valid_records) > ASYNC_THRESHOLD
+        )
+
+        if use_async and valid_records:
+            import_id = uuid.uuid4().hex[:12]
+            import_contacts_async.delay(content, request.user.id, import_id)
+            logger.info(f'Contact import {import_id} queued for async processing')
+            return Response({
+                'status': 'processing',
+                'import_id': import_id,
+                'message': f'{len(valid_records)} contacts queued for import',
+                'error_count': len(errors),
+                'errors': errors[:20]
+            }, status=status.HTTP_202_ACCEPTED)
+
+        # Sync import for small files
         if valid_records:
             count, contacts = import_contacts(valid_records, request.user)
         else:
             count = 0
+
+        logger.info(f'Contact import completed: {count} contacts imported')
 
         return Response({
             'imported_count': count,
@@ -77,6 +116,10 @@ class ContactImportView(APIView):
 class DonationImportView(APIView):
     """
     POST: Import donations from CSV file (admin/finance only)
+
+    Query params:
+        validate_only: If 'true', only validate without importing
+        async: If 'true', process import asynchronously (recommended for large files)
     """
     permission_classes = [permissions.IsAuthenticated, IsFinanceOrAdmin]
     parser_classes = [MultiPartParser]
@@ -104,6 +147,8 @@ class DonationImportView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        logger.info(f'Donation import started by user {request.user.email}')
+
         # Parse CSV
         valid_records, errors = parse_donations_csv(content, request.user)
 
@@ -115,11 +160,31 @@ class DonationImportView(APIView):
                 'errors': errors[:20]
             })
 
-        # Import valid records
+        # Use async import for large files
+        use_async = (
+            request.query_params.get('async') == 'true' or
+            len(valid_records) > ASYNC_THRESHOLD
+        )
+
+        if use_async and valid_records:
+            import_id = uuid.uuid4().hex[:12]
+            import_donations_async.delay(content, request.user.id, import_id)
+            logger.info(f'Donation import {import_id} queued for async processing')
+            return Response({
+                'status': 'processing',
+                'import_id': import_id,
+                'message': f'{len(valid_records)} donations queued for import',
+                'error_count': len(errors),
+                'errors': errors[:20]
+            }, status=status.HTTP_202_ACCEPTED)
+
+        # Sync import for small files
         if valid_records:
             count, donations = import_donations(valid_records)
         else:
             count = 0
+
+        logger.info(f'Donation import completed: {count} donations imported')
 
         return Response({
             'imported_count': count,
@@ -204,3 +269,14 @@ class DonationTemplateView(APIView):
         response = HttpResponse(content, content_type='text/csv')
         response['Content-Disposition'] = 'attachment; filename="donations_template.csv"'
         return response
+
+
+class ImportStatusView(APIView):
+    """
+    GET: Check status of an async import
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, import_id):
+        progress = get_import_progress(import_id)
+        return Response(progress)

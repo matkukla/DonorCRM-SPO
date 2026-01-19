@@ -3,6 +3,7 @@ Service functions for CSV import/export.
 """
 import csv
 import io
+import logging
 import re
 import uuid
 from datetime import datetime
@@ -13,6 +14,8 @@ from django.utils import timezone
 
 from apps.contacts.models import Contact
 from apps.donations.models import Donation, DonationType, PaymentMethod
+
+logger = logging.getLogger(__name__)
 
 
 # Valid enum values for validation
@@ -175,6 +178,7 @@ def import_contacts(records: List[dict], user) -> Tuple[int, List[Contact]]:
     Returns:
         Tuple of (count, created_contacts)
     """
+    logger.info(f'Starting contact import: {len(records)} records for user {user.email}')
     created_contacts = []
 
     for record in records:
@@ -184,6 +188,7 @@ def import_contacts(records: List[dict], user) -> Tuple[int, List[Contact]]:
         )
         created_contacts.append(contact)
 
+    logger.info(f'Contact import completed: {len(created_contacts)} contacts created')
     return len(created_contacts), created_contacts
 
 
@@ -332,6 +337,7 @@ def import_donations(records: List[dict]) -> Tuple[int, List[Donation]]:
     Returns:
         Tuple of (count, created_donations)
     """
+    logger.info(f'Starting donation import: {len(records)} records')
     created_donations = []
     batch_id = f'import-{uuid.uuid4().hex[:8]}'
 
@@ -343,6 +349,7 @@ def import_donations(records: List[dict]) -> Tuple[int, List[Donation]]:
         )
         created_donations.append(donation)
 
+    logger.info(f'Donation import completed: {len(created_donations)} donations created (batch {batch_id})')
     return len(created_donations), created_donations
 
 

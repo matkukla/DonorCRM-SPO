@@ -1,6 +1,7 @@
 """
 Views for user management.
 """
+from django.db.models import Count, Q
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -61,7 +62,19 @@ class CurrentUserView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        serializer = CurrentUserSerializer(request.user)
+        from apps.pledges.models import PledgeStatus
+
+        # Annotate user with counts to avoid N+1 queries
+        user = User.objects.filter(pk=request.user.pk).annotate(
+            _contact_count=Count('contacts', distinct=True),
+            _active_pledge_count=Count(
+                'contacts__pledges',
+                filter=Q(contacts__pledges__status=PledgeStatus.ACTIVE),
+                distinct=True
+            )
+        ).first()
+
+        serializer = CurrentUserSerializer(user)
         return Response(serializer.data)
 
     def patch(self, request):

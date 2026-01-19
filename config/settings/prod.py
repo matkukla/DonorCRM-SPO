@@ -38,8 +38,22 @@ if SENTRY_DSN:
         environment=config('ENVIRONMENT', default='production'),  # noqa: F405
     )
 
-# Database connection pooling (if using managed PostgreSQL)
-DATABASES['default']['CONN_MAX_AGE'] = 60  # noqa: F405
+# Database connection pooling
+# Use django-db-connection-pool for SQLAlchemy-based pooling
+DATABASES['default'] = {  # noqa: F405
+    'ENGINE': 'dj_db_conn_pool.backends.postgresql',
+    'NAME': config('DB_NAME', default='donorcrm'),  # noqa: F405
+    'USER': config('DB_USER', default='donorcrm'),  # noqa: F405
+    'PASSWORD': config('DB_PASSWORD', default=''),  # noqa: F405
+    'HOST': config('DB_HOST', default='localhost'),  # noqa: F405
+    'PORT': config('DB_PORT', default='5432'),  # noqa: F405
+    'POOL_OPTIONS': {
+        'POOL_SIZE': 20,  # Base connections to keep open
+        'MAX_OVERFLOW': 30,  # Additional connections under load
+        'RECYCLE': 300,  # Recycle connections after 5 minutes
+        'PRE_PING': True,  # Verify connections before use
+    }
+}
 
 # Cache (Redis)
 CACHES = {

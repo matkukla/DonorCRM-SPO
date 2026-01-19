@@ -204,6 +204,13 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 
+# Celery performance and reliability settings
+CELERY_RESULT_EXPIRES = 3600  # Results expire after 1 hour
+CELERY_TASK_SOFT_TIME_LIMIT = 300  # 5 minute soft limit
+CELERY_TASK_TIME_LIMIT = 600  # 10 minute hard limit
+CELERY_TASK_ACKS_LATE = True  # Acknowledge after task completes (better reliability)
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1  # Don't prefetch too many tasks
+
 # Email Configuration
 EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
 EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')

@@ -10,6 +10,7 @@ from apps.imports.views import (
     DonationExportView,
     DonationImportView,
     DonationTemplateView,
+    ImportStatusView,
 )
 
 app_name = 'imports'
@@ -21,4 +22,5 @@ urlpatterns = [
     path('export/donations/', DonationExportView.as_view(), name='export-donations'),
     path('templates/contacts/', ContactTemplateView.as_view(), name='template-contacts'),
     path('templates/donations/', DonationTemplateView.as_view(), name='template-donations'),
+    path('status/<str:import_id>/', ImportStatusView.as_view(), name='import-status'),
 ]

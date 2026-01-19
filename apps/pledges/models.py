@@ -2,8 +2,10 @@
 Pledge model for recurring giving commitments.
 """
 from datetime import timedelta
+from decimal import Decimal
 
 from dateutil.relativedelta import relativedelta
+from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils import timezone
 
@@ -44,6 +46,7 @@ class Pledge(TimeStampedModel):
         'amount',
         max_digits=10,
         decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.01'))],
         help_text='Committed amount per frequency period'
     )
 

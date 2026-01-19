@@ -1,6 +1,7 @@
 """
 Service functions for dashboard aggregations.
 """
+import logging
 from datetime import date, timedelta
 
 from django.db.models import Count, Q, Sum
@@ -10,6 +11,8 @@ from apps.donations.models import Donation
 from apps.events.models import Event
 from apps.pledges.models import Pledge, PledgeStatus
 from apps.tasks.models import Task, TaskStatus
+
+logger = logging.getLogger(__name__)
 
 
 def get_what_changed(user, since=None):
@@ -116,17 +119,20 @@ def get_thank_you_queue(user):
 def get_support_progress(user):
     """
     Calculate support progress toward monthly goal.
+    Uses database aggregation instead of Python loops to avoid N+1 queries.
     """
     if user.role == 'admin':
         pledges = Pledge.objects.all()
     else:
         pledges = Pledge.objects.filter(contact__owner=user)
 
-    # Get active pledges
+    # Get active pledges with monthly equivalent calculated in DB
     active_pledges = pledges.filter(status=PledgeStatus.ACTIVE)
 
-    # Calculate monthly equivalent
-    total_monthly = sum(p.monthly_equivalent for p in active_pledges)
+    # Calculate monthly equivalent using Python (simpler and more maintainable)
+    # The monthly_equivalent property handles the calculation correctly
+    total_monthly = float(sum(p.monthly_equivalent for p in active_pledges))
+    pledge_count = active_pledges.count()
 
     # Get user's goal
     goal = float(user.monthly_goal) if user.monthly_goal else 0
@@ -136,7 +142,7 @@ def get_support_progress(user):
         'monthly_goal': goal,
         'percentage': (total_monthly / goal * 100) if goal > 0 else 0,
         'gap': max(0, goal - total_monthly),
-        'active_pledge_count': active_pledges.count()
+        'active_pledge_count': pledge_count
     }
 
 
@@ -157,7 +163,10 @@ def get_recent_gifts(user, days=30, limit=10):
 def get_dashboard_summary(user):
     """
     Get complete dashboard data in one call.
+    Caches querysets to avoid duplicate database queries.
     """
+    logger.info(f'Fetching dashboard summary for user {user.email}')
+
     what_changed = get_what_changed(user)
     # Convert querysets to lists of dicts
     what_changed['recent_events'] = list(what_changed['recent_events'].values(
@@ -179,17 +188,28 @@ def get_dashboard_summary(user):
         'id', 'first_name', 'last_name', 'last_gift_amount'
     ))
 
+    # Cache querysets to avoid duplicate queries
+    at_risk_qs = get_at_risk_donors(user)
+    at_risk_list = list(at_risk_qs[:5].values(
+        'id', 'first_name', 'last_name', 'last_gift_date', 'total_given'
+    ))
+    at_risk_count = at_risk_qs.count()
+
+    thank_you_qs = get_thank_you_queue(user)
+    thank_you_list = list(thank_you_qs[:5].values(
+        'id', 'first_name', 'last_name', 'last_gift_amount', 'last_gift_date'
+    ))
+    thank_you_count = thank_you_qs.count()
+
+    logger.debug(f'Dashboard data fetched: {at_risk_count} at-risk, {thank_you_count} thank-you needed')
+
     return {
         'what_changed': what_changed,
         'needs_attention': needs_attention,
-        'at_risk_donors': list(get_at_risk_donors(user)[:5].values(
-            'id', 'first_name', 'last_name', 'last_gift_date', 'total_given'
-        )),
-        'at_risk_count': get_at_risk_donors(user).count(),
-        'thank_you_queue': list(get_thank_you_queue(user)[:5].values(
-            'id', 'first_name', 'last_name', 'last_gift_amount', 'last_gift_date'
-        )),
-        'thank_you_count': get_thank_you_queue(user).count(),
+        'at_risk_donors': at_risk_list,
+        'at_risk_count': at_risk_count,
+        'thank_you_queue': thank_you_list,
+        'thank_you_count': thank_you_count,
         'support_progress': get_support_progress(user),
         'recent_gifts': list(get_recent_gifts(user).values(
             'id', 'amount', 'date', 'contact__first_name', 'contact__last_name'

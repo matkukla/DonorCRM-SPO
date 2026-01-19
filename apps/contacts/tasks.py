@@ -1,7 +1,11 @@
 """
 Celery tasks for contact management.
 """
+import logging
+
 from celery import shared_task
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task
@@ -20,6 +24,8 @@ def detect_at_risk_donors():
 
     cutoff_date = timezone.now().date() - timedelta(days=60)
 
+    logger.info('Starting at-risk donor detection')
+
     # Find at-risk donors who haven't already been flagged recently
     at_risk_contacts = Contact.objects.filter(
         status=ContactStatus.DONOR,
@@ -32,7 +38,7 @@ def detect_at_risk_donors():
     )
 
     at_risk_count = 0
-    for contact in at_risk_contacts:
+    for contact in at_risk_contacts.iterator():
         # Create at-risk event for the contact owner
         Event.objects.create(
             user=contact.owner,
@@ -48,5 +54,7 @@ def detect_at_risk_donors():
             }
         )
         at_risk_count += 1
+
+    logger.info(f'At-risk detection completed: {at_risk_count} donors identified')
 
     return f'Identified {at_risk_count} at-risk donors'

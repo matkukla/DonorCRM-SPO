@@ -1,7 +1,10 @@
 """
 Donation model for tracking individual gifts.
 """
+from decimal import Decimal
+
 from django.conf import settings
+from django.core.validators import MinValueValidator
 from django.db import models
 
 from apps.core.models import TimeStampedModel
@@ -46,7 +49,12 @@ class Donation(TimeStampedModel):
     )
 
     # Gift details
-    amount = models.DecimalField('amount', max_digits=10, decimal_places=2)
+    amount = models.DecimalField(
+        'amount',
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.01'))]
+    )
     date = models.DateField('date', db_index=True)
 
     donation_type = models.CharField(
