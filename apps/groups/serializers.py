@@ -29,7 +29,18 @@ class GroupCreateSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = Group
-        fields = ['name', 'description', 'color']
+        fields = ['id', 'name', 'description', 'color']
+        read_only_fields = ['id']
+
+    def validate_name(self, value):
+        """Check that group name is unique for this user."""
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            if Group.objects.filter(name=value, owner=request.user).exists():
+                raise serializers.ValidationError(
+                    f'You already have a group named "{value}". Please choose a different name.'
+                )
+        return value
 
     def create(self, validated_data):
         # Set owner to current user (private group)

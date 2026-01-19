@@ -25,7 +25,12 @@ export default function GroupForm() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
 
-  const { data: existingGroup, isLoading: isLoadingGroup } = useGroup(id || "")
+  // Guard: Don't render until id is available from route params
+  if (!id) {
+    return null
+  }
+
+  const { data: existingGroup, isLoading: isLoadingGroup } = useGroup(id)
   const updateMutation = useUpdateGroup()
 
   const [name, setName] = useState("")
@@ -59,7 +64,7 @@ export default function GroupForm() {
 
     try {
       await updateMutation.mutateAsync({
-        id: id!,
+        id: id,
         data: { name, description, color },
       })
       navigate(`/groups/${id}`)

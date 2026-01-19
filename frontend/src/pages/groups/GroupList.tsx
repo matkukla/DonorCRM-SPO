@@ -40,7 +40,10 @@ const DEFAULT_COLORS = [
 
 export default function GroupList() {
   const navigate = useNavigate()
-  const { data: groups, isLoading } = useGroups()
+  const { data: groups, isLoading, error } = useGroups()
+
+  // Debug logging
+  console.log("GroupList render:", { groups, isLoading, error, groupsLength: groups?.length })
   const createMutation = useCreateGroup()
   const deleteMutation = useDeleteGroup()
 

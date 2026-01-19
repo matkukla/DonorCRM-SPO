@@ -44,8 +44,13 @@ export default function GroupDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
 
-  const { data: group, isLoading: isLoadingGroup, error } = useGroup(id!)
-  const { data: contacts, isLoading: isLoadingContacts } = useGroupContacts(id!)
+  // Guard: Don't render until id is available from route params
+  if (!id) {
+    return null
+  }
+
+  const { data: group, isLoading: isLoadingGroup, error } = useGroup(id)
+  const { data: contacts, isLoading: isLoadingContacts } = useGroupContacts(id)
   const deleteMutation = useDeleteGroup()
   const removeContactsMutation = useRemoveContactsFromGroup()
 
@@ -57,7 +62,7 @@ export default function GroupDetail() {
       return
     }
     if (window.confirm(`Are you sure you want to delete "${group?.name}"? This action cannot be undone.`)) {
-      deleteMutation.mutate(id!, {
+      deleteMutation.mutate(id, {
         onSuccess: () => navigate("/groups"),
       })
     }
@@ -67,7 +72,7 @@ export default function GroupDetail() {
     if (selectedContacts.size === 0) return
     if (window.confirm(`Remove ${selectedContacts.size} contact(s) from this group?`)) {
       removeContactsMutation.mutate(
-        { groupId: id!, contactIds: Array.from(selectedContacts) },
+        { groupId: id, contactIds: Array.from(selectedContacts) },
         { onSuccess: () => setSelectedContacts(new Set()) }
       )
     }

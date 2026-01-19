@@ -40,7 +40,10 @@ export interface PaginatedResponse<T> {
 // API functions
 export async function getGroups(): Promise<Group[]> {
   const response = await apiClient.get("/groups/")
-  // Groups endpoint returns array directly, not paginated
+  // Handle both paginated and non-paginated responses
+  if (response.data.results) {
+    return response.data.results
+  }
   return response.data
 }
 

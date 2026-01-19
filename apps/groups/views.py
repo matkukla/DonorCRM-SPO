@@ -20,10 +20,14 @@ class GroupListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        # Return user's own groups + shared (organization-wide) groups
-        return Group.objects.filter(
-            Q(owner=user) | Q(owner__isnull=True)
-        ).annotate(
+        # Admins see all groups, others see own + shared groups
+        if user.role == 'admin':
+            queryset = Group.objects.all()
+        else:
+            queryset = Group.objects.filter(
+                Q(owner=user) | Q(owner__isnull=True)
+            )
+        return queryset.annotate(
             annotated_contact_count=Count('contacts')
         ).order_by('name')
 
@@ -45,9 +49,13 @@ class GroupDetailView(generics.RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         user = self.request.user
         if user.role == 'admin':
-            return Group.objects.all()
-        return Group.objects.filter(
-            Q(owner=user) | Q(owner__isnull=True)
+            queryset = Group.objects.all()
+        else:
+            queryset = Group.objects.filter(
+                Q(owner=user) | Q(owner__isnull=True)
+            )
+        return queryset.annotate(
+            annotated_contact_count=Count('contacts')
         )
 
     def destroy(self, request, *args, **kwargs):

@@ -22,7 +22,7 @@ export function useGroup(id: string) {
   return useQuery({
     queryKey: ["groups", id],
     queryFn: () => getGroup(id),
-    enabled: !!id,
+    enabled: !!id && id !== "undefined",
   })
 }
 
@@ -64,7 +64,7 @@ export function useGroupContacts(groupId: string) {
   return useQuery({
     queryKey: ["groups", groupId, "contacts"],
     queryFn: () => getGroupContacts(groupId),
-    enabled: !!groupId,
+    enabled: !!groupId && groupId !== "undefined",
   })
 }
 
