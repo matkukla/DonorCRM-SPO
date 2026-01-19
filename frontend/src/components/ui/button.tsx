@@ -36,12 +36,18 @@ const buttonVariants = cva(
         // Link: Red text, underline on hover
         link:
           "text-primary underline-offset-4 hover:underline",
+        // SPO Outline: Exact match to spo.org donate page CTAs
+        // Transparent bg, 2px red border, square corners, 0.1s linear transition
+        spoOutline:
+          "bg-transparent border-2 border-primary text-primary hover:bg-primary hover:text-white transition-colors duration-100 ease-linear",
       },
       size: {
         default: "h-10 px-4 py-2 rounded-lg text-sm",
         sm: "h-9 px-3 rounded-lg text-sm",
         lg: "h-12 px-6 rounded-lg text-base",
         icon: "h-10 w-10 rounded-lg",
+        // SPO Donate: Exact sizing from spo.org (22px italic Karla, 46px/25px padding)
+        spoDonate: "px-[46px] py-[25px] text-[22px] italic font-semibold text-center font-['Karla']",
       },
     },
     defaultVariants: {

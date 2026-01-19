@@ -27,8 +27,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 220 34% 34%;
 
-    /* Primary - SPO Blue (main brand color for buttons, links) */
-    --primary: 220 34% 34%;           /* #3A4D75 */
+    /* Primary - SPO Red (main CTA color matching spo.org donate page) */
+    --primary: 348 85% 61%;           /* #F04763 */
     --primary-foreground: 0 0% 100%;  /* white */
 
     /* Secondary - Light blue tint */
