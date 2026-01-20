@@ -21,8 +21,8 @@ services:
         fromService:
           type: web
           name: donorcrm-web
-          property: hostURL
-        transform: '%s/api/v1'
+          property: host
+        transform: 'https://%s/api/v1'
 
   # Web Service
   - type: web
@@ -105,6 +105,7 @@ services:
   - type: redis
     name: donorcrm-redis
     plan: starter
+    ipAllowList: []  # Allow only Render internal connections
 
 databases:
   # PostgreSQL Database
