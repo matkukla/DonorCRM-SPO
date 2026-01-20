@@ -110,6 +110,6 @@ services:
 databases:
   # PostgreSQL Database
   - name: donorcrm-db
-    plan: starter
+    plan: free
     databaseName: donorcrm
     user: donorcrm
