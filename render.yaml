@@ -6,7 +6,7 @@ services:
   - type: web
     name: donorcrm-frontend
     runtime: static
-    buildCommand: npm install && npm run build
+    buildCommand: npm install && npx vite build
     staticPublishPath: ./dist
     rootDir: frontend
     headers:
