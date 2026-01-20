@@ -5,9 +5,10 @@ services:
   # Frontend (React/Vite)
   - type: web
     name: donorcrm-frontend
-    env: static
-    buildCommand: cd frontend && npm install && npm run build
-    staticPublishPath: frontend/dist
+    runtime: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    rootDir: frontend
     headers:
       - path: /*
         name: Cache-Control
@@ -17,12 +18,10 @@ services:
         source: /*
         destination: /index.html
     envVars:
+      - key: NODE_VERSION
+        value: "22"
       - key: VITE_API_BASE_URL
-        fromService:
-          type: web
-          name: donorcrm-web
-          property: host
-        transform: 'https://%s/api/v1'
+        value: https://donorcrm-web.onrender.com/api/v1
 
   # Web Service
   - type: web
