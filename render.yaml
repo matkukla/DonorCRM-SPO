@@ -29,7 +29,7 @@ services:
     env: python
     buildCommand: pip install -r requirements/prod.txt && python manage.py collectstatic --noinput
     startCommand: gunicorn config.wsgi:application
-    healthCheckPath: /api/v1/auth/login/
+    healthCheckPath: /api/v1/health/
     envVars:
       - key: DJANGO_SETTINGS_MODULE
         value: config.settings.prod
