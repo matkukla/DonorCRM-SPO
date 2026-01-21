@@ -56,7 +56,7 @@ services:
     name: donorcrm-worker
     env: python
     buildCommand: pip install -r requirements/prod.txt
-    startCommand: celery -A config worker -l info
+    startCommand: celery -A config worker -l info --concurrency=1 --pool=solo --max-memory-per-child=400000
     envVars:
       - key: DJANGO_SETTINGS_MODULE
         value: config.settings.prod
