@@ -45,65 +45,67 @@ services:
         fromDatabase:
           name: donorcrm-db
           property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: donorcrm-redis
-          property: connectionString
+      # Redis not needed without Celery
+      # - key: REDIS_URL
+      #   fromService:
+      #     type: redis
+      #     name: donorcrm-redis
+      #     property: connectionString
 
-  # Background Worker
-  - type: worker
-    name: donorcrm-worker
-    env: python
-    buildCommand: pip install -r requirements/prod.txt
-    startCommand: celery -A config worker -l info --concurrency=1 --pool=solo --max-memory-per-child=400000
-    envVars:
-      - key: DJANGO_SETTINGS_MODULE
-        value: config.settings.prod
-      - key: SECRET_KEY
-        fromService:
-          type: web
-          name: donorcrm-web
-          envVarKey: SECRET_KEY
-      - key: DATABASE_URL
-        fromDatabase:
-          name: donorcrm-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: donorcrm-redis
-          property: connectionString
-
-  # Celery Beat Scheduler
-  - type: worker
-    name: donorcrm-beat
-    env: python
-    buildCommand: pip install -r requirements/prod.txt
-    startCommand: celery -A config beat -l info
-    envVars:
-      - key: DJANGO_SETTINGS_MODULE
-        value: config.settings.prod
-      - key: SECRET_KEY
-        fromService:
-          type: web
-          name: donorcrm-web
-          envVarKey: SECRET_KEY
-      - key: DATABASE_URL
-        fromDatabase:
-          name: donorcrm-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: donorcrm-redis
-          property: connectionString
-
-  # Redis
-  - type: redis
-    name: donorcrm-redis
-    plan: starter
-    ipAllowList: []  # Allow only Render internal connections
+  # NOTE: Celery services disabled to reduce costs. Uncomment to re-enable.
+  # # Background Worker
+  # - type: worker
+  #   name: donorcrm-worker
+  #   env: python
+  #   buildCommand: pip install -r requirements/prod.txt
+  #   startCommand: celery -A config worker -l info --concurrency=1 --pool=solo --max-memory-per-child=400000
+  #   envVars:
+  #     - key: DJANGO_SETTINGS_MODULE
+  #       value: config.settings.prod
+  #     - key: SECRET_KEY
+  #       fromService:
+  #         type: web
+  #         name: donorcrm-web
+  #         envVarKey: SECRET_KEY
+  #     - key: DATABASE_URL
+  #       fromDatabase:
+  #         name: donorcrm-db
+  #         property: connectionString
+  #     - key: REDIS_URL
+  #       fromService:
+  #         type: redis
+  #         name: donorcrm-redis
+  #         property: connectionString
+  #
+  # # Celery Beat Scheduler
+  # - type: worker
+  #   name: donorcrm-beat
+  #   env: python
+  #   buildCommand: pip install -r requirements/prod.txt
+  #   startCommand: celery -A config beat -l info
+  #   envVars:
+  #     - key: DJANGO_SETTINGS_MODULE
+  #       value: config.settings.prod
+  #     - key: SECRET_KEY
+  #       fromService:
+  #         type: web
+  #         name: donorcrm-web
+  #         envVarKey: SECRET_KEY
+  #     - key: DATABASE_URL
+  #       fromDatabase:
+  #         name: donorcrm-db
+  #         property: connectionString
+  #     - key: REDIS_URL
+  #       fromService:
+  #         type: redis
+  #         name: donorcrm-redis
+  #         property: connectionString
+  #
+  # # Redis
+  # - type: redis
+  #   name: donorcrm-redis
+  #   plan: starter
+  #   ipAllowList: []  # Allow only Render internal connections
 
 databases:
   # PostgreSQL Database
