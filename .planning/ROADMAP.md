@@ -35,10 +35,11 @@ Decimal phases appear between their surrounding integers in numeric order.
 4. System logs stage events when created (append-only with timestamp)
 5. User sees only their own journals, admins see all journals (permission enforcement working)
 
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] TBD
+- [ ] 01-01-PLAN.md — App scaffolding, models, enums, and migrations
+- [ ] 01-02-PLAN.md — Serializers, views, URLs, signals, and API integration
 
 ---
 
@@ -162,7 +163,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & Data Model | 0/TBD | Not started | - |
+| 1. Foundation & Data Model | 0/2 | Planned | - |
 | 2. Contact Membership & Search | 0/TBD | Not started | - |
 | 3. Decision Tracking | 0/TBD | Not started | - |
 | 4. Grid UI Core | 0/TBD | Not started | - |
