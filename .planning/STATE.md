@@ -69,6 +69,9 @@ Recent decisions affecting current work:
 - Test pagination awareness - Decision list uses default StandardPagination (03-03: tests must use response.data['count'] and response.data['results'])
 - Separate journal_contacts for tests - Avoid unique constraint conflicts in setUp (03-03: create new contacts/journal_contacts in tests needing fresh decisions)
 - Decimal iteration for history tests - Ensure each update differs from previous (03-03: use range(1, 31) to avoid no-op updates)
+- Simple date math in getFreshnessColor - Use vanilla JS instead of date-fns in types file (04-01: keeps type file lightweight, no runtime dependencies)
+- Orange Badge variant for 1-3 month freshness - Positioned between warning yellow and destructive red (04-01: visual distinction for "needs attention soon")
+- Types match Django field names exactly - JournalMember, PipelineStage, etc use exact Django values (04-01: zero impedance mismatch between frontend/backend)
 - useInfiniteQuery for event timeline with page number parsing from DRF next URL (04-02: parse page param from pagination.next for getNextPageParam)
 - Query keys follow [journals, ...] pattern for cache invalidation (04-02: hierarchical cache management with resource-based keys)
 
