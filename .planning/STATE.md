@@ -10,19 +10,19 @@ See: .planning/PROJECT.md (updated 2026-01-24)
 
 ## Current Position
 
-Phase: 2 of 6 (Contact Membership & Search)
-Plan: 2 of 2 in current phase (Phase 2 complete)
-Status: Phase 2 complete
-Last activity: 2026-01-24 — Completed 02-02-PLAN.md (Journal Membership Integration Tests)
+Phase: 3 of 6 (Decision Tracking)
+Plan: 1 of 3 in current phase
+Status: In progress
+Last activity: 2026-01-24 — Completed 03-01-PLAN.md (Decision Models)
 
-Progress: [████░░░░░░] 33%
+Progress: [████░░░░░░] 42%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4
-- Average duration: 4 minutes
-- Total execution time: 0.28 hours
+- Total plans completed: 5
+- Average duration: 3.8 minutes
+- Total execution time: 0.32 hours
 
 **By Phase:**
 
@@ -30,10 +30,11 @@ Progress: [████░░░░░░] 33%
 |-------|-------|-------|----------|
 | 01 Foundation & Data Model | 2 | 10 min | 5 min |
 | 02 Contact Membership & Search | 2 | 7 min | 3.5 min |
+| 03 Decision Tracking | 1 | 2 min | 2 min |
 
 **Recent Trend:**
-- Last 5 plans: [7m, 3m, 2m, 5m]
-- Trend: Consistent performance - averaging 4 minutes per plan
+- Last 5 plans: [3m, 2m, 5m, 7m, 2m]
+- Trend: Excellent velocity - averaging 3.8 minutes per plan
 
 *Updated after each plan completion*
 
@@ -58,6 +59,9 @@ Recent decisions affecting current work:
 - Read-only denormalized fields - contact_name/email/status in serializer avoid N+1 queries (02-01: efficient list display)
 - UUID string comparison in tests - DRF returns UUID objects, convert to strings for assertions (02-02: str(response.data['field']))
 - Flexible error format validation - Accept both 'detail' and 'non_field_errors' for duplicate validation (02-02: DRF may catch at serializer or database level)
+- DecimalField for decision amounts - Follows existing pledges/donations pattern (03-01: consistent with codebase)
+- Quarterly/Annual cadence multipliers - Use Decimal division with round(result, 2) for monthly_equivalent (03-01: Decimal('1')/Decimal('3') for quarterly, Decimal('1')/Decimal('12') for annual)
+- One-time decisions excluded from monthly - monthly_equivalent returns Decimal('0') for one_time cadence (03-01: one-time gifts not counted in recurring calculations)
 
 ### Pending Todos
 
@@ -80,7 +84,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-01-24 (plan execution)
-Stopped at: Phase 2 complete (verified 12/12 must-haves)
+Stopped at: Completed 03-01-PLAN.md (Decision Models)
 Resume file: None
 
-**Next steps:** Run `/gsd:plan-phase 3` to decompose Phase 3 (Decision Tracking) into executable plans.
+**Next steps:** Continue Phase 3 with remaining plans (serializers and API endpoints)
