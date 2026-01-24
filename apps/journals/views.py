@@ -5,11 +5,20 @@ from django.db import IntegrityError, transaction
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
 from rest_framework import filters, generics, permissions, status
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
 from apps.core.permissions import IsOwnerOrAdmin
-from apps.journals.models import Journal, JournalContact, JournalStageEvent
+from apps.journals.models import (
+    Decision,
+    DecisionHistory,
+    Journal,
+    JournalContact,
+    JournalStageEvent,
+)
 from apps.journals.serializers import (
+    DecisionHistorySerializer,
+    DecisionSerializer,
     JournalContactSerializer,
     JournalCreateSerializer,
     JournalDetailSerializer,
@@ -234,3 +243,123 @@ class JournalContactDestroyView(generics.DestroyAPIView):
     def perform_destroy(self, instance):
         """Delete with atomic transaction."""
         instance.delete()
+
+
+class DecisionHistoryPagination(PageNumberPagination):
+    """Pagination for decision history list."""
+    page_size = 25
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
+class DecisionListCreateView(generics.ListCreateAPIView):
+    """
+    GET: List decisions
+    POST: Create a new decision
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = DecisionSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+
+        # Base queryset with optimized joins
+        queryset = Decision.objects.select_related(
+            'journal_contact',
+            'journal_contact__journal',
+            'journal_contact__contact'
+        )
+
+        # Admin sees all, staff sees only their own journals
+        if user.role != 'admin':
+            queryset = queryset.filter(journal_contact__journal__owner=user)
+
+        # Filter by journal_contact_id if provided
+        journal_contact_id = self.request.query_params.get('journal_contact_id')
+        if journal_contact_id:
+            queryset = queryset.filter(journal_contact_id=journal_contact_id)
+
+        # Filter by journal_id if provided
+        journal_id = self.request.query_params.get('journal_id')
+        if journal_id:
+            queryset = queryset.filter(journal_contact__journal_id=journal_id)
+
+        return queryset
+
+    def create(self, request, *args, **kwargs):
+        """
+        Override create to handle duplicate decision constraint with atomic transaction.
+        """
+        try:
+            with transaction.atomic():
+                return super().create(request, *args, **kwargs)
+        except IntegrityError as e:
+            # Handle unique constraint violation for duplicate journal_contact
+            if 'unique' in str(e).lower():
+                return Response(
+                    {'detail': 'A decision already exists for this contact in this journal.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            # Re-raise non-unique integrity errors
+            raise
+
+
+class DecisionDetailView(generics.RetrieveUpdateAPIView):
+    """
+    GET: Retrieve decision details
+    PATCH/PUT: Update decision (creates history record)
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = DecisionSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+
+        # Base queryset with optimized joins
+        queryset = Decision.objects.select_related(
+            'journal_contact',
+            'journal_contact__journal',
+            'journal_contact__contact'
+        )
+
+        # Admin sees all, staff sees only their own journals
+        if user.role != 'admin':
+            queryset = queryset.filter(journal_contact__journal__owner=user)
+
+        return queryset
+
+
+class DecisionHistoryListView(generics.ListAPIView):
+    """
+    GET: List decision history with pagination
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = DecisionHistorySerializer
+    pagination_class = DecisionHistoryPagination
+
+    def get_queryset(self):
+        user = self.request.user
+
+        # Base queryset with optimized joins
+        queryset = DecisionHistory.objects.select_related(
+            'decision',
+            'decision__journal_contact',
+            'decision__journal_contact__journal',
+            'changed_by'
+        )
+
+        # Admin sees all, staff sees only their own journals
+        if user.role != 'admin':
+            queryset = queryset.filter(decision__journal_contact__journal__owner=user)
+
+        # Filter by decision_id if provided
+        decision_id = self.request.query_params.get('decision_id')
+        if decision_id:
+            queryset = queryset.filter(decision_id=decision_id)
+
+        # Filter by journal_contact_id if provided
+        journal_contact_id = self.request.query_params.get('journal_contact_id')
+        if journal_contact_id:
+            queryset = queryset.filter(decision__journal_contact_id=journal_contact_id)
+
+        return queryset.order_by('-created_at')
