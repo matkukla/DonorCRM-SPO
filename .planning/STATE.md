@@ -10,29 +10,30 @@ See: .planning/PROJECT.md (updated 2026-01-24)
 
 ## Current Position
 
-Phase: 1 of 6 (Foundation & Data Model)
-Plan: 2 of 2 in current phase (Phase 1 complete)
-Status: Phase 1 complete
-Last activity: 2026-01-24 — Completed 01-02-PLAN.md (Journal CRUD API)
+Phase: 2 of 6 (Contact Membership & Search)
+Plan: 1 of 3 in current phase
+Status: In progress
+Last activity: 2026-01-24 — Completed 02-01-PLAN.md (JournalContact Membership API)
 
-Progress: [██░░░░░░░░] 20%
+Progress: [███░░░░░░░] 30%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
-- Average duration: 5 minutes
-- Total execution time: 0.18 hours
+- Total plans completed: 3
+- Average duration: 4 minutes
+- Total execution time: 0.22 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01 Foundation & Data Model | 2 | 10 min | 5 min |
+| 02 Contact Membership & Search | 1 | 2 min | 2 min |
 
 **Recent Trend:**
-- Last 5 plans: [7m, 3m]
-- Trend: Improving efficiency
+- Last 5 plans: [7m, 3m, 2m]
+- Trend: Improving efficiency - last plan completed in 2 minutes
 
 *Updated after each plan completion*
 
@@ -52,6 +53,9 @@ Recent decisions affecting current work:
 - Append-only event log - JournalStageEvent immutable (01-01: complete audit trail)
 - Soft delete via DELETE verb - DELETE /journals/{id}/ calls archive() not hard delete (01-02: preserves audit trail, consistent with UX)
 - Signal-based event logging - Import Event model inside handlers to avoid circular imports (01-02: follows pledges pattern)
+- Serializer-level ownership validation - For multi-entity relationships without direct owner (02-01: JournalContact validates both journal.owner and contact.owner)
+- Duplicate membership handling - Atomic transaction + IntegrityError catch returns 400 instead of 500 (02-01: user-friendly error handling)
+- Read-only denormalized fields - contact_name/email/status in serializer avoid N+1 queries (02-01: efficient list display)
 
 ### Pending Todos
 
@@ -74,7 +78,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-01-24 (plan execution)
-Stopped at: Completed 01-02-PLAN.md (Phase 1 complete)
+Stopped at: Completed 02-01-PLAN.md (JournalContact Membership API)
 Resume file: None
 
-**Next steps:** Run `/gsd:plan-phase 2` to decompose Phase 2 into executable plans.
+**Next steps:** Continue Phase 2 with remaining plans (02-02, 02-03) for contact search and filtering features.
