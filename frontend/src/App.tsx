@@ -26,6 +26,7 @@ import GroupForm from "@/pages/groups/GroupForm"
 import Settings from "@/pages/settings/Settings"
 import AdminUsers from "@/pages/admin/AdminUsers"
 import ImportExport from "@/pages/imports/ImportExport"
+import JournalDetail from "@/pages/journals/JournalDetail"
 
 /**
  * Wrap a page with protected route and app layout
@@ -74,6 +75,7 @@ function App() {
             <Route path="/groups" element={<ProtectedPage><GroupList /></ProtectedPage>} />
             <Route path="/groups/:id" element={<ProtectedPage><GroupDetail /></ProtectedPage>} />
             <Route path="/groups/:id/edit" element={<ProtectedPage><GroupForm /></ProtectedPage>} />
+            <Route path="/journals/:id" element={<ProtectedPage><JournalDetail /></ProtectedPage>} />
             <Route path="/settings" element={<ProtectedPage><Settings /></ProtectedPage>} />
             <Route path="/admin" element={<ProtectedPage requiredRole="admin"><AdminUsers /></ProtectedPage>} />
             <Route path="/import-export" element={<ProtectedPage><ImportExport /></ProtectedPage>} />
