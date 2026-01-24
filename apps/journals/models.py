@@ -211,3 +211,118 @@ class JournalStageEvent(TimeStampedModel):
 
     def __str__(self):
         return f'{self.stage} - {self.event_type}'
+
+
+class DecisionCadence(models.TextChoices):
+    """Frequency options for recurring pledges."""
+    ONE_TIME = 'one_time', 'One-Time'
+    MONTHLY = 'monthly', 'Monthly'
+    QUARTERLY = 'quarterly', 'Quarterly'
+    ANNUAL = 'annual', 'Annual'
+
+
+class DecisionStatus(models.TextChoices):
+    """Status options for donor decisions."""
+    PENDING = 'pending', 'Pending'
+    ACTIVE = 'active', 'Active'
+    PAUSED = 'paused', 'Paused'
+    DECLINED = 'declined', 'Declined'
+
+
+class Decision(TimeStampedModel):
+    """
+    Current decision state for a journal contact (mutable).
+    Enforces one decision per journal_contact.
+    """
+    journal_contact = models.ForeignKey(
+        'JournalContact',
+        on_delete=models.CASCADE,
+        related_name='decisions',
+        db_index=True
+    )
+
+    amount = models.DecimalField(
+        'amount',
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.01'))],
+        help_text='Pledged amount'
+    )
+
+    cadence = models.CharField(
+        'cadence',
+        max_length=20,
+        choices=DecisionCadence.choices,
+        default=DecisionCadence.MONTHLY
+    )
+
+    status = models.CharField(
+        'status',
+        max_length=20,
+        choices=DecisionStatus.choices,
+        default=DecisionStatus.PENDING,
+        db_index=True
+    )
+
+    class Meta:
+        db_table = 'journal_decisions'
+        verbose_name = 'decision'
+        verbose_name_plural = 'decisions'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['journal_contact'],
+                name='unique_decision_per_journal_contact'
+            )
+        ]
+
+    def __str__(self):
+        return f'{self.journal_contact} - {self.amount} ({self.cadence})'
+
+    @property
+    def monthly_equivalent(self):
+        """Calculate normalized monthly value for this decision."""
+        multipliers = {
+            DecisionCadence.ONE_TIME: Decimal('0'),
+            DecisionCadence.MONTHLY: Decimal('1'),
+            DecisionCadence.QUARTERLY: Decimal('1') / Decimal('3'),
+            DecisionCadence.ANNUAL: Decimal('1') / Decimal('12'),
+        }
+        multiplier = multipliers[self.cadence]
+        return round(self.amount * multiplier, 2)
+
+
+class DecisionHistory(TimeStampedModel):
+    """
+    Append-only history of decision changes.
+    Records what changed, when, and by whom.
+    """
+    decision = models.ForeignKey(
+        'Decision',
+        on_delete=models.CASCADE,
+        related_name='history',
+        db_index=True
+    )
+
+    changed_fields = models.JSONField(
+        'changed fields',
+        help_text='Mapping of field names to old values before change'
+    )
+
+    changed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='decision_changes'
+    )
+
+    class Meta:
+        db_table = 'journal_decision_history'
+        verbose_name = 'decision history'
+        verbose_name_plural = 'decision histories'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['decision', '-created_at']),
+        ]
+
+    def __str__(self):
+        return f'History for {self.decision} at {self.created_at}'
