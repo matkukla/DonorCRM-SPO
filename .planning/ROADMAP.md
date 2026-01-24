@@ -13,7 +13,7 @@ The Journal feature builds a fundraising campaign pipeline tracker in six phases
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation & Data Model** - Core models, API endpoints, event logging
-- [ ] **Phase 2: Contact Membership & Search** - Add/remove contacts, filtering
+- [x] **Phase 2: Contact Membership & Search** - Add/remove contacts, filtering
 - [ ] **Phase 3: Decision Tracking** - Current state + history with dual-table pattern
 - [ ] **Phase 4: Grid UI Core** - Static grid, stage cells, event timeline drawer
 - [ ] **Phase 5: Grid Interactions & Decision UI** - Optimistic updates, decision dialogs, next steps
@@ -60,8 +60,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — Serializer, views, and URL routing for journal membership API
-- [ ] 02-02-PLAN.md — Integration tests covering all success criteria
+- [x] 02-01-PLAN.md — Serializer, views, and URL routing for journal membership API
+- [x] 02-02-PLAN.md — Integration tests covering all success criteria
 
 ---
 
@@ -165,7 +165,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation & Data Model | 2/2 | Complete | 2026-01-24 |
-| 2. Contact Membership & Search | 0/2 | In Progress | - |
+| 2. Contact Membership & Search | 2/2 | Complete | 2026-01-24 |
 | 3. Decision Tracking | 0/TBD | Not started | - |
 | 4. Grid UI Core | 0/TBD | Not started | - |
 | 5. Grid Interactions & Decision UI | 0/TBD | Not started | - |
