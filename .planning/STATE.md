@@ -11,29 +11,29 @@ See: .planning/PROJECT.md (updated 2026-01-24)
 ## Current Position
 
 Phase: 2 of 6 (Contact Membership & Search)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In progress
-Last activity: 2026-01-24 — Completed 02-01-PLAN.md (JournalContact Membership API)
+Last activity: 2026-01-24 — Completed 02-02-PLAN.md (Journal Membership Integration Tests)
 
-Progress: [███░░░░░░░] 30%
+Progress: [████░░░░░░] 40%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
+- Total plans completed: 4
 - Average duration: 4 minutes
-- Total execution time: 0.22 hours
+- Total execution time: 0.28 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01 Foundation & Data Model | 2 | 10 min | 5 min |
-| 02 Contact Membership & Search | 1 | 2 min | 2 min |
+| 02 Contact Membership & Search | 2 | 7 min | 3.5 min |
 
 **Recent Trend:**
-- Last 5 plans: [7m, 3m, 2m]
-- Trend: Improving efficiency - last plan completed in 2 minutes
+- Last 5 plans: [7m, 3m, 2m, 5m]
+- Trend: Consistent performance - averaging 4 minutes per plan
 
 *Updated after each plan completion*
 
@@ -56,6 +56,8 @@ Recent decisions affecting current work:
 - Serializer-level ownership validation - For multi-entity relationships without direct owner (02-01: JournalContact validates both journal.owner and contact.owner)
 - Duplicate membership handling - Atomic transaction + IntegrityError catch returns 400 instead of 500 (02-01: user-friendly error handling)
 - Read-only denormalized fields - contact_name/email/status in serializer avoid N+1 queries (02-01: efficient list display)
+- UUID string comparison in tests - DRF returns UUID objects, convert to strings for assertions (02-02: str(response.data['field']))
+- Flexible error format validation - Accept both 'detail' and 'non_field_errors' for duplicate validation (02-02: DRF may catch at serializer or database level)
 
 ### Pending Todos
 
@@ -78,7 +80,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-01-24 (plan execution)
-Stopped at: Completed 02-01-PLAN.md (JournalContact Membership API)
+Stopped at: Completed 02-02-PLAN.md (Journal Membership Integration Tests)
 Resume file: None
 
-**Next steps:** Continue Phase 2 with remaining plans (02-02, 02-03) for contact search and filtering features.
+**Next steps:** Continue Phase 2 with plan 02-03 (if exists) or proceed to Phase 3.
