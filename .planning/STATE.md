@@ -11,28 +11,28 @@ See: .planning/PROJECT.md (updated 2026-01-24)
 ## Current Position
 
 Phase: 1 of 6 (Foundation & Data Model)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-01-24 — Completed 01-01-PLAN.md (Foundation Data Model)
+Plan: 2 of 2 in current phase (Phase 1 complete)
+Status: Phase 1 complete
+Last activity: 2026-01-24 — Completed 01-02-PLAN.md (Journal CRUD API)
 
-Progress: [█░░░░░░░░░] 10%
+Progress: [██░░░░░░░░] 20%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 1
-- Average duration: 7 minutes
-- Total execution time: 0.12 hours
+- Total plans completed: 2
+- Average duration: 5 minutes
+- Total execution time: 0.18 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01 Foundation & Data Model | 1 | 7 min | 7 min |
+| 01 Foundation & Data Model | 2 | 10 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: [7m]
-- Trend: Establishing baseline
+- Last 5 plans: [7m, 3m]
+- Trend: Improving efficiency
 
 *Updated after each plan completion*
 
@@ -50,6 +50,8 @@ Recent decisions affecting current work:
 - DecimalField for money storage - Changed from integer cents to DecimalField (01-01: follows existing pledges/donations pattern)
 - Archive pattern for journals - Soft delete with is_archived + archived_at (01-01: preserves historical data)
 - Append-only event log - JournalStageEvent immutable (01-01: complete audit trail)
+- Soft delete via DELETE verb - DELETE /journals/{id}/ calls archive() not hard delete (01-02: preserves audit trail, consistent with UX)
+- Signal-based event logging - Import Event model inside handlers to avoid circular imports (01-02: follows pledges pattern)
 
 ### Pending Todos
 
@@ -72,7 +74,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-01-24 (plan execution)
-Stopped at: Completed 01-01-PLAN.md
+Stopped at: Completed 01-02-PLAN.md (Phase 1 complete)
 Resume file: None
 
-**Next steps:** Execute 01-02-PLAN.md (Event Logging & Signals) to complete Phase 1.
+**Next steps:** Phase 1 complete. Ready for Phase 2 planning and execution.
