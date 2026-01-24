@@ -79,10 +79,12 @@ Plans:
 4. User can retrieve decision history for a contact in a journal, paginated (default 25 records)
 5. Each contact has at most one current decision per journal (unique constraint enforced)
 
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] TBD
+- [ ] 03-01-PLAN.md — Decision and DecisionHistory models with enums and migration
+- [ ] 03-02-PLAN.md — Serializers, views, and URL routing for decision API
+- [ ] 03-03-PLAN.md — Integration tests for all success criteria
 
 ---
 
@@ -166,7 +168,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 |-------|----------------|--------|-----------|
 | 1. Foundation & Data Model | 2/2 | Complete | 2026-01-24 |
 | 2. Contact Membership & Search | 2/2 | Complete | 2026-01-24 |
-| 3. Decision Tracking | 0/TBD | Not started | - |
+| 3. Decision Tracking | 0/3 | Not started | - |
 | 4. Grid UI Core | 0/TBD | Not started | - |
 | 5. Grid Interactions & Decision UI | 0/TBD | Not started | - |
 | 6. Reporting & Integration | 0/TBD | Not started | - |
