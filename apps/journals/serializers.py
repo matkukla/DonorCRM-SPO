@@ -3,7 +3,7 @@ Serializers for Journal models.
 """
 from rest_framework import serializers
 
-from apps.journals.models import Journal, JournalStageEvent
+from apps.journals.models import Journal, JournalContact, JournalStageEvent
 
 
 class JournalListSerializer(serializers.ModelSerializer):
@@ -55,6 +55,49 @@ class JournalCreateSerializer(serializers.ModelSerializer):
 
         journal = Journal.objects.create(**validated_data)
         return journal
+
+
+class JournalContactSerializer(serializers.ModelSerializer):
+    """
+    Serializer for journal contact membership with ownership validation.
+    """
+    contact_name = serializers.CharField(source='contact.full_name', read_only=True)
+    contact_email = serializers.EmailField(source='contact.email', read_only=True)
+    contact_status = serializers.CharField(source='contact.status', read_only=True)
+
+    class Meta:
+        model = JournalContact
+        fields = [
+            'id', 'journal', 'contact', 'contact_name',
+            'contact_email', 'contact_status', 'created_at'
+        ]
+        read_only_fields = ['id', 'created_at']
+
+    def validate(self, attrs):
+        """
+        Validate that the user owns both the journal and contact.
+        """
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            raise serializers.ValidationError('Authentication required')
+
+        user = request.user
+        journal = attrs.get('journal')
+        contact = attrs.get('contact')
+
+        # Check journal ownership (unless admin)
+        if user.role != 'admin' and journal.owner != user:
+            raise serializers.ValidationError({
+                'journal': 'You do not have permission to add contacts to this journal.'
+            })
+
+        # Check contact ownership (unless admin)
+        if user.role != 'admin' and contact.owner != user:
+            raise serializers.ValidationError({
+                'contact': 'You do not have permission to use this contact.'
+            })
+
+        return attrs
 
 
 class JournalStageEventSerializer(serializers.ModelSerializer):

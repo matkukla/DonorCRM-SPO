@@ -1,14 +1,16 @@
 """
 Views for Journal management.
 """
+from django.db import IntegrityError, transaction
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
 from rest_framework import filters, generics, permissions, status
 from rest_framework.response import Response
 
 from apps.core.permissions import IsOwnerOrAdmin
-from apps.journals.models import Journal, JournalStageEvent
+from apps.journals.models import Journal, JournalContact, JournalStageEvent
 from apps.journals.serializers import (
+    JournalContactSerializer,
     JournalCreateSerializer,
     JournalDetailSerializer,
     JournalListSerializer,
@@ -156,3 +158,79 @@ class JournalStageEventListCreateView(generics.ListCreateAPIView):
 
     def get_serializer_class(self):
         return JournalStageEventSerializer
+
+
+class JournalContactListCreateView(generics.ListCreateAPIView):
+    """
+    GET: List journal contact memberships with search/filter
+    POST: Create a new journal contact membership
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = JournalContactSerializer
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['contact__first_name', 'contact__last_name', 'contact__email']
+    filterset_fields = ['contact__status']
+    ordering_fields = ['created_at', 'contact__first_name', 'contact__last_name']
+    ordering = ['-created_at']
+
+    def get_queryset(self):
+        user = self.request.user
+
+        # Base queryset with optimized joins
+        queryset = JournalContact.objects.select_related('journal', 'contact')
+
+        # Admin sees all, staff sees only their own journals
+        if user.role != 'admin':
+            queryset = queryset.filter(journal__owner=user)
+
+        # Always exclude archived journals
+        queryset = queryset.filter(journal__is_archived=False)
+
+        # Filter by journal_id if provided
+        journal_id = self.request.query_params.get('journal_id')
+        if journal_id:
+            queryset = queryset.filter(journal_id=journal_id)
+
+        return queryset
+
+    def create(self, request, *args, **kwargs):
+        """
+        Override create to handle duplicate membership constraint with atomic transaction.
+        """
+        try:
+            with transaction.atomic():
+                return super().create(request, *args, **kwargs)
+        except IntegrityError as e:
+            # Handle unique constraint violation for duplicate journal+contact
+            if 'unique' in str(e).lower():
+                return Response(
+                    {'detail': 'Contact already in this journal'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            # Re-raise non-unique integrity errors
+            raise
+
+
+class JournalContactDestroyView(generics.DestroyAPIView):
+    """
+    DELETE: Remove a contact from a journal
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = JournalContactSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+
+        # Base queryset with optimized joins
+        queryset = JournalContact.objects.select_related('journal', 'contact')
+
+        # Admin sees all, staff sees only their own journals
+        if user.role != 'admin':
+            queryset = queryset.filter(journal__owner=user)
+
+        return queryset
+
+    @transaction.atomic
+    def perform_destroy(self, instance):
+        """Delete with atomic transaction."""
+        instance.delete()
