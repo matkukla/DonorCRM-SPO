@@ -1,9 +1,18 @@
 """
 Serializers for Journal models.
 """
+from decimal import Decimal
+
+from django.db import IntegrityError, transaction
 from rest_framework import serializers
 
-from apps.journals.models import Journal, JournalContact, JournalStageEvent
+from apps.journals.models import (
+    Decision,
+    DecisionHistory,
+    Journal,
+    JournalContact,
+    JournalStageEvent,
+)
 
 
 class JournalListSerializer(serializers.ModelSerializer):
@@ -120,3 +129,111 @@ class JournalStageEventSerializer(serializers.ModelSerializer):
 
         stage_event = JournalStageEvent.objects.create(**validated_data)
         return stage_event
+
+
+class DecisionSerializer(serializers.ModelSerializer):
+    """
+    Serializer for decision CRUD with atomic history tracking.
+    """
+    monthly_equivalent = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        read_only=True
+    )
+
+    class Meta:
+        model = Decision
+        fields = [
+            'id', 'journal_contact', 'amount', 'cadence', 'status',
+            'monthly_equivalent', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'monthly_equivalent', 'created_at', 'updated_at']
+
+    def validate_journal_contact(self, value):
+        """
+        Validate that the user owns the journal_contact's journal.
+        """
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            raise serializers.ValidationError('Authentication required')
+
+        user = request.user
+        journal = value.journal
+
+        # Check journal ownership (unless admin)
+        if user.role != 'admin' and journal.owner != user:
+            raise serializers.ValidationError(
+                'You do not have permission to create decisions for this journal contact.'
+            )
+
+        return value
+
+    def create(self, validated_data):
+        """
+        Create decision with atomic transaction and handle duplicate constraint.
+        """
+        try:
+            with transaction.atomic():
+                decision = Decision.objects.create(**validated_data)
+                return decision
+        except IntegrityError as e:
+            if 'unique' in str(e).lower():
+                raise serializers.ValidationError(
+                    'A decision already exists for this contact in this journal.'
+                )
+            raise
+
+    def update(self, instance, validated_data):
+        """
+        Update decision with atomic history tracking.
+        Before updating, create DecisionHistory record with old values.
+        """
+        request = self.context.get('request')
+        user = request.user if request and request.user.is_authenticated else None
+
+        with transaction.atomic():
+            # Build changed_fields dict
+            changed_fields = {}
+            for field in ['amount', 'cadence', 'status']:
+                if field in validated_data:
+                    old_value = getattr(instance, field)
+                    new_value = validated_data[field]
+
+                    # Compare values (convert Decimal to string for comparison)
+                    if old_value != new_value:
+                        # Convert Decimal to string for JSON serialization
+                        if isinstance(old_value, Decimal):
+                            changed_fields[field] = str(old_value)
+                        else:
+                            changed_fields[field] = old_value
+
+            # Create history record if changes exist
+            if changed_fields:
+                DecisionHistory.objects.create(
+                    decision=instance,
+                    changed_fields=changed_fields,
+                    changed_by=user
+                )
+
+            # Update instance fields
+            for field, value in validated_data.items():
+                setattr(instance, field, value)
+            instance.save()
+
+            return instance
+
+
+class DecisionHistorySerializer(serializers.ModelSerializer):
+    """
+    Read-only serializer for decision history records.
+    """
+    changed_by_email = serializers.EmailField(
+        source='changed_by.email',
+        read_only=True,
+        default=None
+    )
+
+    class Meta:
+        model = DecisionHistory
+        fields = ['id', 'decision', 'changed_fields', 'changed_by', 'changed_by_email', 'created_at']
+        read_only_fields = ['id', 'decision', 'changed_fields', 'changed_by', 'changed_by_email', 'created_at']
