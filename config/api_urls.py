@@ -42,4 +42,7 @@ urlpatterns = [
 
     # Import/Export
     path('imports/', include('apps.imports.urls')),
+
+    # Journals
+    path('journals/', include('apps.journals.urls')),
 ]
