@@ -41,6 +41,11 @@ class EventType(models.TextChoices):
     IMPORT_COMPLETED = 'import_completed', 'Import Completed'
     USER_LOGIN = 'user_login', 'User Login'
 
+    # Journal events
+    JOURNAL_CREATED = 'journal_created', 'Journal Created'
+    JOURNAL_ARCHIVED = 'journal_archived', 'Journal Archived'
+    JOURNAL_STAGE_EVENT = 'journal_stage_event', 'Journal Stage Event'
+
 
 class EventSeverity(models.TextChoices):
     """Severity level of events."""
