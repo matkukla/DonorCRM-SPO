@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation & Data Model** - Core models, API endpoints, event logging
 - [x] **Phase 2: Contact Membership & Search** - Add/remove contacts, filtering
-- [ ] **Phase 3: Decision Tracking** - Current state + history with dual-table pattern
+- [x] **Phase 3: Decision Tracking** - Current state + history with dual-table pattern
 - [ ] **Phase 4: Grid UI Core** - Static grid, stage cells, event timeline drawer
 - [ ] **Phase 5: Grid Interactions & Decision UI** - Optimistic updates, decision dialogs, next steps
 - [ ] **Phase 6: Reporting & Integration** - Analytics charts, contact detail integration, task linking
@@ -82,9 +82,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — Decision and DecisionHistory models with enums and migration
-- [ ] 03-02-PLAN.md — Serializers, views, and URL routing for decision API
-- [ ] 03-03-PLAN.md — Integration tests for all success criteria
+- [x] 03-01-PLAN.md — Decision and DecisionHistory models with enums and migration
+- [x] 03-02-PLAN.md — Serializers, views, and URL routing for decision API
+- [x] 03-03-PLAN.md — Integration tests for all success criteria
 
 ---
 
@@ -168,7 +168,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 |-------|----------------|--------|-----------|
 | 1. Foundation & Data Model | 2/2 | Complete | 2026-01-24 |
 | 2. Contact Membership & Search | 2/2 | Complete | 2026-01-24 |
-| 3. Decision Tracking | 0/3 | Not started | - |
+| 3. Decision Tracking | 3/3 | Complete | 2026-01-24 |
 | 4. Grid UI Core | 0/TBD | Not started | - |
 | 5. Grid Interactions & Decision UI | 0/TBD | Not started | - |
 | 6. Reporting & Integration | 0/TBD | Not started | - |
