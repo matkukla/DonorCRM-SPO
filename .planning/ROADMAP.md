@@ -104,10 +104,14 @@ Plans:
 6. Timeline drawer loads recent 5 events by default with "Load More" option
 7. Grid supports horizontal scroll for all 6 stage columns
 
-**Plans**: TBD
+**Plans**: 5 plans
 
 Plans:
-- [ ] TBD
+- [ ] 04-01-PLAN.md — Setup dependencies (Tooltip, date-fns, Badge variant, TypeScript types)
+- [ ] 04-02-PLAN.md — Journal API client and React Query hooks
+- [ ] 04-03-PLAN.md — JournalGrid component with sticky headers and StageCell
+- [ ] 04-04-PLAN.md — EventTimelineDrawer with infinite scroll pagination
+- [ ] 04-05-PLAN.md — JournalDetail page integration and visual verification
 
 ---
 
@@ -169,6 +173,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 1. Foundation & Data Model | 2/2 | Complete | 2026-01-24 |
 | 2. Contact Membership & Search | 2/2 | Complete | 2026-01-24 |
 | 3. Decision Tracking | 3/3 | Complete | 2026-01-24 |
-| 4. Grid UI Core | 0/TBD | Not started | - |
+| 4. Grid UI Core | 0/5 | Not started | - |
 | 5. Grid Interactions & Decision UI | 0/TBD | Not started | - |
 | 6. Reporting & Integration | 0/TBD | Not started | - |
