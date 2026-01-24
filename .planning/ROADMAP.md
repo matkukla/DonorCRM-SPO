@@ -38,8 +38,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 2 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — App scaffolding, models, enums, and migrations
-- [ ] 01-02-PLAN.md — Serializers, views, URLs, signals, and API integration
+- [x] 01-01-PLAN.md — App scaffolding, models, enums, and migrations
+- [x] 01-02-PLAN.md — Serializers, views, URLs, signals, and API integration
 
 ---
 
@@ -57,10 +57,11 @@ Plans:
 4. User can search contacts within a journal by name/email via query params
 5. User can filter contacts by stage or decision status
 
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] TBD
+- [ ] 02-01-PLAN.md — Serializer, views, and URL routing for journal membership API
+- [ ] 02-02-PLAN.md — Integration tests covering all success criteria
 
 ---
 
@@ -163,8 +164,8 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & Data Model | 2/2 | ✓ Complete | 2026-01-24 |
-| 2. Contact Membership & Search | 0/TBD | Not started | - |
+| 1. Foundation & Data Model | 2/2 | Complete | 2026-01-24 |
+| 2. Contact Membership & Search | 0/2 | In Progress | - |
 | 3. Decision Tracking | 0/TBD | Not started | - |
 | 4. Grid UI Core | 0/TBD | Not started | - |
 | 5. Grid Interactions & Decision UI | 0/TBD | Not started | - |
