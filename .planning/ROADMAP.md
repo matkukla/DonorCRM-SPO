@@ -12,7 +12,7 @@ The Journal feature builds a fundraising campaign pipeline tracker in six phases
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Foundation & Data Model** - Core models, API endpoints, event logging
+- [x] **Phase 1: Foundation & Data Model** - Core models, API endpoints, event logging
 - [ ] **Phase 2: Contact Membership & Search** - Add/remove contacts, filtering
 - [ ] **Phase 3: Decision Tracking** - Current state + history with dual-table pattern
 - [ ] **Phase 4: Grid UI Core** - Static grid, stage cells, event timeline drawer
@@ -163,7 +163,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & Data Model | 0/2 | Planned | - |
+| 1. Foundation & Data Model | 2/2 | ✓ Complete | 2026-01-24 |
 | 2. Contact Membership & Search | 0/TBD | Not started | - |
 | 3. Decision Tracking | 0/TBD | Not started | - |
 | 4. Grid UI Core | 0/TBD | Not started | - |
