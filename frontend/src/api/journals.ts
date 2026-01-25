@@ -94,7 +94,7 @@ export async function getJournalMembers(
     params.append('stage', filters.stage)
   }
   const response = await apiClient.get<PaginatedResponse<JournalMember>>(
-    `/journal-members/?${params.toString()}`
+    `/journals/journal-members/?${params.toString()}`
   )
   return response.data
 }

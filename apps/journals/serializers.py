@@ -66,21 +66,93 @@ class JournalCreateSerializer(serializers.ModelSerializer):
         return journal
 
 
+class StageEventSummarySerializer(serializers.Serializer):
+    """
+    Summary of events for a single stage cell in the grid.
+    """
+    has_events = serializers.BooleanField()
+    event_count = serializers.IntegerField()
+    last_event_date = serializers.DateTimeField(allow_null=True)
+    last_event_type = serializers.CharField(allow_null=True)
+    last_event_notes = serializers.CharField(allow_null=True)
+
+
 class JournalContactSerializer(serializers.ModelSerializer):
     """
     Serializer for journal contact membership with ownership validation.
+    Includes stage_events summary for grid display.
     """
     contact_name = serializers.CharField(source='contact.full_name', read_only=True)
     contact_email = serializers.EmailField(source='contact.email', read_only=True)
     contact_status = serializers.CharField(source='contact.status', read_only=True)
+    stage_events = serializers.SerializerMethodField()
+    decision = serializers.SerializerMethodField()
 
     class Meta:
         model = JournalContact
         fields = [
             'id', 'journal', 'contact', 'contact_name',
-            'contact_email', 'contact_status', 'created_at'
+            'contact_email', 'contact_status', 'stage_events',
+            'decision', 'created_at'
         ]
         read_only_fields = ['id', 'created_at']
+
+    def get_stage_events(self, obj):
+        """
+        Get stage event summaries grouped by stage for grid display.
+        Returns a dict with stage names as keys and summary objects as values.
+        """
+        from django.db.models import Count, Max
+        from apps.journals.models import PipelineStage
+
+        # Get all events for this journal contact
+        events = obj.stage_events.values('stage').annotate(
+            event_count=Count('id'),
+            last_event_date=Max('created_at')
+        )
+
+        # Build summary dict for all stages
+        summaries = {}
+        for stage in PipelineStage.values:
+            summaries[stage] = {
+                'has_events': False,
+                'event_count': 0,
+                'last_event_date': None,
+                'last_event_type': None,
+                'last_event_notes': None,
+            }
+
+        # Fill in summaries for stages that have events
+        for event_data in events:
+            stage = event_data['stage']
+            # Get the most recent event for this stage
+            last_event = obj.stage_events.filter(stage=stage).order_by('-created_at').first()
+            if last_event:
+                summaries[stage] = {
+                    'has_events': True,
+                    'event_count': event_data['event_count'],
+                    'last_event_date': last_event.created_at.isoformat(),
+                    'last_event_type': last_event.event_type,
+                    'last_event_notes': last_event.notes[:100] if last_event.notes else None,
+                }
+
+        return summaries
+
+    def get_decision(self, obj):
+        """
+        Get current decision summary for grid display.
+        """
+        try:
+            decision = obj.decision
+            return {
+                'id': str(decision.id),
+                'amount': str(decision.amount),
+                'cadence': decision.cadence,
+                'status': decision.status,
+                'monthly_equivalent': str(decision.monthly_equivalent),
+            }
+        except Decision.DoesNotExist:
+            return None
 
     def validate(self, attrs):
         """
