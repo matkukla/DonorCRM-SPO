@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom"
 import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useJournal, useJournalMembers } from "@/hooks/useJournals"
-import { JournalGrid, EventTimelineDrawer } from "./components"
+import { JournalGrid, EventTimelineDrawer, JournalHeader } from "./components"
 import type { PipelineStage, JournalMember } from "@/types/journals"
 
 /**
@@ -98,28 +98,23 @@ export default function JournalDetail() {
 
   return (
     <div className="container mx-auto py-8 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link to="/journals">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold">{journal.name}</h1>
-            <p className="text-muted-foreground">
-              Goal: ${parseFloat(journal.goal_amount).toLocaleString()}
-              {journal.deadline && ` • Due ${new Date(journal.deadline).toLocaleDateString()}`}
-            </p>
-          </div>
-        </div>
+      {/* Back button */}
+      <div className="flex items-center gap-4">
+        <Link to="/journals">
+          <Button variant="ghost" size="icon">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </Link>
       </div>
+
+      {/* Header with stats */}
+      <JournalHeader journal={journal} members={members} />
 
       {/* Grid */}
       <div className="border rounded-lg bg-card">
         <JournalGrid
           members={members}
+          journalId={id ?? ""}
           onStageCellClick={handleStageCellClick}
           isLoading={membersLoading}
         />
