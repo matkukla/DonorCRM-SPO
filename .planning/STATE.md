@@ -6,23 +6,23 @@ See: .planning/PROJECT.md (updated 2026-01-24)
 
 **Core value:** A missionary can look at their journal and instantly know what's next for each donor and what they've completed so far.
 
-**Current focus:** Phase 5 in progress - Grid Interactions & Decision UI
+**Current focus:** Phase 5 complete - Ready for Phase 6 (Polish & Data Integrity)
 
 ## Current Position
 
-Phase: 5 of 6 (Grid Interactions & Decision UI)
-Plan: 5 of 6 in current phase
-Status: In progress
-Last activity: 2026-01-25 — Completed 05-05-PLAN.md (DecisionDialog and DecisionCell)
+Phase: 5 of 6 (Grid Interactions & Decision UI) - COMPLETE
+Plan: 6 of 6 in current phase - COMPLETE
+Status: Phase complete
+Last activity: 2026-01-25 — Completed 05-06-PLAN.md (Final Integration + Human Verification)
 
-Progress: [█████████░] 94%
+Progress: [██████████] 100% (Phase 5)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 17
+- Total plans completed: 18
 - Average duration: 2.7 minutes
-- Total execution time: 0.80 hours
+- Total execution time: 0.85 hours
 
 **By Phase:**
 
@@ -32,10 +32,10 @@ Progress: [█████████░] 94%
 | 02 Contact Membership & Search | 2 | 7 min | 3.5 min |
 | 03 Decision Tracking | 3 | 10 min | 3.3 min |
 | 04 Grid UI Core | 5 | 9 min | 1.8 min |
-| 05 Grid Interactions & Decision UI | 5 | 15 min | 3 min |
+| 05 Grid Interactions & Decision UI | 6 | 20 min | 3.3 min |
 
 **Recent Trend:**
-- Last 5 plans: [2m, 5m, 2m, 4m, 2m]
+- Last 5 plans: [5m, 2m, 4m, 2m, 5m]
 - Trend: Excellent velocity - averaging 2.7 minutes per plan
 
 *Updated after each plan completion*
@@ -92,6 +92,8 @@ Recent decisions affecting current work:
 - Stage warnings via toast.warning - non-blocking per JRN-05 (05-04: always proceed, warning only)
 - Direct badge variant mapping for status colors (05-05: success/warning/secondary/destructive map to active/pending/paused/declined)
 - DecisionDialog and DecisionCell memoized with React.memo (05-05: prevents cascade re-renders)
+- JournalHeader separate from back button for clean layout (05-06: back button -> header -> grid)
+- journalId prop threading for decision mutations (05-06: passed through grid to DecisionCell)
 
 ### Pending Todos
 
@@ -106,12 +108,12 @@ None yet.
 **Critical Pitfalls to Avoid:**
 - Phase 1: N+1 queries from event replay (must denormalize current_stage in JournalContactStageState)
 - Phase 2: Atomic transaction scope bugs (wrap decision update + history + event creation in single transaction)
-- Phase 5: Optimistic update rollback on error (use React Query mutation onError callbacks)
+- Phase 5: Optimistic update rollback on error (use React Query mutation onError callbacks) - ADDRESSED
 
 ## Session Continuity
 
 Last session: 2026-01-25 (plan execution)
-Stopped at: Completed 05-05-PLAN.md (DecisionDialog and DecisionCell)
+Stopped at: Completed 05-06-PLAN.md (Final Integration + Human Verification)
 Resume file: None
 
-**Next steps:** Continue Phase 5 - Plan 06 (final plan of phase)
+**Next steps:** Begin Phase 6 - Polish & Data Integrity (final phase)
