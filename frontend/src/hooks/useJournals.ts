@@ -13,6 +13,13 @@ import {
   getJournalMembers,
   getStageEvents,
   createStageEvent,
+  createDecision,
+  updateDecision,
+  deleteDecision,
+  getNextSteps,
+  createNextStep,
+  updateNextStep,
+  deleteNextStep,
 } from "@/api/journals"
 import type {
   JournalFilters,
@@ -21,7 +28,20 @@ import type {
   JournalMemberFilters,
   StageEventCreate,
 } from "@/api/journals"
-import type { PipelineStage } from "@/types/journals"
+import type {
+  PipelineStage,
+  DecisionCreate,
+  DecisionUpdate,
+  JournalMember,
+} from "@/types/journals"
+import { toast } from "sonner"
+
+interface PaginatedResponse<T> {
+  count: number
+  next: string | null
+  previous: string | null
+  results: T[]
+}
 
 /** Hook for fetching paginated journal list */
 export function useJournals(filters: JournalFilters = {}) {
@@ -142,6 +162,168 @@ export function useCreateStageEvent() {
       queryClient.invalidateQueries({
         queryKey: ["journals"],
         refetchType: "active",
+      })
+    },
+  })
+}
+
+/**
+ * Hook for creating a decision with cache update.
+ * After creation, invalidates members list to show new decision.
+ */
+export function useCreateDecision(journalId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (data: DecisionCreate) => createDecision(data),
+    onSuccess: () => {
+      toast.success("Decision created")
+      // Invalidate members to refetch with new decision
+      queryClient.invalidateQueries({
+        queryKey: ["journals", journalId, "members"],
+      })
+    },
+    onError: () => {
+      toast.error("Failed to create decision")
+    },
+  })
+}
+
+/**
+ * Hook for updating a decision with optimistic updates.
+ *
+ * Critical pattern from STATE.md:
+ * "Optimistic update rollback on error (use React Query mutation onError callbacks)"
+ *
+ * Flow:
+ * 1. onMutate: Cancel queries, snapshot cache, optimistically update
+ * 2. onError: Rollback to snapshot
+ * 3. onSettled: Invalidate to sync with server
+ */
+export function useUpdateDecision(journalId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: DecisionUpdate }) =>
+      updateDecision(id, data),
+
+    onMutate: async ({ id, data }) => {
+      // 1. Cancel outgoing refetches to avoid overwriting optimistic update
+      await queryClient.cancelQueries({
+        queryKey: ["journals", journalId, "members"],
+      })
+
+      // 2. Snapshot current cache for rollback
+      const previousMembers = queryClient.getQueryData<PaginatedResponse<JournalMember>>(
+        ["journals", journalId, "members", {}]
+      )
+
+      // 3. Optimistically update the cache
+      if (previousMembers) {
+        queryClient.setQueryData<PaginatedResponse<JournalMember>>(
+          ["journals", journalId, "members", {}],
+          (old) => {
+            if (!old) return old
+            return {
+              ...old,
+              results: old.results.map((member) => {
+                if (member.decision?.id === id) {
+                  return {
+                    ...member,
+                    decision: { ...member.decision, ...data },
+                  }
+                }
+                return member
+              }),
+            }
+          }
+        )
+      }
+
+      // 4. Return context with snapshot for rollback
+      return { previousMembers }
+    },
+
+    onError: (_err, _variables, context) => {
+      // Rollback to snapshot on error
+      if (context?.previousMembers) {
+        queryClient.setQueryData(
+          ["journals", journalId, "members", {}],
+          context.previousMembers
+        )
+      }
+      toast.error("Failed to update decision")
+    },
+
+    onSuccess: () => {
+      toast.success("Decision updated")
+    },
+
+    onSettled: () => {
+      // Always refetch to ensure cache matches server
+      queryClient.invalidateQueries({
+        queryKey: ["journals", journalId, "members"],
+      })
+    },
+  })
+}
+
+/**
+ * Hook for deleting a decision with optimistic removal.
+ */
+export function useDeleteDecision(journalId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => deleteDecision(id),
+
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({
+        queryKey: ["journals", journalId, "members"],
+      })
+
+      const previousMembers = queryClient.getQueryData<PaginatedResponse<JournalMember>>(
+        ["journals", journalId, "members", {}]
+      )
+
+      if (previousMembers) {
+        queryClient.setQueryData<PaginatedResponse<JournalMember>>(
+          ["journals", journalId, "members", {}],
+          (old) => {
+            if (!old) return old
+            return {
+              ...old,
+              results: old.results.map((member) => {
+                if (member.decision?.id === id) {
+                  return { ...member, decision: null }
+                }
+                return member
+              }),
+            }
+          }
+        )
+      }
+
+      return { previousMembers }
+    },
+
+    onError: (_err, _variables, context) => {
+      if (context?.previousMembers) {
+        queryClient.setQueryData(
+          ["journals", journalId, "members", {}],
+          context.previousMembers
+        )
+      }
+      toast.error("Failed to delete decision")
+    },
+
+    onSuccess: () => {
+      toast.success("Decision deleted")
+    },
+
+    onSettled: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["journals", journalId, "members"],
       })
     },
   })
