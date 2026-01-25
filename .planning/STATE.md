@@ -6,23 +6,23 @@ See: .planning/PROJECT.md (updated 2026-01-24)
 
 **Core value:** A missionary can look at their journal and instantly know what's next for each donor and what they've completed so far.
 
-**Current focus:** Phase 4 complete - Ready for Phase 5
+**Current focus:** Phase 5 in progress - Grid Interactions & Decision UI
 
 ## Current Position
 
-Phase: 4 of 6 (Grid UI Core)
-Plan: 5 of 5 in current phase
-Status: Phase complete
-Last activity: 2026-01-25 — Completed 04-05-PLAN.md (JournalDetail Page Integration)
+Phase: 5 of 6 (Grid Interactions & Decision UI)
+Plan: 1 of 5 in current phase
+Status: In progress
+Last activity: 2026-01-25 — Completed 05-01-PLAN.md (UI Components Setup)
 
-Progress: [████████░░] 75%
+Progress: [█████████░] 81%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 12
-- Average duration: 3.0 minutes
-- Total execution time: 0.60 hours
+- Total plans completed: 13
+- Average duration: 2.8 minutes
+- Total execution time: 0.63 hours
 
 **By Phase:**
 
@@ -32,10 +32,11 @@ Progress: [████████░░] 75%
 | 02 Contact Membership & Search | 2 | 7 min | 3.5 min |
 | 03 Decision Tracking | 3 | 10 min | 3.3 min |
 | 04 Grid UI Core | 5 | 9 min | 1.8 min |
+| 05 Grid Interactions & Decision UI | 1 | 2 min | 2 min |
 
 **Recent Trend:**
-- Last 5 plans: [2m, 1m, 2m, 1m, 3m]
-- Trend: Excellent velocity - averaging 3.0 minutes per plan
+- Last 5 plans: [1m, 2m, 1m, 3m, 2m]
+- Trend: Excellent velocity - averaging 2.8 minutes per plan
 
 *Updated after each plan completion*
 
@@ -79,6 +80,8 @@ Recent decisions affecting current work:
 - 300ms tooltip delay to prevent interference with clicks (04-03: delayDuration on Tooltip component)
 - Horizontal scroll via min-width constraints (04-05: table min-width 900px, fixed column widths force scrolling)
 - stage_events computed in serializer (04-05: JournalContactSerializer.get_stage_events aggregates events per stage)
+- Toaster position bottom-right for non-intrusive notifications (05-01: global toast access via toast() API)
+- Full shadcn/ui Select component with scroll buttons for long option lists (05-01: handles long dropdown lists gracefully)
 
 ### Pending Todos
 
@@ -98,7 +101,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-01-25 (plan execution)
-Stopped at: Completed Phase 4 - All plans complete, verification passed
+Stopped at: Completed 05-01-PLAN.md (UI Components Setup)
 Resume file: None
 
-**Next steps:** Phase 5 - Grid Interactions & Decision UI
+**Next steps:** Continue Phase 5 - Plans 02-05 (Decision mutations, dialogs, stage movement, header)
