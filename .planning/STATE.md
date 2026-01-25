@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-01-24)
 ## Current Position
 
 Phase: 5 of 6 (Grid Interactions & Decision UI)
-Plan: 4 of 5 in current phase
+Plan: 5 of 6 in current phase
 Status: In progress
-Last activity: 2026-01-25 — Completed 05-04-PLAN.md (Stage Warnings & NextSteps Frontend)
+Last activity: 2026-01-25 — Completed 05-05-PLAN.md (DecisionDialog and DecisionCell)
 
-Progress: [█████████░] 93%
+Progress: [█████████░] 94%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 16
-- Average duration: 2.8 minutes
-- Total execution time: 0.77 hours
+- Total plans completed: 17
+- Average duration: 2.7 minutes
+- Total execution time: 0.80 hours
 
 **By Phase:**
 
@@ -32,11 +32,11 @@ Progress: [█████████░] 93%
 | 02 Contact Membership & Search | 2 | 7 min | 3.5 min |
 | 03 Decision Tracking | 3 | 10 min | 3.3 min |
 | 04 Grid UI Core | 5 | 9 min | 1.8 min |
-| 05 Grid Interactions & Decision UI | 4 | 13 min | 3.25 min |
+| 05 Grid Interactions & Decision UI | 5 | 15 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: [3m, 2m, 5m, 2m, 4m]
-- Trend: Excellent velocity - averaging 2.8 minutes per plan
+- Last 5 plans: [2m, 5m, 2m, 4m, 2m]
+- Trend: Excellent velocity - averaging 2.7 minutes per plan
 
 *Updated after each plan completion*
 
@@ -90,6 +90,8 @@ Recent decisions affecting current work:
 - getHighestStageWithEvents helper determines current stage for transition warnings (05-04: scans stages from next_steps down to contact)
 - Lazy loading NextSteps only when popover opens (05-04: enabled: isOpen for performance)
 - Stage warnings via toast.warning - non-blocking per JRN-05 (05-04: always proceed, warning only)
+- Direct badge variant mapping for status colors (05-05: success/warning/secondary/destructive map to active/pending/paused/declined)
+- DecisionDialog and DecisionCell memoized with React.memo (05-05: prevents cascade re-renders)
 
 ### Pending Todos
 
@@ -109,7 +111,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-01-25 (plan execution)
-Stopped at: Completed 05-04-PLAN.md (Stage Warnings & NextSteps Frontend)
+Stopped at: Completed 05-05-PLAN.md (DecisionDialog and DecisionCell)
 Resume file: None
 
-**Next steps:** Continue Phase 5 - Plan 05 (final plan of phase)
+**Next steps:** Continue Phase 5 - Plan 06 (final plan of phase)
