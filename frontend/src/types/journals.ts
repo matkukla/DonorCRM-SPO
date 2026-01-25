@@ -108,6 +108,57 @@ export interface DecisionSummary {
   monthly_equivalent: string
 }
 
+/** Full decision detail from API */
+export interface DecisionDetail {
+  id: string
+  journal_contact: string
+  amount: string
+  cadence: DecisionCadence
+  status: DecisionStatus
+  monthly_equivalent: string
+  created_at: string
+  updated_at: string
+}
+
+/** Decision create payload */
+export interface DecisionCreate {
+  journal_contact: string
+  amount: string
+  cadence: DecisionCadence
+  status: DecisionStatus
+}
+
+/** Decision update payload (partial) */
+export interface DecisionUpdate {
+  amount?: string
+  cadence?: DecisionCadence
+  status?: DecisionStatus
+}
+
+/** Decision status display colors */
+export const DECISION_STATUS_COLORS: Record<DecisionStatus, string> = {
+  pending: 'warning',
+  active: 'success',
+  paused: 'secondary',
+  declined: 'destructive',
+}
+
+/** Decision cadence labels for display */
+export const CADENCE_LABELS: Record<DecisionCadence, string> = {
+  one_time: 'One-Time',
+  monthly: 'Monthly',
+  quarterly: 'Quarterly',
+  annual: 'Annual',
+}
+
+/** Decision status labels for display */
+export const STATUS_LABELS: Record<DecisionStatus, string> = {
+  pending: 'Pending',
+  active: 'Active',
+  paused: 'Paused',
+  declined: 'Declined',
+}
+
 /** Props for freshness color calculation */
 export function getFreshnessColor(lastEventDate: string | null): FreshnessColor {
   if (!lastEventDate) return 'secondary'

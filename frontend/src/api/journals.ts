@@ -6,6 +6,9 @@ import type {
   StageEvent,
   StageEventsPage,
   PipelineStage,
+  DecisionDetail,
+  DecisionCreate,
+  DecisionUpdate,
 } from "@/types/journals"
 
 /** Paginated response from DRF */
@@ -138,5 +141,34 @@ export interface StageEventCreate {
 
 export async function createStageEvent(data: StageEventCreate): Promise<StageEvent> {
   const response = await apiClient.post<StageEvent>('/journals/stage-events/', data)
+  return response.data
+}
+
+/** Create a decision for a journal contact */
+export async function createDecision(data: DecisionCreate): Promise<DecisionDetail> {
+  const response = await apiClient.post<DecisionDetail>('/journals/decisions/', data)
+  return response.data
+}
+
+/** Update a decision (triggers history tracking on backend) */
+export async function updateDecision(
+  id: string,
+  data: DecisionUpdate
+): Promise<DecisionDetail> {
+  const response = await apiClient.patch<DecisionDetail>(
+    `/journals/decisions/${id}/`,
+    data
+  )
+  return response.data
+}
+
+/** Delete a decision */
+export async function deleteDecision(id: string): Promise<void> {
+  await apiClient.delete(`/journals/decisions/${id}/`)
+}
+
+/** Get a single decision */
+export async function getDecision(id: string): Promise<DecisionDetail> {
+  const response = await apiClient.get<DecisionDetail>(`/journals/decisions/${id}/`)
   return response.data
 }
