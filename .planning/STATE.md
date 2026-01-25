@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-01-24)
 ## Current Position
 
 Phase: 5 of 6 (Grid Interactions & Decision UI)
-Plan: 2 of 5 in current phase
+Plan: 3 of 5 in current phase
 Status: In progress
-Last activity: 2026-01-25 — Completed 05-02-PLAN.md (NextStep Backend API)
+Last activity: 2026-01-25 — Completed 05-03-PLAN.md (Decision Mutation Hooks & JournalHeader)
 
-Progress: [█████████░] 87%
+Progress: [█████████░] 88%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 14
-- Average duration: 2.9 minutes
-- Total execution time: 0.67 hours
+- Total plans completed: 15
+- Average duration: 2.8 minutes
+- Total execution time: 0.70 hours
 
 **By Phase:**
 
@@ -32,11 +32,11 @@ Progress: [█████████░] 87%
 | 02 Contact Membership & Search | 2 | 7 min | 3.5 min |
 | 03 Decision Tracking | 3 | 10 min | 3.3 min |
 | 04 Grid UI Core | 5 | 9 min | 1.8 min |
-| 05 Grid Interactions & Decision UI | 2 | 7 min | 3.5 min |
+| 05 Grid Interactions & Decision UI | 3 | 9 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: [2m, 1m, 3m, 2m, 5m]
-- Trend: Excellent velocity - averaging 2.9 minutes per plan
+- Last 5 plans: [1m, 3m, 2m, 5m, 2m]
+- Trend: Excellent velocity - averaging 2.8 minutes per plan
 
 *Updated after each plan completion*
 
@@ -84,6 +84,9 @@ Recent decisions affecting current work:
 - Full shadcn/ui Select component with scroll buttons for long option lists (05-01: handles long dropdown lists gracefully)
 - NextStepSerializer handles completed_at timestamp in update() method (05-02: automatic timestamp when marking complete/uncomplete)
 - Generic views over ViewSet for NextStep API (05-02: consistency with existing decision and journal patterns)
+- Optimistic updates with onMutate/onError/onSettled pattern (05-03: addresses pitfall, provides instant UI feedback with rollback)
+- Memoized stats in JournalHeader (05-03: useMemo prevents cascade re-renders when cells update)
+- DecisionSummary filter excludes declined status from totals (05-03: only pending/active/paused count toward progress)
 
 ### Pending Todos
 
@@ -103,7 +106,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-01-25 (plan execution)
-Stopped at: Completed 05-02-PLAN.md (NextStep Backend API)
+Stopped at: Completed 05-03-PLAN.md (Decision Mutation Hooks & JournalHeader)
 Resume file: None
 
-**Next steps:** Continue Phase 5 - Plans 03-05
+**Next steps:** Continue Phase 5 - Plans 04-05
