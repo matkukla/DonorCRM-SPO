@@ -33,6 +33,9 @@ import type {
   DecisionCreate,
   DecisionUpdate,
   JournalMember,
+  NextStep,
+  NextStepCreate,
+  NextStepUpdate,
 } from "@/types/journals"
 import { toast } from "sonner"
 
@@ -325,6 +328,104 @@ export function useDeleteDecision(journalId: string) {
       queryClient.invalidateQueries({
         queryKey: ["journals", journalId, "members"],
       })
+    },
+  })
+}
+
+/** Hook for fetching next steps for a journal contact */
+export function useNextSteps(journalContactId: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: ["next-steps", journalContactId],
+    queryFn: () => getNextSteps(journalContactId),
+    enabled: options?.enabled !== false && !!journalContactId,
+  })
+}
+
+/** Hook for creating a next step */
+export function useCreateNextStep(journalContactId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (data: NextStepCreate) => createNextStep(data),
+    onSuccess: () => {
+      toast.success("Next step created")
+      queryClient.invalidateQueries({
+        queryKey: ["next-steps", journalContactId],
+      })
+    },
+    onError: () => {
+      toast.error("Failed to create next step")
+    },
+  })
+}
+
+/** Hook for updating a next step with optimistic toggle */
+export function useUpdateNextStep(journalContactId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: NextStepUpdate }) =>
+      updateNextStep(id, data),
+
+    onMutate: async ({ id, data }) => {
+      await queryClient.cancelQueries({
+        queryKey: ["next-steps", journalContactId],
+      })
+
+      const previousSteps = queryClient.getQueryData<PaginatedResponse<NextStep>>(
+        ["next-steps", journalContactId]
+      )
+
+      if (previousSteps) {
+        queryClient.setQueryData<PaginatedResponse<NextStep>>(
+          ["next-steps", journalContactId],
+          (old) => {
+            if (!old) return old
+            return {
+              ...old,
+              results: old.results.map((step) =>
+                step.id === id ? { ...step, ...data } : step
+              ),
+            }
+          }
+        )
+      }
+
+      return { previousSteps }
+    },
+
+    onError: (_err, _variables, context) => {
+      if (context?.previousSteps) {
+        queryClient.setQueryData(
+          ["next-steps", journalContactId],
+          context.previousSteps
+        )
+      }
+      toast.error("Failed to update next step")
+    },
+
+    onSettled: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["next-steps", journalContactId],
+      })
+    },
+  })
+}
+
+/** Hook for deleting a next step */
+export function useDeleteNextStep(journalContactId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => deleteNextStep(id),
+    onSuccess: () => {
+      toast.success("Next step deleted")
+      queryClient.invalidateQueries({
+        queryKey: ["next-steps", journalContactId],
+      })
+    },
+    onError: () => {
+      toast.error("Failed to delete next step")
     },
   })
 }

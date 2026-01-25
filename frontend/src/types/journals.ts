@@ -192,3 +192,93 @@ export const PIPELINE_STAGES: PipelineStage[] = [
   'thank',
   'next_steps',
 ]
+
+/** Next step item for checklist */
+export interface NextStep {
+  id: string
+  journal_contact: string
+  title: string
+  notes: string
+  due_date: string | null
+  completed: boolean
+  completed_at: string | null
+  order: number
+  created_at: string
+  updated_at: string
+}
+
+/** Next step create payload */
+export interface NextStepCreate {
+  journal_contact: string
+  title: string
+  notes?: string
+  due_date?: string | null
+  order?: number
+}
+
+/** Next step update payload */
+export interface NextStepUpdate {
+  title?: string
+  notes?: string
+  due_date?: string | null
+  completed?: boolean
+  order?: number
+}
+
+/** Stage transition check result */
+export interface StageTransitionCheck {
+  isSequential: boolean
+  skippedStages: string[]
+  isRevisiting: boolean
+}
+
+/** Stage order for transition checking */
+export const STAGE_ORDER: Record<PipelineStage, number> = {
+  contact: 1,
+  meet: 2,
+  close: 3,
+  decision: 4,
+  thank: 5,
+  next_steps: 6,
+}
+
+/**
+ * Check if a stage transition is sequential.
+ * Per JRN-05: "System shows subtle warnings for non-sequential movement (no hard blocks)"
+ */
+export function checkStageTransition(
+  currentStage: PipelineStage | null,
+  targetStage: PipelineStage
+): StageTransitionCheck {
+  // If no current stage, any movement is allowed
+  if (!currentStage) {
+    return { isSequential: true, skippedStages: [], isRevisiting: false }
+  }
+
+  const currentOrder = STAGE_ORDER[currentStage]
+  const targetOrder = STAGE_ORDER[targetStage]
+
+  // Going backwards = revisiting
+  if (targetOrder < currentOrder) {
+    return {
+      isSequential: false,
+      skippedStages: [],
+      isRevisiting: true,
+    }
+  }
+
+  // Skipping forward
+  if (targetOrder > currentOrder + 1) {
+    const skipped = Object.entries(STAGE_ORDER)
+      .filter(([_, order]) => order > currentOrder && order < targetOrder)
+      .map(([stage]) => STAGE_LABELS[stage as PipelineStage])
+    return {
+      isSequential: false,
+      skippedStages: skipped,
+      isRevisiting: false,
+    }
+  }
+
+  // Sequential movement
+  return { isSequential: true, skippedStages: [], isRevisiting: false }
+}

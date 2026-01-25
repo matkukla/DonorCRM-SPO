@@ -9,6 +9,9 @@ import type {
   DecisionDetail,
   DecisionCreate,
   DecisionUpdate,
+  NextStep,
+  NextStepCreate,
+  NextStepUpdate,
 } from "@/types/journals"
 
 /** Paginated response from DRF */
@@ -171,4 +174,37 @@ export async function deleteDecision(id: string): Promise<void> {
 export async function getDecision(id: string): Promise<DecisionDetail> {
   const response = await apiClient.get<DecisionDetail>(`/journals/decisions/${id}/`)
   return response.data
+}
+
+/** Get next steps for a journal contact */
+export async function getNextSteps(
+  journalContactId: string
+): Promise<PaginatedResponse<NextStep>> {
+  const response = await apiClient.get<PaginatedResponse<NextStep>>(
+    `/journals/next-steps/?journal_contact=${journalContactId}`
+  )
+  return response.data
+}
+
+/** Create a next step */
+export async function createNextStep(data: NextStepCreate): Promise<NextStep> {
+  const response = await apiClient.post<NextStep>('/journals/next-steps/', data)
+  return response.data
+}
+
+/** Update a next step */
+export async function updateNextStep(
+  id: string,
+  data: NextStepUpdate
+): Promise<NextStep> {
+  const response = await apiClient.patch<NextStep>(
+    `/journals/next-steps/${id}/`,
+    data
+  )
+  return response.data
+}
+
+/** Delete a next step */
+export async function deleteNextStep(id: string): Promise<void> {
+  await apiClient.delete(`/journals/next-steps/${id}/`)
 }
