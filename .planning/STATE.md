@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-01-24)
 ## Current Position
 
 Phase: 5 of 6 (Grid Interactions & Decision UI)
-Plan: 3 of 5 in current phase
+Plan: 4 of 5 in current phase
 Status: In progress
-Last activity: 2026-01-25 — Completed 05-03-PLAN.md (Decision Mutation Hooks & JournalHeader)
+Last activity: 2026-01-25 — Completed 05-04-PLAN.md (Stage Warnings & NextSteps Frontend)
 
-Progress: [█████████░] 88%
+Progress: [█████████░] 93%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 15
+- Total plans completed: 16
 - Average duration: 2.8 minutes
-- Total execution time: 0.70 hours
+- Total execution time: 0.77 hours
 
 **By Phase:**
 
@@ -32,10 +32,10 @@ Progress: [█████████░] 88%
 | 02 Contact Membership & Search | 2 | 7 min | 3.5 min |
 | 03 Decision Tracking | 3 | 10 min | 3.3 min |
 | 04 Grid UI Core | 5 | 9 min | 1.8 min |
-| 05 Grid Interactions & Decision UI | 3 | 9 min | 3 min |
+| 05 Grid Interactions & Decision UI | 4 | 13 min | 3.25 min |
 
 **Recent Trend:**
-- Last 5 plans: [1m, 3m, 2m, 5m, 2m]
+- Last 5 plans: [3m, 2m, 5m, 2m, 4m]
 - Trend: Excellent velocity - averaging 2.8 minutes per plan
 
 *Updated after each plan completion*
@@ -87,6 +87,9 @@ Recent decisions affecting current work:
 - Optimistic updates with onMutate/onError/onSettled pattern (05-03: addresses pitfall, provides instant UI feedback with rollback)
 - Memoized stats in JournalHeader (05-03: useMemo prevents cascade re-renders when cells update)
 - DecisionSummary filter excludes declined status from totals (05-03: only pending/active/paused count toward progress)
+- getHighestStageWithEvents helper determines current stage for transition warnings (05-04: scans stages from next_steps down to contact)
+- Lazy loading NextSteps only when popover opens (05-04: enabled: isOpen for performance)
+- Stage warnings via toast.warning - non-blocking per JRN-05 (05-04: always proceed, warning only)
 
 ### Pending Todos
 
@@ -106,7 +109,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-01-25 (plan execution)
-Stopped at: Completed 05-03-PLAN.md (Decision Mutation Hooks & JournalHeader)
+Stopped at: Completed 05-04-PLAN.md (Stage Warnings & NextSteps Frontend)
 Resume file: None
 
-**Next steps:** Continue Phase 5 - Plans 04-05
+**Next steps:** Continue Phase 5 - Plan 05 (final plan of phase)
