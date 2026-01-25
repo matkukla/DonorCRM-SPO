@@ -1,10 +1,15 @@
 """
 Views for Journal management.
 """
+from collections import defaultdict
+
 from django.db import IntegrityError, transaction
+from django.db.models import Count, OuterRef, Subquery
+from django.db.models.functions import TruncMonth
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
-from rest_framework import filters, generics, permissions, status
+from rest_framework import filters, generics, permissions, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
@@ -16,6 +21,7 @@ from apps.journals.models import (
     JournalContact,
     JournalStageEvent,
     NextStep,
+    PipelineStage,
 )
 from apps.journals.serializers import (
     DecisionHistorySerializer,
@@ -416,3 +422,133 @@ class NextStepDetailView(generics.RetrieveUpdateDestroyAPIView):
             qs = NextStep.objects.filter(journal_contact__journal__owner=user)
 
         return qs.select_related('journal_contact__journal', 'journal_contact__contact')
+
+
+class JournalAnalyticsViewSet(viewsets.ViewSet):
+    """
+    Analytics endpoints for journal reporting.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    @action(detail=False, methods=['get'], url_path='decision-trends')
+    def decision_trends(self, request):
+        """Decision counts over time (bar chart data)."""
+        trends = Decision.objects.filter(
+            journal_contact__journal__owner=request.user
+        ).annotate(
+            month=TruncMonth('created_at')
+        ).values('month').annotate(
+            count=Count('id')
+        ).order_by('month')
+
+        return Response([
+            {'month': item['month'].strftime('%Y-%m'), 'count': item['count']}
+            for item in trends
+        ])
+
+    @action(detail=False, methods=['get'], url_path='stage-activity')
+    def stage_activity(self, request):
+        """Event counts by stage over time (multi-line chart data)."""
+        activity = JournalStageEvent.objects.filter(
+            journal_contact__journal__owner=request.user
+        ).annotate(
+            month=TruncMonth('created_at')
+        ).values('month', 'stage').annotate(
+            count=Count('id')
+        ).order_by('month', 'stage')
+
+        # Pivot data so each month has all stage counts
+        by_month = defaultdict(lambda: {
+            'contact': 0, 'meet': 0, 'close': 0,
+            'decision': 0, 'thank': 0, 'next_steps': 0
+        })
+
+        for item in activity:
+            month_str = item['month'].strftime('%Y-%m')
+            by_month[month_str][item['stage']] = item['count']
+
+        return Response([
+            {'date': month, **counts}
+            for month, counts in sorted(by_month.items())
+        ])
+
+    @action(detail=False, methods=['get'], url_path='pipeline-breakdown')
+    def pipeline_breakdown(self, request):
+        """Contacts by current pipeline stage (pie chart data)."""
+        # Subquery to get most recent stage per journal_contact
+        latest_stage = JournalStageEvent.objects.filter(
+            journal_contact=OuterRef('pk')
+        ).order_by('-created_at').values('stage')[:1]
+
+        breakdown = JournalContact.objects.filter(
+            journal__owner=request.user
+        ).annotate(
+            current_stage=Subquery(latest_stage)
+        ).values('current_stage').annotate(
+            count=Count('id')
+        ).order_by('current_stage')
+
+        return Response([
+            {'stage': item['current_stage'] or 'contact', 'count': item['count']}
+            for item in breakdown
+        ])
+
+    @action(detail=False, methods=['get'], url_path='next-steps-queue')
+    def next_steps_queue(self, request):
+        """Upcoming next steps across all contacts (list data)."""
+        from django.db.models import F
+
+        steps = NextStep.objects.filter(
+            journal_contact__journal__owner=request.user,
+            completed=False
+        ).select_related(
+            'journal_contact__contact',
+            'journal_contact__journal'
+        ).order_by(
+            F('due_date').asc(nulls_last=True),
+            'created_at'
+        )[:20]
+
+        return Response([
+            {
+                'id': str(step.id),
+                'title': step.title,
+                'due_date': step.due_date.isoformat() if step.due_date else None,
+                'contact_name': step.journal_contact.contact.full_name,
+                'journal_name': step.journal_contact.journal.name,
+                'journal_contact_id': str(step.journal_contact.id),
+            }
+            for step in steps
+        ])
+
+    @action(detail=False, methods=['get'], url_path='admin-summary')
+    def admin_summary(self, request):
+        """Cross-missionary aggregation data (admin only)."""
+        # Check if user is staff
+        if not request.user.is_staff:
+            return Response(
+                {'detail': 'Admin access required'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Aggregate across ALL journals (no owner filter)
+        total_journals = Journal.objects.filter(is_archived=False).count()
+        total_decisions = Decision.objects.count()
+
+        # Journals by user
+        journals_by_user = Journal.objects.filter(
+            is_archived=False
+        ).values(
+            'owner__email'
+        ).annotate(
+            count=Count('id')
+        ).order_by('-count')
+
+        return Response({
+            'total_journals': total_journals,
+            'total_decisions': total_decisions,
+            'journals_by_user': [
+                {'email': item['owner__email'], 'count': item['count']}
+                for item in journals_by_user
+            ]
+        })

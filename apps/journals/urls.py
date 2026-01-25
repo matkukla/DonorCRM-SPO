@@ -1,12 +1,14 @@
 """
 URL configuration for journals app.
 """
-from django.urls import path
+from django.urls import include, path
+from rest_framework.routers import DefaultRouter
 
 from apps.journals.views import (
     DecisionDetailView,
     DecisionHistoryListView,
     DecisionListCreateView,
+    JournalAnalyticsViewSet,
     JournalContactDestroyView,
     JournalContactListCreateView,
     JournalDetailView,
@@ -17,6 +19,9 @@ from apps.journals.views import (
 )
 
 app_name = 'journals'
+
+router = DefaultRouter()
+router.register(r'analytics', JournalAnalyticsViewSet, basename='journal-analytics')
 
 urlpatterns = [
     path('', JournalListCreateView.as_view(), name='journal-list'),
@@ -29,4 +34,5 @@ urlpatterns = [
     path('decision-history/', DecisionHistoryListView.as_view(), name='decision-history-list'),
     path('next-steps/', NextStepListCreateView.as_view(), name='nextstep-list'),
     path('next-steps/<uuid:pk>/', NextStepDetailView.as_view(), name='nextstep-detail'),
+    path('', include(router.urls)),
 ]
