@@ -1,6 +1,7 @@
 import * as React from "react"
 import { Check } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
+import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import {
   Tooltip,
@@ -8,8 +9,29 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import type { StageEventSummary, PipelineStage, FreshnessColor } from "@/types/journals"
-import { getFreshnessColor, STAGE_LABELS } from "@/types/journals"
+import type { StageEventSummary, PipelineStage } from "@/types/journals"
+import {
+  getFreshnessColor,
+  STAGE_LABELS,
+  checkStageTransition,
+  STAGE_ORDER,
+} from "@/types/journals"
+
+/**
+ * Get the highest pipeline stage that has events.
+ * Used to determine current stage for transition warnings.
+ */
+export function getHighestStageWithEvents(
+  stageEvents: Record<PipelineStage, StageEventSummary>
+): PipelineStage | null {
+  const stages: PipelineStage[] = ['next_steps', 'thank', 'decision', 'close', 'meet', 'contact']
+  for (const stage of stages) {
+    if (stageEvents[stage]?.has_events) {
+      return stage
+    }
+  }
+  return null
+}
 
 export interface StageCellProps {
   /** Contact ID for click handler */
@@ -20,6 +42,8 @@ export interface StageCellProps {
   eventSummary: StageEventSummary
   /** Click handler to open timeline drawer */
   onCellClick: (contactId: string, stage: PipelineStage) => void
+  /** Current highest stage for this contact (for transition warnings) */
+  currentStage?: PipelineStage | null
 }
 
 /**
@@ -33,10 +57,27 @@ export interface StageCellProps {
  * with stable dependencies"
  */
 export const StageCell = React.memo<StageCellProps>(
-  ({ contactId, stage, eventSummary, onCellClick }) => {
+  ({ contactId, stage, eventSummary, onCellClick, currentStage }) => {
     const handleClick = React.useCallback(() => {
+      // Check if this would be a non-sequential transition
+      // Per JRN-05: "System shows subtle warnings for non-sequential movement (no hard blocks)"
+      if (currentStage && stage !== currentStage) {
+        const transition = checkStageTransition(currentStage, stage)
+        if (!transition.isSequential) {
+          if (transition.isRevisiting) {
+            toast.warning("Revisiting stage", {
+              description: `Moving back to ${STAGE_LABELS[stage]}`,
+            })
+          } else if (transition.skippedStages.length > 0) {
+            toast.warning("Skipping stages", {
+              description: `Skipping: ${transition.skippedStages.join(", ")}`,
+            })
+          }
+        }
+      }
+      // Always proceed - no hard block (per JRN-05)
       onCellClick(contactId, stage)
-    }, [contactId, stage, onCellClick])
+    }, [contactId, stage, currentStage, onCellClick])
 
     // Empty state - no events logged for this stage
     if (!eventSummary.has_events) {
@@ -97,13 +138,14 @@ export const StageCell = React.memo<StageCellProps>(
       </TooltipProvider>
     )
   },
-  // Custom comparison: only re-render if eventSummary changes
+  // Custom comparison: only re-render if eventSummary or currentStage changes
   (prevProps, nextProps) => {
     return (
       prevProps.eventSummary === nextProps.eventSummary &&
       prevProps.contactId === nextProps.contactId &&
       prevProps.stage === nextProps.stage &&
-      prevProps.onCellClick === nextProps.onCellClick
+      prevProps.onCellClick === nextProps.onCellClick &&
+      prevProps.currentStage === nextProps.currentStage
     )
   }
 )
