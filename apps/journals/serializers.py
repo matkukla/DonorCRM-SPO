@@ -141,9 +141,10 @@ class JournalContactSerializer(serializers.ModelSerializer):
     def get_decision(self, obj):
         """
         Get current decision summary for grid display.
+        Returns the first (should be only) decision for this journal contact.
         """
-        try:
-            decision = obj.decision
+        decision = obj.decisions.first()
+        if decision:
             return {
                 'id': str(decision.id),
                 'amount': str(decision.amount),
@@ -151,8 +152,7 @@ class JournalContactSerializer(serializers.ModelSerializer):
                 'status': decision.status,
                 'monthly_equivalent': str(decision.monthly_equivalent),
             }
-        except Decision.DoesNotExist:
-            return None
+        return None
 
     def validate(self, attrs):
         """
