@@ -5,6 +5,7 @@ from rest_framework import serializers
 
 from apps.contacts.models import Contact, ContactStatus
 from apps.groups.serializers import GroupSerializer
+from apps.journals.models import JournalContact, Decision, JournalStageEvent, PipelineStage
 
 
 class ContactListSerializer(serializers.ModelSerializer):
@@ -134,3 +135,65 @@ class ContactImportSerializer(serializers.Serializer):
     postal_code = serializers.CharField(max_length=20, required=False, allow_blank=True)
     country = serializers.CharField(max_length=100, required=False, default='USA')
     notes = serializers.CharField(required=False, allow_blank=True)
+
+
+class ContactJournalMembershipSerializer(serializers.ModelSerializer):
+    """Serializer for contact's journal memberships (for Journals tab)."""
+
+    journal_id = serializers.UUIDField(source='journal.id', read_only=True)
+    journal_name = serializers.CharField(source='journal.name', read_only=True)
+    goal_amount = serializers.DecimalField(
+        source='journal.goal_amount',
+        max_digits=10,
+        decimal_places=2,
+        read_only=True
+    )
+    deadline = serializers.DateField(source='journal.deadline', read_only=True)
+
+    # Current stage - computed from most recent event
+    current_stage = serializers.SerializerMethodField()
+
+    # Decision summary
+    decision = serializers.SerializerMethodField()
+
+    class Meta:
+        model = JournalContact
+        fields = [
+            'id',
+            'journal_id',
+            'journal_name',
+            'goal_amount',
+            'deadline',
+            'current_stage',
+            'decision',
+            'created_at',
+        ]
+        read_only_fields = fields
+
+    def get_current_stage(self, obj):
+        """Get most recent stage from prefetched events."""
+        # Events are prefetched and ordered by -created_at
+        events = getattr(obj, 'prefetched_events', None)
+        if events:
+            return events[0].stage if events else PipelineStage.CONTACT
+        # Fallback if not prefetched
+        latest = obj.stage_events.order_by('-created_at').first()
+        return latest.stage if latest else PipelineStage.CONTACT
+
+    def get_decision(self, obj):
+        """Get decision summary from prefetched decision."""
+        decisions = getattr(obj, 'prefetched_decisions', None)
+        if decisions:
+            decision = decisions[0] if decisions else None
+        else:
+            decision = obj.decisions.first()
+
+        if not decision:
+            return None
+
+        return {
+            'id': str(decision.id),
+            'amount': str(decision.amount),
+            'cadence': decision.cadence,
+            'status': decision.status,
+        }

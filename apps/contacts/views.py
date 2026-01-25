@@ -1,10 +1,11 @@
 """
 Views for Contact management.
 """
-from django.db.models import Q
+from django.db.models import Q, Prefetch
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
 from rest_framework import filters, generics, permissions, status
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -13,8 +14,10 @@ from apps.contacts.serializers import (
     ContactCreateSerializer,
     ContactDetailSerializer,
     ContactListSerializer,
+    ContactJournalMembershipSerializer,
 )
 from apps.core.permissions import IsContactOwnerOrReadAccess, IsStaffOrAbove
+from apps.journals.models import JournalContact
 
 
 @extend_schema_view(
@@ -223,3 +226,42 @@ class ContactSearchView(generics.ListAPIView):
             )
 
         return queryset[:50]  # Limit search results
+
+
+@extend_schema(tags=['contacts'], summary='List contact journal memberships')
+class ContactJournalsView(generics.ListAPIView):
+    """
+    GET: List all journals this contact belongs to with stage and decision
+    """
+    serializer_class = ContactJournalMembershipSerializer
+    permission_classes = [permissions.IsAuthenticated, IsContactOwnerOrReadAccess]
+
+    def get_queryset(self):
+        from apps.journals.models import JournalStageEvent, Decision
+
+        contact_id = self.kwargs.get('pk')
+        user = self.request.user
+
+        # Optimized query with prefetching per RESEARCH.md
+        memberships = JournalContact.objects.filter(
+            contact_id=contact_id
+        ).select_related(
+            'journal'  # ForeignKey - single JOIN
+        ).prefetch_related(
+            Prefetch(
+                'stage_events',
+                queryset=JournalStageEvent.objects.order_by('-created_at'),
+                to_attr='prefetched_events'
+            ),
+            Prefetch(
+                'decisions',
+                queryset=Decision.objects.all(),
+                to_attr='prefetched_decisions'
+            )
+        ).order_by('-created_at')
+
+        # Filter by ownership unless admin
+        if user.role not in ['admin', 'finance', 'read_only']:
+            memberships = memberships.filter(journal__owner=user)
+
+        return memberships

@@ -55,6 +55,16 @@ class Task(TimeStampedModel):
         related_name='tasks'
     )
 
+    # Optional journal link (for journal-specific tasks)
+    journal = models.ForeignKey(
+        'journals.Journal',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='tasks',
+        help_text='Optional journal this task belongs to'
+    )
+
     # Task details
     title = models.CharField('title', max_length=255)
     description = models.TextField('description', blank=True)
@@ -117,6 +127,7 @@ class Task(TimeStampedModel):
             models.Index(fields=['owner', 'due_date']),
             models.Index(fields=['contact', 'status']),
             models.Index(fields=['status', 'due_date']),
+            models.Index(fields=['journal', 'status']),
         ]
 
     def __str__(self):
