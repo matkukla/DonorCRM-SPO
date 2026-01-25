@@ -138,7 +138,7 @@ interface EventCardProps {
   isLast: boolean
 }
 
-function EventCard({ event, isFirst, isLast }: EventCardProps) {
+function EventCard({ event, isLast }: EventCardProps) {
   // Format event type for display (e.g., "call_logged" -> "Call Logged")
   const eventTypeLabel = event.event_type
     .split("_")

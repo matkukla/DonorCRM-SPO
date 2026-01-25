@@ -2,9 +2,10 @@ import * as React from "react"
 import { useParams, Link } from "react-router-dom"
 import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useJournal, useJournalMembers } from "@/hooks/useJournals"
-import { JournalGrid, EventTimelineDrawer, JournalHeader } from "./components"
-import type { PipelineStage, JournalMember } from "@/types/journals"
+import { JournalGrid, EventTimelineDrawer, JournalHeader, DecisionTrendsChart, StageActivityChart, PipelineBreakdownChart, NextStepsQueue } from "./components"
+import type { PipelineStage } from "@/types/journals"
 
 /**
  * State for the timeline drawer.
@@ -110,22 +111,41 @@ export default function JournalDetail() {
       {/* Header with stats */}
       <JournalHeader journal={journal} members={members} />
 
-      {/* Grid */}
-      <div className="border rounded-lg bg-card">
-        <JournalGrid
-          members={members}
-          journalId={id ?? ""}
-          onStageCellClick={handleStageCellClick}
-          isLoading={membersLoading}
-        />
-      </div>
+      {/* Tabs for Grid and Reports */}
+      <Tabs defaultValue="grid" className="w-full">
+        <TabsList>
+          <TabsTrigger value="grid">Pipeline Grid</TabsTrigger>
+          <TabsTrigger value="report">Reports</TabsTrigger>
+        </TabsList>
 
-      {/* Members loading error */}
-      {membersError && (
-        <div className="text-center py-4 text-destructive">
-          Failed to load journal members
-        </div>
-      )}
+        <TabsContent value="grid" className="mt-6">
+          {/* Grid */}
+          <div className="border rounded-lg bg-card">
+            <JournalGrid
+              members={members}
+              journalId={id ?? ""}
+              onStageCellClick={handleStageCellClick}
+              isLoading={membersLoading}
+            />
+          </div>
+
+          {/* Members loading error */}
+          {membersError && (
+            <div className="text-center py-4 text-destructive">
+              Failed to load journal members
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="report" className="mt-6">
+          <div className="grid gap-6 md:grid-cols-2">
+            <DecisionTrendsChart />
+            <PipelineBreakdownChart />
+            <StageActivityChart />
+            <NextStepsQueue />
+          </div>
+        </TabsContent>
+      </Tabs>
 
       {/* Timeline drawer */}
       <EventTimelineDrawer

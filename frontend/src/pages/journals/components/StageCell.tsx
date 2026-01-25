@@ -14,7 +14,6 @@ import {
   getFreshnessColor,
   STAGE_LABELS,
   checkStageTransition,
-  STAGE_ORDER,
 } from "@/types/journals"
 
 /**
