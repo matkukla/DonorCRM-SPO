@@ -161,10 +161,15 @@ Plans:
 8. Admin can access analytics endpoints for cross-missionary aggregation (total journals, decision totals, stage averages)
 9. Report queries execute without N+1 problems (verified with django-debug-toolbar)
 
-**Plans**: TBD
+**Plans**: 6 plans
 
 Plans:
-- [ ] TBD
+- [ ] 06-01-PLAN.md — Analytics backend endpoints (decision trends, stage activity, pipeline breakdown, admin summary)
+- [ ] 06-02-PLAN.md — Task.journal_id migration and shadcn/ui Chart component setup
+- [ ] 06-03-PLAN.md — Contact journals API endpoint for Contact Detail Journals tab
+- [ ] 06-04-PLAN.md — Report tab charts (hooks + DecisionTrends, StageActivity, PipelineBreakdown, NextStepsQueue)
+- [ ] 06-05-PLAN.md — Contact Detail Journals tab UI integration
+- [ ] 06-06-PLAN.md — Journal Detail Report tab integration and human verification
 
 ---
 
@@ -180,4 +185,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 3. Decision Tracking | 3/3 | Complete | 2026-01-24 |
 | 4. Grid UI Core | 5/5 | Complete | 2026-01-25 |
 | 5. Grid Interactions & Decision UI | 6/6 | Complete | 2026-01-25 |
-| 6. Reporting & Integration | 0/TBD | Not started | - |
+| 6. Reporting & Integration | 0/6 | Not started | - |
