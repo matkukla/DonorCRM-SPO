@@ -20,6 +20,10 @@ import {
   createNextStep,
   updateNextStep,
   deleteNextStep,
+  getDecisionTrends,
+  getStageActivity,
+  getPipelineBreakdown,
+  getNextStepsQueue,
 } from "@/api/journals"
 import type {
   JournalFilters,
@@ -427,5 +431,41 @@ export function useDeleteNextStep(journalContactId: string) {
     onError: () => {
       toast.error("Failed to delete next step")
     },
+  })
+}
+
+/** Hook for decision trends chart data */
+export function useDecisionTrends() {
+  return useQuery({
+    queryKey: ['journals', 'analytics', 'decision-trends'],
+    queryFn: getDecisionTrends,
+    staleTime: 5 * 60 * 1000, // 5 minutes - analytics can be slightly stale
+  })
+}
+
+/** Hook for stage activity chart data */
+export function useStageActivity() {
+  return useQuery({
+    queryKey: ['journals', 'analytics', 'stage-activity'],
+    queryFn: getStageActivity,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+/** Hook for pipeline breakdown chart data */
+export function usePipelineBreakdown() {
+  return useQuery({
+    queryKey: ['journals', 'analytics', 'pipeline-breakdown'],
+    queryFn: getPipelineBreakdown,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+/** Hook for next steps queue list */
+export function useNextStepsQueue() {
+  return useQuery({
+    queryKey: ['journals', 'analytics', 'next-steps-queue'],
+    queryFn: getNextStepsQueue,
+    staleTime: 2 * 60 * 1000, // 2 minutes - more time-sensitive
   })
 }
