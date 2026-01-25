@@ -4,6 +4,7 @@ import {
   useContactDonations,
   useContactPledges,
   useContactTasks,
+  useContactJournals,
   useMarkContactThanked,
   useDeleteContact,
 } from "@/hooks/useContacts"
@@ -71,6 +72,7 @@ export default function ContactDetail() {
   const { data: donations } = useContactDonations(id!)
   const { data: pledges } = useContactPledges(id!)
   const { data: tasks } = useContactTasks(id!)
+  const { data: journals } = useContactJournals(id!)
 
   const markThankedMutation = useMarkContactThanked()
   const deleteMutation = useDeleteContact()
@@ -223,6 +225,9 @@ export default function ContactDetail() {
               </TabsTrigger>
               <TabsTrigger value="tasks">
                 Tasks ({tasks?.length || 0})
+              </TabsTrigger>
+              <TabsTrigger value="journals">
+                Journals ({journals?.length || 0})
               </TabsTrigger>
             </TabsList>
 
@@ -409,6 +414,76 @@ export default function ContactDetail() {
                   ) : (
                     <p className="text-muted-foreground text-center py-4">
                       No tasks assigned yet.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="journals" className="mt-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Journal Memberships</CardTitle>
+                    <CardDescription>
+                      Journals this contact is currently enrolled in
+                    </CardDescription>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {journals?.length ? (
+                    <div className="space-y-3">
+                      {journals.map((membership) => (
+                        <div
+                          key={membership.id}
+                          className="flex items-center justify-between py-3 border-b last:border-0"
+                        >
+                          <div className="space-y-1">
+                            <Link
+                              to={`/journals/${membership.journal_id}`}
+                              className="font-medium hover:underline"
+                            >
+                              {membership.journal_name}
+                            </Link>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Badge variant="secondary">
+                                {membership.current_stage.charAt(0).toUpperCase() + membership.current_stage.slice(1).replace('_', ' ')}
+                              </Badge>
+                              {membership.deadline && (
+                                <span>Due: {formatDate(membership.deadline)}</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            {membership.decision ? (
+                              <div>
+                                <p className="font-medium">
+                                  {formatCurrency(membership.decision.amount)}
+                                  <span className="text-muted-foreground font-normal">
+                                    /{membership.decision.cadence.replace('_', '-')}
+                                  </span>
+                                </p>
+                                <Badge
+                                  variant={
+                                    membership.decision.status === 'active' ? 'success' :
+                                    membership.decision.status === 'pending' ? 'warning' :
+                                    membership.decision.status === 'declined' ? 'destructive' :
+                                    'secondary'
+                                  }
+                                >
+                                  {membership.decision.status}
+                                </Badge>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground">No decision</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground text-center py-8">
+                      This contact is not in any journals yet.
                     </p>
                   )}
                 </CardContent>
