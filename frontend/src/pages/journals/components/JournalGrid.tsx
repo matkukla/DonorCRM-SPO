@@ -7,14 +7,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { StageCell } from "./StageCell"
+import { StageCell, getHighestStageWithEvents } from "./StageCell"
 import { ContactNameCell } from "./ContactNameCell"
+import { DecisionCell } from "./DecisionCell"
+import { NextStepsCell } from "./NextStepsCell"
 import type { JournalMember, PipelineStage, StageEventSummary } from "@/types/journals"
 import { PIPELINE_STAGES, STAGE_LABELS } from "@/types/journals"
 
 export interface JournalGridProps {
   /** Journal members to display as rows */
   members: JournalMember[]
+  /** Journal ID for decision hooks */
+  journalId: string
   /** Callback when a stage cell is clicked (opens timeline drawer) */
   onStageCellClick: (contactId: string, stage: PipelineStage) => void
   /** Loading state */
@@ -33,6 +37,7 @@ export interface JournalGridProps {
  */
 export function JournalGrid({
   members,
+  journalId,
   onStageCellClick,
   isLoading = false,
 }: JournalGridProps) {
@@ -64,7 +69,7 @@ export function JournalGrid({
 
   return (
     <div className="relative w-full overflow-x-auto border rounded-lg">
-      <Table className="min-w-[900px]">
+      <Table className="min-w-[1200px]">
         <TableHeader>
           <TableRow className="bg-background">
             {/* Intersection cell: sticky both directions, highest z-index */}
@@ -80,35 +85,60 @@ export function JournalGrid({
                 {STAGE_LABELS[stage]}
               </TableHead>
             ))}
+            {/* Decision column */}
+            <TableHead className="sticky top-0 z-10 bg-background text-center min-w-[140px] w-[140px]">
+              Decision
+            </TableHead>
+            {/* Next Steps column */}
+            <TableHead className="sticky top-0 z-10 bg-background text-center min-w-[100px] w-[100px]">
+              Next Steps
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {members.map((member) => (
-            <TableRow key={member.id}>
-              {/* Contact name cell: sticky left only */}
-              <TableCell className="sticky left-0 z-20 bg-background border-r min-w-[200px] w-[200px]">
-                <ContactNameCell
-                  name={member.contact_name}
-                  email={member.contact_email}
-                  status={member.contact_status}
-                />
-              </TableCell>
-              {/* Stage cells: not sticky */}
-              {PIPELINE_STAGES.map((stage) => {
-                const eventSummary = getStageEventSummary(member, stage)
-                return (
-                  <TableCell key={stage} className="text-center p-2 min-w-[100px] w-[100px]">
-                    <StageCell
-                      contactId={member.contact}
-                      stage={stage}
-                      eventSummary={eventSummary}
-                      onCellClick={handleCellClick}
-                    />
-                  </TableCell>
-                )
-              })}
-            </TableRow>
-          ))}
+          {members.map((member) => {
+            const currentStage = getHighestStageWithEvents(member.stage_events)
+            return (
+              <TableRow key={member.id}>
+                {/* Contact name cell: sticky left only */}
+                <TableCell className="sticky left-0 z-20 bg-background border-r min-w-[200px] w-[200px]">
+                  <ContactNameCell
+                    name={member.contact_name}
+                    email={member.contact_email}
+                    status={member.contact_status}
+                  />
+                </TableCell>
+                {/* Stage cells: not sticky */}
+                {PIPELINE_STAGES.map((stage) => {
+                  const eventSummary = getStageEventSummary(member, stage)
+                  return (
+                    <TableCell key={stage} className="text-center p-2 min-w-[100px] w-[100px]">
+                      <StageCell
+                        contactId={member.contact}
+                        stage={stage}
+                        eventSummary={eventSummary}
+                        currentStage={currentStage}
+                        onCellClick={handleCellClick}
+                      />
+                    </TableCell>
+                  )
+                })}
+                {/* Decision cell */}
+                <TableCell className="p-2 min-w-[140px] w-[140px]">
+                  <DecisionCell
+                    decision={member.decision}
+                    journalContactId={member.id}
+                    journalId={journalId}
+                    contactName={member.contact_name}
+                  />
+                </TableCell>
+                {/* Next Steps cell */}
+                <TableCell className="text-center p-2 min-w-[100px] w-[100px]">
+                  <NextStepsCell journalContactId={member.id} />
+                </TableCell>
+              </TableRow>
+            )
+          })}
         </TableBody>
       </Table>
     </div>
