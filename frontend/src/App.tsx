@@ -3,6 +3,7 @@ import { QueryProvider } from "@/providers/QueryProvider"
 import { AuthProvider } from "@/providers/AuthProvider"
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
 import { AppLayout } from "@/components/layout/AppLayout"
+import { Toaster } from "@/components/ui/sonner"
 
 // Pages
 import Login from "@/pages/Login"
@@ -84,6 +85,7 @@ function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
+        <Toaster position="bottom-right" />
       </AuthProvider>
     </QueryProvider>
   )
