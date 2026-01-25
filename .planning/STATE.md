@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-01-24)
 ## Current Position
 
 Phase: 5 of 6 (Grid Interactions & Decision UI)
-Plan: 1 of 5 in current phase
+Plan: 2 of 5 in current phase
 Status: In progress
-Last activity: 2026-01-25 — Completed 05-01-PLAN.md (UI Components Setup)
+Last activity: 2026-01-25 — Completed 05-02-PLAN.md (NextStep Backend API)
 
-Progress: [█████████░] 81%
+Progress: [█████████░] 87%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 13
-- Average duration: 2.8 minutes
-- Total execution time: 0.63 hours
+- Total plans completed: 14
+- Average duration: 2.9 minutes
+- Total execution time: 0.67 hours
 
 **By Phase:**
 
@@ -32,11 +32,11 @@ Progress: [█████████░] 81%
 | 02 Contact Membership & Search | 2 | 7 min | 3.5 min |
 | 03 Decision Tracking | 3 | 10 min | 3.3 min |
 | 04 Grid UI Core | 5 | 9 min | 1.8 min |
-| 05 Grid Interactions & Decision UI | 1 | 2 min | 2 min |
+| 05 Grid Interactions & Decision UI | 2 | 7 min | 3.5 min |
 
 **Recent Trend:**
-- Last 5 plans: [1m, 2m, 1m, 3m, 2m]
-- Trend: Excellent velocity - averaging 2.8 minutes per plan
+- Last 5 plans: [2m, 1m, 3m, 2m, 5m]
+- Trend: Excellent velocity - averaging 2.9 minutes per plan
 
 *Updated after each plan completion*
 
@@ -82,6 +82,8 @@ Recent decisions affecting current work:
 - stage_events computed in serializer (04-05: JournalContactSerializer.get_stage_events aggregates events per stage)
 - Toaster position bottom-right for non-intrusive notifications (05-01: global toast access via toast() API)
 - Full shadcn/ui Select component with scroll buttons for long option lists (05-01: handles long dropdown lists gracefully)
+- NextStepSerializer handles completed_at timestamp in update() method (05-02: automatic timestamp when marking complete/uncomplete)
+- Generic views over ViewSet for NextStep API (05-02: consistency with existing decision and journal patterns)
 
 ### Pending Todos
 
@@ -101,7 +103,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-01-25 (plan execution)
-Stopped at: Completed 05-01-PLAN.md (UI Components Setup)
+Stopped at: Completed 05-02-PLAN.md (NextStep Backend API)
 Resume file: None
 
-**Next steps:** Continue Phase 5 - Plans 02-05 (Decision mutations, dialogs, stage movement, header)
+**Next steps:** Continue Phase 5 - Plans 03-05

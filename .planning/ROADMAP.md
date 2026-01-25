@@ -134,8 +134,8 @@ Plans:
 **Plans**: 6 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — UI dependencies (Sonner, Select, Progress, Checkbox components)
-- [ ] 05-02-PLAN.md — NextStep backend model, serializer, views, and tests
+- [x] 05-01-PLAN.md — UI dependencies (Sonner, Select, Progress, Checkbox components)
+- [x] 05-02-PLAN.md — NextStep backend model, serializer, views, and tests
 - [ ] 05-03-PLAN.md — Decision API functions, optimistic mutation hooks, JournalHeader
 - [ ] 05-04-PLAN.md — Stage movement warnings and NextSteps frontend
 - [ ] 05-05-PLAN.md — DecisionDialog and DecisionCell components
@@ -179,5 +179,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 2. Contact Membership & Search | 2/2 | Complete | 2026-01-24 |
 | 3. Decision Tracking | 3/3 | Complete | 2026-01-24 |
 | 4. Grid UI Core | 5/5 | Complete | 2026-01-25 |
-| 5. Grid Interactions & Decision UI | 0/6 | Planned | - |
+| 5. Grid Interactions & Decision UI | 2/6 | In progress | - |
 | 6. Reporting & Integration | 0/TBD | Not started | - |
