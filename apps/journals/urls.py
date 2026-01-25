@@ -12,6 +12,8 @@ from apps.journals.views import (
     JournalDetailView,
     JournalListCreateView,
     JournalStageEventListCreateView,
+    NextStepDetailView,
+    NextStepListCreateView,
 )
 
 app_name = 'journals'
@@ -25,4 +27,6 @@ urlpatterns = [
     path('decisions/', DecisionListCreateView.as_view(), name='decision-list'),
     path('decisions/<uuid:pk>/', DecisionDetailView.as_view(), name='decision-detail'),
     path('decision-history/', DecisionHistoryListView.as_view(), name='decision-history-list'),
+    path('next-steps/', NextStepListCreateView.as_view(), name='nextstep-list'),
+    path('next-steps/<uuid:pk>/', NextStepDetailView.as_view(), name='nextstep-detail'),
 ]

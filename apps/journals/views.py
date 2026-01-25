@@ -15,6 +15,7 @@ from apps.journals.models import (
     Journal,
     JournalContact,
     JournalStageEvent,
+    NextStep,
 )
 from apps.journals.serializers import (
     DecisionHistorySerializer,
@@ -24,6 +25,7 @@ from apps.journals.serializers import (
     JournalDetailSerializer,
     JournalListSerializer,
     JournalStageEventSerializer,
+    NextStepSerializer,
 )
 
 
@@ -363,3 +365,54 @@ class DecisionHistoryListView(generics.ListAPIView):
             queryset = queryset.filter(decision__journal_contact_id=journal_contact_id)
 
         return queryset.order_by('-created_at')
+
+
+class NextStepListCreateView(generics.ListCreateAPIView):
+    """
+    GET: List next steps
+    POST: Create a new next step
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = NextStepSerializer
+
+    def get_queryset(self):
+        """Filter to next steps in journals owned by user (or all for admin)."""
+        user = self.request.user
+
+        if user.role == 'admin':
+            qs = NextStep.objects.all()
+        else:
+            qs = NextStep.objects.filter(journal_contact__journal__owner=user)
+
+        # Filter by journal_contact
+        journal_contact_id = self.request.query_params.get('journal_contact')
+        if journal_contact_id:
+            qs = qs.filter(journal_contact_id=journal_contact_id)
+
+        # Filter by completed status
+        completed = self.request.query_params.get('completed')
+        if completed is not None:
+            qs = qs.filter(completed=completed.lower() == 'true')
+
+        return qs.select_related('journal_contact__journal', 'journal_contact__contact')
+
+
+class NextStepDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    GET: Retrieve next step details
+    PATCH/PUT: Update next step (mark complete, edit, etc.)
+    DELETE: Remove next step
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = NextStepSerializer
+
+    def get_queryset(self):
+        """Filter to next steps in journals owned by user (or all for admin)."""
+        user = self.request.user
+
+        if user.role == 'admin':
+            qs = NextStep.objects.all()
+        else:
+            qs = NextStep.objects.filter(journal_contact__journal__owner=user)
+
+        return qs.select_related('journal_contact__journal', 'journal_contact__contact')

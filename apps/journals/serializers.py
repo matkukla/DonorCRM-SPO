@@ -12,6 +12,7 @@ from apps.journals.models import (
     Journal,
     JournalContact,
     JournalStageEvent,
+    NextStep,
 )
 
 
@@ -309,3 +310,37 @@ class DecisionHistorySerializer(serializers.ModelSerializer):
         model = DecisionHistory
         fields = ['id', 'decision', 'changed_fields', 'changed_by', 'changed_by_email', 'created_at']
         read_only_fields = ['id', 'decision', 'changed_fields', 'changed_by', 'changed_by_email', 'created_at']
+
+
+class NextStepSerializer(serializers.ModelSerializer):
+    """Serializer for NextStep model with ownership validation."""
+
+    class Meta:
+        model = NextStep
+        fields = [
+            'id', 'journal_contact', 'title', 'notes',
+            'due_date', 'completed', 'completed_at', 'order',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'completed_at', 'created_at', 'updated_at']
+
+    def validate_journal_contact(self, value):
+        """Ensure user owns the journal that contains this contact."""
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            user = request.user
+            if user.role != 'admin' and value.journal.owner != user:
+                raise serializers.ValidationError(
+                    "You don't have permission to add next steps to this journal contact."
+                )
+        return value
+
+    def update(self, instance, validated_data):
+        """Handle completed timestamp when marking complete."""
+        from django.utils import timezone
+
+        if validated_data.get('completed') and not instance.completed:
+            validated_data['completed_at'] = timezone.now()
+        elif 'completed' in validated_data and not validated_data['completed']:
+            validated_data['completed_at'] = None
+        return super().update(instance, validated_data)
