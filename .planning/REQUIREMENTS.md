@@ -162,9 +162,9 @@ Requirement-to-Phase mapping (updated during roadmap creation):
 | JRN-07 | Phase 3 | Complete |
 | JRN-08 | Phase 3 | Complete |
 | JRN-09 | Phase 3 | Complete |
-| JRN-10 | Phase 4 | Pending |
-| JRN-11 | Phase 4 | Pending |
-| JRN-12 | Phase 4 | Pending |
+| JRN-10 | Phase 4 | Complete |
+| JRN-11 | Phase 4 | Complete |
+| JRN-12 | Phase 4 | Complete |
 | JRN-13 | Phase 5 | Pending |
 | JRN-14 | Phase 5 | Pending |
 | JRN-15 | Phase 6 | Pending |

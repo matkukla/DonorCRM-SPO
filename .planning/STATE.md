@@ -6,23 +6,23 @@ See: .planning/PROJECT.md (updated 2026-01-24)
 
 **Core value:** A missionary can look at their journal and instantly know what's next for each donor and what they've completed so far.
 
-**Current focus:** Phase 4 - Grid UI Core
+**Current focus:** Phase 4 complete - Ready for Phase 5
 
 ## Current Position
 
 Phase: 4 of 6 (Grid UI Core)
-Plan: 3 of 5 in current phase
-Status: In progress
-Last activity: 2026-01-24 — Completed 04-03-PLAN.md (Grid Components with Sticky Headers)
+Plan: 5 of 5 in current phase
+Status: Phase complete
+Last activity: 2026-01-25 — Completed 04-05-PLAN.md (JournalDetail Page Integration)
 
-Progress: [███████░░░] 70%
+Progress: [████████░░] 75%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9
-- Average duration: 2.8 minutes
-- Total execution time: 0.45 hours
+- Total plans completed: 12
+- Average duration: 3.0 minutes
+- Total execution time: 0.60 hours
 
 **By Phase:**
 
@@ -31,11 +31,11 @@ Progress: [███████░░░] 70%
 | 01 Foundation & Data Model | 2 | 10 min | 5 min |
 | 02 Contact Membership & Search | 2 | 7 min | 3.5 min |
 | 03 Decision Tracking | 3 | 10 min | 3.3 min |
-| 04 Grid UI Core | 3 | 5 min | 1.7 min |
+| 04 Grid UI Core | 5 | 9 min | 1.8 min |
 
 **Recent Trend:**
-- Last 5 plans: [7m, 5m, 2m, 1m, 2m]
-- Trend: Excellent velocity - averaging 2.8 minutes per plan
+- Last 5 plans: [2m, 1m, 2m, 1m, 3m]
+- Trend: Excellent velocity - averaging 3.0 minutes per plan
 
 *Updated after each plan completion*
 
@@ -77,6 +77,8 @@ Recent decisions affecting current work:
 - Sticky CSS over virtualization for initial implementation (04-03: dataset size doesn't require virtualization complexity)
 - Z-index hierarchy: z-10 headers, z-20 columns, z-30 intersection (04-03: prevents overlap during bi-directional scroll)
 - 300ms tooltip delay to prevent interference with clicks (04-03: delayDuration on Tooltip component)
+- Horizontal scroll via min-width constraints (04-05: table min-width 900px, fixed column widths force scrolling)
+- stage_events computed in serializer (04-05: JournalContactSerializer.get_stage_events aggregates events per stage)
 
 ### Pending Todos
 
@@ -88,18 +90,15 @@ None yet.
 - Validate exact index strategy with production data patterns (composite indexes for contact, journal, created_at)
 - Confirm TimeStampedModel extends cleanly for all new models
 
-**Phase 3 Research Flags:**
-- Fine-tune grid virtualization configuration for Tailwind CSS layout
-
 **Critical Pitfalls to Avoid:**
 - Phase 1: N+1 queries from event replay (must denormalize current_stage in JournalContactStageState)
 - Phase 2: Atomic transaction scope bugs (wrap decision update + history + event creation in single transaction)
-- Phase 4: React grid cell re-render cascade (use React.memo + minimal prop passing)
+- Phase 5: Optimistic update rollback on error (use React Query mutation onError callbacks)
 
 ## Session Continuity
 
-Last session: 2026-01-24 (plan execution)
-Stopped at: Completed 04-03-PLAN.md (Grid Components with Sticky Headers)
+Last session: 2026-01-25 (plan execution)
+Stopped at: Completed Phase 4 - All plans complete, verification passed
 Resume file: None
 
-**Next steps:** Continue Phase 4 - Plans 04-04 and 04-05 for timeline drawer and page integration
+**Next steps:** Phase 5 - Grid Interactions & Decision UI

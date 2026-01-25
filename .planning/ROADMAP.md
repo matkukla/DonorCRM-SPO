@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Foundation & Data Model** - Core models, API endpoints, event logging
 - [x] **Phase 2: Contact Membership & Search** - Add/remove contacts, filtering
 - [x] **Phase 3: Decision Tracking** - Current state + history with dual-table pattern
-- [ ] **Phase 4: Grid UI Core** - Static grid, stage cells, event timeline drawer
+- [x] **Phase 4: Grid UI Core** - Static grid, stage cells, event timeline drawer
 - [ ] **Phase 5: Grid Interactions & Decision UI** - Optimistic updates, decision dialogs, next steps
 - [ ] **Phase 6: Reporting & Integration** - Analytics charts, contact detail integration, task linking
 
@@ -107,11 +107,11 @@ Plans:
 **Plans**: 5 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — Setup dependencies (Tooltip, date-fns, Badge variant, TypeScript types)
-- [ ] 04-02-PLAN.md — Journal API client and React Query hooks
-- [ ] 04-03-PLAN.md — JournalGrid component with sticky headers and StageCell
-- [ ] 04-04-PLAN.md — EventTimelineDrawer with infinite scroll pagination
-- [ ] 04-05-PLAN.md — JournalDetail page integration and visual verification
+- [x] 04-01-PLAN.md — Setup dependencies (Tooltip, date-fns, Badge variant, TypeScript types)
+- [x] 04-02-PLAN.md — Journal API client and React Query hooks
+- [x] 04-03-PLAN.md — JournalGrid component with sticky headers and StageCell
+- [x] 04-04-PLAN.md — EventTimelineDrawer with infinite scroll pagination
+- [x] 04-05-PLAN.md — JournalDetail page integration and visual verification
 
 ---
 
@@ -173,6 +173,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 1. Foundation & Data Model | 2/2 | Complete | 2026-01-24 |
 | 2. Contact Membership & Search | 2/2 | Complete | 2026-01-24 |
 | 3. Decision Tracking | 3/3 | Complete | 2026-01-24 |
-| 4. Grid UI Core | 0/5 | Not started | - |
+| 4. Grid UI Core | 5/5 | Complete | 2026-01-25 |
 | 5. Grid Interactions & Decision UI | 0/TBD | Not started | - |
 | 6. Reporting & Integration | 0/TBD | Not started | - |
