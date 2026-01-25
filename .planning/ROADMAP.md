@@ -131,10 +131,15 @@ Plans:
 6. Header progress calculation updates in real-time as decisions change
 7. Grid cells re-render efficiently (memoized, no cascade re-renders when interacting with single cell)
 
-**Plans**: TBD
+**Plans**: 6 plans
 
 Plans:
-- [ ] TBD
+- [ ] 05-01-PLAN.md — UI dependencies (Sonner, Select, Progress, Checkbox components)
+- [ ] 05-02-PLAN.md — NextStep backend model, serializer, views, and tests
+- [ ] 05-03-PLAN.md — Decision API functions, optimistic mutation hooks, JournalHeader
+- [ ] 05-04-PLAN.md — Stage movement warnings and NextSteps frontend
+- [ ] 05-05-PLAN.md — DecisionDialog and DecisionCell components
+- [ ] 05-06-PLAN.md — Page integration with human verification
 
 ---
 
@@ -174,5 +179,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 2. Contact Membership & Search | 2/2 | Complete | 2026-01-24 |
 | 3. Decision Tracking | 3/3 | Complete | 2026-01-24 |
 | 4. Grid UI Core | 5/5 | Complete | 2026-01-25 |
-| 5. Grid Interactions & Decision UI | 0/TBD | Not started | - |
+| 5. Grid Interactions & Decision UI | 0/6 | Planned | - |
 | 6. Reporting & Integration | 0/TBD | Not started | - |
