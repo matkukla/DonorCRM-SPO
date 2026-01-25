@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Contact Membership & Search** - Add/remove contacts, filtering
 - [x] **Phase 3: Decision Tracking** - Current state + history with dual-table pattern
 - [x] **Phase 4: Grid UI Core** - Static grid, stage cells, event timeline drawer
-- [ ] **Phase 5: Grid Interactions & Decision UI** - Optimistic updates, decision dialogs, next steps
+- [x] **Phase 5: Grid Interactions & Decision UI** - Optimistic updates, decision dialogs, next steps
 - [ ] **Phase 6: Reporting & Integration** - Analytics charts, contact detail integration, task linking
 
 ## Phase Details
@@ -139,7 +139,7 @@ Plans:
 - [x] 05-03-PLAN.md — Decision API functions, optimistic mutation hooks, JournalHeader
 - [x] 05-04-PLAN.md — Stage movement warnings and NextSteps frontend
 - [x] 05-05-PLAN.md — DecisionDialog and DecisionCell components
-- [ ] 05-06-PLAN.md — Page integration with human verification
+- [x] 05-06-PLAN.md — Page integration with human verification
 
 ---
 
@@ -179,5 +179,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 2. Contact Membership & Search | 2/2 | Complete | 2026-01-24 |
 | 3. Decision Tracking | 3/3 | Complete | 2026-01-24 |
 | 4. Grid UI Core | 5/5 | Complete | 2026-01-25 |
-| 5. Grid Interactions & Decision UI | 5/6 | In progress | - |
+| 5. Grid Interactions & Decision UI | 6/6 | Complete | 2026-01-25 |
 | 6. Reporting & Integration | 0/TBD | Not started | - |
