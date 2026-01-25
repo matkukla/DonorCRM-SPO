@@ -10,6 +10,7 @@ import {
   getContactDonations,
   getContactPledges,
   getContactTasks,
+  getContactJournals,
 } from "@/api/contacts"
 import type { ContactFilters, ContactCreate, ContactUpdate } from "@/api/contacts"
 
@@ -104,5 +105,14 @@ export function useContactTasks(id: string) {
     queryKey: ["contacts", id, "tasks"],
     queryFn: () => getContactTasks(id),
     enabled: !!id,
+  })
+}
+
+/** Hook for fetching contact's journal memberships */
+export function useContactJournals(contactId: string) {
+  return useQuery({
+    queryKey: ['contacts', contactId, 'journals'],
+    queryFn: () => getContactJournals(contactId),
+    enabled: !!contactId,
   })
 }

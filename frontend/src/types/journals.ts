@@ -282,3 +282,33 @@ export function checkStageTransition(
   // Sequential movement
   return { isSequential: true, skippedStages: [], isRevisiting: false }
 }
+
+/** Analytics data types */
+export interface DecisionTrendItem {
+  month: string  // 'YYYY-MM'
+  count: number
+}
+
+export interface StageActivityItem {
+  date: string  // 'YYYY-MM'
+  contact: number
+  meet: number
+  close: number
+  decision: number
+  thank: number
+  next_steps: number
+}
+
+export interface PipelineBreakdownItem {
+  stage: PipelineStage
+  count: number
+}
+
+export interface NextStepsQueueItem {
+  id: string
+  title: string
+  due_date: string | null
+  contact_name: string
+  journal_name: string
+  journal_contact_id: string
+}

@@ -163,3 +163,28 @@ export async function getContactTasks(id: string) {
   const response = await apiClient.get(`/contacts/${id}/tasks/`)
   return response.data
 }
+
+/** Journal membership for a contact */
+export interface ContactJournalMembership {
+  id: string
+  journal_id: string
+  journal_name: string
+  goal_amount: string
+  deadline: string | null
+  current_stage: string
+  decision: {
+    id: string
+    amount: string
+    cadence: string
+    status: string
+  } | null
+  created_at: string
+}
+
+/** Get journals a contact belongs to */
+export async function getContactJournals(contactId: string): Promise<ContactJournalMembership[]> {
+  const response = await apiClient.get<ContactJournalMembership[]>(
+    `/contacts/${contactId}/journals/`
+  )
+  return response.data
+}

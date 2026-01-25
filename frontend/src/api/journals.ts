@@ -12,6 +12,10 @@ import type {
   NextStep,
   NextStepCreate,
   NextStepUpdate,
+  DecisionTrendItem,
+  StageActivityItem,
+  PipelineBreakdownItem,
+  NextStepsQueueItem,
 } from "@/types/journals"
 
 /** Paginated response from DRF */
@@ -207,4 +211,36 @@ export async function updateNextStep(
 /** Delete a next step */
 export async function deleteNextStep(id: string): Promise<void> {
   await apiClient.delete(`/journals/next-steps/${id}/`)
+}
+
+/** Get decision trends for charts */
+export async function getDecisionTrends(): Promise<DecisionTrendItem[]> {
+  const response = await apiClient.get<DecisionTrendItem[]>(
+    '/journals/analytics/decision-trends/'
+  )
+  return response.data
+}
+
+/** Get stage activity for area chart */
+export async function getStageActivity(): Promise<StageActivityItem[]> {
+  const response = await apiClient.get<StageActivityItem[]>(
+    '/journals/analytics/stage-activity/'
+  )
+  return response.data
+}
+
+/** Get pipeline breakdown for pie chart */
+export async function getPipelineBreakdown(): Promise<PipelineBreakdownItem[]> {
+  const response = await apiClient.get<PipelineBreakdownItem[]>(
+    '/journals/analytics/pipeline-breakdown/'
+  )
+  return response.data
+}
+
+/** Get next steps queue */
+export async function getNextStepsQueue(): Promise<NextStepsQueueItem[]> {
+  const response = await apiClient.get<NextStepsQueueItem[]>(
+    '/journals/analytics/next-steps-queue/'
+  )
+  return response.data
 }
