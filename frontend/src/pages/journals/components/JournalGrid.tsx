@@ -64,18 +64,18 @@ export function JournalGrid({
 
   return (
     <div className="relative w-full overflow-x-auto border rounded-lg">
-      <Table>
+      <Table className="min-w-[900px]">
         <TableHeader>
           <TableRow className="bg-background">
             {/* Intersection cell: sticky both directions, highest z-index */}
-            <TableHead className="sticky top-0 left-0 z-30 bg-background min-w-[200px] border-r">
+            <TableHead className="sticky top-0 left-0 z-30 bg-background min-w-[200px] w-[200px] border-r">
               Contact
             </TableHead>
             {/* Stage header cells: sticky top only */}
             {PIPELINE_STAGES.map((stage) => (
               <TableHead
                 key={stage}
-                className="sticky top-0 z-10 bg-background text-center w-20"
+                className="sticky top-0 z-10 bg-background text-center min-w-[100px] w-[100px]"
               >
                 {STAGE_LABELS[stage]}
               </TableHead>
@@ -86,7 +86,7 @@ export function JournalGrid({
           {members.map((member) => (
             <TableRow key={member.id}>
               {/* Contact name cell: sticky left only */}
-              <TableCell className="sticky left-0 z-20 bg-background border-r">
+              <TableCell className="sticky left-0 z-20 bg-background border-r min-w-[200px] w-[200px]">
                 <ContactNameCell
                   name={member.contact_name}
                   email={member.contact_email}
@@ -97,7 +97,7 @@ export function JournalGrid({
               {PIPELINE_STAGES.map((stage) => {
                 const eventSummary = getStageEventSummary(member, stage)
                 return (
-                  <TableCell key={stage} className="text-center p-2">
+                  <TableCell key={stage} className="text-center p-2 min-w-[100px] w-[100px]">
                     <StageCell
                       contactId={member.contact}
                       stage={stage}
