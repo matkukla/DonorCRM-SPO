@@ -326,3 +326,72 @@ class DecisionHistory(TimeStampedModel):
 
     def __str__(self):
         return f'History for {self.decision} at {self.created_at}'
+
+
+class NextStep(TimeStampedModel):
+    """
+    Checklist item for tracking next actions per journal contact.
+    Independent items (not a single boolean) per JRN-06.
+    """
+    journal_contact = models.ForeignKey(
+        'JournalContact',
+        on_delete=models.CASCADE,
+        related_name='next_steps',
+        db_index=True
+    )
+
+    title = models.CharField(
+        'title',
+        max_length=255,
+        help_text='Brief description of the next step'
+    )
+
+    notes = models.TextField(
+        'notes',
+        blank=True,
+        help_text='Optional additional details'
+    )
+
+    due_date = models.DateField(
+        'due date',
+        null=True,
+        blank=True,
+        help_text='Optional target completion date'
+    )
+
+    completed = models.BooleanField(
+        'completed',
+        default=False,
+        db_index=True
+    )
+
+    completed_at = models.DateTimeField(
+        'completed at',
+        null=True,
+        blank=True
+    )
+
+    order = models.PositiveIntegerField(
+        'display order',
+        default=0,
+        help_text='Order in checklist (lower = first)'
+    )
+
+    class Meta:
+        db_table = 'journal_next_steps'
+        verbose_name = 'next step'
+        verbose_name_plural = 'next steps'
+        ordering = ['order', 'created_at']
+        indexes = [
+            models.Index(fields=['journal_contact', 'completed']),
+        ]
+
+    def __str__(self):
+        status = "Done" if self.completed else "Pending"
+        return f'{self.title} ({status})'
+
+    def mark_complete(self):
+        """Mark this step as completed."""
+        self.completed = True
+        self.completed_at = timezone.now()
+        self.save(update_fields=['completed', 'completed_at', 'updated_at'])
