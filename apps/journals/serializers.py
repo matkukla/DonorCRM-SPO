@@ -185,23 +185,59 @@ class JournalContactSerializer(serializers.ModelSerializer):
 class JournalStageEventSerializer(serializers.ModelSerializer):
     """
     Serializer for journal stage events.
+
+    Accepts either `journal_contact` (existing membership) or `contact_id`
+    (auto-resolves/creates membership in the user's first active journal).
     """
+    contact_id = serializers.UUIDField(write_only=True, required=False)
+
     class Meta:
         model = JournalStageEvent
         fields = [
-            'id', 'journal_contact', 'stage', 'event_type',
+            'id', 'journal_contact', 'contact_id', 'stage', 'event_type',
             'notes', 'metadata', 'triggered_by', 'created_at'
         ]
         read_only_fields = ['id', 'triggered_by', 'created_at']
+        extra_kwargs = {
+            'journal_contact': {'required': False},
+        }
+
+    def validate(self, attrs):
+        if not attrs.get('journal_contact') and not attrs.get('contact_id'):
+            raise serializers.ValidationError(
+                "Either journal_contact or contact_id is required."
+            )
+        return attrs
 
     def create(self, validated_data):
-        # Set triggered_by to current user
         request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            validated_data['triggered_by'] = request.user
+        user = request.user if request else None
 
-        stage_event = JournalStageEvent.objects.create(**validated_data)
-        return stage_event
+        contact_id = validated_data.pop('contact_id', None)
+
+        if not validated_data.get('journal_contact') and contact_id:
+            from apps.contacts.models import Contact
+
+            contact = Contact.objects.get(id=contact_id)
+            journal = Journal.objects.filter(
+                owner=user, is_archived=False
+            ).first()
+            if not journal:
+                # Auto-create a default journal for the user
+                journal = Journal.objects.create(
+                    owner=user,
+                    name="My Journal",
+                    goal_amount=Decimal('0.01'),
+                )
+            jc, _ = JournalContact.objects.get_or_create(
+                journal=journal, contact=contact
+            )
+            validated_data['journal_contact'] = jc
+
+        if user and user.is_authenticated:
+            validated_data['triggered_by'] = user
+
+        return JournalStageEvent.objects.create(**validated_data)
 
 
 class DecisionSerializer(serializers.ModelSerializer):

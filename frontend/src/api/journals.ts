@@ -139,7 +139,8 @@ export async function getStageEvents({
 
 /** Create a stage event */
 export interface StageEventCreate {
-  journal_contact: string
+  journal_contact?: string
+  contact_id?: string
   stage: PipelineStage
   event_type: string
   notes?: string

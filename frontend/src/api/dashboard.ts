@@ -42,7 +42,6 @@ export interface LateDonation {
   last_gift_date: string | null
   days_late: number
   next_expected_date: string | null
-  in_journal: boolean
 }
 
 export interface RecentGift {

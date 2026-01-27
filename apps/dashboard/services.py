@@ -91,8 +91,6 @@ def get_late_donations(user, limit=10):
     Returns contacts with active recurring commitments whose expected
     gift hasn't arrived after the grace period.
     """
-    from apps.journals.models import JournalContact
-
     if user.role == 'admin':
         pledges = Pledge.objects.all()
     else:
@@ -102,15 +100,6 @@ def get_late_donations(user, limit=10):
         status=PledgeStatus.ACTIVE,
         is_late=True,
     ).select_related('contact').order_by('-days_late')[:limit]
-
-    # Batch-check which contacts have journal memberships for Quick Log
-    contact_ids = [p.contact_id for p in late_pledges]
-    contacts_with_journals = set(
-        JournalContact.objects.filter(
-            contact_id__in=contact_ids,
-            journal__is_archived=False,
-        ).values_list('contact_id', flat=True)
-    )
 
     return [{
         'id': str(p.id),
@@ -122,7 +111,6 @@ def get_late_donations(user, limit=10):
         'last_gift_date': p.last_fulfilled_date.isoformat() if p.last_fulfilled_date else None,
         'days_late': p.days_late,
         'next_expected_date': p.next_expected_date.isoformat() if p.next_expected_date else None,
-        'in_journal': p.contact_id in contacts_with_journals,
     } for p in late_pledges]
 
 

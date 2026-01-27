@@ -84,7 +84,7 @@ export function LateDonations({ donations, totalCount, isLoading, onQuickLog }: 
                 </div>
                 <div className="flex items-center gap-2 ml-2 shrink-0">
                   <Badge variant="destructive">{donation.days_late}d late</Badge>
-                  {onQuickLog && donation.in_journal && (
+                  {onQuickLog && (
                     <Button
                       variant="ghost"
                       size="sm"

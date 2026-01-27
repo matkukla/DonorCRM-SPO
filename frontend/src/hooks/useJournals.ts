@@ -161,22 +161,38 @@ export function useCreateStageEvent() {
   return useMutation({
     mutationFn: (data: StageEventCreate) => createStageEvent(data),
     onSuccess: (_, variables) => {
-      // Invalidate both the specific stage query and any all-events query
-      queryClient.invalidateQueries({
-        queryKey: ["stage-events", variables.journal_contact],
-      })
+      // Invalidate stage events for the specific journal contact
+      if (variables.journal_contact) {
+        queryClient.invalidateQueries({
+          queryKey: ["stage-events", variables.journal_contact],
+        })
+      }
       // Also invalidate journal members to update stage event summaries
       queryClient.invalidateQueries({
         queryKey: ["journals"],
         refetchType: "active",
       })
       // Invalidate contact journal-events timeline (used on Contact Detail)
+      // and contact journals list (membership may have been auto-created)
+      if (variables.contact_id) {
+        queryClient.invalidateQueries({
+          queryKey: ["contacts", variables.contact_id, "journal-events"],
+        })
+        queryClient.invalidateQueries({
+          queryKey: ["contacts", variables.contact_id, "journals"],
+        })
+      } else {
+        // Broader invalidation when we don't know the contact_id
+        queryClient.invalidateQueries({
+          predicate: (query) =>
+            Array.isArray(query.queryKey) &&
+            query.queryKey[0] === "contacts" &&
+            (query.queryKey[2] === "journal-events" || query.queryKey[2] === "journals"),
+        })
+      }
+      // Invalidate dashboard data so journal activity widget updates
       queryClient.invalidateQueries({
-        queryKey: ["contacts"],
-        predicate: (query) =>
-          Array.isArray(query.queryKey) &&
-          query.queryKey[0] === "contacts" &&
-          query.queryKey[2] === "journal-events",
+        queryKey: ["dashboard"],
       })
     },
   })

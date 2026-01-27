@@ -87,14 +87,18 @@ export const LogEventDialog = React.memo(function LogEventDialog({
 
   const effectiveJournalContactId = preselectedJournalContactId || selectedJournalContactId
 
+  const canSubmit = !!effectiveJournalContactId || !!contactId
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!effectiveJournalContactId) return
+    if (!canSubmit) return
 
     try {
       await createEventMutation.mutateAsync({
-        journal_contact: effectiveJournalContactId,
+        ...(effectiveJournalContactId
+          ? { journal_contact: effectiveJournalContactId }
+          : { contact_id: contactId }),
         stage,
         event_type: eventType,
         notes: notes || undefined,
@@ -136,13 +140,6 @@ export const LogEventDialog = React.memo(function LogEventDialog({
                 </SelectContent>
               </Select>
             </div>
-          )}
-
-          {/* No journals message */}
-          {!preselectedJournalContactId && journals && journals.length === 0 && (
-            <p className="text-sm text-muted-foreground">
-              This contact is not enrolled in any journals.
-            </p>
           )}
 
           {/* Stage */}
@@ -209,7 +206,7 @@ export const LogEventDialog = React.memo(function LogEventDialog({
             </Button>
             <Button
               type="submit"
-              disabled={isPending || !effectiveJournalContactId}
+              disabled={isPending || !canSubmit}
             >
               {isPending ? "Saving..." : "Log Event"}
             </Button>
