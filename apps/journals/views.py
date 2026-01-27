@@ -430,12 +430,16 @@ class JournalAnalyticsViewSet(viewsets.ViewSet):
     """
     permission_classes = [permissions.IsAuthenticated]
 
+    def _is_admin(self, request):
+        return request.user.role == 'admin'
+
     @action(detail=False, methods=['get'], url_path='decision-trends')
     def decision_trends(self, request):
         """Decision counts over time (bar chart data)."""
-        trends = Decision.objects.filter(
+        qs = Decision.objects.all() if self._is_admin(request) else Decision.objects.filter(
             journal_contact__journal__owner=request.user
-        ).annotate(
+        )
+        trends = qs.annotate(
             month=TruncMonth('created_at')
         ).values('month').annotate(
             count=Count('id')
@@ -449,9 +453,10 @@ class JournalAnalyticsViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['get'], url_path='stage-activity')
     def stage_activity(self, request):
         """Event counts by stage over time (multi-line chart data)."""
-        activity = JournalStageEvent.objects.filter(
+        qs = JournalStageEvent.objects.all() if self._is_admin(request) else JournalStageEvent.objects.filter(
             journal_contact__journal__owner=request.user
-        ).annotate(
+        )
+        activity = qs.annotate(
             month=TruncMonth('created_at')
         ).values('month', 'stage').annotate(
             count=Count('id')
@@ -480,9 +485,10 @@ class JournalAnalyticsViewSet(viewsets.ViewSet):
             journal_contact=OuterRef('pk')
         ).order_by('-created_at').values('stage')[:1]
 
-        breakdown = JournalContact.objects.filter(
+        jc_qs = JournalContact.objects.all() if self._is_admin(request) else JournalContact.objects.filter(
             journal__owner=request.user
-        ).annotate(
+        )
+        breakdown = jc_qs.annotate(
             current_stage=Subquery(latest_stage)
         ).values('current_stage').annotate(
             count=Count('id')
@@ -498,8 +504,10 @@ class JournalAnalyticsViewSet(viewsets.ViewSet):
         """Upcoming next steps across all contacts (list data)."""
         from django.db.models import F
 
-        steps = NextStep.objects.filter(
-            journal_contact__journal__owner=request.user,
+        ns_qs = NextStep.objects.all() if self._is_admin(request) else NextStep.objects.filter(
+            journal_contact__journal__owner=request.user
+        )
+        steps = ns_qs.filter(
             completed=False
         ).select_related(
             'journal_contact__contact',

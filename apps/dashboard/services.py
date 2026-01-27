@@ -163,9 +163,13 @@ def get_recent_gifts(user, days=30, limit=10):
 
 def get_recent_journal_activity(user, limit=8):
     """Get recent journal stage events for dashboard widget."""
-    qs = JournalStageEvent.objects.filter(
-        journal_contact__journal__owner=user
-    ).select_related(
+    if user.role == 'admin':
+        qs = JournalStageEvent.objects.all()
+    else:
+        qs = JournalStageEvent.objects.filter(
+            journal_contact__journal__owner=user
+        )
+    qs = qs.select_related(
         'journal_contact__contact',
         'journal_contact__journal',
     ).order_by('-created_at')[:limit]

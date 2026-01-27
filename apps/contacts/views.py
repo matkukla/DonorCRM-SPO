@@ -236,6 +236,7 @@ class ContactJournalsView(generics.ListAPIView):
     """
     serializer_class = ContactJournalMembershipSerializer
     permission_classes = [permissions.IsAuthenticated, IsContactOwnerOrReadAccess]
+    pagination_class = None
 
     def get_queryset(self):
         from apps.journals.models import JournalStageEvent, Decision

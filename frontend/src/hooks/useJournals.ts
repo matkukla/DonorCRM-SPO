@@ -170,6 +170,14 @@ export function useCreateStageEvent() {
         queryKey: ["journals"],
         refetchType: "active",
       })
+      // Invalidate contact journal-events timeline (used on Contact Detail)
+      queryClient.invalidateQueries({
+        queryKey: ["contacts"],
+        predicate: (query) =>
+          Array.isArray(query.queryKey) &&
+          query.queryKey[0] === "contacts" &&
+          query.queryKey[2] === "journal-events",
+      })
     },
   })
 }

@@ -65,22 +65,22 @@ export const LogEventDialog = React.memo(function LogEventDialog({
   // Fetch contact's journals when contactId is provided
   const { data: journals } = useContactJournals(contactId || "")
 
-  // Auto-select journal if contact has only one membership
-  React.useEffect(() => {
-    if (journals?.length === 1 && !preselectedJournalContactId) {
-      setSelectedJournalContactId(journals[0].id)
-    }
-  }, [journals, preselectedJournalContactId])
-
-  // Reset form when dialog opens
+  // Reset form when dialog opens, and auto-select journal if only one membership
   React.useEffect(() => {
     if (open) {
-      setSelectedJournalContactId(preselectedJournalContactId || "")
       setStage(preselectedStage || "contact")
       setEventType("note_added")
       setNotes("")
+
+      if (preselectedJournalContactId) {
+        setSelectedJournalContactId(preselectedJournalContactId)
+      } else if (journals?.length === 1) {
+        setSelectedJournalContactId(journals[0].id)
+      } else {
+        setSelectedJournalContactId("")
+      }
     }
-  }, [open, preselectedJournalContactId, preselectedStage])
+  }, [open, preselectedJournalContactId, preselectedStage, journals])
 
   const createEventMutation = useCreateStageEvent()
   const isPending = createEventMutation.isPending
