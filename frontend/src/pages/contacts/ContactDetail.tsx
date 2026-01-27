@@ -1,13 +1,17 @@
+import { useState, useMemo } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
+import { formatDistanceToNow } from "date-fns"
 import {
   useContact,
   useContactDonations,
   useContactPledges,
   useContactTasks,
   useContactJournals,
+  useContactJournalEvents,
   useMarkContactThanked,
   useDeleteContact,
 } from "@/hooks/useContacts"
+import { LogEventDialog } from "@/pages/journals/components/LogEventDialog"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
 import { Button } from "@/components/ui/button"
@@ -16,6 +20,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   ArrowLeft,
+  BookOpen,
   Edit,
   Trash2,
   Heart,
@@ -73,6 +78,19 @@ export default function ContactDetail() {
   const { data: pledges } = useContactPledges(id!)
   const { data: tasks } = useContactTasks(id!)
   const { data: journals } = useContactJournals(id!)
+  const {
+    data: journalEventsData,
+    fetchNextPage: fetchNextEvents,
+    hasNextPage: hasMoreEvents,
+    isFetchingNextPage: isFetchingMoreEvents,
+  } = useContactJournalEvents(id!)
+
+  const journalEvents = useMemo(() => {
+    if (!journalEventsData?.pages) return []
+    return journalEventsData.pages.flatMap((page) => page.results)
+  }, [journalEventsData])
+
+  const [logEventOpen, setLogEventOpen] = useState(false)
 
   const markThankedMutation = useMarkContactThanked()
   const deleteMutation = useDeleteContact()
@@ -217,6 +235,7 @@ export default function ContactDetail() {
           <Tabs defaultValue="overview">
             <TabsList>
               <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="journal">Journal</TabsTrigger>
               <TabsTrigger value="donations">
                 Donations ({donations?.length || 0})
               </TabsTrigger>
@@ -225,9 +244,6 @@ export default function ContactDetail() {
               </TabsTrigger>
               <TabsTrigger value="tasks">
                 Tasks ({tasks?.length || 0})
-              </TabsTrigger>
-              <TabsTrigger value="journals">
-                Journals ({journals?.length || 0})
               </TabsTrigger>
             </TabsList>
 
@@ -420,18 +436,103 @@ export default function ContactDetail() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="journals" className="mt-6">
+            <TabsContent value="journal" className="mt-6 space-y-6">
+              {/* Event Timeline */}
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div>
-                    <CardTitle>Journal Memberships</CardTitle>
+                    <CardTitle>Journal</CardTitle>
+                    <CardDescription>
+                      Interaction timeline across all campaigns
+                    </CardDescription>
+                  </div>
+                  <Button size="sm" onClick={() => setLogEventOpen(true)}>
+                    <BookOpen className="h-4 w-4 mr-2" />
+                    Log Event
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  {journalEvents.length > 0 ? (
+                    <div className="space-y-1">
+                      {journalEvents.map((event, index) => {
+                        const eventTypeLabel = event.event_type
+                          .split("_")
+                          .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+                          .join(" ")
+                        const stageLabel = event.stage
+                          .split("_")
+                          .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+                          .join(" ")
+                        const relativeTime = formatDistanceToNow(new Date(event.created_at), {
+                          addSuffix: true,
+                        })
+                        const isLast = index === journalEvents.length - 1 && !hasMoreEvents
+
+                        return (
+                          <div key={event.id} className="relative pl-6 pb-6">
+                            {!isLast && (
+                              <div className="absolute left-[9px] top-4 bottom-0 w-[2px] bg-border" />
+                            )}
+                            <div className="absolute left-0 top-1 w-[18px] h-[18px] rounded-full border-2 border-border bg-background flex items-center justify-center">
+                              <div className="w-2 h-2 rounded-full bg-primary" />
+                            </div>
+                            <div className="pt-0">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <Badge variant="secondary" className="text-xs">
+                                    {eventTypeLabel}
+                                  </Badge>
+                                  <span className="text-xs text-muted-foreground">
+                                    {stageLabel}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {event.journal_name}
+                                  </span>
+                                </div>
+                                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                  {relativeTime}
+                                </span>
+                              </div>
+                              {event.notes && (
+                                <p className="mt-1 text-sm text-foreground line-clamp-2">
+                                  {event.notes}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                      {hasMoreEvents && (
+                        <div className="pt-2">
+                          <Button
+                            onClick={() => fetchNextEvents()}
+                            disabled={isFetchingMoreEvents}
+                            variant="outline"
+                            className="w-full"
+                          >
+                            {isFetchingMoreEvents ? "Loading..." : "Load More"}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground text-center py-8">
+                      No journal events yet. Click "Log Event" to record your first interaction.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Campaign Memberships */}
+              {journals && journals.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Campaign Memberships</CardTitle>
                     <CardDescription>
                       Journals this contact is currently enrolled in
                     </CardDescription>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {journals?.length ? (
+                  </CardHeader>
+                  <CardContent>
                     <div className="space-y-3">
                       {journals.map((membership) => (
                         <div
@@ -481,13 +582,15 @@ export default function ContactDetail() {
                         </div>
                       ))}
                     </div>
-                  ) : (
-                    <p className="text-muted-foreground text-center py-8">
-                      This contact is not in any journals yet.
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              )}
+
+              <LogEventDialog
+                open={logEventOpen}
+                onOpenChange={setLogEventOpen}
+                contactId={id}
+              />
             </TabsContent>
           </Tabs>
         </div>

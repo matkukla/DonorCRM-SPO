@@ -14,7 +14,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Plus, Search, Filter, MoreHorizontal, Heart, Mail, Phone } from "lucide-react"
+import { Plus, Search, Filter, MoreHorizontal, Heart, Mail, Phone, BookOpen } from "lucide-react"
+import { LogEventDialog } from "@/pages/journals/components/LogEventDialog"
 import type { ColumnDef } from "@tanstack/react-table"
 import type { ContactListItem, ContactStatus } from "@/api/contacts"
 
@@ -75,6 +76,7 @@ export default function ContactList() {
   })
 
   const markThankedMutation = useMarkContactThanked()
+  const [logEventContactId, setLogEventContactId] = useState<string | null>(null)
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -201,6 +203,15 @@ export default function ContactList() {
             >
               View details
             </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation()
+                setLogEventContactId(row.original.id)
+              }}
+            >
+              <BookOpen className="h-4 w-4 mr-2" />
+              Log Entry
+            </DropdownMenuItem>
             {row.original.needs_thank_you && (
               <DropdownMenuItem
                 onClick={(e) => {
@@ -301,6 +312,12 @@ export default function ContactList() {
             onRowClick={handleRowClick}
           />
         </div>
+
+        <LogEventDialog
+          open={!!logEventContactId}
+          onOpenChange={(open) => !open && setLogEventContactId(null)}
+          contactId={logEventContactId || undefined}
+        />
       </Container>
     </Section>
   )

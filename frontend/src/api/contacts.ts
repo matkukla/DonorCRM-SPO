@@ -164,6 +164,31 @@ export async function getContactTasks(id: string) {
   return response.data
 }
 
+/** Journal event for a contact (across all journal memberships) */
+export interface ContactJournalEvent {
+  id: string
+  event_type: string
+  stage: string
+  notes: string
+  metadata: Record<string, unknown>
+  created_at: string
+  journal_name: string
+  journal_id: string
+  journal_contact_id: string
+}
+
+/** Get paginated journal events for a contact */
+export async function getContactJournalEvents(
+  contactId: string,
+  page = 1,
+  pageSize = 10
+): Promise<PaginatedResponse<ContactJournalEvent>> {
+  const response = await apiClient.get<PaginatedResponse<ContactJournalEvent>>(
+    `/contacts/${contactId}/journal-events/?page=${page}&page_size=${pageSize}`
+  )
+  return response.data
+}
+
 /** Journal membership for a contact */
 export interface ContactJournalMembership {
   id: string

@@ -6,6 +6,7 @@ from django.urls import path
 from apps.contacts.views import (
     ContactDetailView,
     ContactDonationsView,
+    ContactJournalEventsView,
     ContactJournalsView,
     ContactListCreateView,
     ContactPledgesView,
@@ -25,4 +26,5 @@ urlpatterns = [
     path('<uuid:pk>/pledges/', ContactPledgesView.as_view(), name='contact-pledges'),
     path('<uuid:pk>/tasks/', ContactTasksView.as_view(), name='contact-tasks'),
     path('<uuid:pk>/journals/', ContactJournalsView.as_view(), name='contact-journals'),
+    path('<uuid:pk>/journal-events/', ContactJournalEventsView.as_view(), name='contact-journal-events'),
 ]

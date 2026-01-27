@@ -44,6 +44,7 @@ export interface RecentGift {
   id: string
   amount: string
   date: string
+  contact_id: string
   contact__first_name: string
   contact__last_name: string
 }
@@ -78,6 +79,19 @@ export interface DashboardSummary {
   thank_you_count: number
   support_progress: SupportProgress
   recent_gifts: RecentGift[]
+  journal_activity: JournalActivityItem[]
+}
+
+export interface JournalActivityItem {
+  id: string
+  event_type: string
+  stage: string
+  notes: string
+  created_at: string
+  contact_name: string
+  contact_id: string
+  journal_name: string
+  journal_id: string
 }
 
 export interface DashboardStats {

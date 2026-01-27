@@ -11,6 +11,7 @@ from apps.dashboard.services import (
     get_dashboard_summary,
     get_needs_attention,
     get_recent_gifts,
+    get_recent_journal_activity,
     get_support_progress,
     get_thank_you_queue,
     get_what_changed,
@@ -164,4 +165,17 @@ class RecentGiftsView(APIView):
         return Response({
             'recent_gifts': serializer.data,
             'days': days
+        })
+
+
+class RecentJournalActivityView(APIView):
+    """
+    GET: Get recent journal stage events
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(tags=['dashboard'], summary='Get recent journal activity')
+    def get(self, request):
+        return Response({
+            'journal_activity': get_recent_journal_activity(request.user),
         })

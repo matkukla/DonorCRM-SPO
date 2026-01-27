@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useStageEventsInfinite } from "@/hooks/useJournals"
+import { LogEventDialog } from "./LogEventDialog"
 import type { PipelineStage, StageEvent } from "@/types/journals"
 import { STAGE_LABELS } from "@/types/journals"
 
@@ -39,6 +40,8 @@ export function EventTimelineDrawer({
   isOpen,
   onClose,
 }: EventTimelineDrawerProps) {
+  const [logEventOpen, setLogEventOpen] = React.useState(false)
+
   const {
     data,
     fetchNextPage,
@@ -65,14 +68,25 @@ export function EventTimelineDrawer({
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <SheetContent side="right" className="w-full sm:w-[400px] overflow-y-auto">
         <SheetHeader className="pb-4 border-b">
-          <SheetTitle>
-            {stage ? STAGE_LABELS[stage] : "Events"} - {contactName}
-          </SheetTitle>
-          <SheetDescription>
-            {totalCount > 0
-              ? `${totalCount} event${totalCount !== 1 ? "s" : ""} recorded`
-              : "No events recorded yet"}
-          </SheetDescription>
+          <div className="flex items-start justify-between">
+            <div>
+              <SheetTitle>
+                {stage ? STAGE_LABELS[stage] : "Events"} - {contactName}
+              </SheetTitle>
+              <SheetDescription>
+                {totalCount > 0
+                  ? `${totalCount} event${totalCount !== 1 ? "s" : ""} recorded`
+                  : "No events recorded yet"}
+              </SheetDescription>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => setLogEventOpen(true)}
+              disabled={!journalContactId}
+            >
+              Log Event
+            </Button>
+          </div>
         </SheetHeader>
 
         <div className="mt-6 space-y-1">
@@ -125,6 +139,13 @@ export function EventTimelineDrawer({
           )}
         </div>
       </SheetContent>
+
+      <LogEventDialog
+        open={logEventOpen}
+        onOpenChange={setLogEventOpen}
+        journalContactId={journalContactId || undefined}
+        stage={stage || undefined}
+      />
     </Sheet>
   )
 }

@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query"
 import {
   getContacts,
   getContact,
@@ -11,6 +11,7 @@ import {
   getContactPledges,
   getContactTasks,
   getContactJournals,
+  getContactJournalEvents,
 } from "@/api/contacts"
 import type { ContactFilters, ContactCreate, ContactUpdate } from "@/api/contacts"
 
@@ -113,6 +114,21 @@ export function useContactJournals(contactId: string) {
   return useQuery({
     queryKey: ['contacts', contactId, 'journals'],
     queryFn: () => getContactJournals(contactId),
+    enabled: !!contactId,
+  })
+}
+
+/** Hook for fetching contact's journal events with infinite scrolling */
+export function useContactJournalEvents(contactId: string) {
+  return useInfiniteQuery({
+    queryKey: ['contacts', contactId, 'journal-events'],
+    queryFn: ({ pageParam = 1 }) => getContactJournalEvents(contactId, pageParam),
+    getNextPageParam: (lastPage) => {
+      if (!lastPage.next) return undefined
+      const url = new URL(lastPage.next)
+      return parseInt(url.searchParams.get('page') || '1')
+    },
+    initialPageParam: 1,
     enabled: !!contactId,
   })
 }

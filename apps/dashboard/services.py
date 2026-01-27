@@ -9,6 +9,7 @@ from django.db.models import Count, Q, Sum
 from apps.contacts.models import Contact, ContactStatus
 from apps.donations.models import Donation
 from apps.events.models import Event
+from apps.journals.models import JournalStageEvent
 from apps.pledges.models import Pledge, PledgeStatus
 from apps.tasks.models import Task, TaskStatus
 
@@ -160,6 +161,27 @@ def get_recent_gifts(user, days=30, limit=10):
     return donations.filter(date__gte=start_date).select_related('contact')[:limit]
 
 
+def get_recent_journal_activity(user, limit=8):
+    """Get recent journal stage events for dashboard widget."""
+    qs = JournalStageEvent.objects.filter(
+        journal_contact__journal__owner=user
+    ).select_related(
+        'journal_contact__contact',
+        'journal_contact__journal',
+    ).order_by('-created_at')[:limit]
+    return [{
+        'id': str(e.id),
+        'event_type': e.event_type,
+        'stage': e.stage,
+        'notes': e.notes or '',
+        'created_at': e.created_at.isoformat(),
+        'contact_name': e.journal_contact.contact.full_name,
+        'contact_id': str(e.journal_contact.contact.id),
+        'journal_name': e.journal_contact.journal.name,
+        'journal_id': str(e.journal_contact.journal.id),
+    } for e in qs]
+
+
 def get_dashboard_summary(user):
     """
     Get complete dashboard data in one call.
@@ -212,6 +234,7 @@ def get_dashboard_summary(user):
         'thank_you_count': thank_you_count,
         'support_progress': get_support_progress(user),
         'recent_gifts': list(get_recent_gifts(user).values(
-            'id', 'amount', 'date', 'contact__first_name', 'contact__last_name'
-        ))
+            'id', 'amount', 'date', 'contact_id', 'contact__first_name', 'contact__last_name'
+        )),
+        'journal_activity': get_recent_journal_activity(user),
     }

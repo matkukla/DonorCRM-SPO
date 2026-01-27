@@ -7,6 +7,7 @@ import { RecentDonations } from "@/components/dashboard/RecentDonations"
 import { NeedsAttention } from "@/components/dashboard/NeedsAttention"
 import { SupportProgress } from "@/components/dashboard/SupportProgress"
 import { AtRiskDonors } from "@/components/dashboard/AtRiskDonors"
+import { RecentJournalActivity } from "@/components/dashboard/RecentJournalActivity"
 import { Users, DollarSign, FileText, CheckSquare } from "lucide-react"
 
 function formatCurrency(amount: number): string {
@@ -102,6 +103,10 @@ export default function Dashboard() {
             <div className="space-y-6">
               <RecentDonations
                 donations={data?.recent_gifts || []}
+                isLoading={isLoading}
+              />
+              <RecentJournalActivity
+                activities={data?.journal_activity || []}
                 isLoading={isLoading}
               />
               <AtRiskDonors

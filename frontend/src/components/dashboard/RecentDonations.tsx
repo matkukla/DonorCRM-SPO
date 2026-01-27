@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import type { RecentGift } from "@/api/dashboard"
 
@@ -52,9 +53,13 @@ export function RecentDonations({ donations, isLoading }: RecentDonationsProps) 
                 className="flex items-center justify-between py-2 border-b border-border last:border-0"
               >
                 <div>
-                  <p className="font-medium">
+                  <Link
+                    to={`/contacts/${donation.contact_id}`}
+                    className="font-medium hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {donation.contact__first_name} {donation.contact__last_name}
-                  </p>
+                  </Link>
                   <p className="text-sm text-muted-foreground">
                     {formatDate(donation.date)}
                   </p>

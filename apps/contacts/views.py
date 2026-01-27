@@ -16,8 +16,9 @@ from apps.contacts.serializers import (
     ContactListSerializer,
     ContactJournalMembershipSerializer,
 )
+from apps.core.pagination import StandardPagination
 from apps.core.permissions import IsContactOwnerOrReadAccess, IsStaffOrAbove
-from apps.journals.models import JournalContact
+from apps.journals.models import JournalContact, JournalStageEvent
 
 
 @extend_schema_view(
@@ -265,3 +266,45 @@ class ContactJournalsView(generics.ListAPIView):
             memberships = memberships.filter(journal__owner=user)
 
         return memberships
+
+
+@extend_schema(tags=['contacts'], summary='List contact journal events')
+class ContactJournalEventsView(generics.ListAPIView):
+    """GET: All journal stage events for a contact across all journals."""
+    permission_classes = [permissions.IsAuthenticated, IsContactOwnerOrReadAccess]
+    pagination_class = StandardPagination
+
+    def get_queryset(self):
+        contact_id = self.kwargs['pk']
+        user = self.request.user
+        qs = JournalStageEvent.objects.filter(
+            journal_contact__contact_id=contact_id,
+        ).select_related(
+            'journal_contact__journal',
+            'journal_contact__contact',
+            'triggered_by',
+        ).order_by('-created_at')
+        if user.role not in ['admin']:
+            qs = qs.filter(journal_contact__journal__owner=user)
+        return qs
+
+    def list(self, request, *args, **kwargs):
+        qs = self.get_queryset()
+        page = self.paginate_queryset(qs)
+        data = [
+            {
+                'id': str(e.id),
+                'event_type': e.event_type,
+                'stage': e.stage,
+                'notes': e.notes,
+                'metadata': e.metadata,
+                'created_at': e.created_at.isoformat(),
+                'journal_name': e.journal_contact.journal.name,
+                'journal_id': str(e.journal_contact.journal.id),
+                'journal_contact_id': str(e.journal_contact.id),
+            }
+            for e in (page or qs)
+        ]
+        if page is not None:
+            return self.get_paginated_response(data)
+        return Response(data)
