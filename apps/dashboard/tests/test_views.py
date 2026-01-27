@@ -69,22 +69,21 @@ class TestNeedsAttentionView:
 
 
 @pytest.mark.django_db
-class TestAtRiskView:
-    """Tests for at-risk donors endpoint."""
+class TestLateDonationsView:
+    """Tests for late donations endpoint."""
 
-    def test_get_at_risk(self):
-        """Test getting at-risk donors."""
+    def test_get_late_donations(self):
+        """Test getting late donations."""
         user = UserFactory(role='staff')
 
         client = APIClient()
         client.force_authenticate(user=user)
 
-        response = client.get('/api/v1/dashboard/at-risk/')
+        response = client.get('/api/v1/dashboard/late-donations/')
 
         assert response.status_code == status.HTTP_200_OK
-        assert 'at_risk_donors' in response.data
+        assert 'late_donations' in response.data
         assert 'total_count' in response.data
-        assert 'threshold_days' in response.data
 
 
 @pytest.mark.django_db

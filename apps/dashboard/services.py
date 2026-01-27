@@ -6,7 +6,7 @@ from datetime import date, timedelta
 
 from django.db.models import Count, Q, Sum
 
-from apps.contacts.models import Contact, ContactStatus
+from apps.contacts.models import Contact
 from apps.donations.models import Donation
 from apps.events.models import Event
 from apps.journals.models import JournalStageEvent
@@ -85,24 +85,45 @@ def get_needs_attention(user):
     }
 
 
-def get_at_risk_donors(user, days_threshold=60):
+def get_late_donations(user, limit=10):
     """
-    Identify donors who haven't given recently but have giving history.
+    Get active pledges that are late (DonorElf-style).
+    Returns contacts with active recurring commitments whose expected
+    gift hasn't arrived after the grace period.
     """
-    cutoff_date = date.today() - timedelta(days=days_threshold)
+    from apps.journals.models import JournalContact
 
     if user.role == 'admin':
-        contacts = Contact.objects.all()
+        pledges = Pledge.objects.all()
     else:
-        contacts = Contact.objects.filter(owner=user)
+        pledges = Pledge.objects.filter(contact__owner=user)
 
-    at_risk = contacts.filter(
-        status=ContactStatus.DONOR,
-        last_gift_date__lt=cutoff_date,
-        gift_count__gte=2  # Has given multiple times before
-    ).order_by('last_gift_date')
+    late_pledges = pledges.filter(
+        status=PledgeStatus.ACTIVE,
+        is_late=True,
+    ).select_related('contact').order_by('-days_late')[:limit]
 
-    return at_risk
+    # Batch-check which contacts have journal memberships for Quick Log
+    contact_ids = [p.contact_id for p in late_pledges]
+    contacts_with_journals = set(
+        JournalContact.objects.filter(
+            contact_id__in=contact_ids,
+            journal__is_archived=False,
+        ).values_list('contact_id', flat=True)
+    )
+
+    return [{
+        'id': str(p.id),
+        'contact_id': str(p.contact.id),
+        'contact_name': p.contact.full_name,
+        'amount': str(p.amount),
+        'frequency': p.frequency,
+        'monthly_equivalent': round(p.monthly_equivalent, 2),
+        'last_gift_date': p.last_fulfilled_date.isoformat() if p.last_fulfilled_date else None,
+        'days_late': p.days_late,
+        'next_expected_date': p.next_expected_date.isoformat() if p.next_expected_date else None,
+        'in_journal': p.contact_id in contacts_with_journals,
+    } for p in late_pledges]
 
 
 def get_thank_you_queue(user):
@@ -214,12 +235,16 @@ def get_dashboard_summary(user):
         'id', 'first_name', 'last_name', 'last_gift_amount'
     ))
 
-    # Cache querysets to avoid duplicate queries
-    at_risk_qs = get_at_risk_donors(user)
-    at_risk_list = list(at_risk_qs[:5].values(
-        'id', 'first_name', 'last_name', 'last_gift_date', 'total_given'
-    ))
-    at_risk_count = at_risk_qs.count()
+    # Late donations (DonorElf-style)
+    late_donations = get_late_donations(user)
+    if user.role == 'admin':
+        late_donations_count = Pledge.objects.filter(
+            status=PledgeStatus.ACTIVE, is_late=True
+        ).count()
+    else:
+        late_donations_count = Pledge.objects.filter(
+            contact__owner=user, status=PledgeStatus.ACTIVE, is_late=True
+        ).count()
 
     thank_you_qs = get_thank_you_queue(user)
     thank_you_list = list(thank_you_qs[:5].values(
@@ -227,13 +252,13 @@ def get_dashboard_summary(user):
     ))
     thank_you_count = thank_you_qs.count()
 
-    logger.debug(f'Dashboard data fetched: {at_risk_count} at-risk, {thank_you_count} thank-you needed')
+    logger.debug(f'Dashboard data fetched: {late_donations_count} late donations, {thank_you_count} thank-you needed')
 
     return {
         'what_changed': what_changed,
         'needs_attention': needs_attention,
-        'at_risk_donors': at_risk_list,
-        'at_risk_count': at_risk_count,
+        'late_donations': late_donations,
+        'late_donations_count': late_donations_count,
         'thank_you_queue': thank_you_list,
         'thank_you_count': thank_you_count,
         'support_progress': get_support_progress(user),

@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { useAuth } from "@/providers/AuthProvider"
 import { useDashboardSummary } from "@/hooks/useDashboard"
 import { Container } from "@/components/layout/Container"
@@ -6,8 +7,9 @@ import { StatCard } from "@/components/dashboard/StatCard"
 import { RecentDonations } from "@/components/dashboard/RecentDonations"
 import { NeedsAttention } from "@/components/dashboard/NeedsAttention"
 import { SupportProgress } from "@/components/dashboard/SupportProgress"
-import { AtRiskDonors } from "@/components/dashboard/AtRiskDonors"
+import { LateDonations } from "@/components/dashboard/LateDonations"
 import { RecentJournalActivity } from "@/components/dashboard/RecentJournalActivity"
+import { LogEventDialog } from "@/pages/journals/components/LogEventDialog"
 import { Users, DollarSign, FileText, CheckSquare } from "lucide-react"
 
 function formatCurrency(amount: number): string {
@@ -22,6 +24,7 @@ function formatCurrency(amount: number): string {
 export default function Dashboard() {
   const { user } = useAuth()
   const { data, isLoading, error } = useDashboardSummary()
+  const [quickLogContactId, setQuickLogContactId] = useState<string | null>(null)
 
   // Calculate total donations this month from recent gifts
   const totalDonationsThisMonth = data?.recent_gifts?.reduce((sum, gift) => {
@@ -109,14 +112,22 @@ export default function Dashboard() {
                 activities={data?.journal_activity || []}
                 isLoading={isLoading}
               />
-              <AtRiskDonors
-                donors={data?.at_risk_donors || []}
-                totalCount={data?.at_risk_count || 0}
+              <LateDonations
+                donations={data?.late_donations || []}
+                totalCount={data?.late_donations_count || 0}
                 isLoading={isLoading}
+                onQuickLog={(contactId) => setQuickLogContactId(contactId)}
               />
             </div>
           </div>
         </div>
+
+        {/* Quick Log dialog for Late Donations */}
+        <LogEventDialog
+          open={!!quickLogContactId}
+          onOpenChange={(open) => !open && setQuickLogContactId(null)}
+          contactId={quickLogContactId || undefined}
+        />
       </Container>
     </Section>
   )

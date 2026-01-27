@@ -32,12 +32,17 @@ export interface ThankYouContact {
   last_gift_date: string | null
 }
 
-export interface AtRiskDonor {
+export interface LateDonation {
   id: string
-  first_name: string
-  last_name: string
-  last_gift_date: string
-  total_given: string
+  contact_id: string
+  contact_name: string
+  amount: string
+  frequency: string
+  monthly_equivalent: number
+  last_gift_date: string | null
+  days_late: number
+  next_expected_date: string | null
+  in_journal: boolean
 }
 
 export interface RecentGift {
@@ -73,8 +78,8 @@ export interface DashboardSummary {
     thank_you_needed: ThankYouContact[]
     thank_you_needed_count: number
   }
-  at_risk_donors: AtRiskDonor[]
-  at_risk_count: number
+  late_donations: LateDonation[]
+  late_donations_count: number
   thank_you_queue: ThankYouContact[]
   thank_you_count: number
   support_progress: SupportProgress

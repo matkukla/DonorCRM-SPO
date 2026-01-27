@@ -7,11 +7,10 @@ from decimal import Decimal
 import pytest
 from django.utils import timezone
 
-from apps.contacts.models import ContactStatus
 from apps.contacts.tests.factories import ContactFactory
 from apps.dashboard.services import (
-    get_at_risk_donors,
     get_dashboard_summary,
+    get_late_donations,
     get_needs_attention,
     get_recent_gifts,
     get_support_progress,
@@ -83,49 +82,39 @@ class TestGetNeedsAttention:
 
 
 @pytest.mark.django_db
-class TestGetAtRiskDonors:
-    """Tests for get_at_risk_donors function."""
+class TestGetLateDonations:
+    """Tests for get_late_donations function."""
 
-    def test_get_at_risk_donors(self):
-        """Test getting at-risk donors."""
+    def test_get_late_donations(self):
+        """Test getting late donations returns late active pledges."""
         user = UserFactory(role='staff')
+        contact = ContactFactory(owner=user)
 
-        # Create at-risk donor (no gift in 60+ days, multiple gifts)
-        at_risk = ContactFactory(
-            owner=user,
-            status=ContactStatus.DONOR,
-            last_gift_date=timezone.now().date() - timedelta(days=90),
-            gift_count=3
+        # Create a late active pledge
+        PledgeFactory(
+            contact=contact,
+            is_late=True,
+            days_late=15,
+            frequency='monthly',
         )
 
-        # Create active donor (recent gift)
-        ContactFactory(
-            owner=user,
-            status=ContactStatus.DONOR,
-            last_gift_date=timezone.now().date() - timedelta(days=10),
-            gift_count=2
-        )
+        result = get_late_donations(user)
 
-        result = get_at_risk_donors(user)
+        assert len(result) == 1
+        assert result[0]['contact_name'] == contact.full_name
+        assert result[0]['days_late'] == 15
 
-        assert result.count() == 1
-        assert at_risk in result
-
-    def test_get_at_risk_donors_excludes_one_time_givers(self):
-        """Test at-risk excludes one-time givers."""
+    def test_get_late_donations_excludes_non_late_pledges(self):
+        """Test that on-track pledges don't appear."""
         user = UserFactory(role='staff')
+        contact = ContactFactory(owner=user)
 
-        # One-time giver (gift_count=1) should not be at-risk
-        ContactFactory(
-            owner=user,
-            status=ContactStatus.DONOR,
-            last_gift_date=timezone.now().date() - timedelta(days=90),
-            gift_count=1
-        )
+        # Create an on-time pledge
+        PledgeFactory(contact=contact, is_late=False)
 
-        result = get_at_risk_donors(user)
+        result = get_late_donations(user)
 
-        assert result.count() == 0
+        assert len(result) == 0
 
 
 @pytest.mark.django_db
@@ -196,7 +185,7 @@ class TestGetDashboardSummary:
 
         assert 'what_changed' in result
         assert 'needs_attention' in result
-        assert 'at_risk_donors' in result
+        assert 'late_donations' in result
         assert 'thank_you_queue' in result
         assert 'support_progress' in result
         assert 'recent_gifts' in result

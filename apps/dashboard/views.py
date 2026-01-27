@@ -7,8 +7,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.dashboard.services import (
-    get_at_risk_donors,
     get_dashboard_summary,
+    get_late_donations,
     get_needs_attention,
     get_recent_gifts,
     get_recent_journal_activity,
@@ -78,30 +78,26 @@ class NeedsAttentionView(APIView):
         return Response(data)
 
 
-class AtRiskView(APIView):
+class LateDonationsView(APIView):
     """
-    GET: Get at-risk donors
+    GET: Get late donations (active pledges past due)
     """
     permission_classes = [permissions.IsAuthenticated]
 
     @extend_schema(
         tags=['dashboard'],
-        summary='Get at-risk donors',
-        parameters=[OpenApiParameter(name='days', description='Days threshold for at-risk (default: 60)', type=int)]
+        summary='Get late donations',
+        parameters=[OpenApiParameter(name='limit', description='Max results (default: 10)', type=int)]
     )
     def get(self, request):
         user = request.user
-        days = int(request.query_params.get('days', 60))
+        limit = int(request.query_params.get('limit', 10))
 
-        donors = get_at_risk_donors(user, days_threshold=days)
-
-        from apps.contacts.serializers import ContactListSerializer
-        serializer = ContactListSerializer(donors[:20], many=True)
+        late_donations = get_late_donations(user, limit=limit)
 
         return Response({
-            'at_risk_donors': serializer.data,
-            'total_count': donors.count(),
-            'threshold_days': days
+            'late_donations': late_donations,
+            'total_count': len(late_donations),
         })
 
 
