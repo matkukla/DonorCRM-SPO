@@ -13,7 +13,7 @@ See: .planning/PROJECT.md (updated 2026-01-24)
 Phase: 6 of 6 (Reporting & Integration) - IN PROGRESS
 Plan: 4 of 9 in current phase
 Status: Wave 2 in progress
-Last activity: 2026-01-24 — Completed 06-04-PLAN.md (Report Tab UI Components)
+Last activity: 2026-01-27 — Completed quick task 001: Fix Log Event 400 error
 
 Progress: [█████████████░] 73% (22 of 30 total plans)
 
@@ -124,6 +124,12 @@ None yet.
 - Phase 1: N+1 queries from event replay (must denormalize current_stage in JournalContactStageState)
 - Phase 2: Atomic transaction scope bugs (wrap decision update + history + event creation in single transaction)
 - Phase 5: Optimistic update rollback on error (use React Query mutation onError callbacks) - ADDRESSED
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 001 | Fix Log Event 400 error — auto-create default journal, contact_id path, cache invalidation | 2026-01-27 | 6df8e7f | [001-fix-log-event-400-error](./quick/001-fix-log-event-400-error/) |
 
 ## Session Continuity
 
