@@ -17,6 +17,7 @@ export interface User {
   last_name: string
   role: "admin" | "staff" | "finance" | "read_only"
   is_active: boolean
+  monthly_goal: string | null
 }
 
 /**

@@ -242,7 +242,7 @@ def get_giving_summary(user, year=None):
         'recurring_pledges_monthly': float(annualized_recurring / 12) if annualized_recurring else 0,
         'annual_goal': annual_goal,
         'monthly_goal': monthly_goal,
-        'percentage': (given_float / annual_goal * 100) if annual_goal > 0 else 0,
+        'percentage': ((given_float + expecting) / annual_goal * 100) if annual_goal > 0 else 0,
         'year': year,
         'active_pledge_count': active_pledges.count(),
     }
