@@ -8,7 +8,9 @@ from rest_framework.views import APIView
 
 from apps.dashboard.services import (
     get_dashboard_summary,
+    get_giving_summary,
     get_late_donations,
+    get_monthly_gifts,
     get_needs_attention,
     get_recent_gifts,
     get_recent_journal_activity,
@@ -175,3 +177,36 @@ class RecentJournalActivityView(APIView):
         return Response({
             'journal_activity': get_recent_journal_activity(request.user),
         })
+
+
+class GivingSummaryView(APIView):
+    """
+    GET: Get giving summary (Given & Expecting widget data)
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        tags=['dashboard'],
+        summary='Get giving summary',
+        parameters=[OpenApiParameter(name='year', description='Calendar year (default: current)', type=int)]
+    )
+    def get(self, request):
+        year = request.query_params.get('year')
+        year = int(year) if year else None
+        return Response(get_giving_summary(request.user, year=year))
+
+
+class MonthlyGiftsView(APIView):
+    """
+    GET: Get monthly gift totals for bar chart
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        tags=['dashboard'],
+        summary='Get monthly gifts',
+        parameters=[OpenApiParameter(name='months', description='Number of months (default: 12)', type=int)]
+    )
+    def get(self, request):
+        months = int(request.query_params.get('months', 12))
+        return Response(get_monthly_gifts(request.user, months=months))

@@ -3,8 +3,11 @@ Service functions for dashboard aggregations.
 """
 import logging
 from datetime import date, timedelta
+from decimal import Decimal
 
+from dateutil.relativedelta import relativedelta
 from django.db.models import Count, Q, Sum
+from django.db.models.functions import TruncMonth
 
 from apps.contacts.models import Contact
 from apps.donations.models import Donation
@@ -193,6 +196,99 @@ def get_recent_journal_activity(user, limit=8):
         'journal_name': e.journal_contact.journal.name,
         'journal_id': str(e.journal_contact.journal.id),
     } for e in qs]
+
+
+def get_giving_summary(user, year=None):
+    """
+    Calculate giving summary for the Given & Expecting widget.
+    Default: current calendar year.
+    """
+    if year is None:
+        year = date.today().year
+
+    year_start = date(year, 1, 1)
+    year_end = date(year, 12, 31)
+
+    if user.role in ['admin', 'finance', 'read_only']:
+        donations = Donation.objects.all()
+        pledges = Pledge.objects.all()
+    else:
+        donations = Donation.objects.filter(contact__owner=user)
+        pledges = Pledge.objects.filter(contact__owner=user)
+
+    # Given: sum of donations this year
+    given = donations.filter(
+        date__gte=year_start, date__lte=year_end
+    ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
+
+    # Active recurring pledges annualized
+    active_pledges = pledges.filter(status=PledgeStatus.ACTIVE)
+    annualized_recurring = sum(p.monthly_equivalent * 12 for p in active_pledges)
+
+    # Expecting: annualized recurring minus what's already given this year
+    expecting = max(0, float(annualized_recurring) - float(given))
+
+    # Goals
+    monthly_goal = float(user.monthly_goal) if user.monthly_goal else 0
+    annual_goal = monthly_goal * 12
+
+    given_float = float(given)
+
+    return {
+        'given': given_float,
+        'expecting': expecting,
+        'total': given_float + expecting,
+        'recurring_pledges_annual': float(annualized_recurring),
+        'recurring_pledges_monthly': float(annualized_recurring / 12) if annualized_recurring else 0,
+        'annual_goal': annual_goal,
+        'monthly_goal': monthly_goal,
+        'percentage': (given_float / annual_goal * 100) if annual_goal > 0 else 0,
+        'year': year,
+        'active_pledge_count': active_pledges.count(),
+    }
+
+
+def get_monthly_gifts(user, months=12):
+    """
+    Get donation totals grouped by month for bar chart.
+    Returns last N months including current month.
+    """
+    today = date.today()
+    start_date = (today.replace(day=1) - relativedelta(months=months - 1))
+
+    if user.role in ['admin', 'finance', 'read_only']:
+        donations = Donation.objects.all()
+    else:
+        donations = Donation.objects.filter(contact__owner=user)
+
+    monthly_data = (
+        donations.filter(date__gte=start_date)
+        .annotate(month=TruncMonth('date'))
+        .values('month')
+        .annotate(total=Sum('amount'))
+        .order_by('month')
+    )
+
+    # Build map of month -> total
+    monthly_map = {item['month']: float(item['total']) for item in monthly_data}
+
+    # Build complete month list (fill gaps with 0)
+    result = []
+    for i in range(months):
+        month_date = (start_date + relativedelta(months=i)).replace(day=1)
+        result.append({
+            'month': month_date.strftime('%Y-%m'),
+            'label': month_date.strftime('%b %Y'),
+            'short_label': month_date.strftime('%b'),
+            'total': monthly_map.get(month_date, 0),
+        })
+
+    monthly_goal = float(user.monthly_goal) if user.monthly_goal else 0
+
+    return {
+        'months': result,
+        'monthly_goal': monthly_goal,
+    }
 
 
 def get_dashboard_summary(user):

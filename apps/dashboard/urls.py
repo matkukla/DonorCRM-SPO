@@ -5,7 +5,9 @@ from django.urls import path
 
 from apps.dashboard.views import (
     DashboardView,
+    GivingSummaryView,
     LateDonationsView,
+    MonthlyGiftsView,
     NeedsAttentionView,
     RecentGiftsView,
     RecentJournalActivityView,
@@ -25,4 +27,6 @@ urlpatterns = [
     path('support-progress/', SupportProgressView.as_view(), name='support-progress'),
     path('recent-gifts/', RecentGiftsView.as_view(), name='recent-gifts'),
     path('journal-activity/', RecentJournalActivityView.as_view(), name='journal-activity'),
+    path('giving-summary/', GivingSummaryView.as_view(), name='giving-summary'),
+    path('monthly-gifts/', MonthlyGiftsView.as_view(), name='monthly-gifts'),
 ]

@@ -9,6 +9,8 @@ import { NeedsAttention } from "@/components/dashboard/NeedsAttention"
 import { SupportProgress } from "@/components/dashboard/SupportProgress"
 import { LateDonations } from "@/components/dashboard/LateDonations"
 import { RecentJournalActivity } from "@/components/dashboard/RecentJournalActivity"
+import { GivingSummaryCard } from "@/components/dashboard/GivingSummaryCard"
+import { MonthlyGiftsCard } from "@/components/dashboard/MonthlyGiftsCard"
 import { LogEventDialog } from "@/pages/journals/components/LogEventDialog"
 import { Users, DollarSign, FileText, CheckSquare } from "lucide-react"
 
@@ -49,6 +51,12 @@ export default function Dashboard() {
               Failed to load dashboard data. Please try again.
             </div>
           )}
+
+          {/* Giving Widgets */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            <GivingSummaryCard />
+            <MonthlyGiftsCard />
+          </div>
 
           {/* Stat Cards */}
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">

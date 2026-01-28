@@ -105,6 +105,31 @@ export interface DashboardStats {
   overdue_tasks: number
 }
 
+export interface GivingSummary {
+  given: number
+  expecting: number
+  total: number
+  recurring_pledges_annual: number
+  recurring_pledges_monthly: number
+  annual_goal: number
+  monthly_goal: number
+  percentage: number
+  year: number
+  active_pledge_count: number
+}
+
+export interface MonthlyGiftData {
+  month: string
+  label: string
+  short_label: string
+  total: number
+}
+
+export interface MonthlyGiftsResponse {
+  months: MonthlyGiftData[]
+  monthly_goal: number
+}
+
 /**
  * Get complete dashboard summary
  */
@@ -148,5 +173,25 @@ export async function getRecentGifts(days = 30, limit = 10) {
  */
 export async function getNeedsAttention() {
   const response = await apiClient.get("/dashboard/needs-attention/")
+  return response.data
+}
+
+/**
+ * Get giving summary (Given & Expecting widget)
+ */
+export async function getGivingSummary(year?: number): Promise<GivingSummary> {
+  const response = await apiClient.get<GivingSummary>("/dashboard/giving-summary/", {
+    params: year ? { year } : undefined,
+  })
+  return response.data
+}
+
+/**
+ * Get monthly gift totals for bar chart
+ */
+export async function getMonthlyGifts(months = 12): Promise<MonthlyGiftsResponse> {
+  const response = await apiClient.get<MonthlyGiftsResponse>("/dashboard/monthly-gifts/", {
+    params: { months },
+  })
   return response.data
 }
