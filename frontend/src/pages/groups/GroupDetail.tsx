@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/table"
 import {
   ArrowLeft,
+  Copy,
   Edit,
   Trash2,
   Users,
@@ -28,6 +29,8 @@ import {
   Globe,
   UserMinus,
 } from "lucide-react"
+import { toast } from "sonner"
+import { getGroupContactEmails } from "@/api/groups"
 
 function formatDateTime(dateStr: string | null): string {
   if (!dateStr) return "—"
@@ -55,6 +58,24 @@ export default function GroupDetail() {
   const removeContactsMutation = useRemoveContactsFromGroup()
 
   const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set())
+  const [isCopyingEmails, setIsCopyingEmails] = useState(false)
+
+  const handleCopyEmails = async () => {
+    setIsCopyingEmails(true)
+    try {
+      const result = await getGroupContactEmails(id)
+      if (result.emails.length === 0) {
+        toast.info("No emails to copy")
+        return
+      }
+      await navigator.clipboard.writeText(result.emails.join(", "))
+      toast.success(`Copied ${result.count} emails`)
+    } catch {
+      toast.error("Failed to copy emails")
+    } finally {
+      setIsCopyingEmails(false)
+    }
+  }
 
   const handleDelete = () => {
     if (group?.is_system) {
@@ -205,17 +226,28 @@ export default function GroupDetail() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>Contacts in this Group</CardTitle>
-                {selectedContacts.size > 0 && (
+                <div className="flex gap-2">
                   <Button
                     variant="secondary"
                     size="sm"
-                    onClick={handleRemoveContacts}
-                    disabled={removeContactsMutation.isPending}
+                    onClick={handleCopyEmails}
+                    disabled={isCopyingEmails}
                   >
-                    <UserMinus className="h-4 w-4 mr-2" />
-                    Remove {selectedContacts.size} Contact(s)
+                    <Copy className="h-4 w-4 mr-2" />
+                    {isCopyingEmails ? "Copying..." : "Copy Emails"}
                   </Button>
-                )}
+                  {selectedContacts.size > 0 && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={handleRemoveContacts}
+                      disabled={removeContactsMutation.isPending}
+                    >
+                      <UserMinus className="h-4 w-4 mr-2" />
+                      Remove {selectedContacts.size} Contact(s)
+                    </Button>
+                  )}
+                </div>
               </div>
             </CardHeader>
             <CardContent>

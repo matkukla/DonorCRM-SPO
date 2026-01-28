@@ -143,3 +143,32 @@ class GroupContactsView(APIView):
         group.contacts.remove(*contacts)
 
         return Response({'detail': f'Removed contacts from group.'})
+
+
+class GroupContactEmailsView(APIView):
+    """
+    GET: Return all email addresses for contacts in a group.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, pk):
+        user = request.user
+        try:
+            if user.role == 'admin':
+                group = Group.objects.get(pk=pk)
+            else:
+                group = Group.objects.get(
+                    Q(pk=pk) & (Q(owner=user) | Q(owner__isnull=True))
+                )
+        except Group.DoesNotExist:
+            return Response(
+                {'detail': 'Group not found.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        emails = list(
+            group.contacts.exclude(email__isnull=True).exclude(email='')
+            .values_list('email', flat=True)
+            .order_by('email')
+        )
+        return Response({'emails': emails, 'count': len(emails)})

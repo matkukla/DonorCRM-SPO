@@ -14,8 +14,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Plus, Search, Filter, MoreHorizontal, Heart, Mail, Phone, BookOpen } from "lucide-react"
+import { Plus, Search, Filter, MoreHorizontal, Heart, Mail, Phone, BookOpen, Copy } from "lucide-react"
+import { toast } from "sonner"
 import { LogEventDialog } from "@/pages/journals/components/LogEventDialog"
+import { getContactEmails } from "@/api/contacts"
 import type { ColumnDef } from "@tanstack/react-table"
 import type { ContactListItem, ContactStatus } from "@/api/contacts"
 
@@ -77,6 +79,24 @@ export default function ContactList() {
 
   const markThankedMutation = useMarkContactThanked()
   const [logEventContactId, setLogEventContactId] = useState<string | null>(null)
+  const [isCopyingEmails, setIsCopyingEmails] = useState(false)
+
+  const handleCopyEmails = async () => {
+    setIsCopyingEmails(true)
+    try {
+      const result = await getContactEmails()
+      if (result.emails.length === 0) {
+        toast.info("No emails to copy")
+        return
+      }
+      await navigator.clipboard.writeText(result.emails.join(", "))
+      toast.success(`Copied ${result.count} emails`)
+    } catch {
+      toast.error("Failed to copy emails")
+    } finally {
+      setIsCopyingEmails(false)
+    }
+  }
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -242,10 +262,16 @@ export default function ContactList() {
                 Manage your donors and supporters
               </p>
             </div>
-            <Button onClick={() => navigate("/contacts/new")}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Contact
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="secondary" onClick={handleCopyEmails} disabled={isCopyingEmails}>
+                <Copy className="h-4 w-4 mr-2" />
+                {isCopyingEmails ? "Copying..." : "Copy Emails"}
+              </Button>
+              <Button onClick={() => navigate("/contacts/new")}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Contact
+              </Button>
+            </div>
           </div>
 
           {/* Filters */}

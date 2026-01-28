@@ -213,3 +213,9 @@ export async function getContactJournals(contactId: string): Promise<ContactJour
   )
   return response.data
 }
+
+/** Get all email addresses for the user's contacts */
+export async function getContactEmails(): Promise<{ emails: string[]; count: number }> {
+  const response = await apiClient.get<{ emails: string[]; count: number }>("/contacts/emails/")
+  return response.data
+}

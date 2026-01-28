@@ -197,6 +197,27 @@ class ContactTasksView(generics.ListAPIView):
         return TaskSerializer
 
 
+class ContactEmailsView(APIView):
+    """
+    GET: Return all email addresses for the user's contacts.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        if user.role in ['admin', 'finance', 'read_only']:
+            queryset = Contact.objects.all()
+        else:
+            queryset = Contact.objects.filter(owner=user)
+
+        emails = list(
+            queryset.exclude(email__isnull=True).exclude(email='')
+            .values_list('email', flat=True)
+            .order_by('email')
+        )
+        return Response({'emails': emails, 'count': len(emails)})
+
+
 @extend_schema(
     tags=['contacts'],
     summary='Search contacts',

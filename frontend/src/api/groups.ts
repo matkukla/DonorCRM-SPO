@@ -79,3 +79,9 @@ export async function addContactsToGroup(groupId: string, contactIds: string[]):
 export async function removeContactsFromGroup(groupId: string, contactIds: string[]): Promise<void> {
   await apiClient.delete(`/groups/${groupId}/contacts/`, { data: { contact_ids: contactIds } })
 }
+
+/** Get all email addresses for contacts in a group */
+export async function getGroupContactEmails(groupId: string): Promise<{ emails: string[]; count: number }> {
+  const response = await apiClient.get<{ emails: string[]; count: number }>(`/groups/${groupId}/contacts/emails/`)
+  return response.data
+}
