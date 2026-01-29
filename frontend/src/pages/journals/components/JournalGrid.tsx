@@ -112,14 +112,16 @@ export function JournalGrid({
                 {PIPELINE_STAGES.map((stage) => {
                   const eventSummary = getStageEventSummary(member, stage)
                   return (
-                    <TableCell key={stage} className="text-center p-2 min-w-[100px] w-[100px]">
-                      <StageCell
-                        contactId={member.contact}
-                        stage={stage}
-                        eventSummary={eventSummary}
-                        currentStage={currentStage}
-                        onCellClick={handleCellClick}
-                      />
+                    <TableCell key={stage} className="p-2 min-w-[100px] w-[100px]">
+                      <div className="flex items-center justify-center">
+                        <StageCell
+                          contactId={member.contact}
+                          stage={stage}
+                          eventSummary={eventSummary}
+                          currentStage={currentStage}
+                          onCellClick={handleCellClick}
+                        />
+                      </div>
                     </TableCell>
                   )
                 })}
@@ -133,8 +135,10 @@ export function JournalGrid({
                   />
                 </TableCell>
                 {/* Next Steps cell */}
-                <TableCell className="text-center p-2 min-w-[100px] w-[100px]">
-                  <NextStepsCell journalContactId={member.id} />
+                <TableCell className="p-2 min-w-[100px] w-[100px]">
+                  <div className="flex items-center justify-center">
+                    <NextStepsCell journalContactId={member.id} />
+                  </div>
                 </TableCell>
               </TableRow>
             )
