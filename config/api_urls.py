@@ -45,4 +45,7 @@ urlpatterns = [
 
     # Journals
     path('journals/', include('apps.journals.urls')),
+
+    # Insights/Reports
+    path('insights/', include('apps.insights.urls')),
 ]

@@ -28,6 +28,16 @@ import Settings from "@/pages/settings/Settings"
 import AdminUsers from "@/pages/admin/AdminUsers"
 import ImportExport from "@/pages/imports/ImportExport"
 import JournalDetail from "@/pages/journals/JournalDetail"
+import JournalList from "@/pages/journals/JournalList"
+import {
+  DonationsByMonth,
+  DonationsByYear,
+  MonthlyCommitments,
+  LateDonations,
+  FollowUps,
+  ReviewQueue,
+  Transactions,
+} from "@/pages/insights"
 
 /**
  * Wrap a page with protected route and app layout
@@ -76,7 +86,18 @@ function App() {
             <Route path="/groups" element={<ProtectedPage><GroupList /></ProtectedPage>} />
             <Route path="/groups/:id" element={<ProtectedPage><GroupDetail /></ProtectedPage>} />
             <Route path="/groups/:id/edit" element={<ProtectedPage><GroupForm /></ProtectedPage>} />
+            <Route path="/journals" element={<ProtectedPage><JournalList /></ProtectedPage>} />
             <Route path="/journals/:id" element={<ProtectedPage><JournalDetail /></ProtectedPage>} />
+
+            {/* Insights routes */}
+            <Route path="/insights/donations-by-month" element={<ProtectedPage><DonationsByMonth /></ProtectedPage>} />
+            <Route path="/insights/donations-by-year" element={<ProtectedPage><DonationsByYear /></ProtectedPage>} />
+            <Route path="/insights/monthly-commitments" element={<ProtectedPage><MonthlyCommitments /></ProtectedPage>} />
+            <Route path="/insights/late-donations" element={<ProtectedPage><LateDonations /></ProtectedPage>} />
+            <Route path="/insights/follow-ups" element={<ProtectedPage><FollowUps /></ProtectedPage>} />
+            <Route path="/insights/review-queue" element={<ProtectedPage requiredRole="admin"><ReviewQueue /></ProtectedPage>} />
+            <Route path="/insights/transactions" element={<ProtectedPage requiredRole="admin"><Transactions /></ProtectedPage>} />
+
             <Route path="/settings" element={<ProtectedPage><Settings /></ProtectedPage>} />
             <Route path="/admin" element={<ProtectedPage requiredRole="admin"><AdminUsers /></ProtectedPage>} />
             <Route path="/import-export" element={<ProtectedPage><ImportExport /></ProtectedPage>} />
