@@ -13,7 +13,7 @@ See: .planning/PROJECT.md (updated 2026-01-24)
 Phase: 6 of 6 (Reporting & Integration) - IN PROGRESS
 Plan: 4 of 9 in current phase
 Status: Wave 2 in progress
-Last activity: 2026-01-27 — Completed quick task 001: Fix Log Event 400 error
+Last activity: 2026-01-29 — Completed quick task 002: Journal grid clickable checkboxes
 
 Progress: [█████████████░] 73% (22 of 30 total plans)
 
@@ -130,11 +130,12 @@ None yet.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 001 | Fix Log Event 400 error — auto-create default journal, contact_id path, cache invalidation | 2026-01-27 | 6df8e7f | [001-fix-log-event-400-error](./quick/001-fix-log-event-400-error/) |
+| 002 | Journal grid clickable checkboxes — visible Square icons for empty cells, flex centering | 2026-01-29 | 2bc5bf3 | [002-journal-grid-clickable-checkboxes-and-pl](./quick/002-journal-grid-clickable-checkboxes-and-pl/) |
 
 ## Session Continuity
 
-Last session: 2026-01-24 (plan execution)
-Stopped at: Completed 06-04-PLAN.md (Report Tab UI Components)
+Last session: 2026-01-29 (quick task execution)
+Stopped at: Completed quick task 002: Journal grid clickable checkboxes
 Resume file: None
 
 **Next steps:** Continue Wave 2 with 06-05 (Contact Detail - Journals Tab). Project 73% complete (22/30 plans).
