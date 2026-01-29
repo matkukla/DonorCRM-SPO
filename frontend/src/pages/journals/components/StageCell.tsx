@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Check } from "lucide-react"
+import { Check, Square } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
@@ -86,7 +86,7 @@ export const StageCell = React.memo<StageCellProps>(
           className="h-10 w-10 flex items-center justify-center rounded hover:bg-muted/50 transition-colors"
           aria-label={`${STAGE_LABELS[stage]} - No events`}
         >
-          <span className="sr-only">No events</span>
+          <Square className="h-5 w-5 text-muted-foreground" />
         </button>
       )
     }
