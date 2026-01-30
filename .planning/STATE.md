@@ -10,29 +10,29 @@ See: .planning/PROJECT.md (updated 2026-01-30)
 ## Current Position
 
 Phase: 7 of 12 (Foundation)
-Plan: 1 of TBD complete
+Plan: 2 of TBD complete
 Status: In progress
-Last activity: 2026-01-30 - Completed 07-01-PLAN.md (Import Infrastructure Models)
+Last activity: 2026-01-30 - Completed 07-02-PLAN.md (Entity Fields for Import)
 
-Progress: [████░░░░░░░░░░░░░░░░] 21% (v1.0 complete + 07-01)
+Progress: [█████░░░░░░░░░░░░░░░] 22% (v1.0 complete + 07-01, 07-02)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 25 (24 v1.0 + 1 v1.1)
+- Total plans completed: 26 (24 v1.0 + 2 v1.1)
 - Average duration: 2.7 minutes
-- Total execution time: 1.45 hours
+- Total execution time: 1.49 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | v1.0 (Phases 1-6) | 24 | 1.4 hours | 2.8 min |
-| v1.1 (Phases 7-12) | 1/TBD | 1m 53s | 1.9 min |
+| v1.1 (Phases 7-12) | 2/TBD | 4m 34s | 2.3 min |
 
 **Recent Trend:**
 - v1.0 milestone shipped successfully
-- v1.1 milestone started with 07-01
+- v1.1 milestone: 07-01 (1m 53s), 07-02 (2m 41s)
 
 *Updated after each plan completion*
 
@@ -49,6 +49,9 @@ Recent decisions affecting current work:
 - Synchronous import processing for MVP (no Celery infrastructure)
 - **07-01-D1:** Fund.external_id globally unique (not owner-scoped)
 - **07-01-D2:** Fund.owner nullable for org-wide funds
+- **07-02-D1:** Contact.external_id owner-scoped (same ID allowed for different owners)
+- **07-02-D2:** Pledge.external_id globally unique (SPO pledge_ids are globally unique)
+- **07-02-D3:** Conditional uniqueness via ~Q(external_id='') allows blank values
 
 ### Pending Todos
 
@@ -59,6 +62,7 @@ None yet.
 **Phase 7 Readiness:**
 - ~~Need to verify existing Import app structure before adding new models~~ (Verified: imports app exists, models.py created)
 - ~~Need to confirm external_id field naming convention~~ (Using snake_case: external_id)
+- ~~Entity model fields for import~~ (Completed: Contact, Donation, Pledge models updated)
 - Research recommended validation-first pattern (validate ALL rows before atomic import)
 
 **Phase 10 Readiness:**
@@ -72,7 +76,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-01-30
-Stopped at: Completed 07-01-PLAN.md
+Stopped at: Completed 07-02-PLAN.md
 Resume file: None
 
 ---
