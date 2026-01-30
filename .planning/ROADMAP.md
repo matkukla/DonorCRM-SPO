@@ -76,11 +76,11 @@ Plans:
   5. Import summary displays total rows, created count, updated count, error count
   6. CSV injection attacks are blocked (formula prefixes sanitized on import)
 
-**Plans:** TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 08-01: TBD
-- [ ] 08-02: TBD
+- [ ] 08-01-PLAN.md - TDD for parse_funds_csv and import_funds service functions
+- [ ] 08-02-PLAN.md - FundImportView API endpoint with URL wiring and tests
 
 ---
 
@@ -185,7 +185,7 @@ Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11 -> 12
 |-------|-----------|----------------|--------|-----------|
 | 1-6. v1.0 Journal | v1.0 | 24/24 | Complete | 2026-01-29 |
 | 7. Foundation | v1.1 | 2/2 | Complete | 2026-01-30 |
-| 8. Funds CSV Import | v1.1 | 0/TBD | Not started | - |
+| 8. Funds CSV Import | v1.1 | 0/2 | Planned | - |
 | 9. Entities CSV Import | v1.1 | 0/TBD | Not started | - |
 | 10. Transactions CSV Import | v1.1 | 0/TBD | Not started | - |
 | 11. Pledges CSV Import | v1.1 | 0/TBD | Not started | - |
@@ -193,4 +193,4 @@ Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11 -> 12
 
 ---
 
-*Last updated: 2026-01-30 (Phase 7 complete)*
+*Last updated: 2026-01-30 (Phase 8 planned)*
