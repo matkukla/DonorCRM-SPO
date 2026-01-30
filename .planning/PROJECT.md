@@ -1,12 +1,23 @@
-# DonorCRM — Journal Feature
+# DonorCRM
 
 ## What This Is
 
-A fundraising campaign pipeline tool ("Journal") for individual missionaries using DonorCRM. Each journal tracks a set of contacts through sequential fundraising stages (Contact → Meet → Close → Decision → Thank → Next Steps) with per-contact event logging, decision tracking with history, and generated reports. The UI is a clean grid with contacts as rows and stages as columns, inspired by DonorElf's layout.
+A donor relationship management system for missionaries. Includes contact management, donation tracking, pledge management, task system, and a Journal feature for fundraising campaign pipelines. Now adding SPO-compatible CSV import for bulk data ingestion from DonorElf exports.
 
 ## Core Value
 
-A missionary can look at their journal and instantly know what's next for each donor and what they've completed so far.
+Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems.
+
+## Current Milestone: v1.1 CSV Import
+
+**Goal:** Enable admins to import SPO-exported CSV files (Funds, Entities, Transactions, Pledges) into DonorCRM with validation, preview, and idempotent upserts.
+
+**Target features:**
+- Import Center UI for 4 CSV types
+- Fund model for account/campaign tracking
+- External ID support for idempotent imports
+- Row-level validation and error reporting
+- Import audit trail (ImportRun, ImportRowError)
 
 ## Requirements
 
@@ -21,27 +32,33 @@ A missionary can look at their journal and instantly know what's next for each d
 - ✓ Dashboard with aggregated views and reporting — existing
 - ✓ CSV import/export for contacts and donations — existing
 - ✓ Group/tag system for contact segmentation — existing
+- ✓ Journal CRUD with owner-scoped visibility — v1.0
+- ✓ Contact membership management (many-to-many) — v1.0
+- ✓ 6-stage pipeline with event logging — v1.0
+- ✓ Decision tracking with history (dual-table pattern) — v1.0
+- ✓ Interactive grid UI with stage cell indicators — v1.0
+- ✓ Analytics charts (decision trends, stage activity, pipeline breakdown) — v1.0
+- ✓ Contact detail integration (Journals tab) — v1.0
+- ✓ Task system integration (journal-linked tasks) — v1.0
+- ✓ Admin analytics endpoints — v1.0
 
 ### Active
 
-- [ ] Journal CRUD (create, edit, archive) with goal amount + optional deadline
-- [ ] Add/remove contacts to journals (many-to-many, concurrent membership)
-- [ ] Stage event logging across 6 stages with typed events per stage
-- [ ] Sequential-but-flexible pipeline (skip/revisit stages, subtle warnings)
-- [ ] Decision tracking with current state + full history
-- [ ] Decision cadence support (one-time, monthly, quarterly, annual)
-- [ ] Next Steps as a checklist per contact per journal
-- [ ] Journal detail page with grid view (contacts × stages)
-- [ ] Stage cells with checkmarks, hover tooltips, and event timeline drawers
-- [ ] Decision column with amount/cadence/status cards
-- [ ] Journal header with goal, progress, decisions made
-- [ ] Report tab with decision trends, stage activity, pipeline breakdown, next steps queue
-- [ ] Contact detail "Journals" tab showing associated journals
-- [ ] Link journal tasks to existing Task system (add journal_id to Task)
-- [ ] Owner + admin visibility (owner sees theirs, admins see all)
-- [ ] Admin analytics foundation (endpoints for cross-missionary aggregation)
-- [ ] Search/filter contacts within journal grid
-- [ ] Add Contacts picker for journal membership
+- [ ] Fund model for account/campaign tracking (external_id for upsert)
+- [ ] External ID fields on Contact, Donation, Pledge for idempotent imports
+- [ ] ImportRun model for audit trail (type, status, counts, uploaded_by)
+- [ ] ImportRowError model for row-level error tracking
+- [ ] CSV parser with mapping specs per file type
+- [ ] Funds CSV import (fund_id, name, status)
+- [ ] Entities CSV import → Contact (entity_id, name, email, phone, address)
+- [ ] Transactions CSV import → Donation (transaction_id, entity_id, fund_id, amount, date)
+- [ ] Pledges CSV import → Commitment (pledge_id, entity_id, fund_id, amount, cadence, status)
+- [ ] Import Center UI with 4 tiles (Funds, Entities, Transactions, Pledges)
+- [ ] Upload → Preview → Validate → Import workflow
+- [ ] Validation report (missing columns, parse errors, orphan references)
+- [ ] Import results summary (created/updated/skipped/errors)
+- [ ] Download errors CSV functionality
+- [ ] Admin-only access to Import Center
 
 ### Out of Scope
 
@@ -52,6 +69,9 @@ A missionary can look at their journal and instantly know what's next for each d
 - Bulk journal operations — one journal at a time
 - Custom stage definitions — fixed 6-stage pipeline
 - AI-generated suggestions — manual workflow only
+- Complex ETL tooling or Celery queues — synchronous import for MVP
+- Manual Excel editing as part of normal flow — fix via mapping rules + validation
+- Non-strict mode (allowing unmatched references) — strict mode only for v1.1
 
 ## Context
 
@@ -101,4 +121,4 @@ A missionary can look at their journal and instantly know what's next for each d
 | Cents for money storage | Precision, no floating point issues, matches pledge patterns | — Pending |
 
 ---
-*Last updated: 2026-01-24 after initialization*
+*Last updated: 2026-01-30 after v1.1 milestone start*

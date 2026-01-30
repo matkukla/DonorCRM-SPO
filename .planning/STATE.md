@@ -2,19 +2,20 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-01-24)
+See: .planning/PROJECT.md (updated 2026-01-30)
 
-**Core value:** A missionary can look at their journal and instantly know what's next for each donor and what they've completed so far.
+**Core value:** Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems.
 
-**Current focus:** v1.0 Journal Feature COMPLETE — Milestone archived
+**Current focus:** v1.1 CSV Import — Defining requirements
 
 ## Current Position
 
-Milestone: v1.0 Journal Feature — ARCHIVED
-Status: Complete and archived
-Last activity: 2026-01-29 — Completed quick-003
+Milestone: v1.1 CSV Import — ACTIVE
+Phase: Not started (defining requirements)
+Status: Defining requirements
+Last activity: 2026-01-30 — Milestone v1.1 started
 
-Progress: [████████████████] 100% (6 phases, 24 plans, 19 requirements)
+Progress: [░░░░░░░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -135,8 +136,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-01-29 (quick task 003)
-Stopped at: Completed quick-003 (Condense donations by month/year)
+Last session: 2026-01-30 (milestone start)
+Stopped at: Defining requirements for v1.1 CSV Import
 Resume file: None
 
-**Status:** Journal Feature v1.0 milestone COMPLETE and archived. Ongoing quick tasks for UI refinements. Ready for next milestone.
+**Status:** v1.1 CSV Import milestone started. Defining requirements.
