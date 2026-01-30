@@ -2,20 +2,20 @@
 
 ## Milestones
 
-- ✅ **v1.0 Journal Feature** - Phases 1-6 (shipped 2026-01-29)
-- 🚧 **v1.1 CSV Import** - Phases 7-12 (in progress)
+- **v1.0 Journal Feature** - Phases 1-6 (shipped 2026-01-29)
+- **v1.1 CSV Import** - Phases 7-12 (in progress)
 
 ## Phases
 
 <details>
-<summary>✅ v1.0 Journal Feature (Phases 1-6) - SHIPPED 2026-01-29</summary>
+<summary>v1.0 Journal Feature (Phases 1-6) - SHIPPED 2026-01-29</summary>
 
 See milestones/v1.0-ROADMAP.md for complete phase details.
 
 **Key Features:**
 - Journal CRUD with owner-scoped visibility
 - Contact membership management (many-to-many)
-- 6-stage pipeline: Contact → Meet → Close → Decision → Thank → Next Steps
+- 6-stage pipeline: Contact -> Meet -> Close -> Decision -> Thank -> Next Steps
 - Decision tracking with history (dual-table pattern)
 - Interactive grid UI with stage cell indicators
 - Event timeline drawer with infinite scroll
@@ -28,7 +28,7 @@ See milestones/v1.0-ROADMAP.md for complete phase details.
 
 </details>
 
-### 🚧 v1.1 CSV Import (In Progress)
+### v1.1 CSV Import (In Progress)
 
 **Milestone Goal:** Enable admins to import SPO-exported CSV files (Funds, Entities, Transactions, Pledges) into DonorCRM with validation, preview, and idempotent upserts.
 
@@ -53,11 +53,11 @@ See milestones/v1.0-ROADMAP.md for complete phase details.
   4. ImportRowError model stores row-level validation failures with row numbers and error messages
   5. Database migrations apply cleanly without breaking existing data
 
-**Plans:** TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 07-01: TBD
-- [ ] 07-02: TBD
+- [ ] 07-01-PLAN.md - Create Fund, ImportRun, ImportRowError models
+- [ ] 07-02-PLAN.md - Add external_id fields and fund FKs, apply migrations
 
 ---
 
@@ -160,12 +160,12 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. Import Center page is accessible only to admin users at /admin/imports route
   2. Import Center displays 4 tiles (Funds, Entities, Transactions, Pledges) with last import date and status
-  3. Each tile supports Upload → Preview → Validate → Import → Summary workflow with cancel at any step
+  3. Each tile supports Upload -> Preview -> Validate -> Import -> Summary workflow with cancel at any step
   4. Admin can preview first 25 rows of uploaded CSV client-side before submitting to server
   5. Import button is disabled until validation passes and enabled only for valid CSVs
   6. Admin can download errors CSV with original row data plus error_message column for failed imports
   7. UI warns when attempting Transaction/Pledge import with empty Funds or Entities (dependency guidance)
-  8. UI shows recommended import order: Funds → Entities → Transactions → Pledges
+  8. UI shows recommended import order: Funds -> Entities -> Transactions -> Pledges
 
 **Plans:** TBD
 
@@ -179,12 +179,12 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 7 → 8 → 9 → 10 → 11 → 12
+Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11 -> 12
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 1-6. v1.0 Journal | v1.0 | 24/24 | Complete | 2026-01-29 |
-| 7. Foundation | v1.1 | 0/TBD | Not started | - |
+| 7. Foundation | v1.1 | 0/2 | Planned | - |
 | 8. Funds CSV Import | v1.1 | 0/TBD | Not started | - |
 | 9. Entities CSV Import | v1.1 | 0/TBD | Not started | - |
 | 10. Transactions CSV Import | v1.1 | 0/TBD | Not started | - |
