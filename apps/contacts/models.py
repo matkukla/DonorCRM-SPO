@@ -32,6 +32,15 @@ class Contact(TimeStampedModel):
         help_text='Staff member who owns this contact'
     )
 
+    # External ID for idempotent imports
+    external_id = models.CharField(
+        'external ID',
+        max_length=100,
+        blank=True,
+        db_index=True,
+        help_text='Entity ID from external system (e.g., SPO)'
+    )
+
     # Basic information
     first_name = models.CharField('first name', max_length=150)
     last_name = models.CharField('last name', max_length=150)
@@ -104,6 +113,11 @@ class Contact(TimeStampedModel):
                 fields=['owner', 'email'],
                 name='unique_contact_email_per_owner',
                 condition=~models.Q(email='')
+            ),
+            models.UniqueConstraint(
+                fields=['owner', 'external_id'],
+                name='unique_contact_external_id_per_owner',
+                condition=~models.Q(external_id='')
             )
         ]
 
