@@ -1,5 +1,4 @@
-export { default as DonationsByMonth } from "./DonationsByMonth"
-export { default as DonationsByYear } from "./DonationsByYear"
+export { default as DonationsByMonthYear } from "./DonationsByMonthYear"
 export { default as MonthlyCommitments } from "./MonthlyCommitments"
 export { default as LateDonations } from "./LateDonations"
 export { default as FollowUps } from "./FollowUps"

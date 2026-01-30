@@ -15,7 +15,6 @@ import {
   ChevronDown,
   BookOpen,
   Calendar,
-  CalendarDays,
   TrendingUp,
   AlertCircle,
   ListTodo,
@@ -43,8 +42,7 @@ const navItems: NavItem[] = [
 
 const insightsItems: NavItem[] = [
   { label: "Journals", href: "/journals", icon: <BookOpen className="h-4 w-4" /> },
-  { label: "Donations by Month", href: "/insights/donations-by-month", icon: <Calendar className="h-4 w-4" /> },
-  { label: "Donations by Year", href: "/insights/donations-by-year", icon: <CalendarDays className="h-4 w-4" /> },
+  { label: "Donations by Month/Year", href: "/insights/donations-by-month-year", icon: <Calendar className="h-4 w-4" /> },
   { label: "Monthly Commitments", href: "/insights/monthly-commitments", icon: <TrendingUp className="h-4 w-4" /> },
   { label: "Late Donations", href: "/insights/late-donations", icon: <AlertCircle className="h-4 w-4" /> },
   { label: "Follow-ups", href: "/insights/follow-ups", icon: <ListTodo className="h-4 w-4" /> },

@@ -30,8 +30,7 @@ import ImportExport from "@/pages/imports/ImportExport"
 import JournalDetail from "@/pages/journals/JournalDetail"
 import JournalList from "@/pages/journals/JournalList"
 import {
-  DonationsByMonth,
-  DonationsByYear,
+  DonationsByMonthYear,
   MonthlyCommitments,
   LateDonations,
   FollowUps,
@@ -90,8 +89,7 @@ function App() {
             <Route path="/journals/:id" element={<ProtectedPage><JournalDetail /></ProtectedPage>} />
 
             {/* Insights routes */}
-            <Route path="/insights/donations-by-month" element={<ProtectedPage><DonationsByMonth /></ProtectedPage>} />
-            <Route path="/insights/donations-by-year" element={<ProtectedPage><DonationsByYear /></ProtectedPage>} />
+            <Route path="/insights/donations-by-month-year" element={<ProtectedPage><DonationsByMonthYear /></ProtectedPage>} />
             <Route path="/insights/monthly-commitments" element={<ProtectedPage><MonthlyCommitments /></ProtectedPage>} />
             <Route path="/insights/late-donations" element={<ProtectedPage><LateDonations /></ProtectedPage>} />
             <Route path="/insights/follow-ups" element={<ProtectedPage><FollowUps /></ProtectedPage>} />
