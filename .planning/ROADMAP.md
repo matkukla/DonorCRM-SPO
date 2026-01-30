@@ -1,190 +1,196 @@
-# Roadmap: DonorCRM Journal Feature
+# Roadmap: DonorCRM
 
-## Overview
+## Milestones
 
-The Journal feature builds a fundraising campaign pipeline tracker in six phases, starting with foundational data models and APIs, then layering on decision tracking, grid UI, reporting, and integrations. Each phase delivers testable, user-facing value. The journey moves from "backend works" to "grid displays data" to "user can interact" to "user can analyze" to "system integrates with existing features."
+- ✅ **v1.0 Journal Feature** - Phases 1-6 (shipped 2026-01-29)
+- 🚧 **v1.1 CSV Import** - Phases 7-12 (in progress)
 
 ## Phases
 
-**Phase Numbering:**
-- Integer phases (1, 2, 3): Planned milestone work
-- Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
+<details>
+<summary>✅ v1.0 Journal Feature (Phases 1-6) - SHIPPED 2026-01-29</summary>
 
-Decimal phases appear between their surrounding integers in numeric order.
+See milestones/v1.0-ROADMAP.md for complete phase details.
 
-- [x] **Phase 1: Foundation & Data Model** - Core models, API endpoints, event logging
-- [x] **Phase 2: Contact Membership & Search** - Add/remove contacts, filtering
-- [x] **Phase 3: Decision Tracking** - Current state + history with dual-table pattern
-- [x] **Phase 4: Grid UI Core** - Static grid, stage cells, event timeline drawer
-- [x] **Phase 5: Grid Interactions & Decision UI** - Optimistic updates, decision dialogs, next steps
-- [x] **Phase 6: Reporting & Integration** - Analytics charts, contact detail integration, task linking
+**Key Features:**
+- Journal CRUD with owner-scoped visibility
+- Contact membership management (many-to-many)
+- 6-stage pipeline: Contact → Meet → Close → Decision → Thank → Next Steps
+- Decision tracking with history (dual-table pattern)
+- Interactive grid UI with stage cell indicators
+- Event timeline drawer with infinite scroll
+- Analytics charts (decision trends, stage activity, pipeline breakdown)
+- Contact detail integration (Journals tab)
+- Task system integration (journal-linked tasks)
+- Admin analytics endpoints
 
-## Phase Details
+**Scope:** 19 requirements, 6 phases, 24 plans, 35 UAT tests passed
 
-### Phase 1: Foundation & Data Model
-**Goal**: Backend foundation exists with all core models, migrations, API endpoints, and permission layer. User can create/edit/archive journals via API.
+</details>
 
-**Depends on**: Nothing (first phase)
+### 🚧 v1.1 CSV Import (In Progress)
 
-**Requirements**: JRN-01, JRN-04, JRN-18
+**Milestone Goal:** Enable admins to import SPO-exported CSV files (Funds, Entities, Transactions, Pledges) into DonorCRM with validation, preview, and idempotent upserts.
+
+**Target features:**
+- Import Center UI for 4 CSV types
+- Fund model for account/campaign tracking
+- External ID support for idempotent imports
+- Row-level validation and error reporting
+- Import audit trail (ImportRun, ImportRowError)
+
+#### Phase 7: Foundation
+**Goal:** Establish core data models and migration infrastructure for idempotent CSV import with audit trail support.
+
+**Depends on:** Phase 6 (v1.0 Journal Feature complete)
+
+**Requirements:** IMP-01, IMP-02, IMP-03, IMP-04, IMP-13
 
 **Success Criteria** (what must be TRUE):
-1. User can create a journal with name, goal amount, and deadline via POST /api/v1/journals/
-2. User can edit journal fields via PATCH /api/v1/journals/{id}/
-3. User can archive a journal (soft delete) via DELETE /api/v1/journals/{id}/
-4. System logs stage events when created (append-only with timestamp)
-5. User sees only their own journals, admins see all journals (permission enforcement working)
+  1. Fund model exists with external_id unique constraint and indexed for fast lookups
+  2. Contact, Donation, and Pledge models have external_id fields for upsert operations
+  3. ImportRun model tracks import history with type, status, counts, and uploader
+  4. ImportRowError model stores row-level validation failures with row numbers and error messages
+  5. Database migrations apply cleanly without breaking existing data
 
-**Plans**: 2 plans
+**Plans:** TBD
 
 Plans:
-- [x] 01-01-PLAN.md — App scaffolding, models, enums, and migrations
-- [x] 01-02-PLAN.md — Serializers, views, URLs, signals, and API integration
+- [ ] 07-01: TBD
+- [ ] 07-02: TBD
 
 ---
 
-### Phase 2: Contact Membership & Search
-**Goal**: User can add/remove contacts to journals and search/filter within a journal. Many-to-many relationship works with contact picker.
+#### Phase 8: Funds CSV Import
+**Goal:** Deliver complete Funds CSV import workflow with validation patterns reusable across subsequent import types.
 
-**Depends on**: Phase 1
+**Depends on:** Phase 7
 
-**Requirements**: JRN-02, JRN-03
+**Requirements:** IMP-05, IMP-09, IMP-11, IMP-12, IMP-14
 
 **Success Criteria** (what must be TRUE):
-1. User can add multiple contacts to a journal via POST /api/v1/journal-members/
-2. User can remove contacts from a journal via DELETE /api/v1/journal-members/{id}/
-3. Contact can belong to multiple journals simultaneously (no uniqueness violation errors)
-4. User can search contacts within a journal by name/email via query params
-5. User can filter contacts by stage or decision status
+  1. Admin can upload Funds CSV file via API endpoint and receive validation results
+  2. System validates required columns (fund_id, name, status) are present and rejects malformed CSVs
+  3. System validates data types (fund_id is string, status is valid enum value) and reports parse errors with row numbers
+  4. System creates new Funds or updates existing Funds based on fund_id match (idempotent upsert)
+  5. Import summary displays total rows, created count, updated count, error count
+  6. CSV injection attacks are blocked (formula prefixes sanitized on import)
 
-**Plans**: 2 plans
+**Plans:** TBD
 
 Plans:
-- [x] 02-01-PLAN.md — Serializer, views, and URL routing for journal membership API
-- [x] 02-02-PLAN.md — Integration tests covering all success criteria
+- [ ] 08-01: TBD
+- [ ] 08-02: TBD
 
 ---
 
-### Phase 3: Decision Tracking
-**Goal**: System tracks current decision state and full history using dual-table pattern. User can update decisions and see history.
+#### Phase 9: Entities CSV Import
+**Goal:** Enable Contact upserts from Entities CSV with owner assignment and duplicate detection.
 
-**Depends on**: Phase 2
+**Depends on:** Phase 8
 
-**Requirements**: JRN-07, JRN-08, JRN-09
+**Requirements:** IMP-06
 
 **Success Criteria** (what must be TRUE):
-1. User can record a decision with amount, cadence (one-time/monthly/quarterly/annual), and status
-2. User can update an existing decision, and system appends old state to history table before updating current
-3. System calculates monthly equivalent for all cadences correctly (quarterly → amount/3, annual → amount/12)
-4. User can retrieve decision history for a contact in a journal, paginated (default 25 records)
-5. Each contact has at most one current decision per journal (unique constraint enforced)
+  1. Admin can upload Entities CSV file (entity_id, name, email, phone, address, entity_type columns)
+  2. System validates entity_id uniqueness within uploaded file and reports in-file duplicates
+  3. System detects existing Contacts with matching external_id and separates into create vs update batches
+  4. New Contacts are created with external_id from entity_id and assigned to uploading user as owner
+  5. Existing Contacts are updated with new data from CSV while preserving owner relationship
+  6. Import summary distinguishes between created and updated contact counts
 
-**Plans**: 3 plans
+**Plans:** TBD
 
 Plans:
-- [x] 03-01-PLAN.md — Decision and DecisionHistory models with enums and migration
-- [x] 03-02-PLAN.md — Serializers, views, and URL routing for decision API
-- [x] 03-03-PLAN.md — Integration tests for all success criteria
+- [ ] 09-01: TBD
 
 ---
 
-### Phase 4: Grid UI Core
-**Goal**: User sees a functional grid with contacts as rows, stages as columns, and can open event timeline drawer. Grid displays data from API.
+#### Phase 10: Transactions CSV Import
+**Goal:** Enable Donation imports with foreign key validation and denormalized stat updates.
 
-**Depends on**: Phase 3
+**Depends on:** Phase 9 (Entities must exist), Phase 8 (Funds must exist)
 
-**Requirements**: JRN-10, JRN-11, JRN-12
+**Requirements:** IMP-07
 
 **Success Criteria** (what must be TRUE):
-1. User sees grid layout with sticky column headers (stages) and sticky first column (contact names)
-2. Stage cells display checkmarks when stage has logged events
-3. Checkmark color indicates event freshness (green: <1 week, yellow: <1 month, orange: <3 months, red: 3+ months)
-4. User can hover over stage cell to see tooltip with most recent event summary
-5. User can click stage cell to open right-side drawer showing chronological event timeline
-6. Timeline drawer loads recent 5 events by default with "Load More" option
-7. Grid supports horizontal scroll for all 6 stage columns
+  1. Admin can upload Transactions CSV file (transaction_id, entity_id, fund_id, amount, posted_date columns)
+  2. System validates all entity_id values reference existing Contact.external_id before import
+  3. System validates all fund_id values reference existing Fund.external_id before import
+  4. System rejects entire import if any orphan references exist and provides missing ID report with row numbers
+  5. Donations are created or updated using transaction_id as external_id with correct Contact and Fund foreign keys
+  6. Contact denormalized stats (total_given, gift_count, last_gift_date) update correctly after bulk import completes
 
-**Plans**: 5 plans
+**Plans:** TBD
 
 Plans:
-- [x] 04-01-PLAN.md — Setup dependencies (Tooltip, date-fns, Badge variant, TypeScript types)
-- [x] 04-02-PLAN.md — Journal API client and React Query hooks
-- [x] 04-03-PLAN.md — JournalGrid component with sticky headers and StageCell
-- [x] 04-04-PLAN.md — EventTimelineDrawer with infinite scroll pagination
-- [x] 04-05-PLAN.md — JournalDetail page integration and visual verification
+- [ ] 10-01: TBD
+- [ ] 10-02: TBD
 
 ---
 
-### Phase 5: Grid Interactions & Decision UI
-**Goal**: User can interact with the grid: update decisions, create events, manage next steps. Optimistic updates provide instant feedback.
+#### Phase 11: Pledges CSV Import
+**Goal:** Complete CSV import pipeline with Pledges using validated patterns from Transactions.
 
-**Depends on**: Phase 4
+**Depends on:** Phase 10
 
-**Requirements**: JRN-05, JRN-06, JRN-13, JRN-14
+**Requirements:** IMP-08
 
 **Success Criteria** (what must be TRUE):
-1. User can click decision column cell to open dialog and update amount/cadence/status
-2. Decision updates apply optimistically (UI updates immediately, rolls back on error)
-3. User can move contact to different stage, and system shows warning toast if skipping/reversing stages (but allows save)
-4. User can create, edit, and mark complete Next Steps checklist items per contact
-5. Journal header displays name, goal amount, progress bar, total decisions made, and total pledged amount
-6. Header progress calculation updates in real-time as decisions change
-7. Grid cells re-render efficiently (memoized, no cascade re-renders when interacting with single cell)
+  1. Admin can upload Pledges CSV file (pledge_id, entity_id, fund_id, amount, cadence, status, start_date columns)
+  2. System validates entity_id and fund_id references exist using same validation as Transactions
+  3. System validates cadence and status are valid enum values and rejects invalid choices
+  4. Pledges are created or updated using pledge_id as external_id with correct Contact and Fund foreign keys
+  5. Import summary displays created/updated/error counts matching actual database state
 
-**Plans**: 6 plans
+**Plans:** TBD
 
 Plans:
-- [x] 05-01-PLAN.md — UI dependencies (Sonner, Select, Progress, Checkbox components)
-- [x] 05-02-PLAN.md — NextStep backend model, serializer, views, and tests
-- [x] 05-03-PLAN.md — Decision API functions, optimistic mutation hooks, JournalHeader
-- [x] 05-04-PLAN.md — Stage movement warnings and NextSteps frontend
-- [x] 05-05-PLAN.md — DecisionDialog and DecisionCell components
-- [x] 05-06-PLAN.md — Page integration with human verification
+- [ ] 11-01: TBD
 
 ---
 
-### Phase 6: Reporting & Integration
-**Goal**: User can view analytics reports, see journal membership from contact detail page, and create journal-specific tasks.
+#### Phase 12: Import Center UI
+**Goal:** Deliver admin-only Import Center with upload workflow, preview, and error reporting for all 4 CSV types.
 
-**Depends on**: Phase 5
+**Depends on:** Phase 11
 
-**Requirements**: JRN-15, JRN-16, JRN-17, JRN-19
+**Requirements:** IMP-10, IMP-15, IMP-16, IMP-17, IMP-18, IMP-19
 
 **Success Criteria** (what must be TRUE):
-1. User can open Report tab and see decision trends chart (bar: decisions over time)
-2. User can view stage activity chart (area: events by stage) and pipeline breakdown (pie: contacts by stage)
-3. User can view next steps queue showing upcoming actions across all contacts
-4. Contact detail page has new "Journals" tab showing all journals this contact belongs to
-5. Journals tab displays current stage and decision for each journal the contact is in
-6. User can create a task linked to a journal (Task.journal_id populated)
-7. Journal-linked tasks appear in journal context and in standard task views
-8. Admin can access analytics endpoints for cross-missionary aggregation (total journals, decision totals, stage averages)
-9. Report queries execute without N+1 problems (verified with django-debug-toolbar)
+  1. Import Center page is accessible only to admin users at /admin/imports route
+  2. Import Center displays 4 tiles (Funds, Entities, Transactions, Pledges) with last import date and status
+  3. Each tile supports Upload → Preview → Validate → Import → Summary workflow with cancel at any step
+  4. Admin can preview first 25 rows of uploaded CSV client-side before submitting to server
+  5. Import button is disabled until validation passes and enabled only for valid CSVs
+  6. Admin can download errors CSV with original row data plus error_message column for failed imports
+  7. UI warns when attempting Transaction/Pledge import with empty Funds or Entities (dependency guidance)
+  8. UI shows recommended import order: Funds → Entities → Transactions → Pledges
 
-**Plans**: 6 plans
+**Plans:** TBD
 
 Plans:
-- [x] 06-01-PLAN.md — Analytics backend endpoints (decision trends, stage activity, pipeline breakdown, admin summary)
-- [x] 06-02-PLAN.md — Task.journal_id migration and shadcn/ui Chart component setup
-- [x] 06-03-PLAN.md — Contact journals API endpoint for Contact Detail Journals tab
-- [x] 06-04-PLAN.md — Report tab charts (hooks + DecisionTrends, StageActivity, PipelineBreakdown, NextStepsQueue)
-- [x] 06-05-PLAN.md — Contact Detail Journals tab UI integration
-- [x] 06-06-PLAN.md — Journal Detail Report tab integration and human verification
+- [ ] 12-01: TBD
+- [ ] 12-02: TBD
+- [ ] 12-03: TBD
 
 ---
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
+Phases execute in numeric order: 7 → 8 → 9 → 10 → 11 → 12
 
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 1. Foundation & Data Model | 2/2 | Complete | 2026-01-24 |
-| 2. Contact Membership & Search | 2/2 | Complete | 2026-01-24 |
-| 3. Decision Tracking | 3/3 | Complete | 2026-01-24 |
-| 4. Grid UI Core | 5/5 | Complete | 2026-01-25 |
-| 5. Grid Interactions & Decision UI | 6/6 | Complete | 2026-01-25 |
-| 6. Reporting & Integration | 6/6 | Complete | 2026-01-29 |
+| Phase | Milestone | Plans Complete | Status | Completed |
+|-------|-----------|----------------|--------|-----------|
+| 1-6. v1.0 Journal | v1.0 | 24/24 | Complete | 2026-01-29 |
+| 7. Foundation | v1.1 | 0/TBD | Not started | - |
+| 8. Funds CSV Import | v1.1 | 0/TBD | Not started | - |
+| 9. Entities CSV Import | v1.1 | 0/TBD | Not started | - |
+| 10. Transactions CSV Import | v1.1 | 0/TBD | Not started | - |
+| 11. Pledges CSV Import | v1.1 | 0/TBD | Not started | - |
+| 12. Import Center UI | v1.1 | 0/TBD | Not started | - |
 
-**MILESTONE COMPLETE:** v1.0 Journal Feature archived on 2026-01-29
+---
+
+*Last updated: 2026-01-30*
