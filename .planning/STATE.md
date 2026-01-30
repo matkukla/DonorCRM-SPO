@@ -10,29 +10,29 @@ See: .planning/PROJECT.md (updated 2026-01-30)
 ## Current Position
 
 Phase: 8 of 12 (Funds CSV Import)
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-01-30 - Completed Phase 7 (Foundation)
+Plan: 1 of TBD
+Status: In progress
+Last activity: 2026-01-30 - Completed 08-01-SUMMARY.md
 
-Progress: [█████░░░░░░░░░░░░░░░] 25% (v1.0 complete + Phase 7)
+Progress: [█████░░░░░░░░░░░░░░░] 28% (v1.0 complete + Phase 7-8)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 26 (24 v1.0 + 2 v1.1)
-- Average duration: 2.7 minutes
-- Total execution time: 1.49 hours
+- Total plans completed: 27 (24 v1.0 + 3 v1.1)
+- Average duration: 2.8 minutes
+- Total execution time: 1.56 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | v1.0 (Phases 1-6) | 24 | 1.4 hours | 2.8 min |
-| v1.1 (Phases 7-12) | 2/TBD | 4m 34s | 2.3 min |
+| v1.1 (Phases 7-12) | 3/TBD | 8m 34s | 2.9 min |
 
 **Recent Trend:**
 - v1.0 milestone shipped successfully
-- v1.1 milestone: 07-01 (1m 53s), 07-02 (2m 41s)
+- v1.1 milestone: 07-01 (1m 53s), 07-02 (2m 41s), 08-01 (4m)
 
 *Updated after each plan completion*
 
@@ -52,6 +52,10 @@ Recent decisions affecting current work:
 - **07-02-D1:** Contact.external_id owner-scoped (same ID allowed for different owners)
 - **07-02-D2:** Pledge.external_id globally unique (SPO pledge_ids are globally unique)
 - **07-02-D3:** Conditional uniqueness via ~Q(external_id='') allows blank values
+- **08-01-D1:** Status validation is case-insensitive (ACTIVE → active)
+- **08-01-D2:** Status defaults to 'active' when missing from CSV
+- **08-01-D3:** Formula character detection prevents CSV injection attacks
+- **08-01-D4:** Funds imported with null owner (org-wide by default)
 
 ### Pending Todos
 
@@ -76,9 +80,9 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-01-30
-Stopped at: Completed Phase 7 (Foundation) - all 2 plans executed and verified
-Resume file: None (ready to start Phase 8 planning)
+Stopped at: Completed 08-01-SUMMARY.md
+Resume file: None
 
 ---
 
-*Last updated: 2026-01-30 (Phase 7 complete)*
+*Last updated: 2026-01-30 (08-01 complete)*
