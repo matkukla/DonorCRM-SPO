@@ -48,6 +48,16 @@ class Donation(TimeStampedModel):
         related_name='donations'
     )
 
+    # Link to fund (from imports)
+    fund = models.ForeignKey(
+        'imports.Fund',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='donations',
+        help_text='Fund/account this donation is attributed to'
+    )
+
     # Gift details
     amount = models.DecimalField(
         'amount',

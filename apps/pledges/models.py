@@ -41,6 +41,25 @@ class Pledge(TimeStampedModel):
         db_index=True
     )
 
+    # External ID for idempotent imports
+    external_id = models.CharField(
+        'external ID',
+        max_length=100,
+        blank=True,
+        db_index=True,
+        help_text='Pledge ID from external system (e.g., SPO)'
+    )
+
+    # Link to fund (from imports)
+    fund = models.ForeignKey(
+        'imports.Fund',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='pledges',
+        help_text='Fund/account this pledge is attributed to'
+    )
+
     # Pledge details
     amount = models.DecimalField(
         'amount',
@@ -103,6 +122,13 @@ class Pledge(TimeStampedModel):
             models.Index(fields=['contact', 'status']),
             models.Index(fields=['status', 'next_expected_date']),
             models.Index(fields=['is_late']),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['external_id'],
+                name='unique_pledge_external_id',
+                condition=~models.Q(external_id='')
+            )
         ]
 
     def __str__(self):
