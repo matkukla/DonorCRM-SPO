@@ -10,29 +10,29 @@ See: .planning/PROJECT.md (updated 2026-01-30)
 ## Current Position
 
 Phase: 7 of 12 (Foundation)
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-01-30 — Roadmap created for v1.1 CSV Import milestone
+Plan: 1 of TBD complete
+Status: In progress
+Last activity: 2026-01-30 - Completed 07-01-PLAN.md (Import Infrastructure Models)
 
-Progress: [████░░░░░░░░░░░░░░░░] 20% (v1.0 complete)
+Progress: [████░░░░░░░░░░░░░░░░] 21% (v1.0 complete + 07-01)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 24 (v1.0 milestone)
-- Average duration: 2.8 minutes
-- Total execution time: 1.4 hours
+- Total plans completed: 25 (24 v1.0 + 1 v1.1)
+- Average duration: 2.7 minutes
+- Total execution time: 1.45 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | v1.0 (Phases 1-6) | 24 | 1.4 hours | 2.8 min |
-| v1.1 (Phases 7-12) | 0/TBD | - | - |
+| v1.1 (Phases 7-12) | 1/TBD | 1m 53s | 1.9 min |
 
 **Recent Trend:**
 - v1.0 milestone shipped successfully
-- v1.1 milestone just started
+- v1.1 milestone started with 07-01
 
 *Updated after each plan completion*
 
@@ -47,6 +47,8 @@ Recent decisions affecting current work:
 - External ID fields for idempotent upserts (SPO compatibility)
 - Strict mode validation (reject entire import if any orphan references)
 - Synchronous import processing for MVP (no Celery infrastructure)
+- **07-01-D1:** Fund.external_id globally unique (not owner-scoped)
+- **07-01-D2:** Fund.owner nullable for org-wide funds
 
 ### Pending Todos
 
@@ -55,8 +57,8 @@ None yet.
 ### Blockers/Concerns
 
 **Phase 7 Readiness:**
-- Need to verify existing Import app structure before adding new models
-- Need to confirm external_id field naming convention (external_id vs externalId)
+- ~~Need to verify existing Import app structure before adding new models~~ (Verified: imports app exists, models.py created)
+- ~~Need to confirm external_id field naming convention~~ (Using snake_case: external_id)
 - Research recommended validation-first pattern (validate ALL rows before atomic import)
 
 **Phase 10 Readiness:**
@@ -70,8 +72,8 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-01-30
-Stopped at: Roadmap created for v1.1 CSV Import milestone
-Resume file: None (ready to start Phase 7 planning)
+Stopped at: Completed 07-01-PLAN.md
+Resume file: None
 
 ---
 
