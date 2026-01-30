@@ -1,8 +1,12 @@
 """
 Tests for Fund CSV import functionality.
 """
+import io
 import pytest
 from django.contrib.auth import get_user_model
+from django.urls import reverse
+from rest_framework import status
+from rest_framework.test import APIClient
 
 from apps.imports.models import Fund, ImportRun, ImportType, ImportStatus
 from apps.imports.services import parse_funds_csv, import_funds
@@ -19,6 +23,24 @@ def test_user(db):
         first_name='Test',
         last_name='User'
     )
+
+
+@pytest.fixture
+def admin_user(db):
+    """Create an admin user."""
+    return User.objects.create_user(
+        email='admin@example.com',
+        password='adminpass123',
+        first_name='Admin',
+        last_name='User',
+        role='admin'
+    )
+
+
+@pytest.fixture
+def api_client():
+    """Create an API client."""
+    return APIClient()
 
 
 @pytest.fixture
@@ -337,3 +359,244 @@ class TestImportFunds:
 
         fund = Fund.objects.get(external_id='FUND001')
         assert fund.owner is None
+
+
+class TestFundImportView:
+    """Integration tests for FundImportView API endpoint."""
+
+    def test_admin_can_import_funds(self, api_client, admin_user):
+        """Admin user can import funds via API."""
+        api_client.force_authenticate(user=admin_user)
+
+        csv_content = b"""fund_id,name,status
+FUND001,General Ministry,active
+FUND002,Special Projects,inactive"""
+
+        csv_file = io.BytesIO(csv_content)
+        csv_file.name = 'funds.csv'
+
+        url = reverse('imports:import-funds')
+        response = api_client.post(url, {'file': csv_file}, format='multipart')
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['created_count'] == 2
+        assert response.data['updated_count'] == 0
+        assert response.data['error_count'] == 0
+        assert 'import_run_id' in response.data
+
+        # Verify funds were created
+        assert Fund.objects.count() == 2
+        assert Fund.objects.filter(external_id='FUND001').exists()
+        assert Fund.objects.filter(external_id='FUND002').exists()
+
+        # Verify ImportRun was created
+        assert ImportRun.objects.count() == 1
+        import_run = ImportRun.objects.first()
+        assert import_run.type == ImportType.FUNDS
+        assert import_run.status == ImportStatus.COMPLETED
+        assert import_run.uploaded_by == admin_user
+
+    def test_non_admin_cannot_import_funds(self, api_client, test_user):
+        """Non-admin user receives 403 Forbidden."""
+        api_client.force_authenticate(user=test_user)
+
+        csv_content = b"""fund_id,name,status
+FUND001,General Ministry,active"""
+
+        csv_file = io.BytesIO(csv_content)
+        csv_file.name = 'funds.csv'
+
+        url = reverse('imports:import-funds')
+        response = api_client.post(url, {'file': csv_file}, format='multipart')
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_missing_file_returns_400(self, api_client, admin_user):
+        """Missing file returns 400 with 'No file provided' message."""
+        api_client.force_authenticate(user=admin_user)
+
+        url = reverse('imports:import-funds')
+        response = api_client.post(url, {}, format='multipart')
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'No file provided' in response.data['detail']
+
+    def test_non_csv_file_returns_400(self, api_client, admin_user):
+        """Non-CSV file returns 400 with 'File must be a CSV' message."""
+        api_client.force_authenticate(user=admin_user)
+
+        txt_file = io.BytesIO(b"not a csv")
+        txt_file.name = 'funds.txt'
+
+        url = reverse('imports:import-funds')
+        response = api_client.post(url, {'file': txt_file}, format='multipart')
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'File must be a CSV' in response.data['detail']
+
+    def test_validation_errors_return_400_with_details(self, api_client, admin_user):
+        """Validation errors return 400 with error details and row numbers."""
+        api_client.force_authenticate(user=admin_user)
+
+        csv_content = b"""fund_id,name,status
+,General Ministry,active
+FUND002,,active
+FUND003,Special Projects,invalid_status"""
+
+        csv_file = io.BytesIO(csv_content)
+        csv_file.name = 'funds.csv'
+
+        url = reverse('imports:import-funds')
+        response = api_client.post(url, {'file': csv_file}, format='multipart')
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['created_count'] == 0
+        assert response.data['error_count'] == 3
+        assert len(response.data['errors']) == 3
+
+        # Check error structure includes row numbers
+        assert response.data['errors'][0]['row'] == 2
+        assert 'fund_id is required' in response.data['errors'][0]['errors'][0]
+
+    def test_validate_only_dry_run(self, api_client, admin_user):
+        """validate_only=true performs dry-run validation without importing."""
+        api_client.force_authenticate(user=admin_user)
+
+        csv_content = b"""fund_id,name,status
+FUND001,General Ministry,active
+FUND002,Special Projects,inactive"""
+
+        csv_file = io.BytesIO(csv_content)
+        csv_file.name = 'funds.csv'
+
+        url = reverse('imports:import-funds')
+        response = api_client.post(url, {'file': csv_file}, format='multipart',
+                                   QUERY_STRING='validate_only=true')
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['valid_count'] == 2
+        assert response.data['error_count'] == 0
+
+        # Verify no funds were created
+        assert Fund.objects.count() == 0
+
+        # Verify no ImportRun was created
+        assert ImportRun.objects.count() == 0
+
+    def test_successful_import_returns_counts(self, api_client, admin_user):
+        """Successful import returns 200 with created/updated/error counts."""
+        api_client.force_authenticate(user=admin_user)
+
+        # Create existing fund
+        Fund.objects.create(
+            external_id='FUND001',
+            name='Old Name',
+            status='inactive'
+        )
+
+        csv_content = b"""fund_id,name,status
+FUND001,Updated Name,active
+FUND002,New Fund,active"""
+
+        csv_file = io.BytesIO(csv_content)
+        csv_file.name = 'funds.csv'
+
+        url = reverse('imports:import-funds')
+        response = api_client.post(url, {'file': csv_file}, format='multipart')
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['created_count'] == 1
+        assert response.data['updated_count'] == 1
+        assert response.data['error_count'] == 0
+        assert 'import_run_id' in response.data
+
+    def test_import_creates_audit_record(self, api_client, admin_user):
+        """Import creates ImportRun audit record."""
+        api_client.force_authenticate(user=admin_user)
+
+        csv_content = b"""fund_id,name,status
+FUND001,General Ministry,active"""
+
+        csv_file = io.BytesIO(csv_content)
+        csv_file.name = 'test_funds.csv'
+
+        url = reverse('imports:import-funds')
+        response = api_client.post(url, {'file': csv_file}, format='multipart')
+
+        assert response.status_code == status.HTTP_200_OK
+
+        # Verify ImportRun exists
+        assert ImportRun.objects.count() == 1
+        import_run = ImportRun.objects.first()
+        assert import_run.type == ImportType.FUNDS
+        assert import_run.status == ImportStatus.COMPLETED
+        assert import_run.filename == 'test_funds.csv'
+        assert import_run.uploaded_by == admin_user
+        assert import_run.created_count == 1
+        assert import_run.updated_count == 0
+
+    def test_utf8_bom_handled_correctly(self, api_client, admin_user):
+        """UTF-8 BOM from Excel exports is handled correctly."""
+        api_client.force_authenticate(user=admin_user)
+
+        # UTF-8 BOM is \xef\xbb\xbf
+        csv_content = b"""\xef\xbb\xbffund_id,name,status
+FUND001,General Ministry,active"""
+
+        csv_file = io.BytesIO(csv_content)
+        csv_file.name = 'funds.csv'
+
+        url = reverse('imports:import-funds')
+        response = api_client.post(url, {'file': csv_file}, format='multipart')
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['created_count'] == 1
+        assert response.data['error_count'] == 0
+
+        # Verify fund was created with correct data
+        fund = Fund.objects.get(external_id='FUND001')
+        assert fund.name == 'General Ministry'
+
+    def test_import_run_id_in_response(self, api_client, admin_user):
+        """Import response includes import_run_id."""
+        api_client.force_authenticate(user=admin_user)
+
+        csv_content = b"""fund_id,name,status
+FUND001,General Ministry,active"""
+
+        csv_file = io.BytesIO(csv_content)
+        csv_file.name = 'funds.csv'
+
+        url = reverse('imports:import-funds')
+        response = api_client.post(url, {'file': csv_file}, format='multipart')
+
+        assert response.status_code == status.HTTP_200_OK
+        assert 'import_run_id' in response.data
+
+        import_run_id = response.data['import_run_id']
+        assert ImportRun.objects.filter(id=import_run_id).exists()
+
+
+class TestFundTemplateView:
+    """Tests for FundTemplateView API endpoint."""
+
+    def test_admin_can_download_template(self, api_client, admin_user):
+        """Admin user can download funds CSV template."""
+        api_client.force_authenticate(user=admin_user)
+
+        url = reverse('imports:template-funds')
+        response = api_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response['Content-Type'] == 'text/csv'
+        assert 'attachment; filename="funds_template.csv"' in response['Content-Disposition']
+        assert response.content == b'fund_id,name,status\n'
+
+    def test_non_admin_cannot_download_template(self, api_client, test_user):
+        """Non-admin user receives 403 Forbidden."""
+        api_client.force_authenticate(user=test_user)
+
+        url = reverse('imports:template-funds')
+        response = api_client.get(url)
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN

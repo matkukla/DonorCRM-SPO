@@ -456,6 +456,16 @@ def get_donations_template() -> str:
     return 'contact_email,contact_first_name,contact_last_name,amount,date,donation_type,payment_method,external_id,notes\n'
 
 
+def get_funds_template() -> str:
+    """
+    Get CSV template for fund imports.
+
+    Returns:
+        CSV header row as string
+    """
+    return 'fund_id,name,status\n'
+
+
 def parse_funds_csv(file_content: str) -> Tuple[List[dict], List[dict]]:
     """
     Parse funds CSV and return (valid_records, errors).

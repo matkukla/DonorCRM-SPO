@@ -16,10 +16,13 @@ from apps.imports.services import (
     export_donations_csv,
     get_contacts_template,
     get_donations_template,
+    get_funds_template,
     import_contacts,
     import_donations,
+    import_funds,
     parse_contacts_csv,
     parse_donations_csv,
+    parse_funds_csv,
 )
 from apps.imports.tasks import (
     get_import_progress,
@@ -268,6 +271,96 @@ class DonationTemplateView(APIView):
         content = get_donations_template()
         response = HttpResponse(content, content_type='text/csv')
         response['Content-Disposition'] = 'attachment; filename="donations_template.csv"'
+        return response
+
+
+class FundImportView(APIView):
+    """
+    POST: Import funds from CSV file (admin only)
+
+    Query params:
+        validate_only: If 'true', only validate without importing
+    """
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+    parser_classes = [MultiPartParser]
+
+    def post(self, request):
+        if 'file' not in request.FILES:
+            return Response(
+                {'detail': 'No file provided.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        file = request.FILES['file']
+        if not file.name.endswith('.csv'):
+            return Response(
+                {'detail': 'File must be a CSV.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Read and decode file content (utf-8-sig handles Excel BOM)
+        try:
+            content = file.read().decode('utf-8-sig')
+        except UnicodeDecodeError:
+            return Response(
+                {'detail': 'File encoding error. Please use UTF-8.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        logger.info(f'Fund import started by user {request.user.email}')
+
+        # Parse CSV
+        valid_records, errors = parse_funds_csv(content)
+
+        # Option to just validate (dry run)
+        if request.query_params.get('validate_only') == 'true':
+            return Response({
+                'valid_count': len(valid_records),
+                'error_count': len(errors),
+                'errors': errors[:20]  # Limit errors in response
+            })
+
+        # Create ImportRun audit record
+        from apps.imports.models import ImportRun, ImportType, ImportStatus
+        import_run = ImportRun.objects.create(
+            type=ImportType.FUNDS,
+            status=ImportStatus.IMPORTING,
+            filename=file.name,
+            uploaded_by=request.user
+        )
+
+        # Sync import (MVP - no async)
+        if valid_records:
+            created_count, updated_count = import_funds(valid_records, import_run)
+        else:
+            created_count = 0
+            updated_count = 0
+            import_run.created_count = 0
+            import_run.updated_count = 0
+            import_run.status = ImportStatus.COMPLETED
+            import_run.save()
+
+        logger.info(f'Fund import completed: {created_count} created, {updated_count} updated')
+
+        return Response({
+            'created_count': created_count,
+            'updated_count': updated_count,
+            'error_count': len(errors),
+            'errors': errors[:20],
+            'import_run_id': import_run.id
+        })
+
+
+class FundTemplateView(APIView):
+    """
+    GET: Download funds CSV template
+    """
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    def get(self, request):
+        content = get_funds_template()
+        response = HttpResponse(content, content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="funds_template.csv"'
         return response
 
 
