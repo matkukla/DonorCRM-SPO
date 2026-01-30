@@ -1,151 +1,158 @@
-# Requirements: DonorCRM Journal Feature
+# Requirements: DonorCRM CSV Import
 
 ## Overview
 
-This document catalogs all requirements for the Journal feature (fundraising campaign pipeline tracker). Requirements are versioned as v1 (current milestone) and v2 (future work).
+This document catalogs all requirements for the CSV Import feature (SPO-compatible import pipeline). Requirements are versioned as v1.1 (current milestone) and v1.x (future work).
 
-## v1 Requirements
+## v1.1 Requirements
 
-### Core Journal Management
+### Data Model
 
-**JRN-01: Journal CRUD Operations**
-- User can create, edit, and archive journals
-- Each journal has a name, goal amount (in cents), and optional deadline
-- Owner-scoped: user sees their journals, admins see all
+**IMP-01: Fund Model**
+- System has Fund model with external_id, name, status fields
+- Fund.external_id is unique and indexed for upsert operations
+- Funds link to Donations and Pledges via foreign key
 
-**JRN-02: Contact Membership**
-- User can add/remove contacts to journals
-- Many-to-many: contacts can be in multiple journals simultaneously
-- Contacts can be added via "Add Contacts" picker dialog
+**IMP-02: External ID Fields**
+- Contact model has external_id field (nullable, unique when set)
+- Donation model has external_id field (nullable, unique when set)
+- Pledge model has external_id field (nullable, unique when set)
+- External IDs enable idempotent upserts during import
 
-**JRN-03: Search and Filter Contacts**
-- User can search contacts within a journal grid
-- User can filter contacts by stage, decision status, or next steps
+**IMP-03: ImportRun Audit Model**
+- System tracks each import run with type (funds/entities/transactions/pledges)
+- ImportRun stores status (pending/validated/imported/failed)
+- ImportRun tracks counts: total_rows, created, updated, skipped, errors
+- ImportRun records uploaded_by user and timestamps
 
-### Pipeline Tracking
+**IMP-04: ImportRowError Model**
+- System tracks row-level errors for each import run
+- ImportRowError stores row_number, external_id (if available), error_code, message
+- ImportRowError stores raw_row_json for debugging
+- Errors are queryable by import_run for reporting
 
-**JRN-04: Stage Event Logging**
-- System logs events across 6 stages: Contact → Meet → Close → Decision → Thank → Next Steps
-- Each stage has typed events (e.g., Contact stage: call logged, email sent; Close stage: ask made, follow-up scheduled)
-- Events are append-only with timestamps and metadata
+### Import Pipeline
 
-**JRN-05: Sequential Pipeline Flexibility**
-- User can skip stages or revisit previous stages
-- System shows subtle warnings for non-sequential movement (no hard blocks)
-- Movement patterns logged for analytics
+**IMP-05: Funds CSV Import**
+- Admin can upload Funds CSV file
+- System parses fund_id, name, status columns
+- System upserts Fund records using fund_id as external_id
+- Existing funds with matching fund_id are updated, new funds are created
 
-**JRN-06: Next Steps Checklist**
-- User can create, edit, and mark complete checklist items per contact per journal
-- Next Steps are independent items (not single boolean)
-- Visible in journal grid and contact detail
+**IMP-06: Entities CSV Import**
+- Admin can upload Entities CSV file
+- System parses entity_id, name, email, phone, address, entity_type columns
+- System upserts Contact records using entity_id as external_id
+- System assigns imported contacts to the uploading user as owner
+- Existing contacts with matching entity_id are updated, new contacts are created
 
-### Decision Tracking
+**IMP-07: Transactions CSV Import**
+- Admin can upload Transactions CSV file
+- System parses transaction_id, entity_id, fund_id, amount, posted_date columns
+- System validates entity_id references exist in Contact.external_id
+- System validates fund_id references exist in Fund.external_id
+- System upserts Donation records using transaction_id as external_id
+- System updates Contact denormalized giving stats after import
 
-**JRN-07: Decision Current State**
-- System tracks current decision state: amount (in cents), cadence (one-time/monthly/quarterly/annual), status
-- One current decision per contact per journal (unique constraint)
-- Decisions mutable: user can update amount, cadence, or status
+**IMP-08: Pledges CSV Import**
+- Admin can upload Pledges CSV file
+- System parses pledge_id, entity_id, fund_id, amount, cadence, status, start_date columns
+- System validates entity_id references exist in Contact.external_id
+- System validates fund_id references exist (if fund_id provided)
+- System upserts Pledge records using pledge_id as external_id
 
-**JRN-08: Decision History**
-- System maintains full history of decision changes
-- Each update appends to history table before updating current state
-- History includes timestamp, changed fields, and old values
+### Validation & Preview
 
-**JRN-09: Decision Cadence Support**
-- User can record one-time, monthly, quarterly, or annual pledge cadences
-- System normalizes to monthly equivalent for aggregation
-- Report calculations use monthly equivalent for comparisons
+**IMP-09: Column Validation**
+- System validates required columns are present in uploaded CSV
+- System rejects files missing required columns with clear error message
+- Each import type has defined required and optional columns
 
-### User Interface - Grid View
+**IMP-10: Row Preview**
+- Admin can preview first 25 rows of uploaded CSV before importing
+- Preview shows column headers and sample data
+- Preview parses on client-side (no server round-trip)
 
-**JRN-10: Journal Detail Grid**
-- User sees grid with contacts as rows, stages as columns
-- Grid has sticky headers (stages) and sticky first column (contact names)
-- Grid supports horizontal scroll for all 6+ columns
+**IMP-11: Foreign Key Validation**
+- System validates all entity_id references exist before Transaction/Pledge import
+- System validates all fund_id references exist before Transaction/Pledge import
+- System reports orphan references with row numbers and missing IDs
+- System blocks import if any foreign key references are invalid (strict mode)
 
-**JRN-11: Stage Cell Indicators**
-- Each stage cell shows checkmark if stage has events
-- User can hover cell to see tooltip with recent event summary
-- Checkmark color indicates freshness (green: <1 week, yellow: <1 month, orange: <3 months, red: 3+ months)
+**IMP-12: Data Type Validation**
+- System validates amounts parse as decimal numbers
+- System validates dates parse in expected format
+- System validates enum values (status, cadence) are valid choices
+- System reports parse errors with row numbers and field names
 
-**JRN-12: Event Timeline Drawer**
-- User can click stage cell to open right-side drawer
-- Drawer shows chronological event timeline for that contact in that stage
-- Events paginated (recent 5 default, load more option)
+### Error Handling & Reporting
 
-**JRN-13: Decision Column Display**
-- Decision column shows card with amount, cadence, and status
-- User can click to open decision update dialog
-- Card uses color coding for status (pending/active/paused/declined)
+**IMP-13: Row-Level Error Tracking**
+- System tracks each validation/import error at row level
+- Errors include row number, field name, error type, and message
+- Errors are stored in ImportRowError for audit trail
 
-**JRN-14: Journal Header Summary**
-- Header shows journal name, goal amount, current progress bar
-- Shows total decisions made (count) and total amount pledged
-- Shows percentage toward goal
+**IMP-14: Import Summary**
+- System displays import results summary after completion
+- Summary shows: total rows, created count, updated count, skipped count, error count
+- Summary is stored in ImportRun for historical reference
 
-### User Interface - Reporting
+**IMP-15: Download Errors CSV**
+- Admin can download CSV of failed rows with error messages
+- Error CSV includes original row data plus error_message column
+- Allows admin to fix data and re-import
 
-**JRN-15: Report Tab Analytics**
-- User can view Report tab showing:
-  - Decision trends chart (bar: decisions over time)
-  - Stage activity chart (area: events by stage)
-  - Pipeline breakdown (pie: contacts by stage)
-  - Next steps queue (list: upcoming actions)
+### Import Center UI
 
-### Integration
+**IMP-16: Admin-Only Access**
+- Import Center is only accessible to admin users
+- Route: /admin/imports or /settings/imports
+- Non-admin users cannot see or access import functionality
 
-**JRN-16: Contact Detail Integration**
-- Contact detail page has new "Journals" tab
-- Tab shows all journals this contact belongs to
-- Shows current stage and decision for each journal
+**IMP-17: Import Center Layout**
+- Import Center shows 4 tiles: Funds, Entities, Transactions, Pledges
+- Each tile shows import status and last import date
+- Tiles indicate dependency order (Funds/Entities before Transactions/Pledges)
 
-**JRN-17: Task System Integration**
-- Existing Task model extended with optional journal_id foreign key
-- User can create journal-specific tasks from journal grid
-- Tasks visible in journal context and standard task views
+**IMP-18: Upload Workflow**
+- Each tile supports: Upload → Preview → Validate → Import → Summary workflow
+- User can cancel at any step before import
+- Import button is disabled until validation passes
 
-### Access Control & Analytics Foundation
+**IMP-19: Dependency Guidance**
+- UI shows recommended import order: Funds → Entities → Transactions → Pledges
+- UI warns if attempting Transaction/Pledge import with empty Funds or Entities
+- Warnings are non-blocking (admin can proceed at their discretion)
 
-**JRN-18: Owner and Admin Visibility**
-- Users see only their journals
-- Admins see all journals across all users
-- Permission class follows existing IsContactOwnerOrReadAccess pattern
+## v1.x Requirements (Future)
 
-**JRN-19: Admin Analytics Endpoints**
-- API provides endpoints for cross-missionary aggregation:
-  - Total journals by user
-  - Decision totals by user
-  - Stage completion averages
-- Admin UI deferred to v2 (endpoints only)
+The following are explicitly out of scope for v1.1 but considered for future releases:
 
-## v2 Requirements (Future)
+**IMP-V2-01: Async Import Processing**
+- Use Celery for background processing of large files (>5000 rows)
+- Real-time progress updates via WebSocket
 
-The following are explicitly out of scope for v1 but planned for future releases:
+**IMP-V2-02: Column Mapping UI**
+- Allow admin to map CSV columns to model fields
+- Save custom mappings for reuse
 
-**JRN-V2-01: Admin Analytics Dashboard**
-- Admin UI showing cross-missionary metrics
-- Comparative reports, leaderboards, trend analysis
+**IMP-V2-03: Rollback/Undo**
+- Allow admin to undo an entire import run
+- Restore database to pre-import state
 
-**JRN-V2-02: Real-Time Collaboration**
-- Multi-user concurrent editing
-- WebSocket-based live updates
+**IMP-V2-04: Scheduled Imports**
+- Support automated imports from S3 or SFTP
+- Schedule regular syncs from SPO exports
 
-**JRN-V2-03: Communication Integration**
-- Email/SMS sending from stage actions
-- Template-based communication tracking
+## Out of Scope
 
-**JRN-V2-04: Mobile Native App**
-- iOS/Android apps (currently web responsive only)
-
-**JRN-V2-05: Bulk Journal Operations**
-- Copy journal with contacts
-- Bulk archive/activate journals
-
-**JRN-V2-06: Custom Stage Definitions**
-- User-defined pipeline stages (currently fixed 6-stage)
-
-**JRN-V2-07: AI Suggestions**
-- ML-driven next action recommendations
+| Feature | Reason |
+|---------|--------|
+| Real-time streaming import | Complexity, synchronous sufficient for SPO volumes |
+| In-app Excel editing | Complexity, fix data in source system |
+| Auto-fix validation errors | Risk of data corruption, manual review preferred |
+| Multi-format support (xlsx, json) | CSV is SPO standard export format |
+| Non-strict mode (allow orphan refs) | Data integrity priority, strict mode enforces FK constraints |
 
 ## Traceability
 
@@ -153,30 +160,29 @@ Requirement-to-Phase mapping (updated during roadmap creation):
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| JRN-01 | Phase 1 | Complete |
-| JRN-02 | Phase 2 | Complete |
-| JRN-03 | Phase 2 | Complete |
-| JRN-04 | Phase 1 | Complete |
-| JRN-05 | Phase 5 | Complete |
-| JRN-06 | Phase 5 | Complete |
-| JRN-07 | Phase 3 | Complete |
-| JRN-08 | Phase 3 | Complete |
-| JRN-09 | Phase 3 | Complete |
-| JRN-10 | Phase 4 | Complete |
-| JRN-11 | Phase 4 | Complete |
-| JRN-12 | Phase 4 | Complete |
-| JRN-13 | Phase 5 | Complete |
-| JRN-14 | Phase 5 | Complete |
-| JRN-15 | Phase 6 | Complete |
-| JRN-16 | Phase 6 | Complete |
-| JRN-17 | Phase 6 | Complete |
-| JRN-18 | Phase 1 | Complete |
-| JRN-19 | Phase 6 | Complete |
+| IMP-01 | Phase 7 | Pending |
+| IMP-02 | Phase 7 | Pending |
+| IMP-03 | Phase 7 | Pending |
+| IMP-04 | Phase 7 | Pending |
+| IMP-05 | Phase 8 | Pending |
+| IMP-06 | Phase 9 | Pending |
+| IMP-07 | Phase 10 | Pending |
+| IMP-08 | Phase 11 | Pending |
+| IMP-09 | Phase 8 | Pending |
+| IMP-10 | Phase 12 | Pending |
+| IMP-11 | Phase 8 | Pending |
+| IMP-12 | Phase 8 | Pending |
+| IMP-13 | Phase 7 | Pending |
+| IMP-14 | Phase 8 | Pending |
+| IMP-15 | Phase 12 | Pending |
+| IMP-16 | Phase 12 | Pending |
+| IMP-17 | Phase 12 | Pending |
+| IMP-18 | Phase 12 | Pending |
+| IMP-19 | Phase 12 | Pending |
 
-**Coverage:** 19/19 requirements complete (100%)
+**Coverage:** 19/19 requirements mapped (100%)
 
 ---
 
-*Requirements defined: 2026-01-24*
-*Last updated: 2026-01-29*
-*Milestone v1.0 COMPLETE*
+*Requirements defined: 2026-01-30*
+*Last updated: 2026-01-30*
