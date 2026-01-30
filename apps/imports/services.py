@@ -14,6 +14,7 @@ from django.utils import timezone
 
 from apps.contacts.models import Contact
 from apps.donations.models import Donation, DonationType, PaymentMethod
+from apps.imports.models import Fund, ImportStatus
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,10 @@ logger = logging.getLogger(__name__)
 # Valid enum values for validation
 VALID_DONATION_TYPES = [dt.value for dt in DonationType]
 VALID_PAYMENT_METHODS = [pm.value for pm in PaymentMethod]
+VALID_FUND_STATUSES = ['active', 'inactive', 'closed']
+
+# Formula characters for CSV injection prevention
+FORMULA_PREFIXES = ('=', '+', '-', '@')
 
 # Date formats to try when parsing
 DATE_FORMATS = ['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%m-%d-%Y', '%d-%m-%Y']
@@ -449,3 +454,149 @@ def get_donations_template() -> str:
         CSV header row as string
     """
     return 'contact_email,contact_first_name,contact_last_name,amount,date,donation_type,payment_method,external_id,notes\n'
+
+
+def parse_funds_csv(file_content: str) -> Tuple[List[dict], List[dict]]:
+    """
+    Parse funds CSV and return (valid_records, errors).
+
+    Expected columns: fund_id, name, status (optional, defaults to 'active')
+
+    Args:
+        file_content: CSV file content as string
+
+    Returns:
+        Tuple of (valid_records, errors) where:
+        - valid_records: List of dicts ready for import
+        - errors: List of dicts with row number, errors, and original data
+    """
+    try:
+        reader = csv.DictReader(io.StringIO(file_content))
+    except csv.Error as e:
+        return [], [{'row': 1, 'errors': [f'Invalid CSV format: {e}'], 'data': {}}]
+
+    # Validate required column headers before processing rows
+    if reader.fieldnames is None:
+        return [], [{'row': 1, 'errors': ['CSV file is empty or has no headers'], 'data': {}}]
+
+    required_columns = ['fund_id', 'name']
+    missing_columns = [col for col in required_columns if col not in reader.fieldnames]
+    if missing_columns:
+        return [], [{
+            'row': 1,
+            'errors': [f'Missing required column: {", ".join(missing_columns)}'],
+            'data': {}
+        }]
+
+    valid_records = []
+    errors = []
+    seen_fund_ids = set()
+
+    for row_num, row in enumerate(reader, start=2):
+        row_errors = []
+
+        # Get and trim values
+        fund_id = row.get('fund_id', '').strip()
+        name = row.get('name', '').strip()
+        status = row.get('status', '').strip().lower() or 'active'
+
+        # Validate fund_id
+        if not fund_id:
+            row_errors.append('fund_id is required')
+        elif len(fund_id) > 100:
+            row_errors.append('fund_id exceeds maximum length of 100 characters')
+        elif fund_id.startswith(FORMULA_PREFIXES):
+            row_errors.append(f'fund_id cannot start with formula character ({fund_id[0]})')
+        elif fund_id in seen_fund_ids:
+            row_errors.append(f'Duplicate fund_id in file: {fund_id}')
+        else:
+            seen_fund_ids.add(fund_id)
+
+        # Validate name
+        if not name:
+            row_errors.append('name is required')
+        elif len(name) > 255:
+            row_errors.append('name exceeds maximum length of 255 characters')
+        elif name.startswith(FORMULA_PREFIXES):
+            row_errors.append(f'name cannot start with formula character ({name[0]})')
+
+        # Validate status
+        if status not in VALID_FUND_STATUSES:
+            row_errors.append(
+                f'Invalid status: "{status}". Valid options: {", ".join(VALID_FUND_STATUSES)}'
+            )
+
+        if row_errors:
+            errors.append({
+                'row': row_num,
+                'errors': row_errors,
+                'data': dict(row)
+            })
+        else:
+            valid_records.append({
+                'fund_id': fund_id,
+                'name': name,
+                'status': status,
+            })
+
+    return valid_records, errors
+
+
+def import_funds(records: List[dict], import_run) -> Tuple[int, int]:
+    """
+    Import funds from parsed records using bulk upsert.
+
+    Args:
+        records: List of validated fund dicts with keys: fund_id, name, status
+        import_run: ImportRun instance to update with results
+
+    Returns:
+        Tuple of (created_count, updated_count)
+    """
+    logger.info(f'Starting fund import: {len(records)} records for import run {import_run.id}')
+
+    if not records:
+        # Update import run for empty records
+        import_run.created_count = 0
+        import_run.updated_count = 0
+        import_run.status = ImportStatus.COMPLETED
+        import_run.save()
+        return 0, 0
+
+    # Get existing external_ids to calculate created vs updated
+    external_ids = [record['fund_id'] for record in records]
+    existing_external_ids = set(
+        Fund.objects.filter(external_id__in=external_ids).values_list('external_id', flat=True)
+    )
+
+    # Prepare Fund objects for bulk create
+    fund_objects = [
+        Fund(
+            external_id=record['fund_id'],
+            name=record['name'],
+            status=record['status'],
+            owner=None  # Funds are org-wide
+        )
+        for record in records
+    ]
+
+    # Bulk upsert
+    Fund.objects.bulk_create(
+        fund_objects,
+        update_conflicts=True,
+        unique_fields=['external_id'],
+        update_fields=['name', 'status']
+    )
+
+    # Calculate counts
+    created_count = sum(1 for record in records if record['fund_id'] not in existing_external_ids)
+    updated_count = sum(1 for record in records if record['fund_id'] in existing_external_ids)
+
+    # Update import run
+    import_run.created_count = created_count
+    import_run.updated_count = updated_count
+    import_run.status = ImportStatus.COMPLETED
+    import_run.save()
+
+    logger.info(f'Fund import completed: {created_count} created, {updated_count} updated')
+    return created_count, updated_count
