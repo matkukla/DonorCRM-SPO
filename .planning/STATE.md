@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-01-24)
 
 Milestone: v1.0 Journal Feature — ARCHIVED
 Status: Complete and archived
-Last activity: 2026-01-29 — Milestone archived
+Last activity: 2026-01-29 — Completed quick-003
 
 Progress: [████████████████] 100% (6 phases, 24 plans, 19 requirements)
 
@@ -131,11 +131,12 @@ None yet.
 |---|-------------|------|--------|-----------|
 | 001 | Fix Log Event 400 error — auto-create default journal, contact_id path, cache invalidation | 2026-01-27 | 6df8e7f | [001-fix-log-event-400-error](./quick/001-fix-log-event-400-error/) |
 | 002 | Journal grid clickable checkboxes — visible Square icons for empty cells, flex centering | 2026-01-29 | 2bc5bf3 | [002-journal-grid-clickable-checkboxes-and-pl](./quick/002-journal-grid-clickable-checkboxes-and-pl/) |
+| 003 | Condense donations by month/year — unified page with year selector, simplified navigation | 2026-01-29 | d1e2395 | [003-condense-donations-by-month-year](./quick/003-condense-donations-by-month-year/) |
 
 ## Session Continuity
 
-Last session: 2026-01-29 (milestone completion)
-Stopped at: v1.0 Journal Feature milestone archived
+Last session: 2026-01-29 (quick task 003)
+Stopped at: Completed quick-003 (Condense donations by month/year)
 Resume file: None
 
-**Status:** Journal Feature v1.0 milestone COMPLETE and archived. See [MILESTONES.md](MILESTONES.md) for details. Ready for next milestone.
+**Status:** Journal Feature v1.0 milestone COMPLETE and archived. Ongoing quick tasks for UI refinements. Ready for next milestone.
