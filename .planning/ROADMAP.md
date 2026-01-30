@@ -56,8 +56,8 @@ See milestones/v1.0-ROADMAP.md for complete phase details.
 **Plans:** 2 plans
 
 Plans:
-- [ ] 07-01-PLAN.md - Create Fund, ImportRun, ImportRowError models
-- [ ] 07-02-PLAN.md - Add external_id fields and fund FKs, apply migrations
+- [x] 07-01-PLAN.md - Create Fund, ImportRun, ImportRowError models
+- [x] 07-02-PLAN.md - Add external_id fields and fund FKs, apply migrations
 
 ---
 
@@ -184,7 +184,7 @@ Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11 -> 12
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 1-6. v1.0 Journal | v1.0 | 24/24 | Complete | 2026-01-29 |
-| 7. Foundation | v1.1 | 0/2 | Planned | - |
+| 7. Foundation | v1.1 | 2/2 | Complete | 2026-01-30 |
 | 8. Funds CSV Import | v1.1 | 0/TBD | Not started | - |
 | 9. Entities CSV Import | v1.1 | 0/TBD | Not started | - |
 | 10. Transactions CSV Import | v1.1 | 0/TBD | Not started | - |
@@ -193,4 +193,4 @@ Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11 -> 12
 
 ---
 
-*Last updated: 2026-01-30*
+*Last updated: 2026-01-30 (Phase 7 complete)*
