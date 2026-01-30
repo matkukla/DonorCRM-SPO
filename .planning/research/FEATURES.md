@@ -1,1494 +1,276 @@
-# Feature Research: Journal Grid View for DonorCRM
+# Feature Research: CSV Import Pipeline for CRM
 
-**Project:** DonorCRM
-**Feature:** Journal Grid View (Contacts × Stages Pipeline Matrix)
-**Researched:** 2026-01-24
-**Stack:** React 19 + TypeScript + Tailwind CSS + Radix UI + Recharts
-**Overall Confidence:** HIGH
+**Domain:** CSV Import Center for Donor CRM
+**Researched:** 2026-01-30
+**Confidence:** HIGH
 
----
+## Feature Landscape
 
-## 1. Core Grid/Table Patterns for Pipeline Views
+### Table Stakes (Users Expect These)
 
-### 1.1 Recommended Pattern: Headless Grid with Custom Layout
+Features users assume exist. Missing these = product feels incomplete.
 
-**Best Approach:** Use TanStack Table (headless) for logic + custom Tailwind grid layout for presentation.
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| File upload with drag-and-drop | Standard web UX pattern for file operations | LOW | Existing pattern in frontend stack, use HTML5 drag-drop API |
+| Column header validation | Users need to know if CSV structure matches expected schema | LOW | Compare uploaded headers against required fields per import type |
+| Preview data before commit | Users expect to see sample data before execution | LOW | Show first 5-10 rows with mapped columns, standard table view |
+| Validation with error messages | Critical for preventing bad data import | MEDIUM | Row-level validation with specific error messages (row number, column, issue) |
+| Progress indicator during import | Users need feedback during potentially long operations | LOW | Basic progress bar or spinner, track percentage complete |
+| Success/failure summary | Users need to know outcome: records created/updated/failed | LOW | Display counts after import: X created, Y updated, Z errors |
+| Download error report | Users need exportable list of failures to fix source data | LOW | Generate CSV with error rows + error message column |
+| Template download | Users expect example/empty CSV to understand format | LOW | Generate CSV with correct headers + sample row |
+| Rollback/undo capability | Users expect to reverse imports if mistakes detected | HIGH | Requires tracking import batches, soft deletes, or transaction isolation |
+| Duplicate detection | Users expect system to identify/prevent duplicate records | MEDIUM | Match on external_id (SPO compatibility) or fallback to email/name |
+| Required field enforcement | Basic data quality gate | LOW | Check for null/empty values in required columns before import |
+| Date format validation | Common source of import errors | LOW | Support multiple date formats (YYYY-MM-DD, MM/DD/YYYY, etc.) with clear error messages |
 
-**Why:**
-- DonorCRM already depends on `@tanstack/react-table@^8.21.3`
-- Provides robust row/column state without UI opinions
-- Full TypeScript support with discriminated type inference
-- Flexible for custom grid layouts (contacts × stages matrix)
-- Handles sorting, filtering, pagination, row selection internally
+### Differentiators (Competitive Advantage)
 
-**Implementation Pattern:**
+Features that set the product apart. Not required, but valuable.
 
-```typescript
-// hooks/useJournalGrid.ts
-import { useReactTable, getCoreRowModel, ColumnDef } from '@tanstack/react-table'
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| Multi-file dependent import orchestration | SPO exports 4 CSVs with dependencies (Funds → Entities → Transactions/Pledges) | HIGH | Auto-detect dependencies, guide user through correct order, or allow zip upload with auto-ordering |
+| Idempotent upsert with external IDs | Allows re-running imports without duplicates, critical for SPO migration | MEDIUM | Use external_id fields (fund_id, entity_id, transaction_id, pledge_id) for insert-or-update logic |
+| Inline error correction | Fix validation errors directly in preview UI without re-uploading | MEDIUM | Editable table cells in preview mode, re-validate on change |
+| Column auto-mapping with fuzzy matching | Saves time when CSV headers don't exactly match schema | MEDIUM | Map "Entity Name" → "name", "Email Address" → "email" using fuzzy string matching |
+| Batch processing with progress tracking | Better UX for large files (1000+ rows) | MEDIUM | Process in chunks (500 rows), update progress incrementally, prevents timeout |
+| Validation rules preview | Show users what will be checked before upload | LOW | Display required fields, format rules, dependency requirements per import type |
+| Import history/audit trail | Track who imported what, when, for compliance and debugging | MEDIUM | ImportRun model already planned, extend with downloadable history, revert capability |
+| Orphan reference detection | Identify transactions referencing non-existent entities/funds before import | MEDIUM | Pre-validate foreign keys against existing data + other files in batch |
+| Smart date parsing | Handle multiple date formats automatically | LOW | Use library like `dateutil` or `day.js` to parse common formats |
+| Import dry-run mode | Full validation + simulation without database commit | LOW | validateOnly flag already exists in current import API, extend to new types |
+| Visual diff for upserts | Show users what will change for existing records | MEDIUM | Display "Current → New" for each field that would be updated |
+| Conditional field mapping | Map columns differently based on CSV content (e.g., "Status: Active" → status=1) | HIGH | Add transformation rules layer between CSV parsing and validation |
 
-interface Contact {
-  id: string
-  name: string
-  email: string
-}
+### Anti-Features (Commonly Requested, Often Problematic)
 
-interface GridCell {
-  contactId: string
-  stageName: string
-  events: JournalEvent[]
-}
+Features that seem good but create problems.
 
-export function useJournalGrid(contacts: Contact[], stages: Stage[]) {
-  const columns: ColumnDef<Contact>[] = [
-    {
-      accessorKey: 'name',
-      header: 'Contact',
-      cell: info => info.getValue(),
-      size: 200,
-    },
-    // Stage columns generated dynamically
-    ...stages.map(stage => ({
-      accessorKey: stage.id,
-      header: stage.name,
-      cell: (info) => <StageCell contactId={info.row.original.id} stageId={stage.id} />,
-    })),
-  ]
+| Feature | Why Requested | Why Problematic | Alternative |
+|---------|---------------|-----------------|-------------|
+| Real-time import streaming | Feels modern, shows instant feedback | Complex to implement, adds little value for batch operations, risk of partial failures mid-stream | Batch processing with progress updates every 100 rows is sufficient |
+| Manual Excel editing in-app | Users want spreadsheet interface | Massive complexity, reinvents Excel, poor UX on web, hard to maintain | Download → Edit in Excel → Re-upload workflow with good error reporting |
+| Auto-fix validation errors | Seems helpful to fix issues automatically | Silently corrupts data, users lose trust, hard to predict edge cases | Show errors clearly, let users fix source data or edit inline |
+| Flexible schema (allow any columns) | Seems user-friendly | Breaks type safety, makes validation impossible, leads to garbage data | Fixed schema per import type with clear documentation |
+| Immediate commit without preview | Faster workflow | Users make mistakes, can't review before import, no recovery | Always require preview/confirmation step |
+| Import from URLs or APIs | Seems powerful | Scope creep, security risks, adds complexity for minimal value | CSV file upload only, users can download from external sources themselves |
+| Complex ETL transformations | Users want data reshaping | Over-engineering for MVP, hard to debug, better done in external tools | Simple column mapping only, users prepare data in Excel/scripts |
+| Concurrent multi-user imports | Allows team imports simultaneously | Race conditions with upserts, complex locking, not needed for single-missionary use case | Queue imports if needed, or owner-scope isolation is sufficient |
+| Support for JSON/XML/Excel formats | Seems flexible | Parser complexity, schema variations, CSV is universal standard | CSV only (can add Excel later if validated need) |
 
-  const table = useReactTable({
-    data: contacts,
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-  })
+## Feature Dependencies
 
-  return table
-}
+```
+[File Upload]
+    └──requires──> [Column Header Validation]
+                       └──requires──> [Column Mapping]
+                                         └──requires──> [Data Preview]
+                                                           └──requires──> [Validation]
+                                                                             └──requires──> [Import Execution]
+
+[Multi-file Import]
+    └──requires──> [Dependency Detection]
+                       └──requires──> [Ordered Execution (Funds → Entities → Transactions/Pledges)]
+
+[Idempotent Upsert]
+    └──requires──> [External ID Support] (fund_id, entity_id, transaction_id, pledge_id)
+
+[Orphan Reference Detection]
+    └──requires──> [Multi-file Batch Context] (check entity_id exists in Entities.csv or DB)
+
+[Import Audit Trail]
+    └──requires──> [ImportRun Model]
+                       └──enhances──> [Rollback/Undo]
+                                         └──requires──> [Batch Tracking]
+
+[Visual Diff for Upserts]
+    └──requires──> [Dry-run Mode]
+                       └──requires──> [Existing Record Lookup by External ID]
+
+[Inline Error Correction] ──conflicts──> [Strict CSV-Only Workflow]
 ```
 
-**Advantages:**
-- Automatic row/column management via TanStack Table
-- Easy to add sorting/filtering later
-- Type-safe column definitions
-- Single tab stop for accessibility (one control per grid)
-
-### 1.2 Alternative Pattern: Pure CSS Grid (Lightweight)
-
-For smaller grids (<50 rows), can use pure Tailwind CSS Grid:
-
-```tsx
-// components/Journal/JournalGrid.tsx
-<div className="grid gap-0.5 overflow-auto">
-  {/* Header row */}
-  <div className="grid gap-0.5" style={{ gridTemplateColumns: `200px repeat(6, 150px)` }}>
-    <div className="sticky top-0 left-0 z-40 bg-white font-semibold p-3">Contact</div>
-    {stages.map(stage => (
-      <div key={stage.id} className="sticky top-0 bg-slate-50 font-semibold p-3 text-center">
-        {stage.name}
-      </div>
-    ))}
-  </div>
-
-  {/* Data rows */}
-  {contacts.map(contact => (
-    <div key={contact.id} className="grid gap-0.5" style={{ gridTemplateColumns: `200px repeat(6, 150px)` }}>
-      <div className="sticky left-0 z-30 bg-white p-3 font-medium">{contact.name}</div>
-      {stages.map(stage => (
-        <StageCell key={stage.id} contact={contact} stage={stage} />
-      ))}
-    </div>
-  ))}
-</div>
-```
-
-**When to use:**
-- Simple, read-only grids
-- Performance critical (fewer DOM nodes)
-- No sorting/filtering needed
-- Starting MVP
-
-**Confidence:** HIGH (pattern verified with Tailwind official docs and existing DataTable.tsx component in project)
-
----
-
-## 2. Radix UI Patterns for Drawers, Sheets, and Dialogs
-
-### 2.1 Event Timeline Drawer (Right Slide)
-
-**Recommended:** Use `Sheet` component (already in project as Radix Dialog wrapper) for event timeline.
-
-Project already has `sheet.tsx` component - leverage it:
-
-```typescript
-// components/Journal/EventTimelineDrawer.tsx
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
-import { ScrollArea } from '@/components/ui/scroll-area'
-
-interface EventTimelineDrawerProps {
-  contact: Contact
-  stage: Stage
-  isOpen: boolean
-  onOpenChange: (open: boolean) => void
-}
-
-export function EventTimelineDrawer({ contact, stage, isOpen, onOpenChange }: EventTimelineDrawerProps) {
-  return (
-    <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-96 flex flex-col">
-        <SheetHeader>
-          <SheetTitle>{contact.name} - {stage.name}</SheetTitle>
-          <SheetDescription>Event Timeline & History</SheetDescription>
-        </SheetHeader>
-
-        <ScrollArea className="flex-1 pr-4">
-          <div className="space-y-4">
-            {/* Timeline events */}
-            {events.map((event, idx) => (
-              <div key={event.id} className="pb-4 pl-4 border-l-2 border-slate-200 relative">
-                <div className="absolute w-3 h-3 bg-blue-500 rounded-full -left-2 top-1" />
-                <div className="text-sm font-medium">{event.type}</div>
-                <div className="text-xs text-muted-foreground mt-1">{formatDate(event.createdAt)}</div>
-                <div className="text-sm text-foreground mt-2">{event.description}</div>
-              </div>
-            ))}
-          </div>
-        </ScrollArea>
-
-        {/* Action buttons */}
-        <div className="border-t pt-4 space-y-2">
-          <Button variant="default" onClick={handleAddEvent}>Add Event</Button>
-          <Button variant="outline" onClick={handleAddNote}>Add Note</Button>
-        </div>
-      </SheetContent>
-    </Sheet>
-  )
-}
-```
-
-**Why this pattern:**
-- Radix Dialog foundation provides focus management, keyboard handling
-- Right-side drawer keeps main grid visible (better for context)
-- ScrollArea handles long event lists
-- Already styled in project with smooth animations
-
-**Accessibility Features (Built-in):**
-- Focus trapped in drawer (onOpenAutoFocus)
-- Escape key closes drawer
-- Overlay click closes (with optional onInteractOutside handler)
-- Screen reader announces drawer opening
-
-### 2.2 Hover Cards for Quick Previews
-
-For quick event previews without opening full drawer:
-
-```typescript
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
-
-export function StageCell({ contact, stage }: Props) {
-  const events = getEventsForStage(contact.id, stage.id)
-
-  return (
-    <HoverCard>
-      <HoverCardTrigger asChild>
-        <button
-          className="h-20 p-2 border rounded hover:bg-slate-50 cursor-pointer text-left text-sm"
-          onClick={() => openEventDrawer(contact, stage)}
-        >
-          {events.length > 0 && (
-            <>
-              <div className="font-medium text-xs text-slate-600">{events.length} events</div>
-              <div className="text-xs text-muted-foreground mt-1">
-                {events[0].type}
-              </div>
-            </>
-          )}
-        </button>
-      </HoverCardTrigger>
-      <HoverCardContent className="w-80">
-        <div className="space-y-2">
-          <h4 className="font-semibold text-sm">{stage.name} Events</h4>
-          <ul className="space-y-1 text-xs">
-            {events.slice(0, 5).map(event => (
-              <li key={event.id} className="text-muted-foreground">
-                {event.type} - {formatDate(event.createdAt)}
-              </li>
-            ))}
-            {events.length > 5 && (
-              <li className="text-blue-600 font-medium">+{events.length - 5} more</li>
-            )}
-          </ul>
-        </div>
-      </HoverCardContent>
-    </HoverCard>
-  )
-}
-```
-
-**Add to component/ui/hover-card.tsx** (needs installation):
-```bash
-npm install @radix-ui/react-hover-card
-```
-
-Radix already has Dialog, Dropdown, Tabs, Separator components. For HoverCard, need to add.
-
-**Accessibility:**
-- HoverCard shows on both hover AND focus-within
-- Keyboard users can focus cell, see preview
-- Supports touch devices (click to show)
-
-### 2.3 Dialog for Adding Contacts to Stage
-
-For "Add Contact" dialog:
-
-```typescript
-// Use existing Dialog component from project
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-
-export function AddContactToStageDialog({ stage }: Props) {
-  return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <button className="w-full p-4 border-2 border-dashed hover:bg-slate-50">
-          + Add Contact
-        </button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Add Contact to {stage.name}</DialogTitle>
-        </DialogHeader>
-        <SelectContactForm stage={stage} />
-      </DialogContent>
-    </Dialog>
-  )
-}
-```
-
-**Confidence:** HIGH (existing Dialog/Sheet components verified in project, Radix patterns documented)
-
----
-
-## 3. React State Management for Complex Grid Interactions
-
-### 3.1 Recommended: React 19 Actions + useOptimistic
-
-React 19 (which DonorCRM uses) provides native support for optimistic UI with Actions pattern:
-
-```typescript
-// hooks/useJournalState.ts
-'use client' // or use in component
-
-import { useOptimistic, useTransition } from 'react'
-import { useState } from 'react'
-
-interface JournalEvent {
-  id: string
-  contactId: string
-  stageId: string
-  type: 'moved_to_stage' | 'note_added' | 'decision_logged' | 'call_logged'
-  description: string
-  createdAt: Date
-  createdBy: string
-}
-
-export function useJournalState(initialEvents: JournalEvent[]) {
-  const [events, setEvents] = useState(initialEvents)
-  const [optimisticEvents, addOptimisticEvent] = useOptimistic(
-    events,
-    (state, newEvent: JournalEvent & { status?: 'pending' | 'error' }) => {
-      return [
-        { ...newEvent, status: 'pending' },
-        ...state,
-      ]
-    }
-  )
-
-  const [isPending, startTransition] = useTransition()
-
-  const logEvent = async (event: Omit<JournalEvent, 'id' | 'createdAt'>) => {
-    const tempEvent: JournalEvent & { status?: 'pending' } = {
-      ...event,
-      id: `temp-${Date.now()}`,
-      createdAt: new Date(),
-      status: 'pending',
-    }
-
-    // 1. Optimistically add to UI
-    addOptimisticEvent(tempEvent)
-
-    // 2. Execute server action
-    startTransition(async () => {
-      try {
-        const result = await createJournalEvent(event)
-        // Server-returned event replaces optimistic one
-        setEvents(prev => [result, ...prev.filter(e => e.id !== tempEvent.id)])
-      } catch (error) {
-        // On error, optimistic state reverts automatically
-        console.error('Failed to log event', error)
-        // Optionally show toast notification
-      }
-    })
-  }
-
-  return {
-    events: optimisticEvents,
-    logEvent,
-    isPending,
-  }
-}
-```
-
-### 3.2 Grid-Level State
-
-For managing which cells are expanded/selected:
-
-```typescript
-// hooks/useGridState.ts
-import { useReducer } from 'react'
-
-interface GridState {
-  selectedCell: { contactId: string; stageId: string } | null
-  expandedDrawer: { contactId: string; stageId: string } | null
-  selectedContacts: Set<string>
-  filters: {
-    search: string
-    stageFilter: string[]
-  }
-}
-
-type GridAction =
-  | { type: 'SELECT_CELL'; contactId: string; stageId: string }
-  | { type: 'OPEN_DRAWER'; contactId: string; stageId: string }
-  | { type: 'CLOSE_DRAWER' }
-  | { type: 'TOGGLE_CONTACT'; contactId: string }
-  | { type: 'SET_SEARCH'; search: string }
-
-function gridReducer(state: GridState, action: GridAction): GridState {
-  switch (action.type) {
-    case 'SELECT_CELL':
-      return {
-        ...state,
-        selectedCell: { contactId: action.contactId, stageId: action.stageId },
-      }
-    case 'OPEN_DRAWER':
-      return {
-        ...state,
-        expandedDrawer: { contactId: action.contactId, stageId: action.stageId },
-      }
-    case 'CLOSE_DRAWER':
-      return { ...state, expandedDrawer: null }
-    case 'TOGGLE_CONTACT':
-      const next = new Set(state.selectedContacts)
-      if (next.has(action.contactId)) {
-        next.delete(action.contactId)
-      } else {
-        next.add(action.contactId)
-      }
-      return { ...state, selectedContacts: next }
-    case 'SET_SEARCH':
-      return { ...state, filters: { ...state.filters, search: action.search } }
-    default:
-      return state
-  }
-}
-
-export function useGridState(initialState: GridState) {
-  return useReducer(gridReducer, initialState)
-}
-```
-
-### 3.3 Server State: Use TanStack Query
-
-For fetching contacts, stages, events:
-
-```typescript
-// hooks/useJournalData.ts
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-
-const journalKeys = {
-  all: ['journal'] as const,
-  contacts: () => [...journalKeys.all, 'contacts'] as const,
-  events: () => [...journalKeys.all, 'events'] as const,
-  eventsByStage: (stageId: string) => [...journalKeys.events(), stageId] as const,
-}
-
-export function useJournalContacts() {
-  return useQuery({
-    queryKey: journalKeys.contacts(),
-    queryFn: async () => {
-      const res = await fetch('/api/journal/contacts')
-      return res.json()
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  })
-}
-
-export function useJournalEvents() {
-  return useQuery({
-    queryKey: journalKeys.events(),
-    queryFn: async () => {
-      const res = await fetch('/api/journal/events')
-      return res.json()
-    },
-    staleTime: 2 * 60 * 1000, // 2 minutes
-  })
-}
-
-export function useCreateEvent() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: async (event: CreateEventDTO) => {
-      const res = await fetch('/api/journal/events', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(event),
-      })
-      return res.json()
-    },
-    onSuccess: () => {
-      // Invalidate cache to refetch
-      queryClient.invalidateQueries({ queryKey: journalKeys.events() })
-    },
-  })
-}
-```
-
-**Why this approach:**
-- React 19 Actions are native, no extra dependencies
-- useOptimistic handles optimistic UI automatically
-- Automatic rollback if server request fails
-- TanStack Query (already in project) manages server state
-- useReducer for grid UI state (selection, filters) is simple and performant
-- Single source of truth: server state via TanStack Query
-
-**Confidence:** HIGH (React 19 Actions verified in official docs, TanStack Query already in project, pattern matches modern React architecture)
-
----
-
-## 4. Tailwind CSS Patterns for Responsive Grids with Fixed Headers
-
-### 4.1 Fixed Column Headers + Horizontal Scroll
-
-```tsx
-// components/Journal/JournalGrid.tsx
-<div className="relative overflow-auto">
-  {/* Sticky header row */}
-  <div
-    className="sticky top-0 z-50 grid gap-0 bg-white border-b"
-    style={{
-      gridTemplateColumns: '200px repeat(6, 150px)',
-      minWidth: 'min-content',
-    }}
-  >
-    {/* Sticky contact column header */}
-    <div className="sticky left-0 z-40 bg-white px-3 py-3 font-semibold text-sm">
-      Contact
-    </div>
-
-    {/* Stage headers */}
-    {stages.map(stage => (
-      <div
-        key={stage.id}
-        className="px-3 py-3 font-semibold text-sm text-center bg-slate-50 border-l"
-      >
-        {stage.name}
-      </div>
-    ))}
-  </div>
-
-  {/* Data rows */}
-  {contacts.map(contact => (
-    <div
-      key={contact.id}
-      className="grid gap-0 border-b hover:bg-slate-50 transition-colors"
-      style={{
-        gridTemplateColumns: '200px repeat(6, 150px)',
-        minWidth: 'min-content',
-      }}
-    >
-      {/* Sticky contact cell */}
-      <div className="sticky left-0 z-20 bg-white px-3 py-3 font-medium text-sm">
-        {contact.name}
-      </div>
-
-      {/* Stage cells */}
-      {stages.map(stage => (
-        <StageCell
-          key={stage.id}
-          contact={contact}
-          stage={stage}
-          className="px-3 py-2 border-l"
-        />
-      ))}
-    </div>
-  ))}
-</div>
-```
-
-**Key Tailwind utilities:**
-- `sticky top-0 z-50` - Header stays at top during scroll
-- `sticky left-0 z-40` - First column stays left during scroll
-- Note z-index stacking: header=50, first-column=40, cells=20
-- `overflow-auto` - Container scrolls, not viewport
-- `min-content` on grid prevents column collapse
-
-### 4.2 Responsive Breakpoints
-
-```tsx
-// components/Journal/ResponsiveJournalGrid.tsx
-export function ResponsiveJournalGrid({ contacts, stages }: Props) {
-  // On mobile, show minimal grid (contact + 1 stage at a time)
-  return (
-    <>
-      {/* Desktop: Full grid */}
-      <div className="hidden lg:block">
-        <JournalGrid contacts={contacts} stages={stages} />
-      </div>
-
-      {/* Tablet: Fewer columns */}
-      <div className="hidden md:block lg:hidden">
-        <JournalGrid
-          contacts={contacts}
-          stages={stages.slice(0, 3)} // Show 3 stages
-        />
-      </div>
-
-      {/* Mobile: List view */}
-      <div className="md:hidden">
-        <JournalListView contacts={contacts} stages={stages} />
-      </div>
-    </>
-  )
-}
-
-// Mobile-optimized list view
-function JournalListView({ contacts, stages }: Props) {
-  return (
-    <div className="space-y-4">
-      {contacts.map(contact => (
-        <div key={contact.id} className="border rounded-lg p-4">
-          <h3 className="font-semibold">{contact.name}</h3>
-          <div className="mt-3 space-y-2">
-            {stages.map(stage => (
-              <button
-                key={stage.id}
-                onClick={() => openDrawer(contact.id, stage.id)}
-                className="w-full text-left p-2 rounded border hover:bg-slate-50 text-sm"
-              >
-                <div className="font-medium">{stage.name}</div>
-                <div className="text-xs text-muted-foreground">
-                  {getEventCount(contact.id, stage.id)} events
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-```
-
-**Confidence:** HIGH (Tailwind CSS patterns verified with official documentation and tested with existing project structure)
-
----
-
-## 5. Recharts Patterns for Decision Trends & Analytics
-
-### 5.1 Bar Chart: Decisions by Stage
-
-```typescript
-// components/Journal/DecisionTrendsChart.tsx
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-
-interface DecisionData {
-  stage: string
-  positive: number
-  neutral: number
-  negative: number
-}
-
-export function DecisionTrendsChart({ data }: { data: DecisionData[] }) {
-  return (
-    <ResponsiveContainer width="100%" height={300}>
-      <BarChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="stage" />
-        <YAxis />
-        <Tooltip
-          contentStyle={{ backgroundColor: '#f9fafb', border: '1px solid #e5e7eb' }}
-          cursor={{ fill: 'rgba(59, 130, 246, 0.1)' }}
-        />
-        <Legend />
-        <Bar dataKey="positive" fill="#10b981" name="Positive" />
-        <Bar dataKey="neutral" fill="#6b7280" name="Neutral" />
-        <Bar dataKey="negative" fill="#ef4444" name="Negative" />
-      </BarChart>
-    </ResponsiveContainer>
-  )
-}
-```
-
-### 5.2 Area Chart: Stage Activity Over Time
-
-```typescript
-// components/Journal/StageActivityChart.tsx
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-
-interface ActivityData {
-  date: string
-  stage1: number
-  stage2: number
-  stage3: number
-  stage4: number
-  stage5: number
-  stage6: number
-}
-
-export function StageActivityChart({ data }: { data: ActivityData[] }) {
-  return (
-    <ResponsiveContainer width="100%" height={300}>
-      <AreaChart data={data}>
-        <defs>
-          <linearGradient id="colorStage1" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
-            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-          </linearGradient>
-          {/* Repeat for other stages with different colors */}
-        </defs>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="date" />
-        <YAxis />
-        <Tooltip />
-        <Legend />
-        <Area type="monotone" dataKey="stage1" stroke="#3b82f6" fillOpacity={1} fill="url(#colorStage1)" />
-        {/* Additional areas for other stages */}
-      </AreaChart>
-    </ResponsiveContainer>
-  )
-}
-```
-
-### 5.3 Pie Chart: Pipeline Breakdown by Stage
-
-```typescript
-// components/Journal/PipelineBreakdownChart.tsx
-import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer } from 'recharts'
-
-interface PipelineData {
-  name: string
-  value: number
-  color: string
-}
-
-export function PipelineBreakdownChart({ data }: { data: PipelineData[] }) {
-  return (
-    <ResponsiveContainer width="100%" height={300}>
-      <PieChart>
-        <Pie
-          data={data}
-          dataKey="value"
-          nameKey="name"
-          cx="50%"
-          cy="50%"
-          outerRadius={80}
-          label={({ name, value }) => `${name}: ${value}`}
-        >
-          {data.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={entry.color} />
-          ))}
-        </Pie>
-        <Tooltip formatter={(value) => `${value} contacts`} />
-        <Legend />
-      </PieChart>
-    </ResponsiveContainer>
-  )
-}
-```
-
-### 5.4 Recharts with Tailwind: Component Composition
-
-```typescript
-// components/Journal/ReportTab.tsx
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-
-export function ReportTab({ journalData }: Props) {
-  return (
-    <div className="space-y-6">
-      {/* Decision Trends */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Decision Trends</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <DecisionTrendsChart data={journalData.decisionTrends} />
-        </CardContent>
-      </Card>
-
-      {/* Stage Activity */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Stage Activity</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <StageActivityChart data={journalData.stageActivity} />
-        </CardContent>
-      </Card>
-
-      {/* Pipeline Breakdown */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Pipeline Breakdown</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <PipelineBreakdownChart data={journalData.pipelineBreakdown} />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Key Metrics</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Metric label="Total Contacts" value={journalData.totalContacts} />
-            <Metric label="Avg Time in Stage" value={journalData.avgTimeInStage} />
-            <Metric label="Conversion Rate" value={journalData.conversionRate} />
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  )
-}
-```
-
-**Recharts Configuration:**
-- Use `ResponsiveContainer` for responsive sizing
-- Wrap charts in Card components from project (keeps consistent styling)
-- Use Tailwind classes for spacing and layout
-- Tooltip styling matches Tailwind palette (via contentStyle prop)
-
-**Confidence:** HIGH (Recharts patterns verified from official examples and integrates cleanly with existing Card/UI components)
-
----
-
-## 6. React Hook Patterns for Optimistic Updates
-
-### 6.1 Custom Hook: Optimistic Event Creation
-
-React 19's `useOptimistic` hook is the primary pattern here:
-
-```typescript
-// hooks/useOptimisticEventLogging.ts
-import { useOptimistic, useTransition, useCallback } from 'react'
-
-type EventStatus = 'idle' | 'pending' | 'success' | 'error'
-
-interface OptimisticEvent extends JournalEvent {
-  status: EventStatus
-  error?: string
-}
-
-export function useOptimisticEventLogging(initialEvents: JournalEvent[]) {
-  const [optimisticEvents, addOptimisticEvent] = useOptimistic<OptimisticEvent[]>(
-    initialEvents.map(e => ({ ...e, status: 'idle' as EventStatus })),
-    (state, newEvent: Omit<JournalEvent, 'id' | 'createdAt'>) => {
-      const optimisticEvent: OptimisticEvent = {
-        ...newEvent,
-        id: `temp-${Date.now()}`,
-        createdAt: new Date(),
-        status: 'pending',
-      }
-      return [optimisticEvent, ...state]
-    }
-  )
-
-  const [isPending, startTransition] = useTransition()
-
-  const logEvent = useCallback(
-    async (event: Omit<JournalEvent, 'id' | 'createdAt'>) => {
-      const tempId = `temp-${Date.now()}`
-
-      // 1. Show optimistic UI immediately
-      addOptimisticEvent(event)
-
-      // 2. Execute mutation
-      startTransition(async () => {
-        try {
-          const result = await createJournalEventAction(event)
-          // Success: server response replaces optimistic state
-          // (done via parent component state update)
-        } catch (error) {
-          // Error: optimistic state reverts automatically
-          // Optionally show error toast here
-          showErrorToast(`Failed to log event: ${error.message}`)
-        }
-      })
-    },
-    [addOptimisticEvent]
-  )
-
-  return {
-    events: optimisticEvents,
-    logEvent,
-    isPending,
-  }
-}
-```
-
-**Usage:**
-
-```typescript
-// components/Journal/JournalGrid.tsx
-export function JournalGrid({ contacts, stages }: Props) {
-  const { events, logEvent, isPending } = useOptimisticEventLogging(initialEvents)
-
-  const handleStageClick = async (contact: Contact, stage: Stage) => {
-    // Log a "moved to stage" event
-    await logEvent({
-      contactId: contact.id,
-      stageId: stage.id,
-      type: 'moved_to_stage',
-      description: `Moved from ${currentStage.name} to ${stage.name}`,
-      createdBy: currentUser.id,
-    })
-  }
-
-  return (
-    // ... grid rendering with optimisticEvents
-  )
-}
-```
-
-### 6.2 Form-Based Event Logging with useActionState
-
-React 19's `useActionState` hook for form submissions:
-
-```typescript
-// components/Journal/AddEventForm.tsx
-'use client'
-
-import { useActionState } from 'react'
-import { createJournalEventAction } from '@/app/actions/journal'
-
-export function AddEventForm({ contactId, stageId }: Props) {
-  const [state, formAction, isPending] = useActionState(
-    async (_prevState, formData) => {
-      const result = await createJournalEventAction({
-        contactId,
-        stageId,
-        type: formData.get('type') as JournalEventType,
-        description: formData.get('description') as string,
-      })
-
-      if (!result.success) {
-        return { error: result.error }
-      }
-
-      return { success: true }
-    },
-    null
-  )
-
-  return (
-    <form action={formAction} className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium">Event Type</label>
-        <select name="type" className="w-full border rounded px-3 py-2" required>
-          <option value="">Select type</option>
-          <option value="note_added">Note</option>
-          <option value="decision_logged">Decision</option>
-          <option value="call_logged">Call Log</option>
-        </select>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium">Description</label>
-        <textarea
-          name="description"
-          className="w-full border rounded px-3 py-2"
-          rows={4}
-          required
-        />
-      </div>
-
-      {state?.error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded text-sm">
-          {state.error}
-        </div>
-      )}
-
-      <button
-        type="submit"
-        disabled={isPending}
-        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
-      >
-        {isPending ? 'Creating...' : 'Create Event'}
-      </button>
-    </form>
-  )
-}
-```
-
-**Best Practices for Optimistic Updates:**
-- Keep optimistic updater function pure (no side effects)
-- Show visual feedback during pending state ("Sending...", spinner)
-- Provide rollback mechanism (UI reverts on error)
-- Use `useTransition` to wrap async operations
-- Combine with error boundaries for robustness
-
-**Confidence:** HIGH (React 19 hooks verified in official documentation and tested patterns)
-
----
-
-## 7. TypeScript Patterns: Discriminated Unions for Typed Events
-
-### 7.1 Discriminated Union for Event Types
-
-```typescript
-// types/journal.ts
-/**
- * Journal event types are discriminated unions keyed on 'type' field.
- * This ensures type-safe event handling across the system.
- */
-
-interface BaseJournalEvent {
-  id: string
-  contactId: string
-  stageId: string
-  createdAt: Date
-  createdBy: string
-}
-
-// Event 1: Contact moved to stage
-interface StageMovedEvent extends BaseJournalEvent {
-  type: 'moved_to_stage'
-  previousStageId: string
-  newStageId: string
-}
-
-// Event 2: Note added
-interface NoteAddedEvent extends BaseJournalEvent {
-  type: 'note_added'
-  content: string
-  tags?: string[]
-}
-
-// Event 3: Decision logged
-interface DecisionLoggedEvent extends BaseJournalEvent {
-  type: 'decision_logged'
-  decision: 'positive' | 'neutral' | 'negative'
-  rationale: string
-  confidence: number // 0-100
-}
-
-// Event 4: Call logged
-interface CallLoggedEvent extends BaseJournalEvent {
-  type: 'call_logged'
-  duration: number // seconds
-  notes: string
-  callType: 'inbound' | 'outbound'
-}
-
-// Discriminated union type
-export type JournalEvent =
-  | StageMovedEvent
-  | NoteAddedEvent
-  | DecisionLoggedEvent
-  | CallLoggedEvent
-
-// Type guard helper
-export function assertNoteEvent(event: JournalEvent): asserts event is NoteAddedEvent {
-  if (event.type !== 'note_added') {
-    throw new Error(`Expected NoteAddedEvent, got ${event.type}`)
-  }
-}
-
-export function isDecisionEvent(event: JournalEvent): event is DecisionLoggedEvent {
-  return event.type === 'decision_logged'
-}
-```
-
-### 7.2 Type-Safe Event Handlers
-
-```typescript
-// hooks/useJournalEventHandler.ts
-import type { JournalEvent } from '@/types/journal'
-
-export function useEventHandler() {
-  const handleEvent = (event: JournalEvent) => {
-    switch (event.type) {
-      case 'moved_to_stage': {
-        // TypeScript narrows to StageMovedEvent here
-        console.log(`Moved from ${event.previousStageId} to ${event.newStageId}`)
-        return
-      }
-
-      case 'note_added': {
-        // TypeScript narrows to NoteAddedEvent
-        const contentPreview = event.content.substring(0, 50)
-        console.log(`Note: ${contentPreview}...`)
-        return
-      }
-
-      case 'decision_logged': {
-        // TypeScript narrows to DecisionLoggedEvent
-        const decisionLabel = event.decision === 'positive' ? '✓' : '✗'
-        console.log(`Decision: ${decisionLabel} (${event.confidence}% confidence)`)
-        return
-      }
-
-      case 'call_logged': {
-        // TypeScript narrows to CallLoggedEvent
-        const durationMinutes = Math.round(event.duration / 60)
-        console.log(`Call: ${durationMinutes}min ${event.callType}`)
-        return
-      }
-
-      // TypeScript ensures all cases are handled (exhaustiveness check)
-      default: {
-        const _exhaustiveCheck: never = event
-        return _exhaustiveCheck
-      }
-    }
-  }
-
-  return { handleEvent }
-}
-```
-
-### 7.3 React Component with Event Rendering
-
-```typescript
-// components/Journal/EventRenderer.tsx
-import type { JournalEvent } from '@/types/journal'
-
-export function EventRenderer({ event }: { event: JournalEvent }) {
-  // Return type is inferred from event.type
-  return (
-    <div className="event-item">
-      {event.type === 'moved_to_stage' && (
-        <div>
-          <Icon name="arrow-right" />
-          <p>Moved to {getStageLabel(event.newStageId)}</p>
-        </div>
-      )}
-
-      {event.type === 'note_added' && (
-        <div>
-          <Icon name="sticky-note" />
-          <p>{event.content}</p>
-          {event.tags?.length && (
-            <div className="flex gap-1">
-              {event.tags.map(tag => (
-                <span key={tag} className="text-xs bg-blue-100 px-2 py-1 rounded">
-                  {tag}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {event.type === 'decision_logged' && (
-        <div>
-          <Icon name={event.decision === 'positive' ? 'check-circle' : 'x-circle'} />
-          <p className="font-medium">{event.decision} Decision</p>
-          <p className="text-sm text-muted-foreground">{event.rationale}</p>
-          <p className="text-xs text-slate-500">{event.confidence}% confidence</p>
-        </div>
-      )}
-
-      {event.type === 'call_logged' && (
-        <div>
-          <Icon name="phone" />
-          <p>{formatDuration(event.duration)} {event.callType} call</p>
-          <p className="text-sm">{event.notes}</p>
-        </div>
-      )}
-    </div>
-  )
-}
-```
-
-**Benefits of Discriminated Unions:**
-- **Type Safety:** TypeScript narrows type based on `type` field
-- **Exhaustiveness:** Compiler catches if you miss a case
-- **Refactoring:** Adding new event type requires updating all handlers
-- **DX:** IDE autocomplete shows only relevant properties for each event type
-
-**Confidence:** HIGH (Pattern documented in TypeScript handbook, verified in community resources)
-
----
-
-## 8. Accessible Grid Navigation Patterns
-
-### 8.1 ARIA Attributes for Grid Structure
-
-```typescript
-// components/Journal/AccessibleJournalGrid.tsx
-import { useCallback } from 'react'
-
-interface AccessibleJournalGridProps {
-  contacts: Contact[]
-  stages: Stage[]
-  onCellFocus?: (contactId: string, stageId: string) => void
-}
-
-export function AccessibleJournalGrid({
-  contacts,
-  stages,
-  onCellFocus
-}: AccessibleJournalGridProps) {
-  const numRows = contacts.length
-  const numCols = stages.length + 1 // +1 for contact column
-
-  return (
-    <div
-      role="grid"
-      aria-label="Journal Grid - Contacts by Stage"
-      aria-rowcount={numRows}
-      aria-colcount={numCols}
-      aria-describedby="grid-help"
-      className="overflow-auto border rounded-lg"
-    >
-      {/* Header row */}
-      <div role="row" aria-rowindex={1}>
-        <div
-          role="columnheader"
-          aria-colindex={1}
-          className="sticky top-0 left-0 z-40 px-3 py-3 font-semibold"
-        >
-          Contact
-        </div>
-
-        {stages.map((stage, idx) => (
-          <div
-            key={stage.id}
-            role="columnheader"
-            aria-colindex={idx + 2}
-            className="sticky top-0 px-3 py-3 font-semibold text-center"
-          >
-            {stage.name}
-            <span aria-label={`${getEventCount(stage.id)} events`} />
-          </div>
-        ))}
-      </div>
-
-      {/* Data rows */}
-      {contacts.map((contact, rowIdx) => (
-        <div key={contact.id} role="row" aria-rowindex={rowIdx + 2}>
-          <div
-            role="gridcell"
-            aria-colindex={1}
-            className="sticky left-0 px-3 py-3"
-          >
-            {contact.name}
-          </div>
-
-          {stages.map((stage, colIdx) => (
-            <StageCellAccessible
-              key={stage.id}
-              contact={contact}
-              stage={stage}
-              rowIndex={rowIdx + 2}
-              colIndex={colIdx + 2}
-              onFocus={() => onCellFocus?.(contact.id, stage.id)}
-            />
-          ))}
-        </div>
-      ))}
-
-      {/* Help text for screen readers */}
-      <div id="grid-help" className="sr-only">
-        Use arrow keys to navigate. Press Enter to view details for a stage.
-      </div>
-    </div>
-  )
-}
-```
-
-### 8.2 Keyboard Navigation (Arrow Keys, Tab, Enter)
-
-```typescript
-// hooks/useGridKeyboardNav.ts
-import { useCallback, useRef, useEffect } from 'react'
-
-interface NavigationState {
-  currentRow: number
-  currentCol: number
-  rowCount: number
-  colCount: number
-}
-
-export function useGridKeyboardNav(state: NavigationState) {
-  const [nav, setNav] = React.useState({ row: 0, col: 1 }) // Start at first contact, stage column
-  const gridRef = useRef<HTMLDivElement>(null)
-
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    const { row, col } = nav
-    const { rowCount, colCount } = state
-
-    let newRow = row
-    let newCol = col
-
-    switch (e.key) {
-      // Arrow keys for grid navigation (single-tab-stop pattern)
-      case 'ArrowUp':
-        e.preventDefault()
-        newRow = Math.max(0, row - 1)
-        break
-      case 'ArrowDown':
-        e.preventDefault()
-        newRow = Math.min(rowCount - 1, row + 1)
-        break
-      case 'ArrowLeft':
-        e.preventDefault()
-        newCol = Math.max(1, col - 1)
-        break
-      case 'ArrowRight':
-        e.preventDefault()
-        newCol = Math.min(colCount - 1, col + 1)
-        break
-
-      // Home/End for jumping
-      case 'Home':
-        e.preventDefault()
-        if (e.ctrlKey) {
-          newRow = 0
-          newCol = 1
-        } else {
-          newCol = 1
-        }
-        break
-      case 'End':
-        e.preventDefault()
-        if (e.ctrlKey) {
-          newRow = rowCount - 1
-          newCol = colCount - 1
-        } else {
-          newCol = colCount - 1
-        }
-        break
-
-      // Enter to open drawer
-      case 'Enter':
-        e.preventDefault()
-        openDrawer(row, col)
-        return
-      default:
-        return
-    }
-
-    setNav({ row: newRow, col: newCol })
-    focusCell(newRow, newCol)
-  }, [nav, state])
-
-  useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleKeyDown])
-
-  return { nav, setNav }
-}
-
-// Helper to focus cell
-function focusCell(row: number, col: number) {
-  const cellSelector = `[data-row="${row}"][data-col="${col}"]`
-  const cell = document.querySelector<HTMLElement>(cellSelector)
-  cell?.focus()
-}
-```
-
-### 8.3 Accessible Stage Cell with Focus Management
-
-```typescript
-// components/Journal/StageCellAccessible.tsx
-export function StageCellAccessible({
-  contact,
-  stage,
-  rowIndex,
-  colIndex,
-  onFocus,
-}: Props) {
-  const eventCount = getEventCount(contact.id, stage.id)
-  const events = getEvents(contact.id, stage.id)
-
-  const eventSummary = events
-    .map(e => formatEventForA11y(e))
-    .join('; ')
-
-  return (
-    <div
-      role="gridcell"
-      aria-colindex={colIndex}
-      tabIndex={0}
-      data-row={rowIndex}
-      data-col={colIndex}
-      onFocus={onFocus}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') {
-          openEventDrawer(contact.id, stage.id)
-        }
-      }}
-      aria-label={`${stage.name} for ${contact.name}. ${eventCount} events. ${eventSummary}`}
-      className="border p-3 cursor-pointer hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-    >
-      <div className="text-sm font-medium">{eventCount}</div>
-      {events.length > 0 && (
-        <div className="text-xs text-muted-foreground truncate">
-          {events[0].type}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// Helper for accessible event description
-function formatEventForA11y(event: JournalEvent): string {
-  switch (event.type) {
-    case 'moved_to_stage':
-      return 'Stage moved'
-    case 'note_added':
-      return `Note: ${event.content.substring(0, 20)}...`
-    case 'decision_logged':
-      return `Decision: ${event.decision}`
-    case 'call_logged':
-      return `Call: ${Math.round(event.duration / 60)}min`
-  }
-}
-```
-
-### 8.4 Screen Reader Testing Checklist
-
-```typescript
-/**
- * Accessibility Checklist for Journal Grid:
- *
- * ARIA Attributes:
- * ✓ role="grid" on container
- * ✓ role="row" on each row
- * ✓ role="columnheader" on headers
- * ✓ role="gridcell" on cells
- * ✓ aria-rowcount, aria-colcount on grid
- * ✓ aria-colindex on cells
- * ✓ aria-label with descriptive cell content
- *
- * Keyboard Navigation:
- * ✓ Grid is single tab-stop (tab to grid, arrow keys within)
- * ✓ Arrow keys navigate up/down/left/right
- * ✓ Enter opens drawer
- * ✓ Home/End jump to edges
- * ✓ Focus visible with focus:ring-2
- *
- * Screen Readers:
- * ✓ NVDA announces grid structure
- * ✓ JAWS reads cell content
- * ✓ VoiceOver reads aria-labels
- * ✓ Live region announces drawer open (aria-live)
- *
- * Testing Tools:
- * - axe DevTools: Automated checks
- * - Lighthouse: Built-in accessibility audit
- * - NVDA: Free screen reader (Windows)
- * - JAWS: Commercial (Windows, Mac)
- * - VoiceOver: Built-in (Mac, iOS)
- * - TalkBack: Built-in (Android)
- */
-```
-
-**Confidence:** HIGH (WCAG 2.1 patterns verified, aligned with React Aria and Radix UI accessibility standards)
-
----
-
-## Implementation Roadmap
-
-### Phase 1: Core Grid MVP
-1. Static grid layout with TanStack Table logic
-2. Basic StageCell component with event count display
-3. EventTimelineDrawer with Radix Sheet
-4. Simple Tailwind CSS styling
-
-### Phase 2: Interactions & State
-1. Add useGridState for cell selection
-2. Implement useJournalState for optimistic updates
-3. Hook up TanStack Query for server data
-4. Event logging with useOptimisticEventLogging
-
-### Phase 3: Forms & Creation
-1. Add event creation form with useActionState
-2. Implement "Add Contact" dialog
-3. Form validation with TypeScript discriminated unions
-4. Success/error feedback
-
-### Phase 4: Analytics & Reporting
-1. Implement report tab with Recharts charts
-2. Decision trends bar chart
-3. Stage activity area chart
-4. Pipeline breakdown pie chart
-
-### Phase 5: Accessibility & Polish
-1. Add ARIA attributes to grid
-2. Keyboard navigation with arrow keys
-3. Screen reader testing
-4. Responsive breakpoints for mobile
-
----
-
-## Technology Decisions
-
-| Category | Choice | Rationale |
-|----------|--------|-----------|
-| Grid Logic | TanStack Table v8 | Already in project, headless, fully typed |
-| Grid Layout | Tailwind CSS Grid | Responsive, fixed headers work well, no extra deps |
-| Drawers | Radix Sheet (Dialog-based) | Already in project, accessible, no new deps |
-| Hover Preview | Radix HoverCard | New dependency but minimal, pairs with Sheet |
-| State (UI) | useReducer + Context | Simple, built-in, no deps |
-| State (Server) | TanStack Query | Already in project, solves caching |
-| Optimistic Updates | React 19 useOptimistic | Native, no deps, built for this use case |
-| Charts | Recharts | Already in project, composable, Tailwind-friendly |
-| Event Types | Discriminated Unions | TypeScript, no runtime cost, excellent DX |
-| Keyboard Nav | Custom with useRef/useCallback | Fine-grained control, small code |
-| Forms | React 19 Actions + useActionState | Native, no extra validation lib needed |
-
----
-
-## Open Questions & Considerations
-
-1. **Performance at scale:** With 1000+ contacts, consider virtual scrolling. TanStack Table supports this but needs custom implementation.
-
-2. **Event pagination:** Should timeline drawer paginate or lazy-load events? Recommend lazy-load with scroll.
-
-3. **Event editing:** Current research covers creation. Editing requires similar optimistic update pattern.
-
-4. **Undo/redo:** No guidance in research. Consider TanStack Query's optimistic rollback as sufficient initially.
-
-5. **Real-time updates:** If other users change events, should grid auto-refresh? Recommend WebSocket + Query cache invalidation for Phase 2+.
-
-6. **Mobile responsiveness:** Full grid doesn't work on mobile. List view pattern recommended (see section 4.2).
-
-7. **Dark mode:** Tailwind classes use default colors. Add dark: variants if dark mode needed.
-
----
+### Dependency Notes
+
+- **File Upload → Column Validation → Preview → Execution:** Classic wizard pattern, each step validates before proceeding
+- **Multi-file Import → Dependency Detection:** Must parse all files first to build dependency graph (Transactions reference Entities and Funds)
+- **Idempotent Upsert → External ID Support:** SPO compatibility requires external_id fields on Contact, Donation, Pledge, Fund models
+- **Orphan Reference Detection → Multi-file Batch Context:** When importing Transactions.csv, need to check if entity_id exists in either uploaded Entities.csv OR existing Contact table
+- **Visual Diff → Dry-run Mode:** Can't show what will change without simulating the operation first
+- **Inline Error Correction conflicts with Strict CSV Workflow:** If users can edit in preview, CSV is no longer source of truth; document which approach we take
+
+## MVP Definition
+
+### Launch With (v1.1)
+
+Minimum viable product for SPO-compatible CSV import.
+
+- [x] **File upload with drag-and-drop** — Table stakes, standard UX pattern
+- [x] **Column header validation** — Essential to catch schema mismatches early
+- [x] **Data preview (first 10 rows)** — Users must see data before committing
+- [x] **Row-level validation with specific errors** — Critical for data quality
+- [x] **Required field enforcement** — Basic data integrity gate
+- [x] **Import execution with success/failure summary** — Users need outcome feedback
+- [x] **Download error report CSV** — Users need to fix errors in source data
+- [x] **Template download for each import type** — Reduces user confusion about format
+- [x] **Idempotent upsert with external IDs** — Core SPO compatibility requirement
+- [x] **Duplicate detection via external_id** — Prevents duplicate records on re-import
+- [x] **Multi-file import UI (4 types: Funds, Entities, Transactions, Pledges)** — SPO migration workflow
+- [x] **Dependency guidance** — Warn users to import Funds before Transactions, Entities before Transactions/Pledges
+- [x] **Orphan reference detection** — Validate entity_id/fund_id exist before importing Transactions/Pledges
+- [x] **Import audit trail (ImportRun model)** — Track who imported what, when
+- [x] **Admin-only access** — Security/data quality control
+
+### Add After Validation (v1.x)
+
+Features to add once core is working and validated with real SPO data.
+
+- [ ] **Column auto-mapping with fuzzy matching** — Wait to see if headers vary in practice (trigger: users report mapping confusion)
+- [ ] **Batch processing with granular progress** — Only if large files cause timeouts (trigger: imports >1000 rows fail)
+- [ ] **Inline error correction** — If error rate is high and re-upload is painful (trigger: >20% error rate on first import)
+- [ ] **Visual diff for upserts** — If users are concerned about overwriting data (trigger: user feedback requests this)
+- [ ] **Rollback/undo capability** — Complex, wait to see if needed (trigger: user reports accidental data corruption)
+- [ ] **Import history dashboard** — Nice to have, not critical for launch (trigger: multiple imports per week)
+- [ ] **Validation rules documentation/preview** — Add if users struggle with format (trigger: repeated validation errors)
+- [ ] **Zip file multi-import** — Convenience feature, wait for demand (trigger: users request streamlined workflow)
+
+### Future Consideration (v2+)
+
+Features to defer until product-market fit is established.
+
+- [ ] **Smart date parsing (multiple formats)** — SPO likely uses consistent format; validate first
+- [ ] **Conditional field mapping/transformations** — Over-engineering for MVP; users can prep data in Excel
+- [ ] **Concurrent multi-user imports** — Single-missionary use case, not needed yet
+- [ ] **Excel file support** — CSV is sufficient, Excel adds parser complexity
+- [ ] **Advanced ETL transformations** — Out of scope, users handle in Excel/scripts
+- [ ] **API-based import** — No validated use case yet
+- [ ] **Scheduled/automated imports** — Wait for recurring import pattern to emerge
+
+## Feature Prioritization Matrix
+
+| Feature | User Value | Implementation Cost | Priority |
+|---------|------------|---------------------|----------|
+| File upload with drag-and-drop | HIGH | LOW | P1 |
+| Column validation + preview | HIGH | LOW | P1 |
+| Row-level validation with errors | HIGH | MEDIUM | P1 |
+| Success/failure summary | HIGH | LOW | P1 |
+| Download error report | HIGH | LOW | P1 |
+| Template download | HIGH | LOW | P1 |
+| Idempotent upsert with external_id | HIGH | MEDIUM | P1 |
+| Multi-file import UI (4 types) | HIGH | LOW | P1 |
+| Dependency guidance (order warning) | HIGH | LOW | P1 |
+| Orphan reference detection | HIGH | MEDIUM | P1 |
+| Import audit trail | MEDIUM | LOW | P1 |
+| Admin-only access | HIGH | LOW | P1 |
+| Column auto-mapping | MEDIUM | MEDIUM | P2 |
+| Batch processing with progress | MEDIUM | MEDIUM | P2 |
+| Inline error correction | MEDIUM | MEDIUM | P2 |
+| Visual diff for upserts | MEDIUM | MEDIUM | P2 |
+| Rollback/undo | MEDIUM | HIGH | P2 |
+| Import history dashboard | LOW | MEDIUM | P2 |
+| Smart date parsing | LOW | LOW | P3 |
+| Zip file multi-import | LOW | MEDIUM | P3 |
+| Excel format support | LOW | MEDIUM | P3 |
+
+**Priority key:**
+- P1: Must have for launch (v1.1)
+- P2: Should have, add when validated need emerges (v1.x)
+- P3: Nice to have, future consideration (v2+)
+
+## Competitor Feature Analysis
+
+| Feature | Salesforce Data Import Wizard | HubSpot Import | Our Approach (DonorCRM) |
+|---------|-------------------------------|----------------|--------------------------|
+| File upload | Drag-and-drop, CSV/Excel | Drag-and-drop, CSV/Excel/XLSX | Drag-and-drop, CSV only (Excel future) |
+| Column mapping | Manual + auto-match | Auto-fuzzy match (95% accuracy) | Manual with planned auto-fuzzy (v1.x) |
+| Preview | Sample data preview | First 100 rows | First 10 rows (sufficient for validation) |
+| Validation | Field-level + custom rules | Real-time with inline editing | Row-level with download error CSV (no inline edit in MVP) |
+| Duplicate handling | Match on email/ID, skip/update options | Multiple match strategies | External_id upsert (SPO-specific) |
+| Progress tracking | Batch progress bar | Percentage + row count | Basic progress indicator (granular in v1.x if needed) |
+| Error reporting | Download CSV with errors | Inline corrections + download | Download error CSV (inline editing v1.x) |
+| Multi-file import | Sequential, manual ordering | One file at a time | 4-file UI with dependency guidance |
+| Rollback | Via import history (complex) | No rollback (re-import old data) | Planned for v1.x (complex) |
+| Audit trail | Full import history with details | Basic history | ImportRun model with user/timestamp/counts |
+
+**Our competitive advantages:**
+1. **SPO-specific workflow** — Built for 4-file dependent imports (Funds, Entities, Transactions, Pledges)
+2. **External ID upsert** — Idempotent imports out of the box, no duplicate logic needed
+3. **Orphan reference detection** — Catch missing entity_id/fund_id before import, not after
+4. **Simpler UX** — Fewer options, clearer workflow (upload → preview → validate → import)
+
+**Where we intentionally lag:**
+1. **No inline editing** — Users fix errors in Excel, not in-app (simpler, less code)
+2. **No auto-fuzzy mapping** — Defer until validated need (v1.x)
+3. **CSV only** — No Excel/JSON support (reduces parser complexity)
+4. **No rollback in MVP** — Complex feature, wait for validated need
+
+## Existing Codebase Integration
+
+### Current Import Features (Already Built)
+
+- Contact CSV import with `validateOnly` flag (`/imports/contacts/`)
+- Donation CSV import with `validateOnly` flag (`/imports/donations/`)
+- Template download endpoints (`/imports/templates/contacts/`, `/imports/templates/donations/`)
+- Export functionality (contacts, donations with date filters)
+- Basic `ImportResult` type with counts and error array
+
+### Integration Points for v1.1
+
+| New Feature | Existing Pattern to Extend |
+|-------------|---------------------------|
+| Fund CSV import | Follow `/imports/contacts/` pattern, add `/imports/funds/` endpoint |
+| Entity → Contact import | Extend `/imports/contacts/` to accept entity_id column for external_id mapping |
+| Transaction → Donation import | Extend `/imports/donations/` to accept transaction_id, entity_id, fund_id |
+| Pledge import | New `/imports/pledges/` endpoint following existing pattern |
+| Import Center UI | New route `/import-center` with 4 tiles (Funds, Entities, Transactions, Pledges) |
+| Validation preview | Use existing `validateOnly=true` query param pattern |
+| Error download | Follow existing export pattern, generate CSV from `ImportRowError` records |
+| Templates | Extend `/imports/templates/` with funds, entities, transactions, pledges |
+
+### Data Model Extensions Needed
+
+- Add `external_id` field to Contact, Donation, Pledge models (nullable, indexed, unique)
+- Create Fund model with `fund_id` (external_id), name, status
+- Create ImportRun model (type, status, counts, uploaded_by, created_at)
+- Create ImportRowError model (import_run, row_number, column, error_message)
 
 ## Sources
 
-- [TanStack Table Docs](https://tanstack.com/table/latest)
-- [React 19 Features](https://react.dev/blog/2024/12/05/react-19)
-- [React useOptimistic Hook](https://react.dev/reference/react/useOptimistic)
-- [Radix UI Primitives](https://www.radix-ui.com/primitives)
-- [Tailwind CSS Documentation](https://tailwindcss.com/docs)
-- [Recharts Library](https://recharts.github.io)
-- [TypeScript Discriminated Unions](https://www.typescriptlang.org/docs/handbook/unions-and-intersections.html)
-- [Accessible Grid Navigation - WCAG 2.1](https://www.w3.org/WAI/ARIA/apg/patterns/grid/)
-- [React Aria Accessibility](https://react-spectrum.adobe.com/react-aria/accessibility.html)
-- [Pipedrive Sales Pipeline Patterns](https://www.pipedrive.com/en/features/pipeline-management)
+**CRM CSV Import Best Practices:**
+- [CRM data management guide: 10 best practices for 2026](https://monday.com/blog/crm-and-sales/crm-data-management/)
+- [Data Import Best Practices - Salesforce Trailhead](https://trailhead.salesforce.com/content/learn/modules/lex_implementation_data_management/lex_implementation_data_import)
+- [CSV to Salesforce: A Comprehensive Guide for Data Teams](https://www.integrate.io/blog/csv-to-salesforce-a-comprehensive-guide-for-data-teams/)
+- [Import New Records or Update From CSV – Insycle](https://support.insycle.com/hc/en-us/articles/6586521873175-Import-New-Records-or-Update-From-CSV)
+- [Set up import files - HubSpot](https://knowledge.hubspot.com/import-and-export/set-up-your-import-file)
+
+**CSV Import Validation & Preview UX:**
+- [How To Design Bulk Import UX - Smart Interface Design Patterns](https://smart-interface-design-patterns.com/articles/bulk-ux/)
+- [Designing An Attractive And Usable Data Importer - Smashing Magazine](https://www.smashingmagazine.com/2020/12/designing-attractive-usable-data-importer-app/)
+- [Best UI patterns for file uploads - CSVBox Blog](https://blog.csvbox.io/file-upload-patterns/)
+- [5 Best Practices for Building a CSV Uploader](https://www.oneschema.co/blog/building-a-csv-uploader)
+- [Build A Seamless Spreadsheet Import Experience With Flatfile - Smashing Magazine](https://www.smashingmagazine.com/2019/11/flatfile-seamless-spreadsheet-import-experience/)
+
+**Multi-file Dependent Entity Imports:**
+- [Multi-Entity data file import mapping - Microsoft Learn](https://learn.microsoft.com/en-us/archive/blogs/emeadcrmsupport/multi-entity-data-file-import-mapping)
+- [Import data and control duplicate records - Dynamics 365](https://learn.microsoft.com/en-us/dynamics365/customer-insights/journeys/import-data)
+- [Importing two or more entities from a Single File - Dynamics 365 Blog](https://cloudblogs.microsoft.com/dynamics365/no-audience/2010/11/04/importing-two-or-more-entities-from-a-single-file/)
+
+**Error Handling & Rollback:**
+- [6 Common CSV Import Errors and How to Fix Them - Flatfile](https://flatfile.com/blog/top-6-csv-import-errors-and-how-to-fix-them/)
+- [5 Common Data Import Errors and How to Fix Them - Dromo](https://dromo.io/blog/common-data-import-errors-and-how-to-fix-them)
+- [CSV Import Errors: Quick Fixes for Data Pros](https://www.integrate.io/blog/csv-import-errors-quick-fixes-for-data-pros/)
+
+**Idempotent Upsert & Duplicate Handling:**
+- [How ETL Tools Load CSV Data into Custom Salesforce Objects](https://www.integrate.io/blog/how-etl-tools-reliably-load-csv-data-into-custom-salesforce-objects/)
+- [How to make data pipelines idempotent](https://www.startdataengineering.com/post/why-how-idempotent-data-pipeline/)
+- [Salesforce Data Loaders: Tools, Tips & Best Practices 2026](https://blog.skyvia.com/salesforce-data-loaders/)
+
+**Batch Processing & Progress:**
+- [Batch and Import Guide for Blackbaud CRM](https://help.blackbaud.com/docs/0/assets/guides/crm/batch.pdf)
+- [Real-time vs. batch-based CRM data processing](https://martech.org/real-time-vs-batch-based-crm-data-processing-key-considerations/)
 
 ---
-
-## Document Metadata
-
-- **Research Type:** Feature Patterns & Best Practices
-- **Project Stack:** React 19, TypeScript, Tailwind CSS, Radix UI, Recharts
-- **Confidence Level:** HIGH
-- **Last Updated:** 2026-01-24
-- **Ready for Implementation:** YES - All patterns are production-ready with TypeScript support
+*Feature research for: CSV Import Pipeline for DonorCRM*
+*Researched: 2026-01-30*
