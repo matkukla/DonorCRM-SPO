@@ -5,34 +5,34 @@
 See: .planning/PROJECT.md (updated 2026-01-30)
 
 **Core value:** Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems.
-**Current focus:** Phase 8 - Funds CSV Import (v1.1 CSV Import milestone)
+**Current focus:** Phase 9 - Entities CSV Import (v1.1 CSV Import milestone)
 
 ## Current Position
 
-Phase: 8 of 12 (Funds CSV Import)
-Plan: 2 of TBD
+Phase: 9 of 12 (Entities CSV Import)
+Plan: 1 of 2 complete
 Status: In progress
-Last activity: 2026-01-30 - Completed 08-02-SUMMARY.md
+Last activity: 2026-02-01 - Completed 09-01-PLAN.md (Entity Import Services)
 
-Progress: [█████░░░░░░░░░░░░░░░] 29% (v1.0 complete + Phase 7-8)
+Progress: [██████░░░░░░░░░░░░░░] 35% (v1.0 complete + Phases 7-8 + 09-01)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 28 (24 v1.0 + 4 v1.1)
+- Total plans completed: 29 (24 v1.0 + 5 v1.1)
 - Average duration: 2.8 minutes
-- Total execution time: 1.62 hours
+- Total execution time: 1.73 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | v1.0 (Phases 1-6) | 24 | 1.4 hours | 2.8 min |
-| v1.1 (Phases 7-12) | 4/TBD | 12m 12s | 3.1 min |
+| v1.1 (Phases 7-12) | 5/TBD | 19m 12s | 3.8 min |
 
 **Recent Trend:**
 - v1.0 milestone shipped successfully
-- v1.1 milestone: 07-01 (1m 53s), 07-02 (2m 41s), 08-01 (4m), 08-02 (3m 38s)
+- v1.1 milestone: 07-01 (1m 53s), 07-02 (2m 41s), 08-01 (4m), 08-02 (3m 38s), 09-01 (7m)
 
 *Updated after each plan completion*
 
@@ -56,6 +56,9 @@ Recent decisions affecting current work:
 - **08-01-D2:** Status defaults to 'active' when missing from CSV
 - **08-01-D3:** Formula character detection prevents CSV injection attacks
 - **08-01-D4:** Funds imported with null owner (org-wide by default)
+- **09-01-D1:** update_or_create for Contact upserts (bulk_create incompatible with conditional unique constraints)
+- **09-01-D2:** Name splitting: last word = last_name, rest = first_name
+- **09-01-D3:** entity_type column ignored (Contact has no such field)
 
 ### Pending Todos
 
@@ -72,6 +75,7 @@ None yet.
 **Phase 10 Readiness:**
 - Contact.update_giving_stats() performance with bulk imports needs verification
 - Denormalized field update strategy must handle 1000+ row imports efficiently
+- import_entities uses update_or_create (one query per record) - may need bulk optimization for 100+ rows
 
 **Phase 12 Readiness:**
 - react-papaparse dependency needs to be added to frontend package.json
@@ -79,10 +83,10 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-01-30
-Stopped at: Completed 08-02-SUMMARY.md
+Last session: 2026-02-01
+Stopped at: Completed 09-01-PLAN.md (Entity Import Services) - ready for 09-02 (Entity Import API)
 Resume file: None
 
 ---
 
-*Last updated: 2026-01-30 (08-02 complete)*
+*Last updated: 2026-02-01 (09-01 complete)*
