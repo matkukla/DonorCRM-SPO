@@ -4,6 +4,9 @@ Tests for Entity CSV import functionality.
 import io
 import pytest
 from django.contrib.auth import get_user_model
+from django.urls import reverse
+from rest_framework import status
+from rest_framework.test import APIClient
 
 from apps.contacts.models import Contact
 from apps.imports.models import ImportRun, ImportType, ImportStatus
@@ -33,6 +36,12 @@ def admin_user(db):
         last_name='User',
         role='admin'
     )
+
+
+@pytest.fixture
+def api_client():
+    """Create an API client."""
+    return APIClient()
 
 
 @pytest.fixture
@@ -548,3 +557,218 @@ class TestImportEntities:
         contact = Contact.objects.get(owner=test_user, external_id='ENT001')
         assert contact.last_name == 'Updated'
         assert contact.email == 'updated@example.com'
+
+
+@pytest.mark.django_db
+class TestEntityImportAPIEndpoint:
+    """Integration tests for EntityImportView API endpoint."""
+
+    def test_admin_can_import_entities(self, api_client, admin_user):
+        """Admin can POST valid CSV and receive import results."""
+        api_client.force_authenticate(user=admin_user)
+        csv_content = b"""entity_id,name,email
+ENT001,John Smith,john@example.com
+ENT002,Jane Doe,jane@example.com"""
+
+        csv_file = io.BytesIO(csv_content)
+        csv_file.name = 'entities.csv'
+
+        url = reverse('imports:import-entities')
+        response = api_client.post(url, {'file': csv_file}, format='multipart')
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['created_count'] == 2
+        assert response.data['updated_count'] == 0
+        assert response.data['error_count'] == 0
+        assert 'import_run_id' in response.data
+        assert Contact.objects.count() == 2
+
+    def test_non_admin_receives_403(self, api_client, test_user):
+        """Non-admin users (staff) should receive 403 Forbidden."""
+        api_client.force_authenticate(user=test_user)
+        csv_content = b"""entity_id,name
+ENT001,John Smith"""
+
+        csv_file = io.BytesIO(csv_content)
+        csv_file.name = 'entities.csv'
+
+        url = reverse('imports:import-entities')
+        response = api_client.post(url, {'file': csv_file}, format='multipart')
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_missing_file_returns_400(self, api_client, admin_user):
+        """POST without file should return 400 with detail message."""
+        api_client.force_authenticate(user=admin_user)
+
+        url = reverse('imports:import-entities')
+        response = api_client.post(url, {}, format='multipart')
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data['detail'] == 'No file provided.'
+
+    def test_non_csv_file_returns_400(self, api_client, admin_user):
+        """POST with non-CSV file should return 400."""
+        api_client.force_authenticate(user=admin_user)
+        txt_content = b"This is a text file"
+
+        txt_file = io.BytesIO(txt_content)
+        txt_file.name = 'entities.txt'
+
+        url = reverse('imports:import-entities')
+        response = api_client.post(url, {'file': txt_file}, format='multipart')
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data['detail'] == 'File must be a CSV.'
+
+    def test_validation_errors_return_error_details(self, api_client, admin_user):
+        """POST CSV with invalid rows should return error details."""
+        api_client.force_authenticate(user=admin_user)
+        csv_content = b"""entity_id,name,email
+,John Smith,john@example.com
+ENT002,Jane Doe,not-an-email"""
+
+        csv_file = io.BytesIO(csv_content)
+        csv_file.name = 'entities.csv'
+
+        url = reverse('imports:import-entities')
+        response = api_client.post(url, {'file': csv_file}, format='multipart')
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['created_count'] == 0
+        assert response.data['error_count'] == 2
+        assert len(response.data['errors']) == 2
+        assert any('entity_id is required' in str(err['errors']) for err in response.data['errors'])
+        assert any('Invalid email format' in str(err['errors']) for err in response.data['errors'])
+
+    def test_validate_only_dry_run(self, api_client, admin_user):
+        """POST with ?validate_only=true should not create DB records."""
+        api_client.force_authenticate(user=admin_user)
+        csv_content = b"""entity_id,name,email
+ENT001,John Smith,john@example.com
+ENT002,Jane Doe,jane@example.com"""
+
+        csv_file = io.BytesIO(csv_content)
+        csv_file.name = 'entities.csv'
+
+        url = reverse('imports:import-entities') + '?validate_only=true'
+        response = api_client.post(url, {'file': csv_file}, format='multipart')
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['valid_count'] == 2
+        assert response.data['error_count'] == 0
+        # No DB records created
+        assert Contact.objects.count() == 0
+        # No import_run_id in response for validate_only
+        assert 'import_run_id' not in response.data
+
+    def test_successful_import_returns_counts(self, api_client, admin_user):
+        """Successful import should return created_count and updated_count."""
+        # Create existing contact
+        Contact.objects.create(
+            owner=admin_user,
+            external_id='ENT001',
+            first_name='Old',
+            last_name='Name'
+        )
+
+        api_client.force_authenticate(user=admin_user)
+        csv_content = b"""entity_id,name,email
+ENT001,John Smith Updated,john@example.com
+ENT002,Jane Doe,jane@example.com"""
+
+        csv_file = io.BytesIO(csv_content)
+        csv_file.name = 'entities.csv'
+
+        url = reverse('imports:import-entities')
+        response = api_client.post(url, {'file': csv_file}, format='multipart')
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['created_count'] == 1
+        assert response.data['updated_count'] == 1
+        assert response.data['error_count'] == 0
+        assert Contact.objects.count() == 2
+
+    def test_import_creates_import_run_record(self, api_client, admin_user):
+        """Import should create ImportRun record with type=ENTITIES."""
+        api_client.force_authenticate(user=admin_user)
+        csv_content = b"""entity_id,name
+ENT001,John Smith"""
+
+        csv_file = io.BytesIO(csv_content)
+        csv_file.name = 'entities.csv'
+
+        url = reverse('imports:import-entities')
+        response = api_client.post(url, {'file': csv_file}, format='multipart')
+
+        assert response.status_code == status.HTTP_200_OK
+
+        # Verify ImportRun exists
+        import_run = ImportRun.objects.get(id=response.data['import_run_id'])
+        assert import_run.type == ImportType.ENTITIES
+        assert import_run.status == ImportStatus.COMPLETED
+        assert import_run.filename == 'entities.csv'
+        assert import_run.uploaded_by == admin_user
+        assert import_run.created_count == 1
+        assert import_run.updated_count == 0
+
+    def test_utf8_bom_handled(self, api_client, admin_user):
+        """CSV with UTF-8 BOM should parse correctly."""
+        api_client.force_authenticate(user=admin_user)
+        # UTF-8 BOM followed by CSV content
+        csv_content = b'\xef\xbb\xbfentity_id,name,email\nENT001,John Smith,john@example.com'
+
+        csv_file = io.BytesIO(csv_content)
+        csv_file.name = 'entities.csv'
+
+        url = reverse('imports:import-entities')
+        response = api_client.post(url, {'file': csv_file}, format='multipart')
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['created_count'] == 1
+        assert response.data['error_count'] == 0
+        # Verify contact was created correctly
+        contact = Contact.objects.get(external_id='ENT001')
+        assert contact.first_name == 'John'
+        assert contact.last_name == 'Smith'
+
+    def test_import_run_id_in_response(self, api_client, admin_user):
+        """Response should include import_run_id."""
+        api_client.force_authenticate(user=admin_user)
+        csv_content = b"""entity_id,name
+ENT001,John Smith"""
+
+        csv_file = io.BytesIO(csv_content)
+        csv_file.name = 'entities.csv'
+
+        url = reverse('imports:import-entities')
+        response = api_client.post(url, {'file': csv_file}, format='multipart')
+
+        assert response.status_code == status.HTTP_200_OK
+        assert 'import_run_id' in response.data
+        assert response.data['import_run_id'] is not None
+
+    def test_template_download(self, api_client, admin_user):
+        """GET /templates/entities/ should return CSV template."""
+        api_client.force_authenticate(user=admin_user)
+
+        url = reverse('imports:template-entities')
+        response = api_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response['Content-Type'] == 'text/csv'
+        assert response['Content-Disposition'] == 'attachment; filename="entities_template.csv"'
+        # Verify template content
+        content = response.content.decode('utf-8')
+        assert 'entity_id' in content
+        assert 'name' in content
+        assert 'email' in content
+
+    def test_template_requires_admin(self, api_client, test_user):
+        """Non-admin should get 403 on template download."""
+        api_client.force_authenticate(user=test_user)
+
+        url = reverse('imports:template-entities')
+        response = api_client.get(url)
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
