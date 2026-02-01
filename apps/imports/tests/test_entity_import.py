@@ -173,7 +173,7 @@ ENT001,John Smith,not-an-email"""
 
     def test_email_exceeds_max_length_returns_error(self, test_user):
         """email exceeding 254 characters should return error."""
-        long_email = 'a' * 245 + '@test.com'
+        long_email = 'a' * 246 + '@test.com'  # 246 + 9 = 255 characters
         csv_content = f"""entity_id,name,email
 ENT001,John Smith,{long_email}"""
 

@@ -610,3 +610,195 @@ def import_funds(records: List[dict], import_run) -> Tuple[int, int]:
 
     logger.info(f'Fund import completed: {created_count} created, {updated_count} updated')
     return created_count, updated_count
+
+
+def get_entities_template() -> str:
+    """
+    Get CSV template for entity imports.
+
+    Returns:
+        CSV header row as string
+    """
+    return 'entity_id,name,email,phone,address,entity_type\n'
+
+
+def parse_entities_csv(file_content: str, user) -> Tuple[List[dict], List[dict]]:
+    """
+    Parse entities CSV and return (valid_records, errors).
+
+    Expected columns: entity_id, name, email (optional), phone (optional),
+                     address (optional), entity_type (ignored)
+
+    Args:
+        file_content: CSV file content as string
+        user: User performing the import
+
+    Returns:
+        Tuple of (valid_records, errors) where:
+        - valid_records: List of dicts ready for import
+        - errors: List of dicts with row number, errors, and original data
+    """
+    try:
+        reader = csv.DictReader(io.StringIO(file_content))
+    except csv.Error as e:
+        return [], [{'row': 1, 'errors': [f'Invalid CSV format: {e}'], 'data': {}}]
+
+    # Validate required column headers before processing rows
+    if reader.fieldnames is None:
+        return [], [{'row': 1, 'errors': ['CSV file is empty or has no headers'], 'data': {}}]
+
+    required_columns = ['entity_id', 'name']
+    missing_columns = [col for col in required_columns if col not in reader.fieldnames]
+    if missing_columns:
+        return [], [{
+            'row': 1,
+            'errors': [f'Missing required column: {", ".join(missing_columns)}'],
+            'data': {}
+        }]
+
+    valid_records = []
+    errors = []
+    seen_entity_ids = set()
+
+    for row_num, row in enumerate(reader, start=2):
+        row_errors = []
+
+        # Get and trim values
+        entity_id = row.get('entity_id', '').strip()
+        name = row.get('name', '').strip()
+        email = row.get('email', '').strip()
+        phone = row.get('phone', '').strip()
+        address = row.get('address', '').strip()
+        # entity_type is intentionally ignored - Contact has no such field
+
+        # Validate entity_id
+        if not entity_id:
+            row_errors.append('entity_id is required')
+        elif len(entity_id) > 100:
+            row_errors.append('entity_id exceeds maximum length of 100 characters')
+        elif entity_id.startswith(FORMULA_PREFIXES):
+            row_errors.append(f'entity_id cannot start with formula character ({entity_id[0]})')
+        elif entity_id in seen_entity_ids:
+            row_errors.append(f'Duplicate entity_id in file: {entity_id}')
+        else:
+            seen_entity_ids.add(entity_id)
+
+        # Validate name
+        if not name:
+            row_errors.append('name is required')
+        elif len(name) > 300:
+            row_errors.append('name exceeds maximum length of 300 characters')
+        elif name.startswith(FORMULA_PREFIXES):
+            row_errors.append(f'name cannot start with formula character ({name[0]})')
+
+        # Split name into first_name and last_name
+        # Last word is last_name, everything else is first_name
+        first_name = ''
+        last_name = ''
+        if name and not row_errors:
+            parts = name.split()
+            if len(parts) > 1:
+                first_name = ' '.join(parts[:-1])
+                last_name = parts[-1]
+            else:
+                first_name = parts[0] if parts else ''
+                last_name = ''
+
+        # Validate email (optional)
+        if email:
+            if len(email) > 254:
+                row_errors.append('email exceeds maximum length of 254 characters')
+            elif not _validate_email(email):
+                row_errors.append(f'Invalid email format: "{email}"')
+
+        # Validate phone (optional)
+        if phone and len(phone) > 20:
+            row_errors.append('phone exceeds maximum length of 20 characters')
+
+        # Validate address (optional) - maps to street_address
+        if address and len(address) > 255:
+            row_errors.append('address exceeds maximum length of 255 characters')
+
+        if row_errors:
+            errors.append({
+                'row': row_num,
+                'errors': row_errors,
+                'data': dict(row)
+            })
+        else:
+            valid_records.append({
+                'entity_id': entity_id,
+                'first_name': first_name,
+                'last_name': last_name,
+                'email': email,
+                'phone': phone,
+                'street_address': address,  # address maps to street_address
+            })
+
+    return valid_records, errors
+
+
+def import_entities(records: List[dict], user, import_run) -> Tuple[int, int]:
+    """
+    Import entities from parsed records using bulk upsert.
+
+    Args:
+        records: List of validated entity dicts with keys: entity_id, first_name,
+                last_name, email, phone, street_address
+        user: User performing the import (owner of contacts)
+        import_run: ImportRun instance to update with results
+
+    Returns:
+        Tuple of (created_count, updated_count)
+    """
+    logger.info(f'Starting entity import: {len(records)} records for user {user.email}')
+
+    if not records:
+        # Update import run for empty records
+        import_run.created_count = 0
+        import_run.updated_count = 0
+        import_run.status = ImportStatus.COMPLETED
+        import_run.save()
+        return 0, 0
+
+    # Get existing external_ids for this user to calculate created vs updated
+    external_ids = [record['entity_id'] for record in records]
+    existing_external_ids = set(
+        Contact.objects.filter(
+            owner=user,
+            external_id__in=external_ids
+        ).values_list('external_id', flat=True)
+    )
+
+    # Upsert contacts individually
+    # Note: Using update_or_create instead of bulk_create with update_conflicts
+    # because the Contact model has a conditional unique constraint which
+    # doesn't work with ON CONFLICT in PostgreSQL/Django
+    created_count = 0
+    updated_count = 0
+
+    for record in records:
+        contact, created = Contact.objects.update_or_create(
+            owner=user,
+            external_id=record['entity_id'],
+            defaults={
+                'first_name': record['first_name'],
+                'last_name': record['last_name'],
+                'email': record.get('email', ''),
+                'phone': record.get('phone', ''),
+                'street_address': record.get('street_address', '')
+            }
+        )
+        if created:
+            created_count += 1
+        else:
+            updated_count += 1
+
+    # Update import run
+    import_run.created_count = created_count
+    import_run.updated_count = updated_count
+    import_run.status = ImportStatus.COMPLETED
+    import_run.save()
+
+    logger.info(f'Entity import completed: {created_count} created, {updated_count} updated')
+    return created_count, updated_count
