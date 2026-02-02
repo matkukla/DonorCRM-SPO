@@ -10,29 +10,29 @@ See: .planning/PROJECT.md (updated 2026-01-30)
 ## Current Position
 
 Phase: 10 of 12 (Transactions CSV Import)
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-02-01 - Completed Phase 9 (Entities CSV Import)
+Plan: 01 of 02 completed
+Status: In progress
+Last activity: 2026-02-02 - Completed 10-01-PLAN.md (TDD for transaction CSV import)
 
-Progress: [████████░░░░░░░░░░░░] 42% (v1.0 complete + Phases 7-9)
+Progress: [█████████░░░░░░░░░░░] 44% (v1.0 complete + Phases 7-9 + 10-01)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 30 (24 v1.0 + 6 v1.1)
-- Average duration: 2.8 minutes
-- Total execution time: 1.77 hours
+- Total plans completed: 31 (24 v1.0 + 7 v1.1)
+- Average duration: 2.9 minutes
+- Total execution time: 1.87 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | v1.0 (Phases 1-6) | 24 | 1.4 hours | 2.8 min |
-| v1.1 (Phases 7-12) | 6/TBD | 23m 26s | 3.9 min |
+| v1.1 (Phases 7-12) | 7/TBD | 29m 14s | 4.2 min |
 
 **Recent Trend:**
 - v1.0 milestone shipped successfully
-- v1.1 milestone: 07-01 (1m 53s), 07-02 (2m 41s), 08-01 (4m), 08-02 (3m 38s), 09-01 (7m), 09-02 (4m 14s)
+- v1.1 milestone: 07-01 (1m 53s), 07-02 (2m 41s), 08-01 (4m), 08-02 (3m 38s), 09-01 (7m), 09-02 (4m 14s), 10-01 (5m 48s)
 
 *Updated after each plan completion*
 
@@ -59,6 +59,9 @@ Recent decisions affecting current work:
 - **09-01-D1:** update_or_create for Contact upserts (bulk_create incompatible with conditional unique constraints)
 - **09-01-D2:** Name splitting: last word = last_name, rest = first_name
 - **09-01-D3:** entity_type column ignored (Contact has no such field)
+- **10-01-D1:** update_or_create for Donation upserts (same conditional unique constraint issue as Contact)
+- **10-01-D2:** Contact lookup is owner-scoped, Fund lookup is global (critical for data isolation)
+- **10-01-D3:** Strict mode rejects entire import if ANY orphan FK found (ensures data consistency)
 
 ### Pending Todos
 
@@ -73,9 +76,9 @@ None yet.
 - Research recommended validation-first pattern (validate ALL rows before atomic import)
 
 **Phase 10 Readiness:**
-- Contact.update_giving_stats() performance with bulk imports needs verification
-- Denormalized field update strategy must handle 1000+ row imports efficiently
-- import_entities uses update_or_create (one query per record) - may need bulk optimization for 100+ rows
+- ~~Contact.update_giving_stats() performance with bulk imports needs verification~~ (Verified: acceptable for MVP, 126 tests passing)
+- ~~Denormalized field update strategy must handle 1000+ row imports efficiently~~ (Implemented: batch fetch affected contacts, call update_giving_stats())
+- ~~import_entities uses update_or_create (one query per record) - may need bulk optimization for 100+ rows~~ (Same pattern for transactions, acceptable for MVP)
 
 **Phase 12 Readiness:**
 - react-papaparse dependency needs to be added to frontend package.json
@@ -83,10 +86,10 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-01
-Stopped at: Completed Phase 9 (Entities CSV Import) - verified, ready for Phase 10
+Last session: 2026-02-02
+Stopped at: Completed 10-01-PLAN.md (TDD for transaction CSV import)
 Resume file: None
 
 ---
 
-*Last updated: 2026-02-01 (Phase 9 complete)*
+*Last updated: 2026-02-02 (Phase 10 Plan 01 complete)*
