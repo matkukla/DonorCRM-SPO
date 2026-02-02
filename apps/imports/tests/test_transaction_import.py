@@ -875,3 +875,341 @@ def test_get_transactions_template_returns_correct_header():
     template = get_transactions_template()
 
     assert template == 'transaction_id,entity_id,fund_id,amount,posted_date\n'
+
+
+# ============================================================================
+# INTEGRATION TESTS - TransactionImportView API
+# ============================================================================
+
+from django.urls import reverse
+from rest_framework.test import APIClient
+from django.core.files.uploadedfile import SimpleUploadedFile
+
+
+@pytest.fixture
+def api_client():
+    """Create API client for testing."""
+    return APIClient()
+
+
+@pytest.fixture
+def contacts_with_external_id(admin_user):
+    """Create contacts with external_id for FK testing."""
+    return [
+        Contact.objects.create(
+            owner=admin_user,
+            first_name='John',
+            last_name='Doe',
+            external_id='E001'
+        ),
+        Contact.objects.create(
+            owner=admin_user,
+            first_name='Jane',
+            last_name='Smith',
+            external_id='E002'
+        ),
+    ]
+
+
+@pytest.fixture
+def funds_with_external_id():
+    """Create funds with external_id for FK testing."""
+    return [
+        Fund.objects.create(external_id='F001', name='General Fund', status='active'),
+        Fund.objects.create(external_id='F002', name='Building Fund', status='active'),
+    ]
+
+
+@pytest.mark.django_db
+class TestTransactionImportView:
+    """Integration tests for TransactionImportView API endpoint."""
+
+    def test_admin_can_import_transactions(
+        self, api_client, admin_user, contacts_with_external_id, funds_with_external_id
+    ):
+        """Admin user can successfully import transactions via POST."""
+        api_client.force_authenticate(user=admin_user)
+        csv_content = 'transaction_id,entity_id,fund_id,amount,posted_date\n'
+        csv_content += 'T001,E001,F001,100.00,2024-01-15\n'
+
+        file = SimpleUploadedFile('test.csv', csv_content.encode('utf-8'), content_type='text/csv')
+        response = api_client.post(
+            reverse('imports:import-transactions'),
+            {'file': file},
+            format='multipart'
+        )
+
+        assert response.status_code == 200
+        assert response.data['created_count'] == 1
+        assert response.data['updated_count'] == 0
+        assert response.data['error_count'] == 0
+        assert response.data['import_run_id'] is not None
+
+        # Verify donation created
+        donation = Donation.objects.get(external_id='T001')
+        assert donation.contact == contacts_with_external_id[0]
+        assert donation.fund == funds_with_external_id[0]
+        assert donation.amount == Decimal('100.00')
+
+    def test_non_admin_receives_403(self, api_client, user):
+        """Non-admin user receives 403 Forbidden."""
+        api_client.force_authenticate(user=user)
+        csv_content = 'transaction_id,entity_id,fund_id,amount,posted_date\n'
+
+        file = SimpleUploadedFile('test.csv', csv_content.encode('utf-8'), content_type='text/csv')
+        response = api_client.post(
+            reverse('imports:import-transactions'),
+            {'file': file},
+            format='multipart'
+        )
+
+        assert response.status_code == 403
+
+    def test_unauthenticated_receives_401(self, api_client):
+        """Unauthenticated request receives 401."""
+        csv_content = 'transaction_id,entity_id,fund_id,amount,posted_date\n'
+
+        file = SimpleUploadedFile('test.csv', csv_content.encode('utf-8'), content_type='text/csv')
+        response = api_client.post(
+            reverse('imports:import-transactions'),
+            {'file': file},
+            format='multipart'
+        )
+
+        assert response.status_code == 401
+
+    def test_missing_file_returns_400(self, api_client, admin_user):
+        """Missing file returns 400 with 'No file provided' message."""
+        api_client.force_authenticate(user=admin_user)
+
+        response = api_client.post(
+            reverse('imports:import-transactions'),
+            {},
+            format='multipart'
+        )
+
+        assert response.status_code == 400
+        assert response.data['detail'] == 'No file provided.'
+
+    def test_non_csv_file_returns_400(self, api_client, admin_user):
+        """Non-CSV file returns 400 with 'File must be a CSV' message."""
+        api_client.force_authenticate(user=admin_user)
+
+        file = SimpleUploadedFile('test.txt', b'not a csv', content_type='text/plain')
+        response = api_client.post(
+            reverse('imports:import-transactions'),
+            {'file': file},
+            format='multipart'
+        )
+
+        assert response.status_code == 400
+        assert response.data['detail'] == 'File must be a CSV.'
+
+    def test_utf8_bom_from_excel_handled_correctly(
+        self, api_client, admin_user, contacts_with_external_id, funds_with_external_id
+    ):
+        """UTF-8 BOM from Excel is handled correctly (utf-8-sig decoding)."""
+        api_client.force_authenticate(user=admin_user)
+
+        # BOM + CSV content
+        bom = b'\xef\xbb\xbf'
+        csv_content = b'transaction_id,entity_id,fund_id,amount,posted_date\n'
+        csv_content += b'T001,E001,F001,50.00,2024-01-15\n'
+
+        file = SimpleUploadedFile('test.csv', bom + csv_content, content_type='text/csv')
+        response = api_client.post(
+            reverse('imports:import-transactions'),
+            {'file': file},
+            format='multipart'
+        )
+
+        assert response.status_code == 200
+        assert response.data['created_count'] == 1
+
+    def test_validation_errors_return_with_error_count(
+        self, api_client, admin_user, contacts_with_external_id, funds_with_external_id
+    ):
+        """Validation errors return with error_count and errors array."""
+        api_client.force_authenticate(user=admin_user)
+        csv_content = 'transaction_id,entity_id,fund_id,amount,posted_date\n'
+        csv_content += 'T001,E001,F001,invalid_amount,2024-01-15\n'
+
+        file = SimpleUploadedFile('test.csv', csv_content.encode('utf-8'), content_type='text/csv')
+        response = api_client.post(
+            reverse('imports:import-transactions'),
+            {'file': file},
+            format='multipart'
+        )
+
+        assert response.status_code == 200
+        assert response.data['created_count'] == 0
+        assert response.data['updated_count'] == 0
+        assert response.data['error_count'] == 1
+        assert len(response.data['errors']) == 1
+        assert 'amount' in response.data['errors'][0]['errors'][0]
+
+    def test_orphan_entity_id_returns_error(
+        self, api_client, admin_user, funds_with_external_id
+    ):
+        """Orphan entity_id (not found) returns error with row number."""
+        # No contacts created - entity_id won't be found
+        api_client.force_authenticate(user=admin_user)
+        csv_content = 'transaction_id,entity_id,fund_id,amount,posted_date\n'
+        csv_content += 'T001,MISSING,F001,100.00,2024-01-15\n'
+
+        file = SimpleUploadedFile('test.csv', csv_content.encode('utf-8'), content_type='text/csv')
+        response = api_client.post(
+            reverse('imports:import-transactions'),
+            {'file': file},
+            format='multipart'
+        )
+
+        assert response.status_code == 200
+        assert response.data['created_count'] == 0
+        assert response.data['updated_count'] == 0
+        assert response.data['error_count'] == 1
+        assert "entity_id 'MISSING' not found" in response.data['errors'][0]['errors'][0]
+
+    def test_orphan_fund_id_returns_error(
+        self, api_client, admin_user, contacts_with_external_id
+    ):
+        """Orphan fund_id (not found) returns error with row number."""
+        # No funds created - fund_id won't be found
+        api_client.force_authenticate(user=admin_user)
+        csv_content = 'transaction_id,entity_id,fund_id,amount,posted_date\n'
+        csv_content += 'T001,E001,MISSING,100.00,2024-01-15\n'
+
+        file = SimpleUploadedFile('test.csv', csv_content.encode('utf-8'), content_type='text/csv')
+        response = api_client.post(
+            reverse('imports:import-transactions'),
+            {'file': file},
+            format='multipart'
+        )
+
+        assert response.status_code == 200
+        assert response.data['created_count'] == 0
+        assert response.data['updated_count'] == 0
+        assert response.data['error_count'] == 1
+        assert "fund_id 'MISSING' not found" in response.data['errors'][0]['errors'][0]
+
+    def test_validate_only_performs_dry_run(
+        self, api_client, admin_user, contacts_with_external_id, funds_with_external_id
+    ):
+        """validate_only=true performs dry-run validation without importing."""
+        api_client.force_authenticate(user=admin_user)
+        csv_content = 'transaction_id,entity_id,fund_id,amount,posted_date\n'
+        csv_content += 'T001,E001,F001,100.00,2024-01-15\n'
+
+        file = SimpleUploadedFile('test.csv', csv_content.encode('utf-8'), content_type='text/csv')
+        response = api_client.post(
+            reverse('imports:import-transactions') + '?validate_only=true',
+            {'file': file},
+            format='multipart'
+        )
+
+        assert response.status_code == 200
+        assert response.data['valid_count'] == 1
+        assert response.data['error_count'] == 0
+
+        # Verify NO donations were created
+        assert Donation.objects.filter(external_id='T001').count() == 0
+
+    def test_successful_import_creates_import_run(
+        self, api_client, admin_user, contacts_with_external_id, funds_with_external_id
+    ):
+        """Successful import creates ImportRun audit record."""
+        api_client.force_authenticate(user=admin_user)
+        csv_content = 'transaction_id,entity_id,fund_id,amount,posted_date\n'
+        csv_content += 'T001,E001,F001,100.00,2024-01-15\n'
+
+        file = SimpleUploadedFile('test.csv', csv_content.encode('utf-8'), content_type='text/csv')
+        response = api_client.post(
+            reverse('imports:import-transactions'),
+            {'file': file},
+            format='multipart'
+        )
+
+        assert response.status_code == 200
+        import_run_id = response.data['import_run_id']
+
+        # Verify ImportRun created
+        import_run = ImportRun.objects.get(id=import_run_id)
+        assert import_run.type == ImportType.TRANSACTIONS
+        assert import_run.status == ImportStatus.COMPLETED
+        assert import_run.created_count == 1
+        assert import_run.updated_count == 0
+        assert import_run.uploaded_by == admin_user
+
+    def test_import_run_id_included_in_response(
+        self, api_client, admin_user, contacts_with_external_id, funds_with_external_id
+    ):
+        """Response includes import_run_id."""
+        api_client.force_authenticate(user=admin_user)
+        csv_content = 'transaction_id,entity_id,fund_id,amount,posted_date\n'
+        csv_content += 'T001,E001,F001,100.00,2024-01-15\n'
+
+        file = SimpleUploadedFile('test.csv', csv_content.encode('utf-8'), content_type='text/csv')
+        response = api_client.post(
+            reverse('imports:import-transactions'),
+            {'file': file},
+            format='multipart'
+        )
+
+        assert response.status_code == 200
+        assert 'import_run_id' in response.data
+        assert response.data['import_run_id'] is not None
+
+    def test_contact_stats_updated_after_import(
+        self, api_client, admin_user, contacts_with_external_id, funds_with_external_id
+    ):
+        """Contact denormalized stats are updated after successful import."""
+        api_client.force_authenticate(user=admin_user)
+        csv_content = 'transaction_id,entity_id,fund_id,amount,posted_date\n'
+        csv_content += 'T001,E001,F001,100.00,2024-01-15\n'
+        csv_content += 'T002,E001,F001,50.00,2024-01-16\n'
+
+        file = SimpleUploadedFile('test.csv', csv_content.encode('utf-8'), content_type='text/csv')
+        response = api_client.post(
+            reverse('imports:import-transactions'),
+            {'file': file},
+            format='multipart'
+        )
+
+        assert response.status_code == 200
+        assert response.data['created_count'] == 2
+
+        # Verify contact stats updated
+        contact = contacts_with_external_id[0]
+        contact.refresh_from_db()
+        assert contact.total_given == Decimal('150.00')
+        assert contact.gift_count == 2
+
+
+@pytest.mark.django_db
+class TestTransactionTemplateView:
+    """Integration tests for TransactionTemplateView API endpoint."""
+
+    def test_admin_can_download_template(self, api_client, admin_user):
+        """Admin user can download transaction CSV template."""
+        api_client.force_authenticate(user=admin_user)
+
+        response = api_client.get(reverse('imports:template-transactions'))
+
+        assert response.status_code == 200
+        assert response['Content-Type'] == 'text/csv'
+        assert response['Content-Disposition'] == 'attachment; filename="transactions_template.csv"'
+        assert b'transaction_id,entity_id,fund_id,amount,posted_date' in response.content
+
+    def test_non_admin_receives_403(self, api_client, user):
+        """Non-admin user receives 403 Forbidden."""
+        api_client.force_authenticate(user=user)
+
+        response = api_client.get(reverse('imports:template-transactions'))
+
+        assert response.status_code == 403
+
+    def test_unauthenticated_receives_401(self, api_client):
+        """Unauthenticated request receives 401."""
+        response = api_client.get(reverse('imports:template-transactions'))
+
+        assert response.status_code == 401
