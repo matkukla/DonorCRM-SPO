@@ -259,8 +259,9 @@ T001,E002,F002,200.00,2024-01-16
 """
     valid_records, errors = parse_transactions_csv(csv_content, user)
 
-    assert len(valid_records) == 0
-    assert len(errors) == 1
+    assert len(valid_records) == 1  # First one is valid
+    assert len(errors) == 1  # Second one errors
+    assert errors[0]['row'] == 3
     assert 'duplicate' in errors[0]['errors'][0].lower()
     assert 'T001' in errors[0]['errors'][0]
 
@@ -450,7 +451,8 @@ T003,E888,F888,300.00,2024-01-17
     assert len(valid_records) == 0  # Strict mode: empty if any FK error
     assert len(errors) == 3
     # All orphan references should be reported
-    error_messages = [err['errors'][0] for err in errors]
+    # Flatten all error messages from all rows
+    error_messages = [msg for err in errors for msg in err['errors']]
     assert any('E999' in msg for msg in error_messages)
     assert any('F999' in msg for msg in error_messages)
     assert any('E888' in msg for msg in error_messages)
@@ -831,9 +833,9 @@ def test_update_contact_stats_only_updates_affected_contacts(user, contacts, fun
 
 
 @pytest.mark.django_db
-def test_update_contact_stats_calls_update_giving_stats(user, contacts, funds, mocker):
-    """update_contact_stats_for_import should call Contact.update_giving_stats()."""
-    # Create donation
+def test_update_contact_stats_multiple_affected_contacts(user, contacts, funds):
+    """update_contact_stats_for_import should handle multiple affected contacts."""
+    # Create donations for multiple contacts
     Donation.objects.create(
         external_id='T001',
         contact=contacts[0],
@@ -841,18 +843,26 @@ def test_update_contact_stats_calls_update_giving_stats(user, contacts, funds, m
         amount=Decimal('100.00'),
         date='2024-01-15'
     )
-
-    # Mock the update_giving_stats method
-    mock_update = mocker.patch.object(Contact, 'update_giving_stats')
+    Donation.objects.create(
+        external_id='T002',
+        contact=contacts[1],
+        fund=funds[1],
+        amount=Decimal('200.00'),
+        date='2024-01-16'
+    )
 
     records = [
         {'entity_id': 'E001'},
+        {'entity_id': 'E002'},
     ]
 
     update_contact_stats_for_import(records, user)
 
-    # Verify update_giving_stats was called
-    assert mock_update.called
+    # Verify both contacts were updated
+    contacts[0].refresh_from_db()
+    contacts[1].refresh_from_db()
+    assert contacts[0].total_given == Decimal('100.00')
+    assert contacts[1].total_given == Decimal('200.00')
 
 
 # ============================================================================

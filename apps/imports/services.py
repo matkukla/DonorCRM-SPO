@@ -802,3 +802,277 @@ def import_entities(records: List[dict], user, import_run) -> Tuple[int, int]:
 
     logger.info(f'Entity import completed: {created_count} created, {updated_count} updated')
     return created_count, updated_count
+
+
+def get_transactions_template() -> str:
+    """
+    Get CSV template for transaction imports.
+
+    Returns:
+        CSV header row as string
+    """
+    return 'transaction_id,entity_id,fund_id,amount,posted_date\n'
+
+
+def parse_transactions_csv(file_content: str, user) -> Tuple[List[dict], List[dict]]:
+    """
+    Parse transactions CSV and return (valid_records, errors).
+
+    Expected columns: transaction_id, entity_id, fund_id, amount, posted_date
+
+    STRICT MODE: If ANY orphan FK references found (entity_id not in Contact or
+    fund_id not in Fund), returns empty valid_records and all errors.
+
+    Args:
+        file_content: CSV file content as string
+        user: User performing import (for owner-scoped Contact lookup)
+
+    Returns:
+        Tuple of (valid_records, errors)
+    """
+    try:
+        reader = csv.DictReader(io.StringIO(file_content))
+    except csv.Error as e:
+        return [], [{'row': 1, 'errors': [f'Invalid CSV format: {e}'], 'data': {}}]
+
+    # Validate required column headers before processing rows
+    if reader.fieldnames is None:
+        return [], [{'row': 1, 'errors': ['CSV file is empty or has no headers'], 'data': {}}]
+
+    required_columns = ['transaction_id', 'entity_id', 'fund_id', 'amount', 'posted_date']
+    missing_columns = [col for col in required_columns if col not in reader.fieldnames]
+    if missing_columns:
+        return [], [{
+            'row': 1,
+            'errors': [f'Missing required column: {", ".join(missing_columns)}'],
+            'data': {}
+        }]
+
+    valid_records = []
+    errors = []
+    seen_transaction_ids = set()
+
+    # Collect all entity_ids and fund_ids for batch validation
+    all_entity_ids = set()
+    all_fund_ids = set()
+    pending_records = []  # Store records with their row numbers for FK validation
+
+    # First pass: validate row format, collect FK references
+    for row_num, row in enumerate(reader, start=2):
+        row_errors = []
+
+        # Get and trim values
+        transaction_id = row.get('transaction_id', '').strip()
+        entity_id = row.get('entity_id', '').strip()
+        fund_id = row.get('fund_id', '').strip()
+
+        # Validate transaction_id
+        if not transaction_id:
+            row_errors.append('transaction_id is required')
+        elif len(transaction_id) > 100:
+            row_errors.append('transaction_id exceeds maximum length of 100 characters')
+        elif transaction_id.startswith(FORMULA_PREFIXES):
+            row_errors.append(f'transaction_id cannot start with formula character ({transaction_id[0]})')
+        elif transaction_id in seen_transaction_ids:
+            row_errors.append(f'Duplicate transaction_id in file: {transaction_id}')
+        else:
+            seen_transaction_ids.add(transaction_id)
+
+        # Validate entity_id
+        if not entity_id:
+            row_errors.append('entity_id is required')
+        else:
+            all_entity_ids.add(entity_id)
+
+        # Validate fund_id
+        if not fund_id:
+            row_errors.append('fund_id is required')
+        else:
+            all_fund_ids.add(fund_id)
+
+        # Parse amount
+        amount, amount_error = _parse_amount(row.get('amount', ''))
+        if amount_error:
+            row_errors.append(amount_error)
+
+        # Parse date
+        posted_date, date_error = _parse_date(row.get('posted_date', ''))
+        if date_error:
+            row_errors.append(date_error)
+
+        if row_errors:
+            errors.append({
+                'row': row_num,
+                'errors': row_errors,
+                'data': dict(row)
+            })
+        else:
+            record = {
+                'transaction_id': transaction_id,
+                'entity_id': entity_id,
+                'fund_id': fund_id,
+                'amount': amount,
+                'posted_date': posted_date
+            }
+            valid_records.append(record)
+            pending_records.append((row_num, record))
+
+    # Second pass: Batch validate foreign key references
+    if valid_records and not errors:
+        # Validate entity_ids exist in Contact.external_id for this owner
+        existing_entity_ids = set(
+            Contact.objects.filter(
+                owner=user,
+                external_id__in=all_entity_ids
+            ).values_list('external_id', flat=True)
+        )
+
+        missing_entity_ids = all_entity_ids - existing_entity_ids
+
+        # Validate fund_ids exist in Fund.external_id (globally unique)
+        existing_fund_ids = set(
+            Fund.objects.filter(
+                external_id__in=all_fund_ids
+            ).values_list('external_id', flat=True)
+        )
+
+        missing_fund_ids = all_fund_ids - existing_fund_ids
+
+        # If any orphan references, add errors with row numbers
+        if missing_entity_ids or missing_fund_ids:
+            fk_errors = []
+            for row_num, record in pending_records:
+                row_fk_errors = []
+                if record['entity_id'] in missing_entity_ids:
+                    row_fk_errors.append(f"entity_id '{record['entity_id']}' not found in Contacts")
+                if record['fund_id'] in missing_fund_ids:
+                    row_fk_errors.append(f"fund_id '{record['fund_id']}' not found in Funds")
+
+                if row_fk_errors:
+                    fk_errors.append({
+                        'row': row_num,
+                        'errors': row_fk_errors,
+                        'data': record
+                    })
+
+            # Add FK errors to errors list (limit to first 20)
+            errors.extend(fk_errors[:20])
+
+            # Clear valid_records if any orphan references (strict mode)
+            valid_records = []
+
+    # Limit errors to first 20 (consistent with Phase 8/9)
+    errors = errors[:20]
+
+    return valid_records, errors
+
+
+def import_transactions(records: List[dict], user, import_run) -> Tuple[int, int]:
+    """
+    Import transactions from parsed records.
+
+    Uses update_or_create because Donation.external_id has conditional unique
+    constraint (same issue as Contact.external_id in Phase 9).
+
+    Args:
+        records: List of validated transaction dicts
+        user: User performing import (for Contact FK lookup)
+        import_run: ImportRun instance to update
+
+    Returns:
+        Tuple of (created_count, updated_count)
+    """
+    logger.info(f'Starting transaction import: {len(records)} records for user {user.email}')
+
+    if not records:
+        # Update import run for empty records
+        import_run.created_count = 0
+        import_run.updated_count = 0
+        import_run.status = ImportStatus.COMPLETED
+        import_run.save()
+        return 0, 0
+
+    # Pre-fetch Contact and Fund objects by external_id for FK resolution
+    entity_ids = [r['entity_id'] for r in records]
+    fund_ids = [r['fund_id'] for r in records]
+
+    # Build lookup dicts for FK resolution
+    contacts_by_external_id = {
+        c.external_id: c
+        for c in Contact.objects.filter(
+            owner=user,
+            external_id__in=entity_ids
+        )
+    }
+
+    funds_by_external_id = {
+        f.external_id: f
+        for f in Fund.objects.filter(external_id__in=fund_ids)
+    }
+
+    # Get existing external_ids to calculate created vs updated
+    transaction_ids = [r['transaction_id'] for r in records]
+    existing_transaction_ids = set(
+        Donation.objects.filter(
+            external_id__in=transaction_ids
+        ).values_list('external_id', flat=True)
+    )
+
+    # Upsert donations individually using update_or_create
+    # Note: Using update_or_create instead of bulk_create with update_conflicts
+    # because the Donation model has a conditional unique constraint which
+    # doesn't work reliably with ON CONFLICT in PostgreSQL/Django
+    created_count = 0
+    updated_count = 0
+
+    for record in records:
+        donation, created = Donation.objects.update_or_create(
+            external_id=record['transaction_id'],
+            defaults={
+                'contact': contacts_by_external_id[record['entity_id']],
+                'fund': funds_by_external_id[record['fund_id']],
+                'amount': record['amount'],
+                'date': record['posted_date'],
+                'donation_type': DonationType.ONE_TIME,
+                'payment_method': PaymentMethod.OTHER
+            }
+        )
+        if created:
+            created_count += 1
+        else:
+            updated_count += 1
+
+    # Update import run
+    import_run.created_count = created_count
+    import_run.updated_count = updated_count
+    import_run.status = ImportStatus.COMPLETED
+    import_run.save()
+
+    logger.info(f'Transaction import completed: {created_count} created, {updated_count} updated')
+    return created_count, updated_count
+
+
+def update_contact_stats_for_import(records: List[dict], user):
+    """
+    Update denormalized giving stats for contacts affected by import.
+
+    Args:
+        records: List of imported transaction dicts (need entity_id)
+        user: User who owns the contacts
+    """
+    # Identify unique contact external_ids affected by this import
+    affected_entity_ids = set(r['entity_id'] for r in records)
+
+    # Fetch affected Contact objects
+    affected_contacts = Contact.objects.filter(
+        owner=user,
+        external_id__in=affected_entity_ids
+    )
+
+    # Update stats for each affected contact
+    count = 0
+    for contact in affected_contacts:
+        contact.update_giving_stats()
+        count += 1
+
+    logger.info(f'Updated giving stats for {count} contacts')
