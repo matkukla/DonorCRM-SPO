@@ -147,8 +147,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 11-01-PLAN.md - TDD for parse_pledges_csv and import_pledges service functions
-- [ ] 11-02-PLAN.md - PledgeImportView API endpoint with URL wiring and tests
+- [x] 11-01-PLAN.md - TDD for parse_pledges_csv and import_pledges service functions
+- [x] 11-02-PLAN.md - PledgeImportView API endpoint with URL wiring and tests
 
 ---
 
@@ -190,9 +190,9 @@ Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11 -> 12
 | 8. Funds CSV Import | v1.1 | 2/2 | Complete | 2026-01-30 |
 | 9. Entities CSV Import | v1.1 | 2/2 | Complete | 2026-02-01 |
 | 10. Transactions CSV Import | v1.1 | 2/2 | Complete | 2026-02-02 |
-| 11. Pledges CSV Import | v1.1 | 0/2 | Not started | - |
+| 11. Pledges CSV Import | v1.1 | 2/2 | Complete | 2026-02-03 |
 | 12. Import Center UI | v1.1 | 0/TBD | Not started | - |
 
 ---
 
-*Last updated: 2026-02-02 (Phase 11 plans created)*
+*Last updated: 2026-02-03 (Phase 11 complete)*
