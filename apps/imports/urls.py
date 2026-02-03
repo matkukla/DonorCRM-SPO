@@ -15,6 +15,8 @@ from apps.imports.views import (
     FundImportView,
     FundTemplateView,
     ImportStatusView,
+    PledgeImportView,
+    PledgeTemplateView,
     TransactionImportView,
     TransactionTemplateView,
 )
@@ -26,6 +28,7 @@ urlpatterns = [
     path('donations/', DonationImportView.as_view(), name='import-donations'),
     path('entities/', EntityImportView.as_view(), name='import-entities'),
     path('funds/', FundImportView.as_view(), name='import-funds'),
+    path('pledges/', PledgeImportView.as_view(), name='import-pledges'),
     path('transactions/', TransactionImportView.as_view(), name='import-transactions'),
     path('export/contacts/', ContactExportView.as_view(), name='export-contacts'),
     path('export/donations/', DonationExportView.as_view(), name='export-donations'),
@@ -33,6 +36,7 @@ urlpatterns = [
     path('templates/donations/', DonationTemplateView.as_view(), name='template-donations'),
     path('templates/entities/', EntityTemplateView.as_view(), name='template-entities'),
     path('templates/funds/', FundTemplateView.as_view(), name='template-funds'),
+    path('templates/pledges/', PledgeTemplateView.as_view(), name='template-pledges'),
     path('templates/transactions/', TransactionTemplateView.as_view(), name='template-transactions'),
     path('status/<str:import_id>/', ImportStatusView.as_view(), name='import-status'),
 ]
