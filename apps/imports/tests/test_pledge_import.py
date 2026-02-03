@@ -818,3 +818,421 @@ def test_import_pledges_no_contact_stats_update(user, contacts, admin_user):
     assert created_count == 1
     # No assertion about Contact fields because pledge stats are computed properties
     # This test documents that behavior difference from Phase 10 transactions
+
+
+# ============================================================================
+# INTEGRATION TESTS - PledgeImportView API
+# ============================================================================
+
+from django.urls import reverse
+from rest_framework.test import APIClient
+from django.core.files.uploadedfile import SimpleUploadedFile
+
+
+@pytest.fixture
+def api_client():
+    """Create API client for testing."""
+    return APIClient()
+
+
+@pytest.fixture
+def contacts_with_external_id(admin_user):
+    """Create contacts with external_id for FK testing."""
+    return [
+        Contact.objects.create(
+            owner=admin_user,
+            first_name='John',
+            last_name='Doe',
+            external_id='E001'
+        ),
+        Contact.objects.create(
+            owner=admin_user,
+            first_name='Jane',
+            last_name='Smith',
+            external_id='E002'
+        ),
+    ]
+
+
+@pytest.fixture
+def funds_with_external_id():
+    """Create funds with external_id for FK testing."""
+    return [
+        Fund.objects.create(external_id='F001', name='General Fund', status='active'),
+        Fund.objects.create(external_id='F002', name='Building Fund', status='active'),
+    ]
+
+
+@pytest.fixture
+def regular_user(db):
+    """Create regular non-admin user."""
+    return User.objects.create_user(
+        email='user@test.com',
+        password='testpass',
+        role='missionary'
+    )
+
+
+@pytest.mark.django_db
+class TestPledgeImportView:
+    """Integration tests for PledgeImportView API endpoint."""
+
+    def test_admin_can_import_pledges(
+        self, api_client, admin_user, contacts_with_external_id, funds_with_external_id
+    ):
+        """Admin user can successfully import pledges via POST."""
+        api_client.force_authenticate(user=admin_user)
+        csv_content = 'pledge_id,entity_id,fund_id,amount,cadence,status,start_date\n'
+        csv_content += 'P001,E001,F001,100.00,monthly,active,2024-01-15\n'
+
+        file = SimpleUploadedFile('test.csv', csv_content.encode('utf-8'), content_type='text/csv')
+        response = api_client.post(
+            reverse('imports:import-pledges'),
+            {'file': file},
+            format='multipart'
+        )
+
+        assert response.status_code == 200
+        assert response.data['created_count'] == 1
+        assert response.data['updated_count'] == 0
+        assert response.data['error_count'] == 0
+        assert response.data['import_run_id'] is not None
+
+        # Verify pledge created correctly
+        pledge = Pledge.objects.get(external_id='P001')
+        assert pledge.contact == contacts_with_external_id[0]
+        assert pledge.fund == funds_with_external_id[0]
+        assert pledge.frequency == 'monthly'  # cadence -> frequency mapping
+        assert pledge.status == 'active'
+        assert pledge.amount == Decimal('100.00')
+
+    def test_pledge_import_without_fund_id(
+        self, api_client, admin_user, contacts_with_external_id
+    ):
+        """Pledge can be imported with empty fund_id (fund=None)."""
+        api_client.force_authenticate(user=admin_user)
+        csv_content = 'pledge_id,entity_id,fund_id,amount,cadence,status,start_date\n'
+        csv_content += 'P001,E001,,100.00,monthly,active,2024-01-15\n'  # Empty fund_id
+
+        file = SimpleUploadedFile('test.csv', csv_content.encode('utf-8'), content_type='text/csv')
+        response = api_client.post(
+            reverse('imports:import-pledges'),
+            {'file': file},
+            format='multipart'
+        )
+
+        assert response.status_code == 200
+        assert response.data['created_count'] == 1
+
+        # Verify pledge created with fund=None
+        pledge = Pledge.objects.get(external_id='P001')
+        assert pledge.fund is None
+
+    def test_pledge_upsert_updates_existing(
+        self, api_client, admin_user, contacts_with_external_id, funds_with_external_id
+    ):
+        """Importing same pledge_id updates existing pledge."""
+        # Create initial pledge
+        Pledge.objects.create(
+            contact=contacts_with_external_id[0],
+            fund=funds_with_external_id[0],
+            external_id='P001',
+            amount=Decimal('50.00'),
+            frequency='monthly',
+            status='active',
+            start_date=date(2024, 1, 1)
+        )
+
+        api_client.force_authenticate(user=admin_user)
+        csv_content = 'pledge_id,entity_id,fund_id,amount,cadence,status,start_date\n'
+        csv_content += 'P001,E001,F001,100.00,monthly,active,2024-01-15\n'  # Same pledge_id
+
+        file = SimpleUploadedFile('test.csv', csv_content.encode('utf-8'), content_type='text/csv')
+        response = api_client.post(
+            reverse('imports:import-pledges'),
+            {'file': file},
+            format='multipart'
+        )
+
+        assert response.status_code == 200
+        assert response.data['created_count'] == 0
+        assert response.data['updated_count'] == 1
+
+        # Verify pledge was updated
+        pledge = Pledge.objects.get(external_id='P001')
+        assert pledge.amount == Decimal('100.00')
+
+    def test_non_admin_receives_403(self, api_client, regular_user):
+        """Non-admin user receives 403 Forbidden."""
+        api_client.force_authenticate(user=regular_user)
+        csv_content = 'pledge_id,entity_id,fund_id,amount,cadence,status,start_date\n'
+
+        file = SimpleUploadedFile('test.csv', csv_content.encode('utf-8'), content_type='text/csv')
+        response = api_client.post(
+            reverse('imports:import-pledges'),
+            {'file': file},
+            format='multipart'
+        )
+
+        assert response.status_code == 403
+
+    def test_unauthenticated_receives_401(self, api_client):
+        """Unauthenticated request receives 401."""
+        csv_content = 'pledge_id,entity_id,fund_id,amount,cadence,status,start_date\n'
+
+        file = SimpleUploadedFile('test.csv', csv_content.encode('utf-8'), content_type='text/csv')
+        response = api_client.post(
+            reverse('imports:import-pledges'),
+            {'file': file},
+            format='multipart'
+        )
+
+        assert response.status_code == 401
+
+    def test_missing_file_returns_400(self, api_client, admin_user):
+        """POST without file returns 400 Bad Request."""
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.post(
+            reverse('imports:import-pledges'),
+            {},
+            format='multipart'
+        )
+
+        assert response.status_code == 400
+        assert 'No file provided' in response.data['detail']
+
+    def test_non_csv_file_returns_400(self, api_client, admin_user):
+        """POST with non-CSV file returns 400 Bad Request."""
+        api_client.force_authenticate(user=admin_user)
+        file = SimpleUploadedFile('test.txt', b'not a csv', content_type='text/plain')
+        response = api_client.post(
+            reverse('imports:import-pledges'),
+            {'file': file},
+            format='multipart'
+        )
+
+        assert response.status_code == 400
+        assert 'File must be a CSV' in response.data['detail']
+
+    def test_utf8_bom_handled_correctly(
+        self, api_client, admin_user, contacts_with_external_id, funds_with_external_id
+    ):
+        """Excel CSV with UTF-8 BOM is handled correctly."""
+        api_client.force_authenticate(user=admin_user)
+        # BOM + CSV content
+        bom = b'\xef\xbb\xbf'
+        csv_content = b'pledge_id,entity_id,fund_id,amount,cadence,status,start_date\n'
+        csv_content += b'P001,E001,F001,100.00,monthly,active,2024-01-15\n'
+
+        file = SimpleUploadedFile('test.csv', bom + csv_content, content_type='text/csv')
+        response = api_client.post(
+            reverse('imports:import-pledges'),
+            {'file': file},
+            format='multipart'
+        )
+
+        assert response.status_code == 200
+        assert response.data['created_count'] == 1
+
+    def test_validate_only_performs_dry_run(
+        self, api_client, admin_user, contacts_with_external_id, funds_with_external_id
+    ):
+        """validate_only=true validates without importing."""
+        api_client.force_authenticate(user=admin_user)
+        csv_content = 'pledge_id,entity_id,fund_id,amount,cadence,status,start_date\n'
+        csv_content += 'P001,E001,F001,100.00,monthly,active,2024-01-15\n'
+
+        file = SimpleUploadedFile('test.csv', csv_content.encode('utf-8'), content_type='text/csv')
+        response = api_client.post(
+            reverse('imports:import-pledges') + '?validate_only=true',
+            {'file': file},
+            format='multipart'
+        )
+
+        assert response.status_code == 200
+        assert response.data['valid_count'] == 1
+        assert response.data['error_count'] == 0
+        assert 'errors' in response.data
+
+        # Verify no pledge was created
+        assert Pledge.objects.count() == 0
+
+    def test_orphan_entity_id_returns_error(
+        self, api_client, admin_user, funds_with_external_id
+    ):
+        """Import with non-existent entity_id returns error with row number."""
+        api_client.force_authenticate(user=admin_user)
+        csv_content = 'pledge_id,entity_id,fund_id,amount,cadence,status,start_date\n'
+        csv_content += 'P001,E999,F001,100.00,monthly,active,2024-01-15\n'  # E999 doesn't exist
+
+        file = SimpleUploadedFile('test.csv', csv_content.encode('utf-8'), content_type='text/csv')
+        response = api_client.post(
+            reverse('imports:import-pledges'),
+            {'file': file},
+            format='multipart'
+        )
+
+        assert response.status_code == 200
+        assert response.data['created_count'] == 0
+        assert response.data['error_count'] == 1
+        assert response.data['import_run_id'] is None  # Strict mode - no ImportRun created
+        assert len(response.data['errors']) == 1
+        assert response.data['errors'][0]['row'] == 2
+        assert 'entity_id' in response.data['errors'][0]['errors'][0].lower()
+
+    def test_orphan_fund_id_returns_error(
+        self, api_client, admin_user, contacts_with_external_id
+    ):
+        """Import with non-existent fund_id returns error with row number."""
+        api_client.force_authenticate(user=admin_user)
+        csv_content = 'pledge_id,entity_id,fund_id,amount,cadence,status,start_date\n'
+        csv_content += 'P001,E001,F999,100.00,monthly,active,2024-01-15\n'  # F999 doesn't exist
+
+        file = SimpleUploadedFile('test.csv', csv_content.encode('utf-8'), content_type='text/csv')
+        response = api_client.post(
+            reverse('imports:import-pledges'),
+            {'file': file},
+            format='multipart'
+        )
+
+        assert response.status_code == 200
+        assert response.data['created_count'] == 0
+        assert response.data['error_count'] == 1
+        assert 'fund_id' in response.data['errors'][0]['errors'][0].lower()
+
+    def test_invalid_cadence_returns_error(
+        self, api_client, admin_user, contacts_with_external_id
+    ):
+        """Import with invalid cadence returns error with valid options."""
+        api_client.force_authenticate(user=admin_user)
+        csv_content = 'pledge_id,entity_id,fund_id,amount,cadence,status,start_date\n'
+        csv_content += 'P001,E001,,100.00,weekly,active,2024-01-15\n'  # 'weekly' not valid
+
+        file = SimpleUploadedFile('test.csv', csv_content.encode('utf-8'), content_type='text/csv')
+        response = api_client.post(
+            reverse('imports:import-pledges'),
+            {'file': file},
+            format='multipart'
+        )
+
+        assert response.status_code == 200
+        assert response.data['created_count'] == 0
+        assert response.data['error_count'] == 1
+        error_msg = response.data['errors'][0]['errors'][0].lower()
+        assert 'cadence' in error_msg
+        assert 'monthly' in error_msg  # Lists valid options
+
+    def test_invalid_status_returns_error(
+        self, api_client, admin_user, contacts_with_external_id
+    ):
+        """Import with invalid status returns error with valid options."""
+        api_client.force_authenticate(user=admin_user)
+        csv_content = 'pledge_id,entity_id,fund_id,amount,cadence,status,start_date\n'
+        csv_content += 'P001,E001,,100.00,monthly,pending,2024-01-15\n'  # 'pending' not valid
+
+        file = SimpleUploadedFile('test.csv', csv_content.encode('utf-8'), content_type='text/csv')
+        response = api_client.post(
+            reverse('imports:import-pledges'),
+            {'file': file},
+            format='multipart'
+        )
+
+        assert response.status_code == 200
+        assert response.data['created_count'] == 0
+        assert response.data['error_count'] == 1
+        error_msg = response.data['errors'][0]['errors'][0].lower()
+        assert 'status' in error_msg
+        assert 'active' in error_msg  # Lists valid options
+
+    def test_contact_stats_not_updated_after_import(
+        self, api_client, admin_user, contacts_with_external_id, funds_with_external_id
+    ):
+        """Contact denormalized stats NOT updated after pledge import (uses computed properties)."""
+        contact = contacts_with_external_id[0]
+        # Set initial stats
+        contact.total_given = Decimal('500.00')
+        contact.save()
+
+        api_client.force_authenticate(user=admin_user)
+        csv_content = 'pledge_id,entity_id,fund_id,amount,cadence,status,start_date\n'
+        csv_content += 'P001,E001,F001,100.00,monthly,active,2024-01-15\n'
+
+        file = SimpleUploadedFile('test.csv', csv_content.encode('utf-8'), content_type='text/csv')
+        response = api_client.post(
+            reverse('imports:import-pledges'),
+            {'file': file},
+            format='multipart'
+        )
+
+        assert response.status_code == 200
+        assert response.data['created_count'] == 1
+
+        # Verify Contact.total_given NOT changed (pledge import doesn't update stats)
+        contact.refresh_from_db()
+        assert contact.total_given == Decimal('500.00')  # Unchanged
+
+        # Verify computed property works
+        assert contact.has_active_pledge is True
+
+    def test_import_creates_import_run_audit_record(
+        self, api_client, admin_user, contacts_with_external_id, funds_with_external_id
+    ):
+        """Successful import creates ImportRun audit record."""
+        api_client.force_authenticate(user=admin_user)
+        csv_content = 'pledge_id,entity_id,fund_id,amount,cadence,status,start_date\n'
+        csv_content += 'P001,E001,F001,100.00,monthly,active,2024-01-15\n'
+
+        file = SimpleUploadedFile('pledges.csv', csv_content.encode('utf-8'), content_type='text/csv')
+        response = api_client.post(
+            reverse('imports:import-pledges'),
+            {'file': file},
+            format='multipart'
+        )
+
+        assert response.status_code == 200
+        import_run_id = response.data['import_run_id']
+        assert import_run_id is not None
+
+        # Verify ImportRun created
+        import_run = ImportRun.objects.get(id=import_run_id)
+        assert import_run.type == ImportType.PLEDGES
+        assert import_run.filename == 'pledges.csv'
+        assert import_run.uploaded_by == admin_user
+
+
+@pytest.mark.django_db
+class TestPledgeTemplateView:
+    """Integration tests for PledgeTemplateView API endpoint."""
+
+    def test_admin_can_download_template(self, api_client, admin_user):
+        """Admin user can download pledge CSV template."""
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.get(reverse('imports:template-pledges'))
+
+        assert response.status_code == 200
+        assert response['Content-Type'] == 'text/csv'
+        assert 'attachment' in response['Content-Disposition']
+        assert 'pledges_template.csv' in response['Content-Disposition']
+
+        # Verify template contains correct columns
+        content = response.content.decode('utf-8')
+        assert 'pledge_id' in content
+        assert 'entity_id' in content
+        assert 'fund_id' in content
+        assert 'amount' in content
+        assert 'cadence' in content
+        assert 'status' in content
+        assert 'start_date' in content
+
+    def test_non_admin_receives_403(self, api_client, regular_user):
+        """Non-admin user receives 403 Forbidden."""
+        api_client.force_authenticate(user=regular_user)
+        response = api_client.get(reverse('imports:template-pledges'))
+
+        assert response.status_code == 403
+
+    def test_unauthenticated_receives_401(self, api_client):
+        """Unauthenticated request receives 401."""
+        response = api_client.get(reverse('imports:template-pledges'))
+
+        assert response.status_code == 401
