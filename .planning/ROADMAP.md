@@ -169,12 +169,14 @@ Plans:
   7. UI warns when attempting Transaction/Pledge import with empty Funds or Entities (dependency guidance)
   8. UI shows recommended import order: Funds -> Entities -> Transactions -> Pledges
 
-**Plans:** TBD
+**Plans:** 5 plans
 
 Plans:
-- [ ] 12-01: TBD
-- [ ] 12-02: TBD
-- [ ] 12-03: TBD
+- [ ] 12-01-PLAN.md - Backend API for import status (LatestImportRunsView) and dependency counts
+- [ ] 12-02-PLAN.md - Frontend dependencies (react-papaparse), ImportCenter page shell, routing
+- [ ] 12-03-PLAN.md - SPOImportTile components with status display and dependency warnings
+- [ ] 12-04-PLAN.md - Import workflow dialog with state machine (Upload -> Preview -> Validate -> Import -> Summary)
+- [ ] 12-05-PLAN.md - Error CSV download functionality
 
 ---
 
@@ -191,8 +193,8 @@ Phases execute in numeric order: 7 -> 8 -> 9 -> 10 -> 11 -> 12
 | 9. Entities CSV Import | v1.1 | 2/2 | Complete | 2026-02-01 |
 | 10. Transactions CSV Import | v1.1 | 2/2 | Complete | 2026-02-02 |
 | 11. Pledges CSV Import | v1.1 | 2/2 | Complete | 2026-02-03 |
-| 12. Import Center UI | v1.1 | 0/TBD | Not started | - |
+| 12. Import Center UI | v1.1 | 0/5 | Not started | - |
 
 ---
 
-*Last updated: 2026-02-03 (Phase 11 complete)*
+*Last updated: 2026-02-03 (Phase 12 planned)*
