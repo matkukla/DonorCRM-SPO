@@ -18,16 +18,19 @@ from apps.imports.services import (
     get_donations_template,
     get_entities_template,
     get_funds_template,
+    get_pledges_template,
     get_transactions_template,
     import_contacts,
     import_donations,
     import_entities,
     import_funds,
+    import_pledges,
     import_transactions,
     parse_contacts_csv,
     parse_donations_csv,
     parse_entities_csv,
     parse_funds_csv,
+    parse_pledges_csv,
     parse_transactions_csv,
     update_contact_stats_for_import,
 )
@@ -575,3 +578,101 @@ class ImportStatusView(APIView):
     def get(self, request, import_id):
         progress = get_import_progress(import_id)
         return Response(progress)
+
+
+class PledgeImportView(APIView):
+    """
+    POST: Import pledges from CSV file (admin only)
+
+    Expects columns: pledge_id, entity_id, fund_id (optional), amount, cadence, status, start_date
+
+    Query params:
+        validate_only: If 'true', only validate without importing
+
+    STRICT MODE: Rejects entire import if any entity_id not found or
+    fund_id provided but not found.
+
+    Key differences from TransactionImportView:
+    - fund_id is OPTIONAL
+    - cadence and status require enum validation (handled in parse_pledges_csv)
+    - NO update_contact_stats call (pledges use computed properties)
+    """
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+    parser_classes = [MultiPartParser]
+
+    def post(self, request):
+        # File validation (same as TransactionImportView)
+        if 'file' not in request.FILES:
+            return Response({'detail': 'No file provided.'}, status=400)
+
+        file = request.FILES['file']
+        if not file.name.endswith('.csv'):
+            return Response({'detail': 'File must be a CSV.'}, status=400)
+
+        # UTF-8-sig handles Excel BOM
+        try:
+            content = file.read().decode('utf-8-sig')
+        except UnicodeDecodeError:
+            return Response({'detail': 'File encoding error. Please use UTF-8.'}, status=400)
+
+        # Parse CSV with FK and enum validation
+        valid_records, errors = parse_pledges_csv(content, request.user)
+
+        # Validate-only mode (dry run)
+        if request.query_params.get('validate_only') == 'true':
+            return Response({
+                'valid_count': len(valid_records),
+                'error_count': len(errors),
+                'errors': errors[:20]  # Limit to first 20
+            })
+
+        # Check for errors (strict mode - don't import if any errors)
+        if errors:
+            return Response({
+                'created_count': 0,
+                'updated_count': 0,
+                'error_count': len(errors),
+                'errors': errors[:20],
+                'import_run_id': None
+            })
+
+        # Create ImportRun audit record
+        from apps.imports.models import ImportRun, ImportType, ImportStatus
+        import_run = ImportRun.objects.create(
+            type=ImportType.PLEDGES,
+            status=ImportStatus.IMPORTING,
+            filename=file.name,
+            uploaded_by=request.user
+        )
+
+        # Synchronous import (MVP - no Celery)
+        if valid_records:
+            created_count, updated_count = import_pledges(
+                valid_records, request.user, import_run
+            )
+            # NOTE: NO update_contact_stats_for_import call
+            # Pledge data is accessed via computed properties (has_active_pledge, monthly_pledge_amount)
+        else:
+            created_count = 0
+            updated_count = 0
+
+        return Response({
+            'created_count': created_count,
+            'updated_count': updated_count,
+            'error_count': len(errors),
+            'errors': errors[:20],
+            'import_run_id': import_run.id
+        })
+
+
+class PledgeTemplateView(APIView):
+    """
+    GET: Download CSV template for pledge imports (admin only)
+    """
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    def get(self, request):
+        content = get_pledges_template()
+        response = HttpResponse(content, content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="pledges_template.csv"'
+        return response
