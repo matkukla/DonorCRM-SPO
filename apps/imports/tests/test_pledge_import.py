@@ -208,9 +208,10 @@ PLG001,ENT002,,200.00,quarterly,active,2024-02-01
 '''
     valid_records, errors = parse_pledges_csv(csv_content, user)
 
-    assert len(valid_records) == 0
-    assert len(errors) >= 1
-    assert any('Duplicate pledge_id' in err['errors'][0] for err in errors)
+    assert len(valid_records) == 1  # First one is valid
+    assert len(errors) == 1  # Second one errors
+    assert 'Duplicate pledge_id' in errors[0]['errors'][0]
+    assert errors[0]['row'] == 3
 
 
 def test_parse_pledges_csv_entity_id_required(user):

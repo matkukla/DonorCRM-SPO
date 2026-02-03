@@ -15,6 +15,7 @@ from django.utils import timezone
 from apps.contacts.models import Contact
 from apps.donations.models import Donation, DonationType, PaymentMethod
 from apps.imports.models import Fund, ImportStatus
+from apps.pledges.models import Pledge, PledgeFrequency, PledgeStatus
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,8 @@ logger = logging.getLogger(__name__)
 VALID_DONATION_TYPES = [dt.value for dt in DonationType]
 VALID_PAYMENT_METHODS = [pm.value for pm in PaymentMethod]
 VALID_FUND_STATUSES = ['active', 'inactive', 'closed']
+VALID_PLEDGE_FREQUENCIES = [f.value for f in PledgeFrequency]  # ['monthly', 'quarterly', 'semi_annual', 'annual']
+VALID_PLEDGE_STATUSES = [s.value for s in PledgeStatus]        # ['active', 'paused', 'completed', 'cancelled']
 
 # Formula characters for CSV injection prevention
 FORMULA_PREFIXES = ('=', '+', '-', '@')
@@ -1076,3 +1079,285 @@ def update_contact_stats_for_import(records: List[dict], user):
         count += 1
 
     logger.info(f'Updated giving stats for {count} contacts')
+
+
+def get_pledges_template() -> str:
+    """
+    Get CSV template for pledge imports.
+
+    Returns:
+        CSV header row as string
+    """
+    return 'pledge_id,entity_id,fund_id,amount,cadence,status,start_date\n'
+
+
+def parse_pledges_csv(file_content: str, user) -> Tuple[List[dict], List[dict]]:
+    """
+    Parse pledges CSV and return (valid_records, errors).
+
+    Expected columns: pledge_id, entity_id, fund_id (optional), amount, cadence, status, start_date
+
+    STRICT MODE: If ANY orphan FK references found (entity_id not in Contact or
+    fund_id provided but not in Fund), returns empty valid_records and all errors.
+
+    Key differences from parse_transactions_csv:
+    - fund_id is OPTIONAL (validate only if provided)
+    - cadence and status require enum validation
+    - CSV 'cadence' maps to Pledge.frequency field
+    - start_date CAN be in future (pledges can start later)
+
+    Args:
+        file_content: CSV file content as string
+        user: User performing import (for owner-scoped Contact lookup)
+
+    Returns:
+        Tuple of (valid_records, errors)
+    """
+    try:
+        reader = csv.DictReader(io.StringIO(file_content))
+    except csv.Error as e:
+        return [], [{'row': 1, 'errors': [f'Invalid CSV format: {e}'], 'data': {}}]
+
+    # Validate required column headers before processing rows
+    if reader.fieldnames is None:
+        return [], [{'row': 1, 'errors': ['CSV file is empty or has no headers'], 'data': {}}]
+
+    required_columns = ['pledge_id', 'entity_id', 'amount', 'cadence', 'status', 'start_date']
+    missing_columns = [col for col in required_columns if col not in reader.fieldnames]
+    if missing_columns:
+        return [], [{
+            'row': 1,
+            'errors': [f'Missing required column: {", ".join(missing_columns)}'],
+            'data': {}
+        }]
+
+    valid_records = []
+    errors = []
+    seen_pledge_ids = set()
+
+    # Collect all entity_ids and fund_ids for batch validation
+    all_entity_ids = set()
+    all_fund_ids = set()
+    pending_records = []  # Store records with their row numbers for FK validation
+
+    # First pass: validate row format, validate enums, collect FK references
+    for row_num, row in enumerate(reader, start=2):
+        row_errors = []
+
+        # Get and trim values
+        pledge_id = row.get('pledge_id', '').strip()
+        entity_id = row.get('entity_id', '').strip()
+        fund_id = row.get('fund_id', '').strip()
+        cadence = row.get('cadence', '').strip().lower()
+        status = row.get('status', '').strip().lower()
+
+        # Validate pledge_id
+        if not pledge_id:
+            row_errors.append('pledge_id is required')
+        elif len(pledge_id) > 100:
+            row_errors.append('pledge_id exceeds maximum length of 100 characters')
+        elif pledge_id.startswith(FORMULA_PREFIXES):
+            row_errors.append(f'pledge_id cannot start with formula character ({pledge_id[0]})')
+        elif pledge_id in seen_pledge_ids:
+            row_errors.append(f'Duplicate pledge_id in file: {pledge_id}')
+        else:
+            seen_pledge_ids.add(pledge_id)
+
+        # Validate entity_id
+        if not entity_id:
+            row_errors.append('entity_id is required')
+        else:
+            all_entity_ids.add(entity_id)
+
+        # Validate fund_id (OPTIONAL - only collect if provided)
+        if fund_id:
+            all_fund_ids.add(fund_id)
+
+        # Validate cadence (required, must be valid enum)
+        if not cadence:
+            row_errors.append('cadence is required')
+        elif cadence not in VALID_PLEDGE_FREQUENCIES:
+            row_errors.append(
+                f'Invalid cadence: "{cadence}". '
+                f'Valid options: {", ".join(VALID_PLEDGE_FREQUENCIES)}'
+            )
+
+        # Validate status (required, must be valid enum)
+        if not status:
+            row_errors.append('status is required')
+        elif status not in VALID_PLEDGE_STATUSES:
+            row_errors.append(
+                f'Invalid status: "{status}". '
+                f'Valid options: {", ".join(VALID_PLEDGE_STATUSES)}'
+            )
+
+        # Parse amount
+        amount, amount_error = _parse_amount(row.get('amount', ''))
+        if amount_error:
+            row_errors.append(amount_error)
+
+        # Parse date (note: start_date CAN be in future for pledges)
+        start_date, date_error = _parse_date(row.get('start_date', ''))
+        if date_error:
+            row_errors.append(date_error)
+
+        if row_errors:
+            errors.append({
+                'row': row_num,
+                'errors': row_errors,
+                'data': dict(row)
+            })
+        else:
+            record = {
+                'pledge_id': pledge_id,
+                'entity_id': entity_id,
+                'fund_id': fund_id,  # May be empty string
+                'amount': amount,
+                'cadence': cadence,  # Keep CSV terminology in validated records
+                'status': status,
+                'start_date': start_date
+            }
+            valid_records.append(record)
+            pending_records.append((row_num, record))
+
+    # Second pass: Batch validate foreign key references
+    if valid_records and not errors:
+        # Validate entity_ids exist in Contact.external_id for this owner
+        existing_entity_ids = set(
+            Contact.objects.filter(
+                owner=user,
+                external_id__in=all_entity_ids
+            ).values_list('external_id', flat=True)
+        )
+
+        missing_entity_ids = all_entity_ids - existing_entity_ids
+
+        # Validate fund_ids exist in Fund.external_id (only if any fund_ids provided)
+        missing_fund_ids = set()
+        if all_fund_ids:
+            existing_fund_ids = set(
+                Fund.objects.filter(
+                    external_id__in=all_fund_ids
+                ).values_list('external_id', flat=True)
+            )
+            missing_fund_ids = all_fund_ids - existing_fund_ids
+
+        # If any orphan references, add errors with row numbers
+        if missing_entity_ids or missing_fund_ids:
+            fk_errors = []
+            for row_num, record in pending_records:
+                row_fk_errors = []
+                if record['entity_id'] in missing_entity_ids:
+                    row_fk_errors.append(f"entity_id '{record['entity_id']}' not found in Contacts")
+                if record['fund_id'] and record['fund_id'] in missing_fund_ids:
+                    row_fk_errors.append(f"fund_id '{record['fund_id']}' not found in Funds")
+
+                if row_fk_errors:
+                    fk_errors.append({
+                        'row': row_num,
+                        'errors': row_fk_errors,
+                        'data': record
+                    })
+
+            # Add FK errors to errors list (limit to first 20)
+            errors.extend(fk_errors[:20])
+
+            # Clear valid_records if any orphan references (strict mode)
+            valid_records = []
+
+    # Limit errors to first 20 (consistent with Phase 8/9/10)
+    errors = errors[:20]
+
+    return valid_records, errors
+
+
+def import_pledges(records: List[dict], user, import_run) -> Tuple[int, int]:
+    """
+    Import pledges from parsed records.
+
+    Uses update_or_create because Pledge.external_id has conditional unique
+    constraint (globally unique, not owner-scoped like Contact).
+
+    Note: NO Contact stats update needed. Contact.has_active_pledge and
+    Contact.monthly_pledge_amount are computed properties that query
+    pledges.filter(status='active') directly.
+
+    Args:
+        records: List of validated pledge dicts
+        user: User performing import (for Contact FK lookup)
+        import_run: ImportRun instance to update
+
+    Returns:
+        Tuple of (created_count, updated_count)
+    """
+    logger.info(f'Starting pledge import: {len(records)} records for user {user.email}')
+
+    if not records:
+        # Update import run for empty records
+        import_run.created_count = 0
+        import_run.updated_count = 0
+        import_run.status = ImportStatus.COMPLETED
+        import_run.save()
+        return 0, 0
+
+    # Pre-fetch Contact and Fund objects by external_id for FK resolution
+    entity_ids = [r['entity_id'] for r in records]
+    fund_ids = [r['fund_id'] for r in records if r['fund_id']]  # Only non-empty fund_ids
+
+    # Build lookup dicts for FK resolution
+    contacts_by_external_id = {
+        c.external_id: c
+        for c in Contact.objects.filter(
+            owner=user,
+            external_id__in=entity_ids
+        )
+    }
+
+    # Only fetch funds if any fund_ids provided
+    funds_by_external_id = {}
+    if fund_ids:
+        funds_by_external_id = {
+            f.external_id: f
+            for f in Fund.objects.filter(external_id__in=fund_ids)
+        }
+
+    # Upsert pledges individually using update_or_create
+    # Note: Using update_or_create instead of bulk_create with update_conflicts
+    # because the Pledge model has a conditional unique constraint which
+    # doesn't work reliably with ON CONFLICT in PostgreSQL/Django
+    created_count = 0
+    updated_count = 0
+
+    for record in records:
+        fund = None
+        if record['fund_id']:  # Only lookup if fund_id provided
+            fund = funds_by_external_id.get(record['fund_id'])
+
+        pledge, created = Pledge.objects.update_or_create(
+            external_id=record['pledge_id'],
+            defaults={
+                'contact': contacts_by_external_id[record['entity_id']],
+                'fund': fund,  # May be None
+                'amount': record['amount'],
+                'frequency': record['cadence'],  # CSV 'cadence' -> model 'frequency'
+                'status': record['status'],
+                'start_date': record['start_date']
+            }
+        )
+        if created:
+            created_count += 1
+        else:
+            updated_count += 1
+
+    # Update import run
+    import_run.created_count = created_count
+    import_run.updated_count = updated_count
+    import_run.status = ImportStatus.COMPLETED
+    import_run.save()
+
+    logger.info(f'Pledge import completed: {created_count} created, {updated_count} updated')
+
+    # NO update_contact_stats_for_import call needed
+    # Contact.has_active_pledge and Contact.monthly_pledge_amount are computed properties
+
+    return created_count, updated_count
