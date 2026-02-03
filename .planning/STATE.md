@@ -5,34 +5,34 @@
 See: .planning/PROJECT.md (updated 2026-01-30)
 
 **Core value:** Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems.
-**Current focus:** Phase 10 - Transactions CSV Import (v1.1 CSV Import milestone)
+**Current focus:** Phase 11 - Pledges CSV Import (v1.1 CSV Import milestone)
 
 ## Current Position
 
-Phase: 10 of 12 (Transactions CSV Import)
-Plan: 02 of 02 completed
-Status: Phase complete
-Last activity: 2026-02-02 - Completed 10-02-PLAN.md (Transaction import API and integration tests)
+Phase: 11 of 12 (Pledges CSV Import)
+Plan: 01 of 02 completed
+Status: In progress
+Last activity: 2026-02-03 - Completed 11-01-PLAN.md (TDD for pledge CSV parsing)
 
-Progress: [█████████░░░░░░░░░░░] 46% (v1.0 complete + Phases 7-10)
+Progress: [█████████░░░░░░░░░░░] 48% (v1.0 complete + Phases 7-10 + 11-01)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 32 (24 v1.0 + 8 v1.1)
-- Average duration: 3.0 minutes
-- Total execution time: 1.95 hours
+- Total plans completed: 33 (24 v1.0 + 9 v1.1)
+- Average duration: 3.1 minutes
+- Total execution time: 2.05 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | v1.0 (Phases 1-6) | 24 | 1.4 hours | 2.8 min |
-| v1.1 (Phases 7-12) | 8/TBD | 33m 59s | 4.2 min |
+| v1.1 (Phases 7-12) | 9/TBD | 40m 25s | 4.5 min |
 
 **Recent Trend:**
 - v1.0 milestone shipped successfully
-- v1.1 milestone: 07-01 (1m 53s), 07-02 (2m 41s), 08-01 (4m), 08-02 (3m 38s), 09-01 (7m), 09-02 (4m 14s), 10-01 (5m 48s), 10-02 (4m 45s)
+- v1.1 milestone: 07-01 (1m 53s), 07-02 (2m 41s), 08-01 (4m), 08-02 (3m 38s), 09-01 (7m), 09-02 (4m 14s), 10-01 (5m 48s), 10-02 (4m 45s), 11-01 (6m 26s)
 
 *Updated after each plan completion*
 
@@ -62,6 +62,10 @@ Recent decisions affecting current work:
 - **10-01-D1:** update_or_create for Donation upserts (same conditional unique constraint issue as Contact)
 - **10-01-D2:** Contact lookup is owner-scoped, Fund lookup is global (critical for data isolation)
 - **10-01-D3:** Strict mode rejects entire import if ANY orphan FK found (ensures data consistency)
+- **11-01-D1:** fund_id optional for pledges (validate only if non-empty, different from transactions)
+- **11-01-D2:** CSV 'cadence' column maps to Pledge.frequency model field (SPO vs DonorCRM terminology)
+- **11-01-D3:** No Contact stats update after pledge import (pledges use computed properties, not denormalized fields)
+- **11-01-D4:** start_date can be in future for pledges (unlike donation posted_date which must be historical)
 
 ### Pending Todos
 
@@ -86,10 +90,10 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-02
-Stopped at: Completed 10-02-PLAN.md (Transaction import API and integration tests)
+Last session: 2026-02-03
+Stopped at: Completed 11-01-PLAN.md (TDD for pledge CSV parsing)
 Resume file: None
 
 ---
 
-*Last updated: 2026-02-02 (Phase 10 complete)*
+*Last updated: 2026-02-03 (Phase 11 Plan 01 complete)*
