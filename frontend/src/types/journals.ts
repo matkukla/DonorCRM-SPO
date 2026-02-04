@@ -42,6 +42,7 @@ export type FreshnessColor = 'success' | 'warning' | 'orange' | 'destructive' | 
 export interface JournalListItem {
   id: string
   name: string
+  description?: string
   goal_amount: string
   deadline: string | null
   is_archived: boolean

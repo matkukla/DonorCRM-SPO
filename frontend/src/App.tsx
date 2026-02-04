@@ -26,6 +26,7 @@ import GroupDetail from "@/pages/groups/GroupDetail"
 import GroupForm from "@/pages/groups/GroupForm"
 import Settings from "@/pages/settings/Settings"
 import AdminUsers from "@/pages/admin/AdminUsers"
+import ImportCenter from "@/pages/admin/ImportCenter"
 import ImportExport from "@/pages/imports/ImportExport"
 import JournalDetail from "@/pages/journals/JournalDetail"
 import JournalList from "@/pages/journals/JournalList"
@@ -98,6 +99,7 @@ function App() {
 
             <Route path="/settings" element={<ProtectedPage><Settings /></ProtectedPage>} />
             <Route path="/admin" element={<ProtectedPage requiredRole="admin"><AdminUsers /></ProtectedPage>} />
+            <Route path="/admin/imports" element={<ProtectedPage requiredRole="admin"><ImportCenter /></ProtectedPage>} />
             <Route path="/import-export" element={<ProtectedPage><ImportExport /></ProtectedPage>} />
 
             {/* Catch-all redirect */}
