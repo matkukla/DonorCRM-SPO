@@ -112,6 +112,19 @@ export async function importPledges(file: File, validateOnly: boolean = false): 
   return response.data
 }
 
+/**
+ * Download errors CSV for an import run
+ * Triggers browser download of CSV file with failed rows + error_message column
+ */
+export async function downloadImportErrorsCSV(importRunId: string, importType: ImportType): Promise<void> {
+  const response = await apiClient.get(`/imports/runs/${importRunId}/errors/csv/`, {
+    responseType: "blob",
+  })
+
+  const filename = `${importType}_errors_${importRunId.slice(0, 8)}.csv`
+  downloadFile(response.data, filename, "text/csv")
+}
+
 // Legacy Import Functions
 
 /**

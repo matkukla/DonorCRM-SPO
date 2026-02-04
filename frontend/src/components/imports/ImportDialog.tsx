@@ -17,9 +17,11 @@ import {
   AlertTriangle,
   X,
   Loader2,
+  Download,
 } from "lucide-react"
 import { CSVPreviewTable } from "./CSVPreviewTable"
 import { useSPOImport } from "@/hooks/useImports"
+import { downloadImportErrorsCSV } from "@/api/imports"
 import type { ImportType, SPOImportResult } from "@/api/imports"
 
 // State machine types
@@ -359,15 +361,29 @@ export function ImportDialog({ importType, open, onClose }: ImportDialogProps) {
                   <p className="text-sm text-muted-foreground">Errors</p>
                 </div>
               </div>
-              {state.importResult.error_count > 0 && state.importResult.errors.length > 0 && (
+              {state.importResult.error_count > 0 && (
                 <div className="mt-4 pt-4 border-t border-green-200">
-                  <p className="text-sm font-medium mb-2">Errors:</p>
-                  <ul className="text-sm text-muted-foreground space-y-1 max-h-24 overflow-y-auto">
-                    {state.importResult.errors.slice(0, 5).map((err, i) => (
-                      <li key={i}>- {err}</li>
-                    ))}
-                  </ul>
-                  {/* Download errors button will be added in Plan 12-05 */}
+                  {state.importResult.errors.length > 0 && (
+                    <>
+                      <p className="text-sm font-medium mb-2">Sample errors:</p>
+                      <ul className="text-sm text-muted-foreground space-y-1 max-h-24 overflow-y-auto">
+                        {state.importResult.errors.slice(0, 5).map((err, i) => (
+                          <li key={i}>- {err}</li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                  {state.importResult.import_run_id && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="mt-3"
+                      onClick={() => downloadImportErrorsCSV(state.importResult!.import_run_id!, importType)}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Download Errors CSV
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
