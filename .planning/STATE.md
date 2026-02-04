@@ -10,29 +10,29 @@ See: .planning/PROJECT.md (updated 2026-01-30)
 ## Current Position
 
 Phase: 12 of 12 (Import Center UI)
-Plan: 03 of ~04 completed
+Plan: 04 of ~04 completed
 Status: In progress
-Last activity: 2026-02-04 - Completed 12-03-PLAN.md (SPOImportTile components with status display and dependency warnings)
+Last activity: 2026-02-04 - Completed 12-04-PLAN.md (Import workflow dialog with state machine)
 
-Progress: [█████████░░░░░░░░░░░] 52% (v1.0 complete + Phases 7-11 + 12-01, 12-02, 12-03)
+Progress: [█████████░░░░░░░░░░░] 53% (v1.0 complete + Phases 7-11 + 12-01, 12-02, 12-03, 12-04)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 37 (24 v1.0 + 13 v1.1)
+- Total plans completed: 38 (24 v1.0 + 14 v1.1)
 - Average duration: 3.5 minutes
-- Total execution time: 2.3 hours
+- Total execution time: 2.4 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | v1.0 (Phases 1-6) | 24 | 1.4 hours | 2.8 min |
-| v1.1 (Phases 7-12) | 13/TBD | 71m 21s | 5.5 min |
+| v1.1 (Phases 7-12) | 14/TBD | 73m 49s | 5.3 min |
 
 **Recent Trend:**
 - v1.0 milestone shipped successfully
-- v1.1 milestone: 07-01 (1m 53s), 07-02 (2m 41s), 08-01 (4m), 08-02 (3m 38s), 09-01 (7m), 09-02 (4m 14s), 10-01 (5m 48s), 10-02 (4m 45s), 11-01 (6m 26s), 11-02 (3m 55s), 12-01 (9m 12s), 12-02 (7m 28s), 12-03 (10m 1s)
+- v1.1 milestone: 07-01 (1m 53s), 07-02 (2m 41s), 08-01 (4m), 08-02 (3m 38s), 09-01 (7m), 09-02 (4m 14s), 10-01 (5m 48s), 10-02 (4m 45s), 11-01 (6m 26s), 11-02 (3m 55s), 12-01 (9m 12s), 12-02 (7m 28s), 12-03 (10m 1s), 12-04 (2m 28s)
 
 *Updated after each plan completion*
 
@@ -79,6 +79,11 @@ Recent decisions affecting current work:
 - **12-03-D2:** Status badges use semantic colors (green/red/yellow/gray for completed/failed/in-progress/never)
 - **12-03-D3:** Dependency warnings shown inline on tiles (yellow background with AlertTriangle icon)
 - **12-03-D4:** Import order displayed as numbered badges (1-4) for visual guidance
+- **12-04-D1:** useReducer state machine for workflow (enforces valid state transitions)
+- **12-04-D2:** Preview first 25 rows client-side (balance between preview and performance)
+- **12-04-D3:** Import button disabled when validation has errors (prevents failed imports)
+- **12-04-D4:** Validation dry-run with validate_only=true (API call before real import)
+- **12-04-D5:** Cancel with confirmation during import (prevents accidental data loss)
 
 ### Pending Todos
 
@@ -105,9 +110,9 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-04
-Stopped at: Completed 12-03-PLAN.md (SPOImportTile components with status display and dependency warnings)
+Stopped at: Completed 12-04-PLAN.md (Import workflow dialog with state machine)
 Resume file: None
 
 ---
 
-*Last updated: 2026-02-04 (Phase 12 in progress - 12-01, 12-02, 12-03 complete)*
+*Last updated: 2026-02-04 (Phase 12 in progress - 12-01, 12-02, 12-03, 12-04 complete)*
