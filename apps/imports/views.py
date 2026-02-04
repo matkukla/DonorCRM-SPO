@@ -676,3 +676,51 @@ class PledgeTemplateView(APIView):
         response = HttpResponse(content, content_type='text/csv')
         response['Content-Disposition'] = 'attachment; filename="pledges_template.csv"'
         return response
+
+
+class LatestImportRunsView(APIView):
+    """
+    GET: Fetch latest import run for each type and dependency counts
+
+    Returns the most recent ImportRun for each of the 4 import types
+    (funds, entities, transactions, pledges), along with dependency counts
+    for showing warnings in the UI.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    def get(self, request):
+        from apps.imports.models import ImportRun, ImportType
+        from apps.donations.models import Fund
+        from apps.contacts.models import Contact
+
+        latest = {}
+
+        # Get latest run for each import type
+        for import_type in ImportType.values:
+            run = ImportRun.objects.filter(
+                type=import_type
+            ).order_by('-created_at').first()
+
+            if run:
+                latest[import_type] = {
+                    'id': str(run.id),
+                    'status': run.status,
+                    'created_at': run.created_at.isoformat(),
+                    'created_count': run.created_count,
+                    'updated_count': run.updated_count,
+                    'error_count': run.error_count
+                }
+            else:
+                latest[import_type] = None
+
+        # Get dependency counts for UI warnings
+        latest['dependency_counts'] = {
+            'funds_count': Fund.objects.count(),
+            'entities_with_external_id_count': Contact.objects.exclude(
+                external_id=''
+            ).exclude(
+                external_id__isnull=True
+            ).count()
+        }
+
+        return Response(latest)
