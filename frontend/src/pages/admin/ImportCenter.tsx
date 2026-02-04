@@ -1,7 +1,38 @@
+import { useState } from "react"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Upload } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Upload, Loader2 } from "lucide-react"
+import { useLatestImports } from "@/hooks/useImports"
+import { SPOImportTile } from "@/components/imports/SPOImportTile"
+import type { ImportType } from "@/api/imports"
+
+const IMPORT_CONFIGS: Array<{
+  type: ImportType
+  title: string
+  description: string
+}> = [
+  {
+    type: "funds",
+    title: "Funds",
+    description: "Import fund/account definitions from SPO",
+  },
+  {
+    type: "entities",
+    title: "Entities",
+    description: "Import contacts from SPO entities",
+  },
+  {
+    type: "transactions",
+    title: "Transactions",
+    description: "Import donations from SPO transactions",
+  },
+  {
+    type: "pledges",
+    title: "Pledges",
+    description: "Import pledges/commitments from SPO",
+  },
+]
 
 /**
  * Import Center - Admin-only page for SPO CSV imports
@@ -10,6 +41,48 @@ import { Upload } from "lucide-react"
  * Shows recommended import order and last import status for each type.
  */
 export default function ImportCenter() {
+  const { data, isLoading, isError } = useLatestImports()
+  const [activeImportType, setActiveImportType] = useState<ImportType | null>(null)
+
+  const handleImportClick = (importType: ImportType) => {
+    setActiveImportType(importType)
+    // Dialog will be added in Plan 12-04
+    console.log("Import clicked:", importType)
+  }
+
+  const handleDialogClose = () => {
+    setActiveImportType(null)
+  }
+
+  if (isLoading) {
+    return (
+      <Section>
+        <Container>
+          <div className="flex items-center justify-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        </Container>
+      </Section>
+    )
+  }
+
+  if (isError) {
+    return (
+      <Section>
+        <Container>
+          <div className="text-center py-8">
+            <p className="text-destructive">Failed to load import status. Please try again.</p>
+          </div>
+        </Container>
+      </Section>
+    )
+  }
+
+  const dependencyCounts = data?.dependency_counts ?? {
+    funds_count: 0,
+    entities_with_external_id_count: 0,
+  }
+
   return (
     <Section>
       <Container>
@@ -43,45 +116,39 @@ export default function ImportCenter() {
             </CardContent>
           </Card>
 
-          {/* Placeholder for tiles - will be added in Plan 12-03 */}
+          {/* Import Tiles */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Funds</CardTitle>
-                <CardDescription>Import fund/account definitions</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">Tile component coming soon...</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Entities</CardTitle>
-                <CardDescription>Import contacts from SPO entities</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">Tile component coming soon...</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Transactions</CardTitle>
-                <CardDescription>Import donations from SPO transactions</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">Tile component coming soon...</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Pledges</CardTitle>
-                <CardDescription>Import pledges/commitments</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">Tile component coming soon...</p>
-              </CardContent>
-            </Card>
+            {IMPORT_CONFIGS.map((config) => (
+              <SPOImportTile
+                key={config.type}
+                importType={config.type}
+                title={config.title}
+                description={config.description}
+                latestRun={data?.[config.type] ?? null}
+                dependencyCounts={dependencyCounts}
+                onImportClick={() => handleImportClick(config.type)}
+              />
+            ))}
           </div>
+
+          {/* TODO: Import dialog will be added in Plan 12-04 */}
+          {activeImportType && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+              <Card className="w-full max-w-md">
+                <CardContent className="pt-6">
+                  <p className="text-center">
+                    Import dialog for {activeImportType} coming in Plan 12-04...
+                  </p>
+                  <button
+                    onClick={handleDialogClose}
+                    className="mt-4 w-full py-2 bg-muted rounded"
+                  >
+                    Close
+                  </button>
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </div>
       </Container>
     </Section>

@@ -12,7 +12,6 @@ import {
   importTransactions,
   importPledges,
   type ImportType,
-  type SPOImportResult,
 } from "@/api/imports"
 
 export function useImportContacts() {
