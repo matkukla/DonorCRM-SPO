@@ -14,6 +14,7 @@ from apps.imports.views import (
     EntityTemplateView,
     FundImportView,
     FundTemplateView,
+    ImportRunErrorsCSVView,
     ImportStatusView,
     LatestImportRunsView,
     PledgeImportView,
@@ -40,5 +41,6 @@ urlpatterns = [
     path('templates/pledges/', PledgeTemplateView.as_view(), name='template-pledges'),
     path('templates/transactions/', TransactionTemplateView.as_view(), name='template-transactions'),
     path('runs/latest/', LatestImportRunsView.as_view(), name='latest-import-runs'),
+    path('runs/<uuid:import_run_id>/errors/csv/', ImportRunErrorsCSVView.as_view(), name='import-run-errors-csv'),
     path('status/<str:import_id>/', ImportStatusView.as_view(), name='import-status'),
 ]

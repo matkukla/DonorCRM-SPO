@@ -1,6 +1,8 @@
 """
 Views for CSV import/export.
 """
+import csv
+import io
 import logging
 import uuid
 
@@ -723,3 +725,55 @@ class LatestImportRunsView(APIView):
         }
 
         return Response(latest)
+
+
+class ImportRunErrorsCSVView(APIView):
+    """
+    GET: Download CSV of failed rows for an import run
+
+    Returns CSV file with original row data plus error_message column.
+    Used by Import Center to allow admin to fix and re-import failed rows.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    def get(self, request, import_run_id):
+        from apps.imports.models import ImportRun, ImportRowError
+
+        try:
+            import_run = ImportRun.objects.get(id=import_run_id)
+        except ImportRun.DoesNotExist:
+            return Response(
+                {'detail': 'Import run not found.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Get all error rows for this import run
+        errors = ImportRowError.objects.filter(import_run=import_run).order_by('row_number')
+
+        if not errors.exists():
+            return Response(
+                {'detail': 'No errors found for this import run.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Build CSV in memory
+        output = io.StringIO()
+
+        # Get headers from first error's row_data, add error_message column
+        first_error = errors.first()
+        headers = list(first_error.row_data.keys()) + ['error_message']
+
+        writer = csv.DictWriter(output, fieldnames=headers)
+        writer.writeheader()
+
+        for error in errors:
+            row = dict(error.row_data)
+            row['error_message'] = '; '.join(error.error_messages)
+            writer.writerow(row)
+
+        # Prepare response
+        output.seek(0)
+        response = HttpResponse(output.getvalue(), content_type='text/csv')
+        filename = f'{import_run.type}_errors_{import_run.id}.csv'
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
