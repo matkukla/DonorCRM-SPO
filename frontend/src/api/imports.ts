@@ -15,7 +15,104 @@ export interface ImportError {
   message: string
 }
 
-// Import Functions
+// Import Center types (SPO CSV imports)
+export type ImportType = 'funds' | 'entities' | 'transactions' | 'pledges'
+
+export interface LatestImportRun {
+  id: string
+  status: string
+  created_at: string
+  created_count: number
+  updated_count: number
+  error_count: number
+}
+
+export interface DependencyCounts {
+  funds_count: number
+  entities_with_external_id_count: number
+}
+
+export interface LatestImportsResponse {
+  funds: LatestImportRun | null
+  entities: LatestImportRun | null
+  transactions: LatestImportRun | null
+  pledges: LatestImportRun | null
+  dependency_counts: DependencyCounts
+}
+
+// SPO CSV import result (different from legacy ImportResult)
+export interface SPOImportResult {
+  created_count: number
+  updated_count: number
+  error_count: number
+  errors: string[]
+  import_run_id: string | null
+}
+
+// SPO Import Center Functions
+
+/**
+ * Fetch latest import run for each SPO CSV type
+ * Used by Import Center to display tile status
+ */
+export async function getLatestImports(): Promise<LatestImportsResponse> {
+  const response = await apiClient.get('/imports/runs/latest/')
+  return response.data
+}
+
+/**
+ * Import funds from SPO CSV file
+ */
+export async function importFunds(file: File, validateOnly: boolean = false): Promise<SPOImportResult> {
+  const formData = new FormData()
+  formData.append("file", file)
+  const url = validateOnly ? "/imports/funds/?validate_only=true" : "/imports/funds/"
+  const response = await apiClient.post(url, formData, {
+    headers: { "Content-Type": "multipart/form-data" }
+  })
+  return response.data
+}
+
+/**
+ * Import entities from SPO CSV file
+ */
+export async function importEntities(file: File, validateOnly: boolean = false): Promise<SPOImportResult> {
+  const formData = new FormData()
+  formData.append("file", file)
+  const url = validateOnly ? "/imports/entities/?validate_only=true" : "/imports/entities/"
+  const response = await apiClient.post(url, formData, {
+    headers: { "Content-Type": "multipart/form-data" }
+  })
+  return response.data
+}
+
+/**
+ * Import transactions from SPO CSV file
+ */
+export async function importTransactions(file: File, validateOnly: boolean = false): Promise<SPOImportResult> {
+  const formData = new FormData()
+  formData.append("file", file)
+  const url = validateOnly ? "/imports/transactions/?validate_only=true" : "/imports/transactions/"
+  const response = await apiClient.post(url, formData, {
+    headers: { "Content-Type": "multipart/form-data" }
+  })
+  return response.data
+}
+
+/**
+ * Import pledges from SPO CSV file
+ */
+export async function importPledges(file: File, validateOnly: boolean = false): Promise<SPOImportResult> {
+  const formData = new FormData()
+  formData.append("file", file)
+  const url = validateOnly ? "/imports/pledges/?validate_only=true" : "/imports/pledges/"
+  const response = await apiClient.post(url, formData, {
+    headers: { "Content-Type": "multipart/form-data" }
+  })
+  return response.data
+}
+
+// Legacy Import Functions
 
 /**
  * Import contacts from CSV file
