@@ -689,8 +689,7 @@ class LatestImportRunsView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsAdmin]
 
     def get(self, request):
-        from apps.imports.models import ImportRun, ImportType
-        from apps.donations.models import Fund
+        from apps.imports.models import ImportRun, ImportType, Fund
         from apps.contacts.models import Contact
 
         latest = {}

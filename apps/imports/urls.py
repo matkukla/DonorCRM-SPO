@@ -15,6 +15,7 @@ from apps.imports.views import (
     FundImportView,
     FundTemplateView,
     ImportStatusView,
+    LatestImportRunsView,
     PledgeImportView,
     PledgeTemplateView,
     TransactionImportView,
@@ -38,5 +39,6 @@ urlpatterns = [
     path('templates/funds/', FundTemplateView.as_view(), name='template-funds'),
     path('templates/pledges/', PledgeTemplateView.as_view(), name='template-pledges'),
     path('templates/transactions/', TransactionTemplateView.as_view(), name='template-transactions'),
+    path('runs/latest/', LatestImportRunsView.as_view(), name='latest-import-runs'),
     path('status/<str:import_id>/', ImportStatusView.as_view(), name='import-status'),
 ]
