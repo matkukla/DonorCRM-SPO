@@ -10,29 +10,29 @@ See: .planning/PROJECT.md (updated 2026-01-30)
 ## Current Position
 
 Phase: 12 of 12 (Import Center UI)
-Plan: 04 of ~04 completed
-Status: In progress
-Last activity: 2026-02-04 - Completed 12-04-PLAN.md (Import workflow dialog with state machine)
+Plan: 05 of 05 completed
+Status: Phase complete
+Last activity: 2026-02-04 - Completed 12-05-PLAN.md (Error CSV download functionality)
 
-Progress: [█████████░░░░░░░░░░░] 53% (v1.0 complete + Phases 7-11 + 12-01, 12-02, 12-03, 12-04)
+Progress: [█████████░░░░░░░░░░░] 54% (v1.0 complete + Phases 7-11 + 12-01, 12-02, 12-03, 12-04, 12-05)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 38 (24 v1.0 + 14 v1.1)
+- Total plans completed: 39 (24 v1.0 + 15 v1.1)
 - Average duration: 3.5 minutes
-- Total execution time: 2.4 hours
+- Total execution time: 2.5 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | v1.0 (Phases 1-6) | 24 | 1.4 hours | 2.8 min |
-| v1.1 (Phases 7-12) | 14/TBD | 73m 49s | 5.3 min |
+| v1.1 (Phases 7-12) | 15/15 | 76m 43s | 5.1 min |
 
 **Recent Trend:**
 - v1.0 milestone shipped successfully
-- v1.1 milestone: 07-01 (1m 53s), 07-02 (2m 41s), 08-01 (4m), 08-02 (3m 38s), 09-01 (7m), 09-02 (4m 14s), 10-01 (5m 48s), 10-02 (4m 45s), 11-01 (6m 26s), 11-02 (3m 55s), 12-01 (9m 12s), 12-02 (7m 28s), 12-03 (10m 1s), 12-04 (2m 28s)
+- v1.1 milestone: 07-01 (1m 53s), 07-02 (2m 41s), 08-01 (4m), 08-02 (3m 38s), 09-01 (7m), 09-02 (4m 14s), 10-01 (5m 48s), 10-02 (4m 45s), 11-01 (6m 26s), 11-02 (3m 55s), 12-01 (9m 12s), 12-02 (7m 28s), 12-03 (10m 1s), 12-04 (2m 28s), 12-05 (2m 54s)
 
 *Updated after each plan completion*
 
@@ -84,6 +84,10 @@ Recent decisions affecting current work:
 - **12-04-D3:** Import button disabled when validation has errors (prevents failed imports)
 - **12-04-D4:** Validation dry-run with validate_only=true (API call before real import)
 - **12-04-D5:** Cancel with confirmation during import (prevents accidental data loss)
+- **12-05-D1:** CSV error_message column joins multiple errors with semicolon separator (Excel-safe, human-readable)
+- **12-05-D2:** Filename format {type}_errors_{run_id}.csv for easy identification
+- **12-05-D3:** 404 when no errors exist (better UX than empty CSV)
+- **12-05-D4:** Download button only shows when error_count > 0 AND import_run_id exists
 
 ### Pending Todos
 
@@ -110,9 +114,9 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-04
-Stopped at: Completed 12-04-PLAN.md (Import workflow dialog with state machine)
+Stopped at: Completed 12-05-PLAN.md (Error CSV download functionality) - Phase 12 complete
 Resume file: None
 
 ---
 
-*Last updated: 2026-02-04 (Phase 12 in progress - 12-01, 12-02, 12-03, 12-04 complete)*
+*Last updated: 2026-02-04 (Phase 12 complete - all 5 plans executed)*
