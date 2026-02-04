@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Upload, Loader2 } from "lucide-react"
 import { useLatestImports } from "@/hooks/useImports"
 import { SPOImportTile } from "@/components/imports/SPOImportTile"
+import { ImportDialog } from "@/components/imports/ImportDialog"
 import type { ImportType } from "@/api/imports"
 
 const IMPORT_CONFIGS: Array<{
@@ -46,8 +47,6 @@ export default function ImportCenter() {
 
   const handleImportClick = (importType: ImportType) => {
     setActiveImportType(importType)
-    // Dialog will be added in Plan 12-04
-    console.log("Import clicked:", importType)
   }
 
   const handleDialogClose = () => {
@@ -131,23 +130,13 @@ export default function ImportCenter() {
             ))}
           </div>
 
-          {/* TODO: Import dialog will be added in Plan 12-04 */}
+          {/* Import Dialog */}
           {activeImportType && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-              <Card className="w-full max-w-md">
-                <CardContent className="pt-6">
-                  <p className="text-center">
-                    Import dialog for {activeImportType} coming in Plan 12-04...
-                  </p>
-                  <button
-                    onClick={handleDialogClose}
-                    className="mt-4 w-full py-2 bg-muted rounded"
-                  >
-                    Close
-                  </button>
-                </CardContent>
-              </Card>
-            </div>
+            <ImportDialog
+              importType={activeImportType}
+              open={!!activeImportType}
+              onClose={handleDialogClose}
+            />
           )}
         </div>
       </Container>
