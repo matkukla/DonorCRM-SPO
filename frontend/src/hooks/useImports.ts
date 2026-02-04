@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   importContacts,
   importDonations,
@@ -6,6 +6,13 @@ import {
   exportDonations,
   downloadContactTemplate,
   downloadDonationTemplate,
+  getLatestImports,
+  importFunds,
+  importEntities,
+  importTransactions,
+  importPledges,
+  type ImportType,
+  type SPOImportResult,
 } from "@/api/imports"
 
 export function useImportContacts() {
@@ -63,5 +70,42 @@ export function useDownloadContactTemplate() {
 export function useDownloadDonationTemplate() {
   return useMutation({
     mutationFn: () => downloadDonationTemplate(),
+  })
+}
+
+// SPO Import Center Hooks
+
+/**
+ * Fetch latest import runs for all 4 SPO CSV types
+ */
+export function useLatestImports() {
+  return useQuery({
+    queryKey: ["latestImports"],
+    queryFn: getLatestImports,
+    staleTime: 30 * 1000, // 30 seconds - imports don't change frequently
+  })
+}
+
+/**
+ * Mutation hook for SPO CSV imports
+ * Handles all 4 import types with automatic query invalidation
+ */
+export function useSPOImport(importType: ImportType) {
+  const queryClient = useQueryClient()
+
+  const importFn = {
+    funds: importFunds,
+    entities: importEntities,
+    transactions: importTransactions,
+    pledges: importPledges,
+  }[importType]
+
+  return useMutation({
+    mutationFn: ({ file, validateOnly }: { file: File; validateOnly: boolean }) =>
+      importFn(file, validateOnly),
+    onSuccess: () => {
+      // Invalidate latest imports to refresh tile status
+      queryClient.invalidateQueries({ queryKey: ["latestImports"] })
+    },
   })
 }
