@@ -20,7 +20,7 @@ Progress: [█████████░░░░░░░░░░░] 51% (v1
 
 **Velocity:**
 - Total plans completed: 36 (24 v1.0 + 12 v1.1)
-- Average duration: 3.3 minutes
+- Average duration: 3.4 minutes
 - Total execution time: 2.2 hours
 
 **By Phase:**
@@ -28,11 +28,11 @@ Progress: [█████████░░░░░░░░░░░] 51% (v1
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | v1.0 (Phases 1-6) | 24 | 1.4 hours | 2.8 min |
-| v1.1 (Phases 7-12) | 12/TBD | 52m 8s | 4.3 min |
+| v1.1 (Phases 7-12) | 12/TBD | 61m 20s | 5.1 min |
 
 **Recent Trend:**
 - v1.0 milestone shipped successfully
-- v1.1 milestone: 07-01 (1m 53s), 07-02 (2m 41s), 08-01 (4m), 08-02 (3m 38s), 09-01 (7m), 09-02 (4m 14s), 10-01 (5m 48s), 10-02 (4m 45s), 11-01 (6m 26s), 11-02 (3m 55s), 12-01 (research), 12-02 (7m 28s)
+- v1.1 milestone: 07-01 (1m 53s), 07-02 (2m 41s), 08-01 (4m), 08-02 (3m 38s), 09-01 (7m), 09-02 (4m 14s), 10-01 (5m 48s), 10-02 (4m 45s), 11-01 (6m 26s), 11-02 (3m 55s), 12-01 (9m 12s), 12-02 (7m 28s)
 
 *Updated after each plan completion*
 
@@ -69,6 +69,9 @@ Recent decisions affecting current work:
 - **11-02-D1:** PledgeImportView has no update_contact_stats_for_import call (traced to 11-01-D3)
 - **11-02-D2:** Integration tests verify computed properties work and stats unchanged
 - **11-02-D3:** UTF-8 BOM test uses byte format matching Excel export format
+- **12-01-D1:** Flat response structure (dict with type keys) for efficient frontend mapping
+- **12-01-D2:** Fund model in apps.imports.models (SPO import artifact, not core domain)
+- **12-01-D3:** Entity count excludes manually created contacts (only SPO-imported with external_id)
 - **12-02-D1:** react-papaparse for client-side CSV preview (types bundled, no @types package)
 - **12-02-D2:** SPOImportResult type distinct from legacy ImportResult (different response structure)
 - **12-02-D3:** Import Center as /admin/imports (separate from /import-export legacy page)
@@ -91,19 +94,16 @@ None yet.
 - ~~import_entities uses update_or_create (one query per record) - may need bulk optimization for 100+ rows~~ (Same pattern for transactions, acceptable for MVP)
 
 **Phase 12 Readiness:**
+- ~~Backend API for latest import runs and dependency counts~~ (Completed: 12-01)
 - ~~react-papaparse dependency needs to be added to frontend package.json~~ (Completed: 12-02)
-- ~~Import Center route (/admin/imports) needs to fit existing admin navigation structure~~ (Completed: 12-02 with admin-only protection)
-
-**Phase 12 Blockers:**
-- Backend GET /api/v1/imports/runs/latest/ endpoint needs implementation (called by getLatestImports but doesn't exist yet)
-- DependencyCounts type may need adjustment based on actual backend response
+- ~~Import Center route (/admin/imports) needs to fit existing admin navigation structure~~ (Completed: 12-02)
 
 ## Session Continuity
 
 Last session: 2026-02-04
-Stopped at: Completed 12-02-PLAN.md (frontend dependencies, ImportCenter page shell, API functions)
+Stopped at: Completed 12-01-PLAN.md (backend API for import status and dependency counts)
 Resume file: None
 
 ---
 
-*Last updated: 2026-02-04 (Phase 12 in progress - 12-02 complete)*
+*Last updated: 2026-02-04 (Phase 12 in progress - 12-01 complete, 12-02 complete)*
