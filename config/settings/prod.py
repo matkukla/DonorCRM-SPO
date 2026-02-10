@@ -1,6 +1,9 @@
 """
 Production settings for DonorCRM.
 """
+import os
+
+import dj_database_url
 import sentry_sdk
 from sentry_sdk.integrations.celery import CeleryIntegration
 from sentry_sdk.integrations.django import DjangoIntegration
@@ -14,6 +17,7 @@ SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
 SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=True, cast=bool)  # noqa: F405
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SECURE_HSTS_SECONDS = 31536000  # 1 year
@@ -38,30 +42,39 @@ if SENTRY_DSN:
         environment=config('ENVIRONMENT', default='production'),  # noqa: F405
     )
 
-# Database connection pooling
-# Use django-db-connection-pool for SQLAlchemy-based pooling
-DATABASES['default'] = {  # noqa: F405
-    'ENGINE': 'dj_db_conn_pool.backends.postgresql',
-    'NAME': config('DB_NAME', default='donorcrm'),  # noqa: F405
-    'USER': config('DB_USER', default='donorcrm'),  # noqa: F405
-    'PASSWORD': config('DB_PASSWORD', default=''),  # noqa: F405
-    'HOST': config('DB_HOST', default='localhost'),  # noqa: F405
-    'PORT': config('DB_PORT', default='5432'),  # noqa: F405
-    'POOL_OPTIONS': {
-        'POOL_SIZE': 20,  # Base connections to keep open
-        'MAX_OVERFLOW': 30,  # Additional connections under load
-        'RECYCLE': 300,  # Recycle connections after 5 minutes
-        'PRE_PING': True,  # Verify connections before use
+# Database configuration
+# Parse DATABASE_URL (provided by Render) or fall back to individual vars
+if os.environ.get('DATABASE_URL'):
+    DATABASES['default'] = dj_database_url.config(  # noqa: F405
+        default=os.environ['DATABASE_URL'],
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
+else:
+    DATABASES['default'] = {  # noqa: F405
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': config('DB_NAME', default='donorcrm'),  # noqa: F405
+        'USER': config('DB_USER', default='donorcrm'),  # noqa: F405
+        'PASSWORD': config('DB_PASSWORD', default=''),  # noqa: F405
+        'HOST': config('DB_HOST', default='localhost'),  # noqa: F405
+        'PORT': config('DB_PORT', default='5432'),  # noqa: F405
     }
-}
 
-# Cache (Redis)
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': config('REDIS_URL', default='redis://localhost:6379/1'),  # noqa: F405
+# Cache — use Redis if available, otherwise in-memory
+REDIS_URL = config('REDIS_URL', default='')  # noqa: F405
+if REDIS_URL:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': REDIS_URL,
+        }
     }
-}
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        }
+    }
 
 # Logging for production
 LOGGING['handlers']['console']['formatter'] = 'verbose'  # noqa: F405
