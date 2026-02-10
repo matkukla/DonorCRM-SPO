@@ -1,0 +1,9 @@
+entity_id,name,email,phone,address,entity_type
+ENT-001,John Smith,john.smith@example.com,555-0101,123 Main St,individual
+ENT-002,Jane Doe,jane.doe@example.com,555-0102,456 Oak Ave,individual
+ENT-003,Bob Johnson,bob.j@example.com,555-0103,789 Pine Rd,individual
+ENT-004,Alice Williams,alice.w@example.com,555-0104,321 Elm St,individual
+ENT-005,Smith Family Foundation,info@smithfound.org,555-0105,100 Corporate Blvd,organization
+ENT-006,Maria Garcia,maria.g@example.com,555-0106,555 Maple Dr,individual
+ENT-007,David Brown,david.b@example.com,555-0107,777 Cedar Ln,individual
+ENT-008,First Baptist Church,office@firstbaptist.org,555-0108,200 Church St,organization

@@ -1,0 +1,7 @@
+pledge_id,entity_id,fund_id,amount,cadence,status,start_date
+PLG-001,ENT-001,FUND-001,100.00,monthly,active,2026-01-01
+PLG-002,ENT-002,FUND-001,50.00,monthly,active,2026-01-01
+PLG-003,ENT-003,FUND-002,200.00,quarterly,active,2026-01-01
+PLG-004,ENT-005,FUND-003,500.00,annual,active,2026-01-01
+PLG-005,ENT-004,,25.00,monthly,active,2026-02-01
+PLG-006,ENT-006,FUND-004,150.00,semi_annual,paused,2026-01-15

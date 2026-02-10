@@ -118,7 +118,7 @@ const IMPORT_TYPE_LABELS: Record<ImportType, string> = {
 export function ImportDialog({ importType, open, onClose }: ImportDialogProps) {
   const [state, dispatch] = useReducer(importReducer, initialState)
   const { CSVReader } = useCSVReader()
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const acceptedFileRef = useRef<File | null>(null)
   const importMutation = useSPOImport(importType)
 
   const handleClose = () => {
@@ -127,6 +127,7 @@ export function ImportDialog({ importType, open, onClose }: ImportDialogProps) {
         return
       }
     }
+    acceptedFileRef.current = null
     dispatch({ type: "RESET" })
     onClose()
   }
@@ -139,7 +140,7 @@ export function ImportDialog({ importType, open, onClose }: ImportDialogProps) {
 
     dispatch({
       type: "UPLOAD_FILE",
-      file: fileInputRef.current?.files?.[0] || new File([], "unknown.csv"),
+      file: acceptedFileRef.current || new File([], "unknown.csv"),
       headers,
       rows: rows.slice(0, 25), // Preview first 25 rows only
     })
@@ -202,19 +203,24 @@ export function ImportDialog({ importType, open, onClose }: ImportDialogProps) {
         {state.step === "upload" && (
           <div className="space-y-4">
             <CSVReader
-              onUploadAccepted={handleFileUpload}
+              onUploadAccepted={(results: { data: Record<string, string>[] }) => {
+                handleFileUpload(results)
+              }}
               config={{
                 header: true,
                 skipEmptyLines: true,
                 encoding: "UTF-8",
               }}
             >
-              {({ getRootProps, acceptedFile }: { getRootProps: () => object; acceptedFile: File | null }) => (
+              {({ getRootProps, acceptedFile }: { getRootProps: () => object; acceptedFile: File | null }) => {
+                if (acceptedFile) {
+                  acceptedFileRef.current = acceptedFile
+                }
+                return (
                 <div
                   {...getRootProps()}
                   className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 transition-colors"
                 >
-                  <input ref={fileInputRef} type="file" accept=".csv" className="hidden" />
                   {acceptedFile ? (
                     <div className="flex items-center justify-center gap-3">
                       <FileText className="h-8 w-8 text-green-600" />
@@ -237,7 +243,7 @@ export function ImportDialog({ importType, open, onClose }: ImportDialogProps) {
                     </>
                   )}
                 </div>
-              )}
+              )}}
             </CSVReader>
           </div>
         )}

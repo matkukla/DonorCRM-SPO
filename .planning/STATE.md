@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-01-30)
 Phase: 12 of 12 (Import Center UI)
 Plan: 05 of 05 completed
 Status: Phase complete
-Last activity: 2026-02-04 - Completed 12-05-PLAN.md (Error CSV download functionality)
+Last activity: 2026-02-10 - Completed quick task 004: Fix ImportDialog empty file bug
 
 Progress: [█████████░░░░░░░░░░░] 54% (v1.0 complete + Phases 7-11 + 12-01, 12-02, 12-03, 12-04, 12-05)
 
@@ -92,6 +92,12 @@ Recent decisions affecting current work:
 ### Pending Todos
 
 None yet.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 004 | Fix ImportDialog empty file bug + generate test CSV data | 2026-02-10 | pending | [004-fix-import-dialog-empty-file-bug](./quick/004-fix-import-dialog-empty-file-bug/) |
 
 ### Blockers/Concerns
 
