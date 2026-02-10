@@ -87,3 +87,6 @@ Desktop.ini
 *.key
 secrets.json
 credentials.json
+
+# MCP config (contains API keys)
+.mcp.json
