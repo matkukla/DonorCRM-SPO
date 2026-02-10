@@ -1,4 +1,6 @@
 import { useState } from "react"
+import { NavLink } from "react-router-dom"
+import { cn } from "@/lib/utils"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -86,6 +88,33 @@ export default function ImportCenter() {
     <Section>
       <Container>
         <div className="space-y-6">
+          {/* Admin Sub-Navigation */}
+          <div className="flex gap-4 border-b border-border pb-2">
+            <NavLink
+              to="/admin"
+              end
+              className={({ isActive }) =>
+                cn(
+                  "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
+                  isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+                )
+              }
+            >
+              Users
+            </NavLink>
+            <NavLink
+              to="/admin/imports"
+              className={({ isActive }) =>
+                cn(
+                  "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
+                  isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+                )
+              }
+            >
+              Imports
+            </NavLink>
+          </div>
+
           {/* Header */}
           <div>
             <h1 className="text-3xl font-semibold tracking-tight">Import Center</h1>
