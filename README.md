@@ -277,24 +277,24 @@ Fund model, external ID fields, 4 CSV import types (Funds, Entities, Transaction
 ## What We Explicitly Don't Do
 
 To maintain focus and simplicity:
-- ❌ Process online donations (integrate with existing platforms)
-- ❌ Manage fundraising events or campaigns
-- ❌ Track grants or institutional giving
-- ❌ Handle volunteer or membership management
-- ❌ Replicate accounting functions
-- ❌ Send bulk emails
+- Process online donations (integrate with existing platforms)
+- Manage fundraising events or campaigns
+- Track grants or institutional giving
+- Handle volunteer or membership management
+- Replicate accounting functions
+- Send bulk emails
 
 ## Roadmap
 
 ### MVP (Phase 1)
-- [x] Contact management
-- [x] Donation tracking
-- [x] Pledge management
-- [x] Automated alerts
-- [x] Task system
-- [x] Dashboard
-- [x] CSV import/export
-- [x] User roles
+- Contact management
+- Donation tracking
+- Pledge management
+- Automated alerts
+- Task system
+- Dashboard
+- CSV import/export
+- User roles
 
 ## Contributing
 
@@ -342,5 +342,7 @@ Full research document available in `/docs/research.md`
 ## License
 
 MIT
+
+## Philoposhy
 
 *"A CRM should feel like a helpful assistant who knows exactly what you need to do today, not a database you have to maintain."*
