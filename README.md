@@ -308,10 +308,7 @@ We welcome contributions that align with our lean, user-focused philosophy. Befo
 See `CONTRIBUTING.md` for detailed guidelines.
 
 ## Support
-
-- **Documentation**: [Link to docs]
-- **Issues**: [GitHub Issues]
-- **Email**: support@yourorg.org
+- **Email**: mkukla1105@gmail.com
 
 ## Research & Background
 
