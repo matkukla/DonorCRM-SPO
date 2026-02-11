@@ -97,7 +97,7 @@ None yet.
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
-| 004 | Fix ImportDialog empty file bug + generate test CSV data | 2026-02-10 | pending | [004-fix-import-dialog-empty-file-bug](./quick/004-fix-import-dialog-empty-file-bug/) |
+| 004 | Fix ImportDialog empty file bug + generate test CSV data | 2026-02-10 | 05ed533 | [004-fix-import-dialog-empty-file-bug](./quick/004-fix-import-dialog-empty-file-bug/) |
 
 ### Blockers/Concerns
 

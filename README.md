@@ -1,45 +1,65 @@
-# DonorCRM - Lean Missionary Support Management System
+# DonorCRM
 
-A purpose-built CRM for missionaries and nonprofit staff who raise personal support, designed to be simple, motivating, and actually used.
+A purpose-built CRM for missionaries and nonprofit staff who raise personal support. Simple, motivating, and actually used.
 
 ## Overview
 
-DonorCRM is a minimalist donor relationship management system focused on helping individual fundraisers track gifts, manage pledges, and maintain strong donor relationships with minimal friction. Built from research into missionary support-raising workflows, it delivers essential CRM functionality without the complexity that drives low adoption.
+DonorCRM is a minimalist donor relationship management system for individual fundraisers. It tracks gifts, manages pledges, and maintains donor relationships with minimal friction. Built from research into missionary support-raising workflows, it delivers essential CRM functionality without the complexity that drives low adoption.
 
-### Why DonorCRM?
+### Live Demo
 
-Traditional donor CRMs suffer from low adoption because they:
-- Overwhelm users with too many features and data points
-- Feel like administrative work rather than helpful assistance
-- Lack clear, actionable guidance on what to do next
-- Don't provide motivating feedback on completed work
+- **Frontend**: [donorcrm-frontend.onrender.com](https://donorcrm-frontend.onrender.com)
+- **Backend API**: [donorcrm-web.onrender.com](https://donorcrm-web.onrender.com)
 
-DonorCRM solves these problems by:
-- **Clarity First**: Clean dashboard answering "What changed? What needs attention? What's at risk?"
-- **Actionable Insights**: Automatic alerts that tell you exactly who to contact and why
-- **Positive Reinforcement**: Visible progress tracking and completion indicators
-- **Minimal Friction**: Essential features only, with intuitive navigation
+> Note: Free-tier Render services may take ~30 seconds to spin up on first request.
 
-## Core Features
+## Features
 
-### Dashboard Intelligence
-- **What Changed**: Summary of new gifts, donors, and updates since last login
-- **Needs Attention**: Prioritized list of follow-up actions (late donors, pledge expirations)
-- **Trend Snapshot**: Visual progress toward support goals
-- **At-Risk Donors**: Early warning for donors who might stop giving
-- **Thank-You Queue**: Track acknowledgments sent and pending
+### Dashboard
+- Summary of new gifts, donors, and updates since last login
+- Prioritized follow-up actions (late donors, pledge expirations)
+- Visual progress toward support goals
+- At-risk donor early warnings
+- Thank-you queue tracking
 
-### Donor Management
-- Contact database with search and tagging
-- Giving history and trends for each donor
-- Pledge/recurring commitment tracking
-- Automated alerts (new donor, late gift, stopped giving, pledge changes)
+### Contact Management
+- Contact database with search, filtering, and tagging
+- Giving history and trends per donor
+- Group/segment system for organization
 
-### Task Management
-- Reminder system with due dates (defaults to prevent forgetting)
-- Link tasks to specific donors
+### Donation Tracking
+- Individual gift records with automatic contact stat updates
+- Denormalized stats (total given, gift count, last gift date) for fast queries
+
+### Pledge Management
+- Recurring commitment tracking with status transitions
+- Pledge fulfillment monitoring
+- Automated alerts for pledge changes
+
+### Journal (Fundraising Campaigns)
+- 6-stage pipeline: Contact > Meet > Close > Decision > Thank > Next Steps
+- Interactive grid UI with stage cell indicators
+- Decision tracking with full history (dual-table pattern)
+- Analytics charts (decision trends, stage activity, pipeline breakdown)
+- Contact detail integration (Journals tab)
+- Task system integration (journal-linked tasks)
+
+### SPO CSV Import (Admin)
+- Import Center UI with 4 import types: Funds, Entities, Transactions, Pledges
+- Upload > Preview > Validate > Import workflow
+- Client-side CSV preview (first 25 rows)
+- Row-level validation with error reporting
+- Downloadable error CSV for failed rows
+- Idempotent upserts via external IDs
+- Import audit trail (ImportRun, ImportRowError models)
+- Dependency guidance and recommended import order
+
+### Task System
+- Reminders with due dates and status tracking
+- Link tasks to specific contacts or journals
 - Dashboard integration for upcoming/overdue items
 
+<<<<<<< HEAD
 ### Reporting
 - Monthly donation summaries
 - Support level vs. goal tracking
@@ -80,74 +100,175 @@ See full schema documentation in `/docs/data-model.md`
 
 ## User Roles
 
+=======
+### User Roles
+>>>>>>> ab18891 (updated documentation)
 - **Fundraiser**: Manages their own donors, pledges, and tasks
 - **Admin**: Full system access, user management, data imports
 - **Finance**: Import donations, view giving across organization
 - **Read-Only**: View-only access for coaches/supervisors
 
+## Tech Stack
+
+### Backend
+- **Framework**: Django 4.2 + Django REST Framework
+- **Database**: PostgreSQL (UUID primary keys, TimeStampedModel base)
+- **Auth**: JWT via djangorestframework-simplejwt
+- **Async**: Celery + Redis (disabled in production, synchronous for MVP)
+- **API Docs**: drf-spectacular (OpenAPI/Swagger)
+
+### Frontend
+- **Framework**: React 19 + TypeScript
+- **Build**: Vite
+- **Styling**: Tailwind CSS
+- **Components**: Radix UI primitives
+- **State**: TanStack React Query + React Table
+- **Charts**: Recharts
+- **CSV**: react-papaparse
+
+### Infrastructure
+- **Hosting**: Render (web service + static site + PostgreSQL)
+- **CI/CD**: Auto-deploy on push to main
+
+## Project Structure
+
+```
+DonorCRM/
+├── apps/                   # Django backend apps
+│   ├── contacts/           # Contact CRUD, ownership, search
+│   ├── donations/          # Gift records, stat updates
+│   ├── pledges/            # Recurring commitments
+│   ├── tasks/              # Reminders and action items
+│   ├── groups/             # Contact tags/segments
+│   ├── events/             # Change log and notifications
+│   ├── journals/           # Fundraising campaign pipelines
+│   ├── imports/            # CSV import (Funds, Entities, Transactions, Pledges)
+│   ├── dashboard/          # Aggregated views and reporting
+│   ├── insights/           # Analytics endpoints
+│   ├── users/              # Auth, roles, JWT
+│   └── core/               # Shared models, utilities
+├── config/                 # Django settings (dev/prod/test)
+├── frontend/               # React/TypeScript SPA
+│   └── src/
+│       ├── pages/          # Route-level components
+│       ├── components/     # Shared UI components
+│       └── api/            # API client functions
+├── requirements/           # Python dependencies (base/dev/prod)
+├── render.yaml             # Render blueprint
+└── docker-compose.yml      # Local development
+```
+
 ## Getting Started
 
 ### Prerequisites
-- [Database system]
-- [Runtime environment]
-- [Other dependencies]
+- Python 3.11+
+- Node.js 22+
+- PostgreSQL 15+
+- Redis 7+ (optional, for Celery)
 
-### Installation
+### Local Development
+
 ```bash
 # Clone repository
 git clone https://github.com/matkukla/DonorCRM.git
+<<<<<<< HEAD
 cd donorcrm
+=======
+cd DonorCRM
+>>>>>>> ab18891 (updated documentation)
 
-# Install dependencies
-[installation commands]
+# Backend setup
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements/dev.txt
 
-# Configure database
-[database setup]
+# Start PostgreSQL and Redis (via Docker)
+docker compose up -d db redis
 
-# Initialize application
-[initialization steps]
+# Run migrations and create admin
+python manage.py migrate
+python manage.py createsuperuser
 
-# Start development server
-[run command]
+# Start backend
+python manage.py runserver
+
+# Frontend setup (in a new terminal)
+cd frontend
+npm install
+npm run dev
 ```
 
-### Initial Setup
+The backend runs at `http://localhost:8000` and the frontend at `http://localhost:5173`.
 
-1. Create admin account
-2. Configure organization settings
-3. Import historical donor data (CSV)
-4. Create user accounts for fundraisers
-5. Assign donors to users
+### Docker (Full Stack)
 
-## Usage
+```bash
+docker compose up --build
+```
 
-### For Fundraisers
+This starts PostgreSQL, Redis, Django, Celery worker, and Celery beat.
 
-**Daily Workflow:**
-1. Log in to see dashboard summary
-2. Review "Needs Attention" list
-3. Follow up with flagged donors
-4. Mark tasks complete
-5. Check progress toward goals
+### Running Tests
 
-**Weekly Tasks:**
-- Review giving trends
-- Update pledges for changes
-- Process thank-you queue
-- Add any new prospects
+```bash
+# Backend (411 tests)
+source venv/bin/activate
+pytest
 
-### For Admins
+# With coverage
+pytest --cov=apps
+```
 
-**Regular Tasks:**
-- Import donation data (weekly/monthly)
-- Review/clean duplicate contacts
-- Assist users with data questions
-- Monitor system health
+## Deployment (Render)
 
-**Occasional Tasks:**
-- Add/remove user accounts
-- Export data for leadership
-- Update organization settings
+DonorCRM is deployed on Render using the [render.yaml](render.yaml) blueprint:
+
+| Service | Type | Description |
+|---------|------|-------------|
+| donorcrm-frontend | Static Site | React SPA served via CDN |
+| donorcrm-web | Web Service | Django API server (gunicorn) |
+| donorcrm-db | PostgreSQL | Free-tier database |
+
+**Build command** (web service):
+```
+pip install -r requirements/prod.txt && python manage.py collectstatic --noinput && python manage.py migrate --noinput
+```
+
+**Environment variables** required:
+- `DATABASE_URL` - PostgreSQL connection string (auto-set by Render)
+- `SECRET_KEY` - Django secret key
+- `ALLOWED_HOSTS` - Domain whitelist
+- `CORS_ALLOWED_ORIGINS` - Frontend URL
+- `DJANGO_SETTINGS_MODULE` - `config.settings.prod`
+
+## Data Model
+
+### Core Entities
+- **Users** - Fundraisers, admins, finance staff, read-only viewers
+- **Contacts** - Donor and prospect information with ownership
+- **Donations** - Individual gift records (money in cents)
+- **Pledges** - Recurring giving commitments with cadence/status
+- **Funds** - Account/campaign tracking (SPO import support)
+- **Tasks** - Reminders and action items
+- **Events** - Change log and notification feed
+- **Groups** - Contact tags/segments
+- **Journals** - Fundraising campaign pipelines
+- **ImportRun / ImportRowError** - Import audit trail
+
+### Key Patterns
+- Money stored in cents (integer) for precision
+- Owner-scoped data model (`Contact.owner`, `Task.owner`)
+- External IDs for idempotent CSV imports
+- Denormalized contact stats updated on donation changes
+- Decision history via dual-table pattern (current + history)
+
+## Milestones
+
+### v1.0 - Journal Feature (Shipped 2026-01-29)
+Journal CRUD, 6-stage pipeline, decision tracking, interactive grid UI, analytics charts, contact/task integration. 6 phases, 24 plans, 35 UAT tests passed.
+
+### v1.1 - CSV Import (Shipped 2026-02-10)
+Fund model, external ID fields, 4 CSV import types (Funds, Entities, Transactions, Pledges), Import Center UI, validation/preview workflow, error CSV download. 6 phases, 15 plans, 16 UAT tests passed.
 
 ## Design Principles
 
@@ -157,7 +278,7 @@ cd donorcrm
 4. **Reduce cognitive load** - Present minimum information needed to make decisions
 5. **Progressive disclosure** - Hide complexity behind clear paths
 
-## What We Explicitly DON'T Do
+## What We Explicitly Don't Do
 
 To maintain focus and simplicity:
 - ❌ Process online donations (integrate with existing platforms)
@@ -217,7 +338,19 @@ Full research document available in `/docs/research.md`
 - Research informed by DonorElf usage patterns and missionary support-raising best practices
 - Built to serve 100+ fundraising staff at Saint Paul's Outreach
 - Designed with feedback from frontline missionaries
+=======
+- Process online donations (integrate with existing platforms)
+- Manage fundraising events or campaigns
+- Track grants or institutional giving
+- Handle volunteer or membership management
+- Replicate accounting functions
+- Send bulk emails (export for MailChimp instead)
+
+
+## License
+
+MIT
 
 ---
 
-**Philosophy**: *"A CRM should feel like a helpful assistant who knows exactly what you need to do today, not a database you have to maintain."*
+*"A CRM should feel like a helpful assistant who knows exactly what you need to do today, not a database you have to maintain."*
