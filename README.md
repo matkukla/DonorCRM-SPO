@@ -60,10 +60,8 @@ DonorCRM solves these problems by:
 
 ## Technology Stack
 
-*(To be determined based on implementation)*
-
 - **Backend**: Django (Python)
-- **Database**: PostgreSQL (recommended for data integrity)
+- **Database**: PostgreSQL 
 - **Frontend**: React
 - **Authentication**: Role-based access control
 
@@ -97,7 +95,7 @@ See full schema documentation in `/docs/data-model.md`
 ### Installation
 ```bash
 # Clone repository
-git clone https://github.com/yourorg/donorcrm.git
+git clone https://github.com/matkukla/DonorCRM.git
 cd donorcrm
 
 # Install dependencies
@@ -167,7 +165,7 @@ To maintain focus and simplicity:
 - ❌ Track grants or institutional giving
 - ❌ Handle volunteer or membership management
 - ❌ Replicate accounting functions
-- ❌ Send bulk emails (export for MailChimp instead)
+- ❌ Send bulk emails
 
 ## Roadmap
 
@@ -180,15 +178,6 @@ To maintain focus and simplicity:
 - [x] Dashboard
 - [x] CSV import/export
 - [x] User roles
-
-### Future Enhancements
-- [ ] Email integration (MailChimp sync)
-- [ ] Mobile-responsive design
-- [ ] Advanced filtering/search
-- [ ] Coaching dashboards
-- [ ] Custom fields
-- [ ] Multi-currency support
-- [ ] Direct accounting integrations
 
 ## Contributing
 
@@ -226,7 +215,7 @@ Full research document available in `/docs/research.md`
 ## Acknowledgments
 
 - Research informed by DonorElf usage patterns and missionary support-raising best practices
-- Built to serve [Your Organization]'s 100+ fundraising staff
+- Built to serve 100+ fundraising staff at Saint Paul's Outreach
 - Designed with feedback from frontline missionaries
 
 ---
