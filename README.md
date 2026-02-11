@@ -11,8 +11,6 @@ DonorCRM is a minimalist donor relationship management system for individual fun
 - **Frontend**: [donorcrm-frontend.onrender.com](https://donorcrm-frontend.onrender.com)
 - **Backend API**: [donorcrm-web.onrender.com](https://donorcrm-web.onrender.com)
 
-> Note: Free-tier Render services may take ~30 seconds to spin up on first request.
-
 ## Features
 
 ### Dashboard
@@ -59,7 +57,6 @@ DonorCRM is a minimalist donor relationship management system for individual fun
 - Link tasks to specific contacts or journals
 - Dashboard integration for upcoming/overdue items
 
-<<<<<<< HEAD
 ### Reporting
 - Monthly donation summaries
 - Support level vs. goal tracking
@@ -102,7 +99,6 @@ See full schema documentation in `/docs/data-model.md`
 
 =======
 ### User Roles
->>>>>>> ab18891 (updated documentation)
 - **Fundraiser**: Manages their own donors, pledges, and tasks
 - **Admin**: Full system access, user management, data imports
 - **Finance**: Import donations, view giving across organization
@@ -329,10 +325,6 @@ This project is based on extensive research into missionary fundraising workflow
 
 Full research document available in `/docs/research.md`
 
-## License
-
-[Your chosen license]
-
 ## Acknowledgments
 
 - Research informed by DonorElf usage patterns and missionary support-raising best practices
@@ -350,7 +342,5 @@ Full research document available in `/docs/research.md`
 ## License
 
 MIT
-
----
 
 *"A CRM should feel like a helpful assistant who knows exactly what you need to do today, not a database you have to maintain."*
