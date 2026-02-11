@@ -69,40 +69,11 @@ DonorCRM is a minimalist donor relationship management system for individual fun
 
 ## Key Workflows
 
-1. **Monitoring Updates**: Log in → See dashboard summary → Identify what needs attention
-2. **Following Up**: Review alert → Click donor → Take action (call/email) → Mark complete
-3. **Managing Pledges**: Add/update recurring commitments → System tracks fulfillment → Alerts on issues
-4. **Thanking Donors**: New gift arrives → Notification appears → Send thank-you → Track completion
-5. **Reviewing Status**: Check dashboard trends → Identify lapsed donors → Reach out proactively
-
-## Technology Stack
-
-- **Backend**: Django (Python)
-- **Database**: PostgreSQL 
-- **Frontend**: React
-- **Authentication**: Role-based access control
-
-## Data Model
-
-### Core Entities
-- **Users**: Fundraisers, admins, finance staff, read-only viewers
-- **Contacts**: Donor and prospect information with ownership
-- **Donations**: Individual gift records
-- **Pledges**: Recurring giving commitments
-- **Tasks**: Reminders and action items
-- **Events**: Change log and notification feed
-- **Groups**: Contact tags/segments
-
-See full schema documentation in `/docs/data-model.md`
-
-## User Roles
-
-=======
-### User Roles
-- **Fundraiser**: Manages their own donors, pledges, and tasks
-- **Admin**: Full system access, user management, data imports
-- **Finance**: Import donations, view giving across organization
-- **Read-Only**: View-only access for coaches/supervisors
+1. **Monitoring Updates**: Log in > See dashboard summary > Identify what needs attention
+2. **Following Up**: Review alert > Click donor > Take action (call/email) > Mark complete
+3. **Managing Pledges**: Add/update recurring commitments > System tracks fulfillment > Alerts on issues
+4. **Thanking Donors**: New gift arrives > Notification appears > Send thank-you > Track completion
+5. **Reviewing Status**: Check dashboard trends > Identify lapsed donors > Reach out proactively
 
 ## Tech Stack
 
@@ -167,11 +138,7 @@ DonorCRM/
 ```bash
 # Clone repository
 git clone https://github.com/matkukla/DonorCRM.git
-<<<<<<< HEAD
-cd donorcrm
-=======
 cd DonorCRM
->>>>>>> ab18891 (updated documentation)
 
 # Backend setup
 python3 -m venv venv
@@ -207,7 +174,7 @@ This starts PostgreSQL, Redis, Django, Celery worker, and Celery beat.
 ### Running Tests
 
 ```bash
-# Backend (411 tests)
+# Backend
 source venv/bin/activate
 pytest
 
@@ -258,6 +225,12 @@ pip install -r requirements/prod.txt && python manage.py collectstatic --noinput
 - Denormalized contact stats updated on donation changes
 - Decision history via dual-table pattern (current + history)
 
+### User Roles
+- **Fundraiser**: Manages their own donors, pledges, and tasks
+- **Admin**: Full system access, user management, data imports
+- **Finance**: Import donations, view giving across organization
+- **Read-Only**: View-only access for coaches/supervisors
+
 ## Milestones
 
 ### v1.0 - Journal Feature (Shipped 2026-01-29)
@@ -284,18 +257,6 @@ To maintain focus and simplicity:
 - Replicate accounting functions
 - Send bulk emails
 
-## Roadmap
-
-### MVP (Phase 1)
-- Contact management
-- Donation tracking
-- Pledge management
-- Automated alerts
-- Task system
-- Dashboard
-- CSV import/export
-- User roles
-
 ## Contributing
 
 We welcome contributions that align with our lean, user-focused philosophy. Before adding features:
@@ -304,11 +265,6 @@ We welcome contributions that align with our lean, user-focused philosophy. Befo
 2. Ensure it serves a daily workflow
 3. Keep the UI simple and clear
 4. Include tests for reliability
-
-See `CONTRIBUTING.md` for detailed guidelines.
-
-## Support
-- **Email**: mkukla1105@gmail.com
 
 ## Research & Background
 
@@ -320,26 +276,20 @@ This project is based on extensive research into missionary fundraising workflow
 - Simple beats comprehensive for adoption rates
 - Trust depends on data accuracy and simplicity
 
-Full research document available in `/docs/research.md`
+## Support
+
+- **Email**: mkukla1105@gmail.com
 
 ## Acknowledgments
 
 - Research informed by DonorElf usage patterns and missionary support-raising best practices
 - Built to serve 100+ fundraising staff at Saint Paul's Outreach
 - Designed with feedback from frontline missionaries
-=======
-- Process online donations (integrate with existing platforms)
-- Manage fundraising events or campaigns
-- Track grants or institutional giving
-- Handle volunteer or membership management
-- Replicate accounting functions
-- Send bulk emails (export for MailChimp instead)
-
 
 ## License
 
 MIT
 
-## Philoposhy
+---
 
 *"A CRM should feel like a helpful assistant who knows exactly what you need to do today, not a database you have to maintain."*
