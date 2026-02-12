@@ -1,16 +1,21 @@
 """
 Service functions for insights/reports data aggregations.
 """
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from dateutil.relativedelta import relativedelta
-from django.db.models import Count, Sum
-from django.db.models.functions import TruncMonth, TruncYear
+from django.db.models import Count, Sum, Q, OuterRef, Subquery, Value, CharField
+from django.db.models.functions import TruncMonth, TruncYear, TruncDate, Coalesce
+from django.utils import timezone
 
+from apps.contacts.models import Contact, ContactStatus
 from apps.donations.models import Donation
+from apps.events.models import Event
+from apps.journals.models import Journal, JournalContact, JournalStageEvent, PipelineStage, Decision
 from apps.pledges.models import Pledge, PledgeStatus
 from apps.tasks.models import Task, TaskStatus
+from apps.users.models import User
 
 
 def _scope_donations(user):
@@ -291,4 +296,232 @@ def get_transactions(user, limit=100, offset=0, contact_id=None, date_from=None,
         'total_count': total_count,
         'limit': limit,
         'offset': offset,
+    }
+
+
+# Admin Analytics Endpoints (Phase 13)
+
+
+def get_dashboard_overview():
+    """
+    Admin dashboard overview with cross-user aggregated stats.
+    No user scoping — admin sees all data.
+    Target: <10 queries.
+    """
+    total_contacts = Contact.objects.count()
+    active_journals = Journal.objects.filter(is_archived=False).count()
+
+    # Stalled contacts count (last journal activity >14 days ago)
+    cutoff_date = timezone.now() - timedelta(days=14)
+    last_activity = JournalStageEvent.objects.filter(
+        journal_contact__contact=OuterRef('pk')
+    ).order_by('-created_at').values('created_at')[:1]
+
+    stalled_count = Contact.objects.annotate(
+        last_activity_date=Subquery(last_activity)
+    ).filter(
+        Q(last_activity_date__lt=cutoff_date) | Q(last_activity_date__isnull=True),
+        # Only count contacts that are in at least one journal
+        journal_memberships__isnull=False
+    ).distinct().count()
+
+    # Conversion rate: contacts with a Decision / total contacts in journals
+    contacts_in_journals = JournalContact.objects.values('contact').distinct().count()
+    contacts_with_decision = Decision.objects.values('journal_contact__contact').distinct().count()
+    conversion_rate = round(
+        (contacts_with_decision / contacts_in_journals * 100) if contacts_in_journals > 0 else 0,
+        1
+    )
+
+    # Donation summary (last 12 months)
+    twelve_months_ago = date.today() - relativedelta(months=12)
+    donation_stats = Donation.objects.filter(
+        date__gte=twelve_months_ago
+    ).aggregate(
+        total_amount=Sum('amount'),
+        total_count=Count('id')
+    )
+
+    return {
+        'total_contacts': total_contacts,
+        'active_journals': active_journals,
+        'stalled_contacts': stalled_count,
+        'conversion_rate': conversion_rate,
+        'donations_12m': {
+            'total_amount': float(donation_stats['total_amount'] or 0),
+            'total_count': donation_stats['total_count'] or 0,
+        },
+    }
+
+
+def get_stalled_contacts(limit=50, offset=0):
+    """
+    Find contacts with last journal activity >14 days ago.
+    Uses Subquery annotation per requirement API-04.
+    Returns paginated results.
+    Target: <5 queries.
+    """
+    last_activity = JournalStageEvent.objects.filter(
+        journal_contact__contact=OuterRef('pk')
+    ).order_by('-created_at').values('created_at')[:1]
+
+    cutoff_date = timezone.now() - timedelta(days=14)
+
+    base_qs = Contact.objects.annotate(
+        last_activity_date=Subquery(last_activity)
+    ).filter(
+        Q(last_activity_date__lt=cutoff_date) | Q(last_activity_date__isnull=True),
+        journal_memberships__isnull=False
+    ).distinct().select_related('owner')
+
+    total_count = base_qs.count()
+
+    stalled = base_qs.order_by(
+        # Nulls last for isnull contacts, then oldest activity first
+        Coalesce('last_activity_date', Value('1970-01-01')).asc()
+    )[offset:offset + limit]
+
+    return {
+        'stalled_contacts': [
+            {
+                'id': str(c.id),
+                'full_name': c.full_name,
+                'email': c.email,
+                'owner_email': c.owner.email,
+                'owner_name': f'{c.owner.first_name} {c.owner.last_name}'.strip(),
+                'last_activity_date': c.last_activity_date.isoformat() if c.last_activity_date else None,
+                'days_stalled': (timezone.now() - c.last_activity_date).days if c.last_activity_date else None,
+                'status': c.status,
+            }
+            for c in stalled
+        ],
+        'total_count': total_count,
+        'limit': limit,
+        'offset': offset,
+    }
+
+
+def get_user_performance():
+    """
+    Per-missionary performance metrics aggregated at database level.
+    Target: <10 queries.
+    """
+    users = User.objects.filter(
+        role__in=['staff', 'admin']
+    ).annotate(
+        total_contacts=Count('contacts', distinct=True),
+        active_journals=Count(
+            'journals',
+            filter=Q(journals__is_archived=False),
+            distinct=True
+        ),
+    ).order_by('-total_contacts')
+
+    result = []
+    for user in users:
+        # Per-user donation stats
+        donation_stats = Donation.objects.filter(
+            contact__owner=user
+        ).aggregate(
+            total_amount=Sum('amount'),
+            total_count=Count('id')
+        )
+
+        # Per-user decision count
+        decision_count = Decision.objects.filter(
+            journal_contact__journal__owner=user
+        ).count()
+
+        result.append({
+            'id': str(user.id),
+            'email': user.email,
+            'name': f'{user.first_name} {user.last_name}'.strip(),
+            'role': user.role,
+            'total_contacts': user.total_contacts,
+            'active_journals': user.active_journals,
+            'decisions_logged': decision_count,
+            'total_donations': float(donation_stats['total_amount'] or 0),
+            'donation_count': donation_stats['total_count'] or 0,
+        })
+
+    return {'users': result}
+
+
+def get_conversion_funnel():
+    """
+    Pipeline stage distribution with counts and percentages across all missionaries.
+    Reuses existing Journal 6-stage pipeline (PipelineStage).
+    Target: <5 queries.
+    """
+    # Subquery to get most recent stage per journal_contact
+    latest_stage = JournalStageEvent.objects.filter(
+        journal_contact=OuterRef('pk')
+    ).order_by('-created_at').values('stage')[:1]
+
+    # Annotate each journal_contact with current stage, aggregate counts
+    breakdown = JournalContact.objects.annotate(
+        current_stage=Subquery(latest_stage)
+    ).values('current_stage').annotate(
+        count=Count('id')
+    ).order_by('current_stage')
+
+    total = sum(item['count'] for item in breakdown)
+
+    # Build ordered result using PipelineStage order
+    stage_order = [s.value for s in PipelineStage]
+    stage_labels = {s.value: s.label for s in PipelineStage}
+    stage_counts = {item['current_stage']: item['count'] for item in breakdown}
+
+    funnel = []
+    for stage_value in stage_order:
+        count = stage_counts.get(stage_value, 0)
+        funnel.append({
+            'stage': stage_value,
+            'label': stage_labels.get(stage_value, stage_value),
+            'count': count,
+            'percentage': round((count / total * 100) if total > 0 else 0, 1),
+        })
+
+    # Include contacts with no stage events (null current_stage)
+    null_count = stage_counts.get(None, 0)
+    if null_count > 0:
+        funnel.append({
+            'stage': None,
+            'label': 'No Activity',
+            'count': null_count,
+            'percentage': round((null_count / total * 100) if total > 0 else 0, 1),
+        })
+
+    return {
+        'funnel': funnel,
+        'total_contacts_in_pipeline': total,
+    }
+
+
+def get_team_activity(limit=50):
+    """
+    Recent activity across all users — journal updates, new contacts, decisions.
+    Target: <10 queries.
+    """
+    recent_events = Event.objects.select_related(
+        'user', 'contact'
+    ).order_by('-created_at')[:limit]
+
+    return {
+        'activities': [
+            {
+                'id': str(e.id),
+                'user_email': e.user.email,
+                'user_name': f'{e.user.first_name} {e.user.last_name}'.strip(),
+                'event_type': e.event_type,
+                'title': e.title,
+                'message': e.message,
+                'severity': e.severity,
+                'contact_id': str(e.contact.id) if e.contact else None,
+                'contact_name': e.contact.full_name if e.contact else None,
+                'created_at': e.created_at.isoformat(),
+            }
+            for e in recent_events
+        ],
+        'total_count': Event.objects.count(),
     }
