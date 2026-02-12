@@ -2,22 +2,25 @@
 
 ## What This Is
 
-A donor relationship management system for missionaries. Includes contact management, donation tracking, pledge management, task system, and a Journal feature for fundraising campaign pipelines. Now adding SPO-compatible CSV import for bulk data ingestion from DonorElf exports.
+A donor relationship management system for missionaries. Includes contact management, donation tracking, pledge management, task system, Journal feature for fundraising campaign pipelines, and SPO-compatible CSV import. Now adding an Admin Analytics Dashboard for coaches and leadership to monitor missionary performance across the organization.
 
 ## Core Value
 
 Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems.
 
-## Current Milestone: v1.1 CSV Import
+## Current Milestone: v1.2 Admin Analytics Dashboard
 
-**Goal:** Enable admins to import SPO-exported CSV files (Funds, Entities, Transactions, Pledges) into DonorCRM with validation, preview, and idempotent upserts.
+**Goal:** Give coaches and leadership cross-missionary visibility into fundraising activity, pipeline health, and stalled contacts — so they can proactively support their teams.
 
 **Target features:**
-- Import Center UI for 4 CSV types
-- Fund model for account/campaign tracking
-- External ID support for idempotent imports
-- Row-level validation and error reporting
-- Import audit trail (ImportRun, ImportRowError)
+- Dashboard Overview page with summary cards, team activity table, conversion funnel (journal pipeline), trend chart, and alerts panel
+- Stalled Contacts page with 14+ day inactivity detection, pagination, and sorting
+- User Detail page with per-missionary performance trends and journal listings
+- User Drilldown panel (slide-in sidebar for quick inspection)
+- 5 API endpoints with ADMIN/FINANCE role-based visibility
+- Drill-down charts (click funnel segments to see underlying contacts)
+- Comparison mode (time periods or users side-by-side)
+- Activity heatmap calendar view
 
 ## Requirements
 
@@ -41,37 +44,40 @@ Missionaries can manage donor relationships efficiently, with accurate data impo
 - ✓ Contact detail integration (Journals tab) — v1.0
 - ✓ Task system integration (journal-linked tasks) — v1.0
 - ✓ Admin analytics endpoints — v1.0
+- ✓ Fund model for account/campaign tracking — v1.1
+- ✓ External ID fields for idempotent imports — v1.1
+- ✓ Import audit trail (ImportRun, ImportRowError) — v1.1
+- ✓ 4-type CSV import pipeline (Funds, Entities, Transactions, Pledges) — v1.1
+- ✓ Import Center UI with upload/preview/validate/import workflow — v1.1
+- ✓ Error CSV download and row-level validation reporting — v1.1
 
 ### Active
 
-- [ ] Fund model for account/campaign tracking (external_id for upsert)
-- [ ] External ID fields on Contact, Donation, Pledge for idempotent imports
-- [ ] ImportRun model for audit trail (type, status, counts, uploaded_by)
-- [ ] ImportRowError model for row-level error tracking
-- [ ] CSV parser with mapping specs per file type
-- [ ] Funds CSV import (fund_id, name, status)
-- [ ] Entities CSV import → Contact (entity_id, name, email, phone, address)
-- [ ] Transactions CSV import → Donation (transaction_id, entity_id, fund_id, amount, date)
-- [ ] Pledges CSV import → Commitment (pledge_id, entity_id, fund_id, amount, cadence, status)
-- [ ] Import Center UI with 4 tiles (Funds, Entities, Transactions, Pledges)
-- [ ] Upload → Preview → Validate → Import workflow
-- [ ] Validation report (missing columns, parse errors, orphan references)
-- [ ] Import results summary (created/updated/skipped/errors)
-- [ ] Download errors CSV functionality
-- [ ] Admin-only access to Import Center
+- [ ] Dashboard Overview page with summary cards and alerts
+- [ ] Team activity table showing all missionaries' recent actions
+- [ ] Conversion funnel visualizing journal pipeline stages across org
+- [ ] Trend chart for donations/pledges over time
+- [ ] Stalled Contacts page (14+ days no activity) with pagination/sorting
+- [ ] User Detail page with per-missionary performance and journal listings
+- [ ] User Drilldown panel (slide-in sidebar)
+- [ ] Drill-down charts (click funnel/chart to see underlying contacts)
+- [ ] Comparison mode (time periods or users side-by-side)
+- [ ] Activity heatmap calendar view
+- [ ] 5 API endpoints with ADMIN/FINANCE role-based visibility
+- [ ] Pace calculation and stalled detection business logic
 
 ### Out of Scope
 
-- Admin UI for cross-missionary analytics — data model supports it, UI deferred
-- Real-time collaboration/multi-user editing — single-user focused
-- Email/SMS integration for stage actions — log events only, no sending
-- Mobile-native app — web responsive is sufficient
-- Bulk journal operations — one journal at a time
+- Real-time updates via WebSocket/SSE — polling sufficient for dashboard
+- Email digest reports — no email infrastructure yet
+- Performance scoring/gamification — could demotivate missionaries
+- Projected outcomes with confidence intervals — over-engineering for v1.2
+- Saved filter views — defer to future
+- Mobile-optimized activity logging — web responsive sufficient
+- Import progress tracking — already adequate in Import Center
+- Audit log for compliance — defer to future
 - Custom stage definitions — fixed 6-stage pipeline
 - AI-generated suggestions — manual workflow only
-- Complex ETL tooling or Celery queues — synchronous import for MVP
-- Manual Excel editing as part of normal flow — fix via mapping rules + validation
-- Non-strict mode (allowing unmatched references) — strict mode only for v1.1
 
 ## Context
 
@@ -90,7 +96,8 @@ Missionaries can manage donor relationships efficiently, with accurate data impo
 - A "journal" represents a fundraising campaign/push (e.g., "Spring 2026 Support Raising")
 - Missionaries track multiple donors through the pipeline simultaneously
 - Decision tracking is critical: amount pledged, cadence, and status changes over time
-- Organization leadership needs cross-missionary visibility (future admin analytics)
+- Organization leadership and coaches (10-20 people) need cross-missionary visibility
+- Coaches oversee multiple missionaries and need to identify who is stalled or struggling
 
 ### Data Model Decisions
 - Money stored in cents (integer) for precision
@@ -121,4 +128,4 @@ Missionaries can manage donor relationships efficiently, with accurate data impo
 | Cents for money storage | Precision, no floating point issues, matches pledge patterns | — Pending |
 
 ---
-*Last updated: 2026-01-30 after v1.1 milestone start*
+*Last updated: 2026-02-12 after v1.2 milestone start*
