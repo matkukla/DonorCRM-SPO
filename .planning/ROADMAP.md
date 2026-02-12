@@ -77,11 +77,11 @@ See full phase details in main ROADMAP.md history or milestones/v1.1-ROADMAP.md.
   4. Stalled contact detection uses Subquery annotation to find contacts with last activity >14 days ago
   5. Existing race conditions in update_giving_stats() and record_fulfillment() are fixed (F() expressions, signal disable during bulk ops)
 
-**Plans:** TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 13-01-PLAN.md
-- [ ] 13-02-PLAN.md
+- [ ] 13-01-PLAN.md -- Fix race conditions and standardize permission classes on existing admin endpoints
+- [ ] 13-02-PLAN.md -- Create 5 admin analytics endpoints with service functions, URLs, and tests
 
 ---
 
@@ -233,7 +233,7 @@ Phases execute in numeric order: 13 → 14 → 15 → 16 → 17 → 18 → 19
 | 10. Transactions CSV Import | v1.1 | 2/2 | Complete | 2026-02-02 |
 | 11. Pledges CSV Import | v1.1 | 2/2 | Complete | 2026-02-03 |
 | 12. Import Center UI | v1.1 | 5/5 | Complete | 2026-02-04 |
-| 13. Backend Foundation & Security | v1.2 | 0/TBD | Not started | - |
+| 13. Backend Foundation & Security | v1.2 | 0/2 | Planned | - |
 | 14. Core Analytics Endpoints | v1.2 | 0/TBD | Not started | - |
 | 15. Frontend Foundation & Routing | v1.2 | 0/TBD | Not started | - |
 | 16. Dashboard Overview Page | v1.2 | 0/TBD | Not started | - |
@@ -243,4 +243,4 @@ Phases execute in numeric order: 13 → 14 → 15 → 16 → 17 → 18 → 19
 
 ---
 
-*Last updated: 2026-02-12 (v1.2 roadmap created - Phase 13 ready to plan)*
+*Last updated: 2026-02-12 (Phase 13 planned - 2 plans in 2 waves)*
