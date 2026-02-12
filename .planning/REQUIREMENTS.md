@@ -88,8 +88,34 @@
 
 | REQ | Phase | Status |
 |-----|-------|--------|
-| — | — | — |
+| DASH-01 | Phase 16 | Pending |
+| DASH-02 | Phase 16 | Pending |
+| DASH-03 | Phase 16 | Pending |
+| DASH-04 | Phase 16 | Pending |
+| PIPE-01 | Phase 16 | Pending |
+| PIPE-02 | Phase 18 | Pending |
+| CMON-01 | Phase 17 | Pending |
+| CMON-02 | Phase 17 | Pending |
+| CMON-03 | Phase 17 | Pending |
+| USER-01 | Phase 17 | Pending |
+| USER-02 | Phase 17 | Pending |
+| USER-03 | Phase 17 | Pending |
+| USER-04 | Phase 18 | Pending |
+| USER-05 | Phase 18 | Pending |
+| COMP-01 | Phase 19 | Pending |
+| COMP-02 | Phase 19 | Pending |
+| COMP-03 | Phase 19 | Pending |
+| API-01 | Phase 13, Phase 14 | Pending |
+| API-02 | Phase 13 | Pending |
+| API-03 | Phase 13 | Pending |
+| API-04 | Phase 13 | Pending |
+| API-05 | Phase 13 | Pending |
+| DATA-01 | Phase 19 | Pending |
+| DATA-02 | Phase 19 | Pending |
+| DATA-03 | Phase 19 | Pending |
+
+**Coverage:** 26/26 requirements mapped (100%)
 
 ---
 
-*Generated: 2026-02-12 | 26 requirements across 7 categories*
+*Generated: 2026-02-12 | Updated: 2026-02-12 (v1.2 roadmap created) | 26 requirements across 7 categories*
