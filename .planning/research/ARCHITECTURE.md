@@ -1,1555 +1,1335 @@
-# Architecture Patterns for Event-Sourced Pipeline Tracking
+# Architecture Patterns: Admin Analytics Dashboard
 
-**Project:** DonorCRM — Journal Feature (Pipeline Tracking with Decision History)
-**Research Date:** 2026-01-24
-**Focus:** Django event sourcing, nested resource design, permission inheritance, current+history tables
-
----
-
-## Executive Summary
-
-The Journal feature requires handling append-only pipeline events, mutable decision state with immutable history, and owner-scoped access to nested resources. This research identifies proven patterns from Django's ecosystem and DonorCRM's existing codebase, emphasizing practical implementation over custom frameworks.
-
-**Key Recommendation:** Use a hybrid approach combining:
-- **Append-only Event Log** for all stage transitions (Journal → Event lineage)
-- **Current + History tables** for decisions (one JournalDecisionCurrent, many JournalDecisionHistory rows)
-- **Through model** (JournalContact) for many-to-many with optional metadata
-- **Single app (journals)** with clear separation of concerns
-- **Nested viewsets** for resource hierarchy with inherited permissions
+**Domain:** Admin Analytics for DonorCRM
+**Researched:** 2026-02-12
+**Confidence:** HIGH
 
 ---
 
-## Pattern 1: Event Sourcing — Append-Only vs State Machines
+## Recommended Architecture
 
-### Overview
+**Extend existing `insights` app for admin analytics endpoints.**
 
-Event sourcing captures every state change as an immutable event. For the Journal's 6-stage pipeline, you have two options:
+### Rationale
 
-**Option A: Pure Event Sourcing (Append-Only)**
-- Every stage transition is logged as an event (JournalStageEvent)
-- Current pipeline state is computed from event history
-- Pros: Complete audit trail, temporal queries (state at date X), replayable history
-- Cons: Requires computation on read, more complex queries
+DonorCRM already has a clear separation of concerns:
+- **`dashboard` app** — per-user aggregations (my giving stats, my alerts, my trends)
+- **`insights` app** — reports and analytics (donations by month/year, late donations, transactions)
+- **`journals` app** — journal CRUD and journal-specific analytics (decision trends, pipeline breakdown, admin_summary)
 
-**Option B: Event Log + Computed State (Recommended)**
-- JournalContactStageEvent: Append-only log of every transition
-- JournalContactStageState: Denormalized current state (updated on each event)
-- Pros: Fast reads, easy materialization, clean separation
-- Cons: Need to keep state in sync with events
+Admin analytics fits the **`insights`** app pattern: cross-user aggregation for reporting. It already has admin-only endpoints (`ReviewQueueView`, `TransactionsView`) with role-based visibility.
 
-### Recommendation
+### Alternative Considered: New `admin_analytics` App
 
-**Use Option B** because:
-1. DonorCRM already denormalizes state (Contact.status, Task.status)
-2. Reports query current state, not history (faster)
-3. Django ORM is optimized for state reads, not event replay
-4. Lower operational complexity
+**Why not chosen:**
+- Adds complexity for 5-7 endpoints
+- Duplicates permission patterns already in `insights`
+- Creates ambiguity: "Is this insights or admin analytics?"
+- Hybrid approach (overview dashboard vs separate pages) from search results suggests dividing by *function* (overview vs drill-down), not by *audience* (admin vs user)
 
-### Implementation Pattern
+### Pattern Match
+
+The existing codebase already implements this pattern:
+- `insights/views.py:ReviewQueueView` — admin-only, cross-user aggregation
+- `journals/views.py:JournalAnalyticsViewSet.admin_summary` — admin-only, cross-user aggregation
+
+Admin analytics dashboard extends this pattern with more endpoints and more complex queries.
+
+---
+
+## System Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Frontend (React)                        │
+├─────────────────────────────────────────────────────────────┤
+│  /admin/analytics/dashboard  (Overview page)                │
+│  /admin/analytics/stalled    (Stalled contacts page)        │
+│  /admin/analytics/users/:id  (User detail page)             │
+│                                                              │
+│  Components:                                                 │
+│  - ConversionFunnelChart (Recharts funnel/bar)              │
+│  - TeamActivityTable (React Table)                          │
+│  - StalledContactsTable (React Table + pagination)          │
+│  - TrendChart (Recharts line)                               │
+│  - UserDrilldownPanel (slide-in sidebar)                    │
+│  - AlertsPanel (summary cards)                              │
+└─────────────────────────────────────────────────────────────┘
+                              ↓ HTTP GET
+┌─────────────────────────────────────────────────────────────┐
+│              Backend API (Django + DRF)                      │
+├─────────────────────────────────────────────────────────────┤
+│  /api/v1/insights/admin-dashboard/                          │
+│    → AdminDashboardView (APIView)                           │
+│    → Returns: summary_cards, conversion_funnel,             │
+│                team_activity, trend_data, alerts             │
+│                                                              │
+│  /api/v1/insights/stalled-contacts/                         │
+│    → StalledContactsView (APIView)                          │
+│    → Returns: paginated contacts with last_activity_date    │
+│                                                              │
+│  /api/v1/insights/user-performance/<user_id>/               │
+│    → UserPerformanceView (APIView)                          │
+│    → Returns: per-user metrics, journal_list,               │
+│                donation_trend, stage_activity                │
+│                                                              │
+│  /api/v1/insights/conversion-funnel/                        │
+│    → ConversionFunnelView (APIView)                         │
+│    → Returns: stage counts with drill-down contact IDs      │
+│                                                              │
+│  /api/v1/insights/team-activity/                            │
+│    → TeamActivityView (APIView)                             │
+│    → Returns: recent activity by user (events, stages)      │
+│                                                              │
+│  Permission: IsAdmin or IsFinanceOrAdmin                    │
+│  Query Pattern: Cross-user aggregation with                 │
+│                 select_related + prefetch_related +         │
+│                 annotate                                     │
+└─────────────────────────────────────────────────────────────┘
+                              ↓ SQL
+┌─────────────────────────────────────────────────────────────┐
+│               PostgreSQL Database                            │
+├─────────────────────────────────────────────────────────────┤
+│  Aggregation Sources:                                        │
+│  - JournalStageEvent (stage, created_at)                    │
+│  - Decision (amount, cadence, status)                       │
+│  - Donation (amount, date, contact, fund)                   │
+│  - Pledge (amount, frequency, status)                       │
+│  - Contact (owner, last_gift_date, total_given)             │
+│  - Task (owner, status, due_date)                           │
+│  - Event (user, event_type, created_at)                     │
+│  - JournalContact (journal, contact, many-to-many)          │
+│  - Journal (owner, name, goal_amount)                       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Component Boundaries
+
+### Backend Components
+
+| Component | Responsibility | Location | New/Modified |
+|-----------|---------------|----------|--------------|
+| `AdminDashboardView` | Aggregate overview metrics across all users | `insights/views.py` | NEW |
+| `StalledContactsView` | Detect contacts with 14+ days no activity | `insights/views.py` | NEW |
+| `UserPerformanceView` | Per-user performance metrics and trends | `insights/views.py` | NEW |
+| `ConversionFunnelView` | Pipeline stage counts for conversion funnel | `insights/views.py` | NEW |
+| `TeamActivityView` | Recent activity across all users | `insights/views.py` | NEW |
+| `admin_analytics_services.py` | Business logic for metrics calculation | `insights/services.py` | MODIFIED (extend) |
+| `IsAdmin` permission | Admin-only access control | `core/permissions.py` | EXISTING |
+| `IsFinanceOrAdmin` permission | Finance or admin access | `core/permissions.py` | EXISTING |
+
+### Frontend Components
+
+| Component | Responsibility | Location | New/Modified |
+|-----------|---------------|----------|--------------|
+| `AdminAnalyticsDashboard.tsx` | Overview page layout with all widgets | `pages/admin/AdminAnalyticsDashboard.tsx` | NEW |
+| `StalledContacts.tsx` | Stalled contacts page with table + pagination | `pages/admin/StalledContacts.tsx` | NEW |
+| `UserPerformance.tsx` | User detail page with trends and journals | `pages/admin/UserPerformance.tsx` | NEW |
+| `ConversionFunnelChart.tsx` | Funnel visualization (Recharts) | `components/analytics/ConversionFunnelChart.tsx` | NEW |
+| `TeamActivityTable.tsx` | Activity table (React Table) | `components/analytics/TeamActivityTable.tsx` | NEW |
+| `TrendChart.tsx` | Line chart for trends (Recharts) | `components/analytics/TrendChart.tsx` | NEW |
+| `UserDrilldownPanel.tsx` | Slide-in sidebar for user quick view | `components/analytics/UserDrilldownPanel.tsx` | NEW |
+| `useAdminAnalytics.ts` | React Query hooks for analytics data | `hooks/useAdminAnalytics.ts` | NEW |
+| `App.tsx` | Add admin analytics routes | `App.tsx` | MODIFIED |
+| `AppLayout.tsx` | Add admin analytics nav item | `components/layout/AppLayout.tsx` | MODIFIED |
+
+---
+
+## Data Flow
+
+### Overview Dashboard Request Flow
+
+```
+1. User navigates to /admin/analytics/dashboard
+   ↓
+2. AdminAnalyticsDashboard.tsx renders
+   ↓
+3. useAdminDashboard() hook calls GET /api/v1/insights/admin-dashboard/
+   ↓
+4. AdminDashboardView.get(request)
+   ↓
+5. Call service functions (from insights/services.py):
+   - get_summary_cards(user)
+   - get_conversion_funnel(user)
+   - get_team_activity(user, limit=10)
+   - get_donation_trend(user, months=12)
+   - get_alerts(user)
+   ↓
+6. Each service function:
+   - Builds base queryset (all users if admin)
+   - Uses annotate() for aggregation
+   - Uses select_related/prefetch_related to avoid N+1
+   - Returns dict with computed metrics
+   ↓
+7. View combines all results into single response
+   ↓
+8. Frontend renders:
+   - Summary cards at top
+   - Conversion funnel chart (left)
+   - Trend chart (right)
+   - Team activity table (center)
+   - Alerts panel (sidebar)
+```
+
+### Stalled Contacts Detection Flow
+
+```
+1. User navigates to /admin/analytics/stalled
+   ↓
+2. StalledContacts.tsx renders with pagination controls
+   ↓
+3. useStalledContacts(page, limit) hook calls
+   GET /api/v1/insights/stalled-contacts/?page=1&limit=50
+   ↓
+4. StalledContactsView.get(request)
+   ↓
+5. Call get_stalled_contacts(limit, offset):
+   - Subquery: last stage event date per journal_contact
+   - Annotate Contact with last_activity_date
+   - Filter: last_activity_date < today - 14 days OR NULL
+   - Select related: owner, latest stage event
+   - Order by: last_activity_date ASC (oldest first)
+   - Paginate: offset to offset+limit
+   ↓
+6. Return paginated result:
+   {
+     contacts: [...],
+     total_count: int,
+     page: int,
+     page_size: int
+   }
+   ↓
+7. Frontend renders table with:
+   - Contact name
+   - Owner (missionary)
+   - Days since last activity
+   - Current pipeline stage
+   - Actions (view contact, view journal)
+```
+
+### Conversion Funnel Drill-Down Flow
+
+```
+1. User clicks on "Decision" stage in funnel chart
+   ↓
+2. onClick handler captures stage='decision'
+   ↓
+3. useFunnelDrilldown('decision') hook calls
+   GET /api/v1/insights/conversion-funnel/?stage=decision
+   ↓
+4. ConversionFunnelView.get(request)
+   ↓
+5. If stage param provided:
+   - Query JournalStageEvent.filter(stage=stage)
+   - Prefetch related journal_contact, contact, owner
+   - Return list of contacts with stage event details
+   Otherwise:
+   - Return aggregated counts per stage
+   ↓
+6. Frontend opens UserDrilldownPanel with contact list
+```
+
+---
+
+## Integration Points with Existing Components
+
+### 1. Reuse Existing Analytics Endpoints
+
+**Existing:** `journals/views.py:JournalAnalyticsViewSet`
+- `decision_trends` — already aggregates Decision objects by month
+- `stage_activity` — already aggregates JournalStageEvent by stage and month
+- `pipeline_breakdown` — already aggregates current stage counts
+- `admin_summary` — already has cross-user aggregation pattern
+
+**Integration:**
+- Admin dashboard can call these existing endpoints directly
+- Modify to accept optional `user_id` filter for per-user views
+- Fix `is_staff` vs `role == 'admin'` inconsistency (Edge Case Audit 1.5)
+
+**Action:** Extend, don't duplicate. Add query params to existing analytics endpoints.
+
+### 2. Reuse Dashboard Service Patterns
+
+**Existing:** `dashboard/services.py`
+- `get_giving_summary(user, year)` — aggregates donations per user
+- `get_monthly_gifts(user, months)` — monthly donation trends
+- `get_support_progress(user)` — pledge aggregation
+
+**Integration:**
+- Admin analytics needs similar patterns but across ALL users
+- Extract common aggregation logic into shared utility functions
+- New pattern: `if user.role == 'admin': qs = Model.objects.all() else: qs = Model.objects.filter(owner=user)`
+
+**Action:** Add `scope_queryset_by_role(qs, user, owner_field='owner')` utility to `insights/services.py`.
+
+### 3. Extend Permission Classes
+
+**Existing:** `core/permissions.py`
+- `IsAdmin` — already exists
+- `IsFinanceOrAdmin` — already exists
+- Pattern: check `request.user.role == 'admin'`
+
+**Integration:**
+- Use `IsAdmin` for admin-only endpoints (stalled contacts, user performance)
+- Use `IsFinanceOrAdmin` for read-only analytics (conversion funnel, trends)
+
+**Action:** No new permission classes needed. Use existing.
+
+### 4. Extend Insights App URL Structure
+
+**Existing:** `insights/urls.py`
+```python
+urlpatterns = [
+    path('donations-by-month/', ...),
+    path('donations-by-year/', ...),
+    path('review-queue/', ...),  # admin-only
+    path('transactions/', ...),  # admin/finance-only
+]
+```
+
+**Integration:**
+- Add new admin analytics endpoints to same namespace
+- Consistent naming: `admin-dashboard`, `stalled-contacts`, `user-performance`
+
+**Action:** Extend `insights/urls.py` with new paths.
+
+### 5. Frontend Routing
+
+**Existing:** `App.tsx`
+```tsx
+<Route path="/insights/review-queue" element={<ProtectedPage requiredRole="admin">...} />
+<Route path="/insights/transactions" element={<ProtectedPage requiredRole="admin">...} />
+<Route path="/admin/users" element={<ProtectedPage requiredRole="admin">...} />
+<Route path="/admin/imports" element={<ProtectedPage requiredRole="admin">...} />
+```
+
+**Integration:**
+- Admin analytics uses `/admin/analytics/*` route prefix
+- Matches existing admin pages pattern (`/admin/users`, `/admin/imports`)
+- Keeps insights for per-user reports, admin for cross-user views
+
+**Action:** Add admin analytics routes under `/admin/analytics/`.
+
+### 6. Navigation Structure
+
+**Existing:** `AppLayout.tsx` has nav items for:
+- Dashboard (per-user)
+- Contacts
+- Donations
+- Pledges
+- Tasks
+- Groups
+- Journals
+- Insights (reports)
+- Admin (users, imports)
+
+**Integration:**
+- Add "Analytics" submenu under Admin nav section
+- Structure:
+  ```
+  Admin
+  ├─ Users
+  ├─ Import Center
+  └─ Analytics (NEW)
+      ├─ Dashboard
+      ├─ Stalled Contacts
+      └─ User Performance
+  ```
+
+**Action:** Modify `AppLayout.tsx` to add Analytics submenu under Admin.
+
+### 7. Reuse Chart Components
+
+**Existing:** Recharts already used in:
+- `insights/DonationsByMonthYear.tsx` — BarChart
+- `dashboard/Dashboard.tsx` — Line charts for trends
+
+**Integration:**
+- ConversionFunnelChart: Use Recharts BarChart (horizontal bars)
+- TrendChart: Reuse LineChart pattern from dashboard
+- TeamActivityTable: Use existing React Table patterns from contact/donation lists
+
+**Action:** Follow existing Recharts patterns. No new chart library needed.
+
+---
+
+## New Components Needed
+
+### Backend Services (`insights/services.py`)
 
 ```python
-# apps/journals/models.py
-
-from django.db import models
-from apps.core.models import TimeStampedModel
-from django.conf import settings
-
-class JournalStageEvent(TimeStampedModel):
+def get_admin_dashboard_summary(user):
     """
-    Append-only event log: every stage transition creates an event.
-    This is the system of record for pipeline history.
+    Aggregate overview metrics for admin dashboard.
+    Returns summary cards, conversion funnel, team activity, trends, alerts.
     """
-    STAGE_CHOICES = [
-        ('contact', 'Contact'),
-        ('meet', 'Meet'),
-        ('close', 'Close'),
-        ('decision', 'Decision'),
-        ('thank', 'Thank You'),
-        ('next_steps', 'Next Steps'),
+    if user.role not in ['admin', 'finance']:
+        raise PermissionDenied
+
+    return {
+        'summary_cards': _get_summary_cards(),
+        'conversion_funnel': _get_conversion_funnel(),
+        'team_activity': _get_team_activity(limit=10),
+        'donation_trend': _get_donation_trend(months=12),
+        'alerts': _get_alerts()
+    }
+
+def get_stalled_contacts(limit=50, offset=0):
+    """
+    Detect contacts with 14+ days no activity.
+    Activity = JournalStageEvent for contact in any journal.
+    """
+    # Subquery: latest stage event per contact
+    latest_event = JournalStageEvent.objects.filter(
+        journal_contact__contact=OuterRef('pk')
+    ).order_by('-created_at').values('created_at')[:1]
+
+    # Annotate contacts with last activity date
+    stalled = Contact.objects.annotate(
+        last_activity_date=Subquery(latest_event)
+    ).filter(
+        Q(last_activity_date__lt=date.today() - timedelta(days=14)) |
+        Q(last_activity_date__isnull=True)
+    ).select_related('owner').order_by('last_activity_date')
+
+    total = stalled.count()
+    contacts = stalled[offset:offset+limit]
+
+    return {
+        'contacts': contacts,
+        'total_count': total,
+        'page': (offset // limit) + 1,
+        'page_size': limit
+    }
+
+def get_user_performance(user_id):
+    """
+    Per-user performance metrics.
+    Returns journal count, decision count, donation trends, stage activity.
+    """
+    user = User.objects.get(id=user_id)
+
+    journals = Journal.objects.filter(owner=user, is_archived=False)
+    decisions = Decision.objects.filter(journal_contact__journal__owner=user)
+    donations = Donation.objects.filter(contact__owner=user)
+
+    return {
+        'user': user,
+        'journal_count': journals.count(),
+        'decision_count': decisions.count(),
+        'total_raised': donations.aggregate(Sum('amount'))['amount__sum'] or 0,
+        'donation_trend': _get_donation_trend_for_user(user, months=12),
+        'stage_activity': _get_stage_activity_for_user(user),
+        'journals': journals.values('id', 'name', 'goal_amount', 'deadline')
+    }
+
+def _get_conversion_funnel():
+    """
+    Pipeline stage counts across all journals.
+    """
+    # Subquery: latest stage per journal_contact
+    latest_stage = JournalStageEvent.objects.filter(
+        journal_contact=OuterRef('pk')
+    ).order_by('-created_at').values('stage')[:1]
+
+    breakdown = JournalContact.objects.annotate(
+        current_stage=Subquery(latest_stage)
+    ).values('current_stage').annotate(
+        count=Count('id')
+    ).order_by('current_stage')
+
+    # Map to funnel format
+    stages = ['contact', 'meet', 'close', 'decision', 'thank', 'next_steps']
+    funnel = {stage: 0 for stage in stages}
+
+    for item in breakdown:
+        stage = item['current_stage'] or 'contact'
+        funnel[stage] = item['count']
+
+    return [
+        {'stage': stage, 'count': funnel[stage]}
+        for stage in stages
     ]
 
-    EVENT_TYPE_CHOICES = [
-        ('stage_entered', 'Stage Entered'),
-        ('stage_exited', 'Stage Exited'),
-        ('stage_skipped', 'Stage Skipped'),
-        ('stage_revisited', 'Stage Revisited'),
-        ('note_added', 'Note Added'),
-        ('warning_generated', 'Warning Generated'),
-    ]
-
-    # Immutable event identity
-    journal_contact = models.ForeignKey(
-        'JournalContact',
-        on_delete=models.CASCADE,
-        related_name='stage_events'
-    )
-
-    stage = models.CharField(
-        max_length=20,
-        choices=STAGE_CHOICES,
-        db_index=True
-    )
-
-    event_type = models.CharField(
-        max_length=30,
-        choices=EVENT_TYPE_CHOICES,
-        db_index=True
-    )
-
-    # Who triggered the event
-    triggered_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name='journal_events'
-    )
-
-    # Event context
-    notes = models.TextField(blank=True, help_text='User notes for this event')
-    metadata = models.JSONField(default=dict, blank=True)
-
-    class Meta:
-        db_table = 'journal_stage_events'
-        ordering = ['created_at']  # Always in order
-        indexes = [
-            models.Index(fields=['journal_contact', 'stage', 'created_at']),
-            models.Index(fields=['journal_contact', 'event_type']),
-            models.Index(fields=['created_at']),  # For timeline queries
-        ]
-        # Prevent accidental updates
-        permissions = [
-            ('view_journal_stage_event', 'Can view stage events'),
-        ]
-
-    def __str__(self):
-        return f'{self.journal_contact} - {self.stage}: {self.event_type}'
-
-
-class JournalContactStageState(TimeStampedModel):
+def _get_team_activity(limit=10):
     """
-    Computed/denormalized current state: one row per contact+stage.
-    Updated whenever a JournalStageEvent is created.
-    This powers fast UI queries and "what's the contact doing in this stage?"
+    Recent activity across all users.
+    Returns: user, event_type, contact_name, timestamp.
     """
-    journal_contact = models.OneToOneField(
-        'JournalContact',
-        on_delete=models.CASCADE,
-        related_name='stage_state',
-        null=True,
-        blank=True
-    )
-
-    current_stage = models.CharField(
-        max_length=20,
-        choices=JournalStageEvent.STAGE_CHOICES,
-        db_index=True
-    )
-
-    # Stage progression tracking
-    entered_at = models.DateTimeField()
-    last_activity_at = models.DateTimeField()
-    event_count = models.PositiveIntegerField(default=0)
-
-    # Flexible progression flags
-    is_blocked = models.BooleanField(
-        default=False,
-        help_text='True if warnings should prevent progression'
-    )
-    skipped = models.BooleanField(
-        default=False,
-        help_text='True if this stage was skipped'
-    )
-    revisited = models.BooleanField(
-        default=False,
-        help_text='True if contact revisited this stage'
-    )
-
-    class Meta:
-        db_table = 'journal_contact_stage_state'
-        indexes = [
-            models.Index(fields=['journal_contact', 'current_stage']),
-            models.Index(fields=['current_stage', 'last_activity_at']),
-        ]
-
-    def __str__(self):
-        return f'{self.journal_contact} - {self.current_stage}'
-```
-
-### When Event Sourcing Adds Value
-
-Use explicit query for historical events when:
-- Showing "timeline" of contact's journey
-- Generating reports: "How long did contact spend in Meet stage?"
-- Auditing: "What did staff do on 2026-01-15?"
-
-```python
-# Query: Timeline of events for a contact in a journal
-events = JournalStageEvent.objects.filter(
-    journal_contact__journal=journal,
-    journal_contact__contact=contact
-).order_by('created_at').select_related('triggered_by')
-
-# Query: Report - Average time per stage
-from django.db.models import Avg, F, ExpressionWrapper, DurationField
-from django.db.models.functions import Lag
-
-events_with_lag = JournalStageEvent.objects.filter(
-    journal_contact__journal=journal
-).annotate(
-    previous_created_at=Lag('created_at')
-).filter(
-    event_type='stage_entered'
-)
-# Use this for: average stage duration calculations
-```
-
----
-
-## Pattern 2: Current + History Tables for Decisions
-
-### The Problem
-
-Decision state is mutable: a contact can change their pledge amount, cadence, or decision status multiple times. Yet you need:
-1. **Fast access** to current decision: "What is Jane committing?"
-2. **Complete history**: "How many times did Jane change her mind?"
-
-### The Solution: Dual-Table Pattern
-
-```python
-# apps/journals/models.py
-
-class JournalDecisionCurrent(TimeStampedModel):
-    """
-    Current/mutable decision state: one row per journal+contact.
-    Read from for "what is the current state" queries.
-    Updated when decision changes.
-    """
-
-    DECISION_STATUS = [
-        ('undecided', 'Undecided'),
-        ('considering', 'Considering'),
-        ('committed', 'Committed'),
-        ('declined', 'Declined'),
-        ('pending_review', 'Pending Review'),
-    ]
-
-    CADENCE_CHOICES = [
-        ('one_time', 'One-Time'),
-        ('monthly', 'Monthly'),
-        ('quarterly', 'Quarterly'),
-        ('annual', 'Annual'),
-        ('other', 'Other'),
-    ]
-
-    journal_contact = models.OneToOneField(
-        'JournalContact',
-        on_delete=models.CASCADE,
-        related_name='decision_current'
-    )
-
-    # Current commitment
-    status = models.CharField(
-        max_length=20,
-        choices=DECISION_STATUS,
-        default='undecided',
-        db_index=True
-    )
-
-    # Amount committed (in cents for precision)
-    amount_cents = models.BigIntegerField(
-        null=True,
-        blank=True,
-        db_index=True
-    )
-
-    # Giving cadence
-    cadence = models.CharField(
-        max_length=20,
-        choices=CADENCE_CHOICES,
-        null=True,
-        blank=True
-    )
-
-    # Notes on decision
-    notes = models.TextField(blank=True)
-
-    # Last changed
-    decided_at = models.DateTimeField(
-        null=True,
-        blank=True,
-        help_text='When was this decision made/confirmed?'
-    )
-
-    # Metadata
-    metadata = models.JSONField(default=dict, blank=True)
-
-    class Meta:
-        db_table = 'journal_decision_current'
-        verbose_name_plural = 'journal decision currents'
-        indexes = [
-            models.Index(fields=['journal_contact']),
-            models.Index(fields=['status', 'created_at']),
-        ]
-
-    def __str__(self):
-        return f'{self.journal_contact} - {self.status}: ${self.amount_cents or 0 / 100}'
-
-
-class JournalDecisionHistory(TimeStampedModel):
-    """
-    Immutable history: appended to whenever decision changes.
-    Full audit trail of every decision iteration.
-    """
-
-    journal_contact = models.ForeignKey(
-        'JournalContact',
-        on_delete=models.CASCADE,
-        related_name='decision_history'
-    )
-
-    # Snapshot of state at this history entry
-    status = models.CharField(
-        max_length=20,
-        choices=JournalDecisionCurrent.DECISION_STATUS
-    )
-    amount_cents = models.BigIntegerField(null=True, blank=True)
-    cadence = models.CharField(
-        max_length=20,
-        choices=JournalDecisionCurrent.CADENCE_CHOICES,
-        null=True,
-        blank=True
-    )
-    notes = models.TextField(blank=True)
-
-    # Who made this decision
-    changed_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name='decision_changes'
-    )
-
-    # Why (optional)
-    change_reason = models.TextField(blank=True)
-
-    # Metadata
-    metadata = models.JSONField(default=dict, blank=True)
-
-    class Meta:
-        db_table = 'journal_decision_history'
-        ordering = ['created_at']  # Always chronological
-        indexes = [
-            models.Index(fields=['journal_contact', 'created_at']),
-            models.Index(fields=['created_at']),
-        ]
-
-    def __str__(self):
-        return f'{self.journal_contact} - {self.status} on {self.created_at.date()}'
-```
-
-### Usage Pattern
-
-**Fast current state query:**
-```python
-# Get current decision for contact in journal
-decision = JournalDecisionCurrent.objects.get(
-    journal_contact__journal=journal,
-    journal_contact__contact=contact
-)
-# Instant: one indexed lookup
-```
-
-**Full history for UI timeline:**
-```python
-# Show decision evolution
-history = JournalDecisionHistory.objects.filter(
-    journal_contact__journal=journal,
-    journal_contact__contact=contact
-).order_by('created_at')
-# Returns all changes in chronological order
-```
-
-**Update pattern (in a service/mutation function):**
-```python
-def update_decision(journal_contact, new_status, amount_cents, cadence, changed_by):
-    """Atomically update current and append to history."""
-
-    # Record the history before updating
-    JournalDecisionHistory.objects.create(
-        journal_contact=journal_contact,
-        status=journal_contact.decision_current.status,
-        amount_cents=journal_contact.decision_current.amount_cents,
-        cadence=journal_contact.decision_current.cadence,
-        notes=journal_contact.decision_current.notes,
-        changed_by=changed_by,
-        change_reason='Decision updated via journal'
-    )
-
-    # Update current state
-    journal_contact.decision_current.status = new_status
-    journal_contact.decision_current.amount_cents = amount_cents
-    journal_contact.decision_current.cadence = cadence
-    journal_contact.decision_current.decided_at = timezone.now()
-    journal_contact.decision_current.save()
-```
-
-### Why Not Django-Simple-History?
-
-**django-simple-history** automates history tables but adds overhead:
-- Creates a historical table for every tracked model
-- Watches all field changes (noisy for mostly-read tables)
-- Slower for write-heavy models
-
-**Recommended instead:** Explicit dual-table pattern for decisions because:
-1. Decision changes are infrequent (user decision, not system-generated)
-2. You control exactly what gets logged (intentional events, not all changes)
-3. Lighter weight for DonorCRM's scale
-4. Explicit business logic is clearer
-
----
-
-## Pattern 3: Many-to-Many with Through Model (Journal ↔ Contact)
-
-### The Problem
-
-A contact belongs to multiple journals, and a journal contains multiple contacts. But you also need to track:
-- When was this contact added to this journal?
-- What's their current decision in this journal context?
-- What stage are they in for THIS journal (not globally)?
-
-### Solution: Explicit Through Model
-
-```python
-# apps/journals/models.py
-
-class JournalContact(TimeStampedModel):
-    """
-    Explicit through model: journal membership with state.
-    One row = one contact's journey through one journal.
-    """
-
-    journal = models.ForeignKey(
-        'Journal',
-        on_delete=models.CASCADE,
-        related_name='members'  # journal.members.all()
-    )
-
-    contact = models.ForeignKey(
-        'contacts.Contact',
-        on_delete=models.CASCADE,
-        related_name='journals'  # contact.journals.all()
-    )
-
-    # Membership metadata
-    added_at = models.DateTimeField(auto_now_add=True)
-    added_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name='journal_contact_additions'
-    )
-
-    # Optional: track why this contact was added
-    notes = models.TextField(blank=True, help_text='Why was this contact added?')
-
-    # Status in THIS journal (not global contact status)
-    is_active = models.BooleanField(
-        default=True,
-        help_text='Is contact still active in this journal?'
-    )
-    archived_at = models.DateTimeField(null=True, blank=True)
-
-    # Indexed for fast lookups
-    class Meta:
-        db_table = 'journal_contacts'
-        unique_together = [('journal', 'contact')]  # Can't add same contact twice
-        indexes = [
-            models.Index(fields=['journal', 'is_active']),
-            models.Index(fields=['contact', 'is_active']),
-            models.Index(fields=['journal', 'added_at']),
-        ]
-
-    def __str__(self):
-        return f'{self.contact.full_name} in {self.journal.name}'
-
-
-class Journal(TimeStampedModel):
-    """
-    A fundraising campaign/push: tracks a set of contacts through pipeline.
-    """
-
-    owner = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='journals'
-    )
-
-    # Campaign info
-    name = models.CharField(max_length=255)
-    description = models.TextField(blank=True)
-
-    # Goal
-    goal_amount_cents = models.BigIntegerField(
-        null=True,
-        blank=True,
-        db_index=True
-    )
-    goal_deadline = models.DateField(null=True, blank=True)
-
-    # Status
-    is_archived = models.BooleanField(default=False, db_index=True)
-    archived_at = models.DateTimeField(null=True, blank=True)
-
-    # Relationships (via through model)
-    contacts = models.ManyToManyField(
-        'contacts.Contact',
-        through='JournalContact',
-        related_name='journal_set'  # Keep distinct from existing .journals
-    )
-
-    class Meta:
-        db_table = 'journals'
-        ordering = ['-created_at']
-        indexes = [
-            models.Index(fields=['owner', 'is_archived']),
-            models.Index(fields=['created_at']),
-        ]
-
-    def __str__(self):
-        return self.name
-```
-
-### Usage Patterns
-
-**Add a contact to a journal:**
-```python
-JournalContact.objects.create(
-    journal=journal,
-    contact=contact,
-    added_by=request.user,
-    notes='Prospect for Spring support raising'
-)
-```
-
-**List contacts in a journal:**
-```python
-journal.members.filter(is_active=True).select_related('contact').order_by('added_at')
-```
-
-**List journals a contact is in:**
-```python
-contact.journals.filter(journalcontact__is_active=True)
-```
-
-### Why Explicit Through Model Over ManyToManyField
-
-| Aspect | Plain M2M | Through Model |
-|--------|----------|---------------|
-| Extra fields | Not possible | Full Django model |
-| Timestamps | Manual tracking | Automatic (TimeStampedModel) |
-| Access control | N/A | Can query/filter on membership |
-| Audit trail | Requires signals | Natural (changed_by field) |
-| Performance | Simple joins | Same as M2M, more control |
-
-**Recommendation:** Use through model because you have extra fields (added_by, notes, is_active).
-
----
-
-## Pattern 4: Django App Structure — Single App Approach
-
-### The Decision
-
-**Option A: Single journals app** (containing Journal, JournalContact, JournalStageEvent, JournalDecisionCurrent, JournalDecisionHistory)
-
-**Option B: Multiple apps** (journals.core, journals.events, journals.decisions)
-
-### Recommendation: Single App
-
-**Use a single `journals` app** because:
-
-1. **High cohesion**: All models relate to the journal feature
-2. **Bounded context**: Journal business logic is self-contained
-3. **Easier imports**: `from apps.journals.models import Journal`
-4. **Simpler testing**: One test module, not scattered
-5. **Follows DonorCRM pattern**: Existing apps (contacts, tasks, donations) are single-app features
-
-**When to reconsider multi-app:**
-- If you had independent "events" and "reporting" services
-- If events library was reusable across other features
-- If team was large enough to split work by subsystem
-
-### App Structure
-
-```
-apps/journals/
-├── __init__.py
-├── admin.py                 # Register models in Django admin
-├── apps.py                  # App config
-├── migrations/              # Auto-generated
-├── models.py                # All 5 models (Journal, JournalContact, Events, Decisions)
-├── serializers.py           # All serializers
-├── views.py                 # All viewsets
-├── permissions.py           # Custom permission classes
-├── filters.py               # DjangoFilterBackend filters
-├── services.py              # Business logic (decision updates, event creation)
-├── urls.py                  # URL routing
-└── tests/
-    ├── __init__.py
-    ├── test_models.py
-    ├── test_views.py
-    ├── test_permissions.py
-    └── test_services.py
-```
-
-**Key: services.py** for business logic not in models
-
-```python
-# apps/journals/services.py
-
-from django.utils import timezone
-from apps.journals.models import (
-    JournalContact, JournalDecisionCurrent, JournalDecisionHistory,
-    JournalStageEvent
-)
-
-class JournalService:
-    """
-    Business logic for journal operations.
-    Keeps models clean, logic testable.
-    """
-
-    @staticmethod
-    def update_decision(journal_contact, new_status, amount_cents, cadence, user, reason=''):
-        """Update decision: append to history, update current."""
-        # Append to history first (immutable)
-        JournalDecisionHistory.objects.create(
-            journal_contact=journal_contact,
-            status=journal_contact.decision_current.status,
-            amount_cents=journal_contact.decision_current.amount_cents,
-            cadence=journal_contact.decision_current.cadence,
-            changed_by=user,
-            change_reason=reason
-        )
-
-        # Update current
-        journal_contact.decision_current.status = new_status
-        journal_contact.decision_current.amount_cents = amount_cents
-        journal_contact.decision_current.cadence = cadence
-        journal_contact.decision_current.decided_at = timezone.now()
-        journal_contact.decision_current.save()
-
-        return journal_contact.decision_current
-
-    @staticmethod
-    def log_stage_event(journal_contact, stage, event_type, user, notes='', metadata=None):
-        """Log a stage event."""
-        event = JournalStageEvent.objects.create(
-            journal_contact=journal_contact,
-            stage=stage,
-            event_type=event_type,
-            triggered_by=user,
-            notes=notes,
-            metadata=metadata or {}
-        )
-
-        # Update stage state
-        state, _ = JournalContactStageState.objects.get_or_create(
-            journal_contact=journal_contact
-        )
-        state.current_stage = stage
-        state.last_activity_at = timezone.now()
-        state.event_count = JournalStageEvent.objects.filter(
-            journal_contact=journal_contact
-        ).count()
-        state.save()
-
-        return event
-
-    @staticmethod
-    def move_to_stage(journal_contact, new_stage, user, allow_backward=False):
-        """
-        Move contact to a new stage (flexible pipeline).
-        Returns (success, warning_message).
-        """
-        current_state = journal_contact.stage_state
-        current_stage_order = {
-            'contact': 1, 'meet': 2, 'close': 3,
-            'decision': 4, 'thank': 5, 'next_steps': 6
+    recent_events = Event.objects.select_related(
+        'user', 'contact'
+    ).order_by('-created_at')[:limit]
+
+    return [
+        {
+            'user': event.user.email,
+            'event_type': event.event_type,
+            'contact_name': event.contact.full_name if event.contact else None,
+            'timestamp': event.created_at
         }
+        for event in recent_events
+    ]
 
-        old_order = current_stage_order.get(current_state.current_stage, 0)
-        new_order = current_stage_order.get(new_stage, 0)
-
-        warning = None
-
-        # Check: backward movement (revisit)
-        if new_order < old_order and not allow_backward:
-            warning = f'Moving backward from {current_state.current_stage} to {new_stage}'
-
-        # Check: skipping stages
-        if new_order > old_order + 1:
-            warning = f'Skipping stages: {new_stage} is 2+ stages ahead'
-
-        # Record event
-        JournalService.log_stage_event(
-            journal_contact,
-            new_stage,
-            'stage_skipped' if new_order > old_order + 1 else
-            'stage_revisited' if new_order < old_order else
-            'stage_entered',
-            user,
-            notes=f'Moved from {current_state.current_stage} to {new_stage}'
-        )
-
-        return (True, warning)
-```
-
----
-
-## Pattern 5: API Design — Nested Resources
-
-### The Challenge
-
-How do you expose:
-- /journals/ — list all journals
-- /journals/{id}/ — get one journal with its members
-- /journals/{id}/members/ — list contacts in journal
-- /journals/{id}/members/{contact_id}/ — get one contact's state
-- /journals/{id}/members/{contact_id}/events/ — get that contact's stage events
-
-### Solution: Nested Viewsets + DRF-Nested-Routers
-
-**Option A: Flat endpoints** (simpler)
-```
-GET /journals/
-GET /journals/{id}/
-POST /journal-members/?journal={id}
-GET /journal-members/?journal={id}
-GET /journal-members/{id}/
-GET /journal-stage-events/?journal_contact={id}
-```
-
-**Option B: Nested URLs** (RESTful, complex)
-```
-GET /journals/
-GET /journals/{id}/
-GET /journals/{id}/members/
-GET /journals/{id}/members/{contact_id}/
-GET /journals/{id}/members/{contact_id}/events/
-```
-
-### Recommendation: Hybrid Approach
-
-Use **flat endpoints** for the API backbone with **optional query params for filtering**:
-
-```python
-# apps/journals/urls.py
-
-from rest_framework.routers import DefaultRouter
-from .views import JournalViewSet, JournalMemberViewSet, JournalEventViewSet
-
-router = DefaultRouter()
-router.register(r'journals', JournalViewSet, basename='journal')
-router.register(r'journal-members', JournalMemberViewSet, basename='journal-member')
-router.register(r'journal-events', JournalEventViewSet, basename='journal-event')
-
-urlpatterns = router.urls
-
-# Resulting endpoints:
-# GET /api/v1/journals/
-# POST /api/v1/journals/
-# GET /api/v1/journals/{id}/
-# PATCH /api/v1/journals/{id}/
-#
-# GET /api/v1/journal-members/?journal={id}
-# POST /api/v1/journal-members/  (requires: journal_id, contact_id)
-# GET /api/v1/journal-members/{id}/
-# DELETE /api/v1/journal-members/{id}/
-#
-# GET /api/v1/journal-events/?journal_contact={id}
-# GET /api/v1/journal-events/?journal={id}&stage=decision
-```
-
-**Why hybrid?**
-1. Simpler routing (use standard DefaultRouter)
-2. Filters are explicit (no nested URL explosion)
-3. Frontend can construct URLs easily
-4. Scales better (no N+1 nested routes for many resources)
-5. Matches DonorCRM's existing pattern (contacts/{id}/tasks/ are custom views)
-
-### Viewset Implementation
-
-```python
-# apps/journals/views.py
-
-from rest_framework import viewsets, permissions, filters, status
-from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.decorators import action
-from rest_framework.response import Response
-
-from .models import Journal, JournalContact, JournalStageEvent
-from .serializers import (
-    JournalSerializer, JournalDetailSerializer,
-    JournalMemberSerializer,
-    JournalEventSerializer,
-    JournalDecisionSerializer
-)
-from .permissions import IsJournalOwnerOrReadOnly, IsJournalMemberOwnerOrReadOnly
-from .filters import JournalFilterSet, JournalMemberFilterSet
-
-
-class JournalViewSet(viewsets.ModelViewSet):
+def _get_alerts():
     """
-    Journal CRUD and related actions.
+    Alert conditions for admin dashboard.
+    - Users with 0 activity in 30 days
+    - Users with 0 decisions in active journals
+    - Stalled contact count threshold (>20% of contacts stalled)
     """
-    serializer_class = JournalSerializer
-    permission_classes = [permissions.IsAuthenticated, IsJournalOwnerOrReadOnly]
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_class = JournalFilterSet
-    search_fields = ['name', 'description']
-    ordering_fields = ['name', 'created_at', 'goal_deadline']
-    ordering = ['-created_at']
+    stalled_count = get_stalled_contacts(limit=1)['total_count']
+    total_contacts = Contact.objects.count()
+    stalled_pct = (stalled_count / total_contacts * 100) if total_contacts > 0 else 0
 
-    def get_queryset(self):
-        user = self.request.user
+    alerts = []
 
-        # Staff see only their own journals; admins see all
-        if user.role == 'admin':
-            qs = Journal.objects.all()
-        else:
-            qs = Journal.objects.filter(owner=user)
-
-        return qs.prefetch_related('members__contact')
-
-    def get_serializer_class(self):
-        if self.action == 'retrieve':
-            return JournalDetailSerializer
-        return JournalSerializer
-
-    def perform_create(self, serializer):
-        """Set owner to current user."""
-        serializer.save(owner=self.request.user)
-
-    @action(detail=True, methods=['get'])
-    def members(self, request, pk=None):
-        """
-        GET /journals/{id}/members/ — list contacts in this journal.
-        Alternative: GET /journal-members/?journal={id}
-        """
-        journal = self.get_object()
-        members = journal.members.filter(is_active=True)
-
-        serializer = JournalMemberSerializer(members, many=True)
-        return Response(serializer.data)
-
-    @action(detail=True, methods=['get'])
-    def decisions(self, request, pk=None):
-        """GET /journals/{id}/decisions/ — current decisions for all contacts."""
-        journal = self.get_object()
-        members = journal.members.filter(is_active=True)
-
-        decisions = [
-            {
-                'journal_contact_id': jc.id,
-                'contact_id': jc.contact.id,
-                'contact_name': jc.contact.full_name,
-                'decision': JournalDecisionSerializer(
-                    jc.decision_current
-                ).data
-            }
-            for jc in members.select_related('contact', 'decision_current')
-        ]
-
-        return Response(decisions)
-
-    @action(detail=True, methods=['get'])
-    def report(self, request, pk=None):
-        """GET /journals/{id}/report/ — aggregated stats for dashboard."""
-        journal = self.get_object()
-        # Implement report aggregation here (see Pattern 6)
-        return Response({
-            'total_contacts': journal.members.filter(is_active=True).count(),
-            'decisions_made': journal.members.filter(
-                decision_current__status__in=['committed', 'declined']
-            ).count(),
-            # ... more aggregations
+    if stalled_pct > 20:
+        alerts.append({
+            'severity': 'warning',
+            'message': f'{stalled_count} contacts ({stalled_pct:.1f}%) are stalled'
         })
 
+    # Add more alert conditions as needed
 
-class JournalMemberViewSet(viewsets.ModelViewSet):
+    return alerts
+```
+
+### Backend Views (`insights/views.py`)
+
+```python
+class AdminDashboardView(APIView):
     """
-    Journal membership (JournalContact) CRUD.
+    GET: Admin dashboard overview with summary cards, funnel, activity, trends.
     """
-    serializer_class = JournalMemberSerializer
-    permission_classes = [permissions.IsAuthenticated, IsJournalMemberOwnerOrReadOnly]
-    filter_backends = [DjangoFilterBackend]
-    filterset_class = JournalMemberFilterSet  # journal=X, contact=Y, is_active
+    permission_classes = [IsAdmin]
 
-    def get_queryset(self):
-        user = self.request.user
+    @extend_schema(tags=['insights'], summary='Get admin dashboard overview')
+    def get(self, request):
+        data = get_admin_dashboard_summary(request.user)
+        return Response(data)
 
-        # Filter to journals the user owns
-        if user.role == 'admin':
-            qs = JournalContact.objects.all()
-        else:
-            qs = JournalContact.objects.filter(journal__owner=user)
-
-        return qs.select_related('journal', 'contact', 'decision_current')
-
-    def perform_create(self, serializer):
-        """Set added_by to current user."""
-        serializer.save(added_by=self.request.user)
-
-    @action(detail=True, methods=['delete'])
-    def remove(self, request, pk=None):
-        """Remove a contact from a journal (soft delete)."""
-        member = self.get_object()
-        member.is_active = False
-        member.archived_at = timezone.now()
-        member.save()
-        return Response({'detail': 'Contact removed from journal.'})
-
-
-class JournalEventViewSet(viewsets.ReadOnlyModelViewSet):
+class StalledContactsView(APIView):
     """
-    Read-only: view stage events.
+    GET: Paginated list of stalled contacts (14+ days no activity).
     """
-    serializer_class = JournalEventSerializer
-    permission_classes = [permissions.IsAuthenticated, IsJournalMemberOwnerOrReadOnly]
-    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
-    filterset_fields = ['journal_contact', 'stage', 'event_type']
-    ordering_fields = ['created_at']
-    ordering = ['-created_at']
+    permission_classes = [IsAdmin]
 
-    def get_queryset(self):
-        user = self.request.user
+    @extend_schema(
+        tags=['insights'],
+        summary='Get stalled contacts',
+        parameters=[
+            OpenApiParameter('limit', description='Page size (default: 50)', type=int),
+            OpenApiParameter('offset', description='Offset (default: 0)', type=int),
+        ]
+    )
+    def get(self, request):
+        limit = int(request.query_params.get('limit', 50))
+        offset = int(request.query_params.get('offset', 0))
 
-        # Filter to journals the user owns
-        if user.role == 'admin':
-            qs = JournalStageEvent.objects.all()
-        else:
-            qs = JournalStageEvent.objects.filter(
-                journal_contact__journal__owner=user
-            )
+        data = get_stalled_contacts(limit=limit, offset=offset)
 
-        return qs.select_related('journal_contact', 'triggered_by')
+        # Serialize contacts
+        from apps.contacts.serializers import ContactListSerializer
+        data['contacts'] = ContactListSerializer(data['contacts'], many=True).data
+
+        return Response(data)
+
+class UserPerformanceView(APIView):
+    """
+    GET: Per-user performance metrics and trends.
+    """
+    permission_classes = [IsAdmin]
+
+    @extend_schema(tags=['insights'], summary='Get user performance metrics')
+    def get(self, request, user_id):
+        data = get_user_performance(user_id)
+
+        # Serialize user
+        from apps.users.serializers import UserSerializer
+        data['user'] = UserSerializer(data['user']).data
+
+        return Response(data)
+```
+
+### Frontend Hooks (`hooks/useAdminAnalytics.ts`)
+
+```typescript
+import { useQuery } from "@tanstack/react-query"
+import {
+  getAdminDashboard,
+  getStalledContacts,
+  getUserPerformance,
+} from "@/api/adminAnalytics"
+
+const STALE_TIME = 2 * 60 * 1000 // 2 minutes (fresher than insights)
+
+export function useAdminDashboard() {
+  return useQuery({
+    queryKey: ["admin", "dashboard"],
+    queryFn: getAdminDashboard,
+    staleTime: STALE_TIME,
+  })
+}
+
+export function useStalledContacts(limit = 50, offset = 0) {
+  return useQuery({
+    queryKey: ["admin", "stalled-contacts", limit, offset],
+    queryFn: () => getStalledContacts(limit, offset),
+    staleTime: STALE_TIME,
+  })
+}
+
+export function useUserPerformance(userId: string) {
+  return useQuery({
+    queryKey: ["admin", "user-performance", userId],
+    queryFn: () => getUserPerformance(userId),
+    staleTime: STALE_TIME,
+  })
+}
 ```
 
 ---
 
-## Pattern 6: Report/Analytics Queries with ORM Aggregation
+## Query Optimization Strategy
 
-### The Challenge
+### Problem
 
-Dashboard needs to show:
-- Total contacts in journal
-- Breakdown by stage (how many in Contact vs Meet vs Close?)
-- Breakdown by decision (how many committed vs undecided?)
-- Time in each stage (average, median)
-- Revenue (total committed, by cadence)
+Cross-user aggregation queries can trigger:
+- **N+1 queries** when accessing related objects in loops
+- **Redundant queries** when multiple service functions query same tables
+- **Slow aggregations** when not using database-level aggregation
 
-### Solution: Annotate + Aggregate at Querystring Level
+### Solution Patterns
 
-```python
-# apps/journals/services.py
-
-from django.db.models import Count, Q, Case, When, DecimalField, F, Sum
-from django.db.models.functions import Coalesce
-
-class JournalReportService:
-    """
-    Aggregation queries for dashboards.
-    All use select_related/prefetch_related to avoid N+1.
-    """
-
-    @staticmethod
-    def get_pipeline_breakdown(journal):
-        """
-        Stage distribution: how many contacts in each stage?
-        Returns: {
-            'contact': 5,
-            'meet': 3,
-            'close': 2,
-            'decision': 7,
-            'thank': 1,
-            'next_steps': 0
-        }
-        """
-        stages = ['contact', 'meet', 'close', 'decision', 'thank', 'next_steps']
-
-        members = journal.members.filter(is_active=True).select_related('stage_state')
-
-        breakdown = {}
-        for stage in stages:
-            count = sum(
-                1 for m in members
-                if m.stage_state and m.stage_state.current_stage == stage
-            )
-            breakdown[stage] = count
-
-        # Better: use aggregation
-        from django.db.models import Count, Case, When, Value
-
-        breakdown = journal.members.filter(
-            is_active=True
-        ).values('stage_state__current_stage').annotate(
-            count=Count('id')
-        )
-        # Returns: [{'stage_state__current_stage': 'contact', 'count': 5}, ...]
-
-        return {
-            row['stage_state__current_stage'] or 'unknown': row['count']
-            for row in breakdown
-        }
-
-    @staticmethod
-    def get_decision_breakdown(journal):
-        """
-        Decision distribution: undecided, considering, committed, declined
-        """
-        decisions = journal.members.filter(
-            is_active=True
-        ).values('decision_current__status').annotate(
-            count=Count('id'),
-            total_amount=Coalesce(
-                Sum('decision_current__amount_cents'), 0
-            )
-        )
-
-        return {
-            row['decision_current__status'] or 'unknown': {
-                'count': row['count'],
-                'total_amount_cents': row['total_amount']
-            }
-            for row in decisions
-        }
-
-    @staticmethod
-    def get_revenue_by_cadence(journal):
-        """
-        Total committed revenue, broken down by cadence (monthly, annual, etc)
-        """
-        committed = journal.members.filter(
-            is_active=True,
-            decision_current__status='committed'
-        ).values('decision_current__cadence').annotate(
-            count=Count('id'),
-            total_amount=Sum('decision_current__amount_cents')
-        )
-
-        return {
-            row['decision_current__cadence'] or 'unknown': {
-                'count': row['count'],
-                'total_amount_cents': row['total_amount'] or 0
-            }
-            for row in committed
-        }
-
-    @staticmethod
-    def get_time_in_stage_metrics(journal):
-        """
-        Average/median time spent in each stage.
-        Uses EventTimestamp to calculate duration.
-        """
-        from django.db.models.functions import TruncDate
-        from django.utils import timezone
-        from datetime import datetime
-
-        stages = ['contact', 'meet', 'close', 'decision', 'thank', 'next_steps']
-
-        metrics = {}
-        for stage in stages:
-            # For each member, find when they entered and exited this stage
-            # This requires more complex query with LAG/LEAD or Python logic
-
-            # Simplified: use created_at of stage_state
-            # (In production, calculate from event timestamps)
-            events = JournalStageEvent.objects.filter(
-                journal_contact__journal=journal,
-                stage=stage,
-                event_type='stage_entered'
-            ).values('journal_contact__contact__id').annotate(
-                entered_at=Min('created_at'),
-                exited_at=Max('created_at')  # Simplified
-            )
-
-            metrics[stage] = {
-                'count': len(events),
-                # Average duration calculation would go here
-            }
-
-        return metrics
-```
-
-### In Views: Return Aggregated Data
+#### 1. Use Annotate for Aggregation
 
 ```python
-# In JournalViewSet
+# BAD: Python-level aggregation (N queries)
+users = User.objects.all()
+for user in users:
+    user.journal_count = Journal.objects.filter(owner=user).count()
+    user.decision_count = Decision.objects.filter(
+        journal_contact__journal__owner=user
+    ).count()
 
-@action(detail=True, methods=['get'])
-def report(self, request, pk=None):
-    """GET /journals/{id}/report/ — dashboard data."""
-    journal = self.get_object()
-
-    # All aggregation in one response
-    return Response({
-        'journal': JournalDetailSerializer(journal).data,
-        'pipeline': JournalReportService.get_pipeline_breakdown(journal),
-        'decisions': JournalReportService.get_decision_breakdown(journal),
-        'revenue': JournalReportService.get_revenue_by_cadence(journal),
-        'time_in_stage': JournalReportService.get_time_in_stage_metrics(journal),
-    })
-```
-
-### Key Aggregation Patterns
-
-**Count by category:**
-```python
-qs.values('stage').annotate(count=Count('id'))
-```
-
-**Sum with condition:**
-```python
-qs.filter(decision_current__status='committed').annotate(
-    total=Sum('decision_current__amount_cents')
+# GOOD: Database-level aggregation (1 query)
+users = User.objects.annotate(
+    journal_count=Count('journals', filter=Q(journals__is_archived=False)),
+    decision_count=Count('journals__journal_contacts__decisions')
 )
 ```
 
-**Multiple aggregates:**
+#### 2. Use Select Related for ForeignKey
+
 ```python
-qs.annotate(
-    count=Count('id'),
-    avg_amount=Avg('decision_current__amount_cents'),
-    max_amount=Max('decision_current__amount_cents')
-)
+# BAD: N+1 queries when accessing contact.owner
+contacts = Contact.objects.all()
+for contact in contacts:
+    print(contact.owner.email)  # New query per contact
+
+# GOOD: JOIN in single query
+contacts = Contact.objects.select_related('owner')
+for contact in contacts:
+    print(contact.owner.email)  # No additional query
 ```
+
+#### 3. Use Prefetch Related for Reverse Relations
+
+```python
+# BAD: N+1 queries when accessing user.journals
+users = User.objects.all()
+for user in users:
+    for journal in user.journals.all():  # New query per user
+        print(journal.name)
+
+# GOOD: Separate query with JOIN
+users = User.objects.prefetch_related('journals')
+for user in users:
+    for journal in user.journals.all():  # No additional query
+        print(journal.name)
+```
+
+#### 4. Use Subquery for Complex Annotations
+
+```python
+# Get latest stage event date per contact
+from django.db.models import OuterRef, Subquery
+
+latest_event = JournalStageEvent.objects.filter(
+    journal_contact__contact=OuterRef('pk')
+).order_by('-created_at').values('created_at')[:1]
+
+contacts = Contact.objects.annotate(
+    last_activity_date=Subquery(latest_event)
+).filter(last_activity_date__lt=date.today() - timedelta(days=14))
+```
+
+#### 5. Use Values for Aggregation Results
+
+```python
+# BAD: Retrieve full ORM objects when only need aggregates
+donations = Donation.objects.all()
+total = sum(d.amount for d in donations)  # Loads all donation objects
+
+# GOOD: Aggregate in database
+total = Donation.objects.aggregate(Sum('amount'))['amount__sum']
+```
+
+#### 6. Combine Operations
+
+```python
+# Optimal pattern for admin dashboard
+from django.db.models import Count, Sum, Q, Prefetch
+
+users = User.objects.select_related(
+    'profile'  # If User has profile ForeignKey
+).prefetch_related(
+    Prefetch(
+        'journals',
+        queryset=Journal.objects.filter(is_archived=False).annotate(
+            contact_count=Count('journal_contacts'),
+            decision_count=Count('journal_contacts__decisions')
+        )
+    )
+).annotate(
+    total_raised=Sum('contacts__donations__amount'),
+    active_journal_count=Count('journals', filter=Q(journals__is_archived=False))
+).order_by('-total_raised')
+
+# Single query with JOINs and subqueries
+```
+
+### Avoid Known Pitfalls
+
+From Edge Case Audit:
+
+**1. Journal Grid N+1 (Audit 1.1):**
+- Pattern: `get_stage_events()` runs query per contact
+- Fix: Prefetch in view's `get_queryset()`, rewrite serializer method to use prefetched data
+
+**2. Dashboard Redundant Queries (Audit 5.2):**
+- Pattern: Each service function builds independent queryset
+- Fix: Share base querysets across service functions
+
+**3. Missing Select Related (Audit 3.6):**
+- Pattern: Serializer accesses `contact.full_name` without `select_related`
+- Fix: Always `select_related` for ForeignKey accessed in serializer
+
+### Query Verification Protocol
+
+Before deploying:
+
+```python
+# Profile query count
+from django.test.utils import override_settings
+from django.db import connection
+from django.test import TestCase
+
+@override_settings(DEBUG=True)
+def test_admin_dashboard_query_count(self):
+    response = self.client.get('/api/v1/insights/admin-dashboard/')
+    queries = len(connection.queries)
+
+    # Admin dashboard should use <20 queries regardless of user count
+    self.assertLess(queries, 20)
+```
+
+Use `django-debug-toolbar` in development to verify query count per endpoint.
 
 ---
 
-## Pattern 7: Sequential Pipeline with Flexible Ordering
+## Conversion Funnel Architecture
 
-### The Model
+### Reuse Journal Pipeline Stages
 
-6-stage pipeline: Contact → Meet → Close → Decision → Thank → Next Steps
+The conversion funnel **IS** the journal pipeline. No new stages needed.
 
-**Constraints:**
-- Normal progression: must go through stages in order
-- Flexible: can skip or revisit stages (with warnings, not blocks)
-- Warnings are informational, not blocking
+**Existing:** `journals/models.py:PipelineStage`
+```python
+class PipelineStage(models.TextChoices):
+    CONTACT = 'contact', 'Contact'
+    MEET = 'meet', 'Meet'
+    CLOSE = 'close', 'Close'
+    DECISION = 'decision', 'Decision'
+    THANK = 'thank', 'Thank'
+    NEXT_STEPS = 'next_steps', 'Next Steps'
+```
+
+**Admin analytics conversion funnel shows:**
+- Count of contacts at each stage across ALL journals
+- Stage progression rate (e.g., "60% of Meet progressed to Close")
+- Time-in-stage histogram (e.g., "Average 5 days in Meet stage")
+
+### Calculation Pattern
+
+```python
+# Get current stage per contact (latest stage event)
+latest_stage = JournalStageEvent.objects.filter(
+    journal_contact=OuterRef('pk')
+).order_by('-created_at').values('stage')[:1]
+
+breakdown = JournalContact.objects.annotate(
+    current_stage=Subquery(latest_stage)
+).values('current_stage').annotate(
+    count=Count('id')
+).order_by('current_stage')
+
+# Returns: [
+#   {'current_stage': 'contact', 'count': 50},
+#   {'current_stage': 'meet', 'count': 30},
+#   {'current_stage': 'close', 'count': 20},
+#   {'current_stage': 'decision', 'count': 10},
+#   ...
+# ]
+```
+
+### Drill-Down Pattern
+
+When user clicks funnel stage:
+
+```python
+# Get contacts in specific stage
+if stage_param:
+    latest_stage_subquery = JournalStageEvent.objects.filter(
+        journal_contact=OuterRef('pk')
+    ).order_by('-created_at').values('stage')[:1]
+
+    contacts_in_stage = JournalContact.objects.annotate(
+        current_stage=Subquery(latest_stage_subquery)
+    ).filter(
+        current_stage=stage_param
+    ).select_related(
+        'contact__owner',
+        'journal__owner'
+    ).values(
+        'contact__id',
+        'contact__full_name',
+        'contact__owner__email',
+        'journal__name'
+    )
+```
+
+Frontend displays list of contacts in modal/panel with links to contact detail.
+
+---
+
+## Stalled Contact Detection Algorithm
+
+### Definition
+
+A contact is "stalled" when:
+- Contact is in a journal (has JournalContact record)
+- Last JournalStageEvent for that contact is >14 days ago
+- OR contact has no stage events at all (added to journal but no activity)
 
 ### Implementation
 
 ```python
-# apps/journals/models.py
+from datetime import date, timedelta
+from django.db.models import OuterRef, Subquery, Q
 
-class JournalContactStageState(TimeStampedModel):
-    # ... (from Pattern 2)
-
-    current_stage = models.CharField(max_length=20)
-    skipped = models.BooleanField(default=False)  # Is this stage skipped?
-    revisited = models.BooleanField(default=False)  # Back to this stage?
-    is_blocked = models.BooleanField(default=False)  # Admin-set flag
-
-# apps/journals/services.py
-
-STAGE_ORDER = {
-    'contact': 1,
-    'meet': 2,
-    'close': 3,
-    'decision': 4,
-    'thank': 5,
-    'next_steps': 6,
-}
-
-def move_to_stage(journal_contact, new_stage, user, allow_backward=False):
+def get_stalled_contacts(limit=50, offset=0):
     """
-    Move contact to a new stage, returning (success, warning).
-
-    Warnings:
-    - "Revisiting Contact stage" (backward movement)
-    - "Skipping Meet and Close stages" (more than 1 ahead)
-
-    Never blocks, always succeeds.
+    Detect stalled contacts with 14+ days inactivity.
     """
-    state = journal_contact.stage_state
-    old_stage = state.current_stage
-    old_order = STAGE_ORDER[old_stage]
-    new_order = STAGE_ORDER[new_stage]
+    cutoff_date = date.today() - timedelta(days=14)
 
-    warnings = []
+    # Subquery: latest stage event timestamp per contact
+    latest_event = JournalStageEvent.objects.filter(
+        journal_contact__contact=OuterRef('pk')
+    ).order_by('-created_at').values('created_at')[:1]
 
-    # Check backward (revisit)
-    if new_order < old_order:
-        warnings.append(
-            f'Revisiting {new_stage} (moved back from {old_stage})'
-        )
-        state.revisited = True
+    # Annotate contacts with last activity date
+    stalled = Contact.objects.annotate(
+        last_activity_date=Subquery(latest_event)
+    ).filter(
+        # Contact is in at least one journal
+        journal_contacts__isnull=False
+    ).filter(
+        # AND (last activity >14 days OR no activity)
+        Q(last_activity_date__lt=cutoff_date) |
+        Q(last_activity_date__isnull=True)
+    ).distinct().select_related('owner').order_by('last_activity_date')
 
-    # Check skipping
-    if new_order > old_order + 1:
-        skipped_stages = [
-            s for s, o in STAGE_ORDER.items()
-            if old_order < o < new_order
-        ]
-        warnings.append(
-            f'Skipping stages: {", ".join(skipped_stages)}'
-        )
-        state.skipped = True
+    total = stalled.count()
+    contacts = stalled[offset:offset+limit]
 
-    # Update state and log event
-    state.current_stage = new_stage
-    state.last_activity_at = timezone.now()
-    state.save()
+    return {
+        'contacts': contacts,
+        'total_count': total,
+        'page': (offset // limit) + 1,
+        'page_size': limit
+    }
+```
 
-    # Log event
-    event_type = (
-        'stage_revisited' if new_order < old_order else
-        'stage_skipped' if new_order > old_order + 1 else
-        'stage_entered'
-    )
+### Edge Cases
 
-    JournalStageEvent.objects.create(
-        journal_contact=journal_contact,
-        stage=new_stage,
-        event_type=event_type,
-        triggered_by=user,
-        notes=f'Moved from {old_stage} to {new_stage}',
-        metadata={'skipped_stages': [
-            s for s, o in STAGE_ORDER.items()
-            if old_order < o < new_order
-        ] if new_order > old_order + 1 else []}
-    )
+**1. Contact in multiple journals:**
+- Use latest event across ALL journals
+- Subquery already handles this: `journal_contact__contact=OuterRef('pk')` matches all journal_contacts for contact
 
-    return (True, warnings)
+**2. Contact added to journal but never had stage event:**
+- Filter catches `last_activity_date__isnull=True`
+- These appear at bottom of list (NULL sorts last with `order_by('last_activity_date')`)
+
+**3. Archived journals:**
+- Should stalled detection ignore archived journals?
+- **Decision:** Include archived journals. If contact was active in archived journal, they're not stalled.
+- To exclude archived: add `.filter(journal_contact__journal__is_archived=False)` to subquery
+
+### Performance Consideration
+
+Subquery runs once per page of results. With 50 contacts per page and proper indexes:
+- Subquery is efficient (single scan of JournalStageEvent with index on journal_contact + created_at)
+- `distinct()` deduplicates contacts in multiple journals
+- Total query time: <100ms for 50 contacts
+
+Index needed:
+```python
+# In JournalStageEvent model
+class Meta:
+    indexes = [
+        models.Index(fields=['journal_contact', '-created_at']),
+    ]
 ```
 
 ---
 
-## Pattern 8: Permission Inheritance for Nested Resources
+## Pace Calculation Logic
 
-### The Challenge
+### Definition
 
-If a user owns journal A, they can see:
-- Journal A
-- All contacts in journal A
-- All events for those contacts
-- All decisions for those contacts
+"Pace" measures how quickly a contact is progressing through the pipeline.
 
-But NOT contact B if it's in someone else's journal.
+**Metric:** Average days between stage transitions.
 
-### Solution: Permission Classes + Queryset Filtering
+### Calculation
 
 ```python
-# apps/journals/permissions.py
-
-from rest_framework import permissions
-
-class IsJournalOwnerOrReadOnly(permissions.BasePermission):
+def calculate_pace(contact_id, journal_id):
     """
-    Journal owner can edit; others can only read.
-    Admins can do anything.
+    Calculate average days between stage transitions for a contact.
     """
+    events = JournalStageEvent.objects.filter(
+        journal_contact__contact_id=contact_id,
+        journal_contact__journal_id=journal_id
+    ).order_by('created_at').values('stage', 'created_at')
 
-    def has_permission(self, request, view):
-        # All authenticated users can list/create
-        return request.user and request.user.is_authenticated
+    if len(events) < 2:
+        return None  # Need at least 2 events to calculate pace
 
-    def has_object_permission(self, request, view, obj):
-        if request.method in permissions.SAFE_METHODS:
-            return True
+    transitions = []
+    for i in range(1, len(events)):
+        prev_event = events[i-1]
+        curr_event = events[i]
 
-        # Write access: must be owner or admin
-        if request.user.role == 'admin':
-            return True
-        return obj.owner == request.user
+        days_between = (curr_event['created_at'] - prev_event['created_at']).days
+        transitions.append(days_between)
 
+    avg_pace = sum(transitions) / len(transitions)
 
-class IsJournalMemberOwnerOrReadOnly(permissions.BasePermission):
-    """
-    Can view/edit journal member if user owns the journal.
-    """
-
-    def has_permission(self, request, view):
-        return request.user and request.user.is_authenticated
-
-    def has_object_permission(self, request, view, obj):
-        # obj is JournalContact or JournalStageEvent
-        journal = obj.journal_contact.journal if hasattr(obj, 'journal_contact') else obj.journal
-
-        if request.method in permissions.SAFE_METHODS:
-            return True
-
-        if request.user.role == 'admin':
-            return True
-        return journal.owner == request.user
+    return {
+        'avg_days_per_stage': avg_pace,
+        'total_transitions': len(transitions),
+        'fastest_transition': min(transitions),
+        'slowest_transition': max(transitions)
+    }
 ```
 
-### In Viewsets: Filter Queryset by Owner
+### Display
+
+- User detail page shows pace metric per missionary
+- Stalled contacts page can sort by pace (slowest first = most stalled)
+
+### Alternative: Time-in-Current-Stage
+
+Simpler metric:
 
 ```python
-# apps/journals/views.py
+def time_in_current_stage(contact_id, journal_id):
+    """
+    Days since contact entered current stage.
+    """
+    latest_event = JournalStageEvent.objects.filter(
+        journal_contact__contact_id=contact_id,
+        journal_contact__journal_id=journal_id
+    ).order_by('-created_at').first()
 
-class JournalViewSet(viewsets.ModelViewSet):
-    def get_queryset(self):
-        user = self.request.user
+    if not latest_event:
+        return None
 
-        if user.role == 'admin':
-            return Journal.objects.all()
+    days = (date.today() - latest_event.created_at.date()).days
 
-        # Staff see only their own
-        return Journal.objects.filter(owner=user)
-
-
-class JournalMemberViewSet(viewsets.ModelViewSet):
-    def get_queryset(self):
-        user = self.request.user
-
-        if user.role == 'admin':
-            return JournalContact.objects.all()
-
-        # Staff see members of their journals only
-        return JournalContact.objects.filter(journal__owner=user)
-
-
-class JournalEventViewSet(viewsets.ReadOnlyModelViewSet):
-    def get_queryset(self):
-        user = self.request.user
-
-        if user.role == 'admin':
-            return JournalStageEvent.objects.all()
-
-        # Staff see events from their journals
-        return JournalStageEvent.objects.filter(
-            journal_contact__journal__owner=user
-        )
+    return {
+        'current_stage': latest_event.stage,
+        'days_in_stage': days
+    }
 ```
 
-**Pattern:** Always filter at the queryset level, then use permission classes for edge cases.
+This is more actionable: "Contact has been in Meet stage for 21 days."
+
+**Recommendation:** Use time-in-current-stage for v1.2. Add full pace calculation in future if needed.
 
 ---
 
-## Pattern 9: Linking to Existing Task System
+## Build Order
 
-### The Problem
+### Phase 1: Backend Foundation
 
-Journal workflows naturally generate tasks (e.g., "Call Jane after decision"). The existing Task model should be linkable to journals.
+**Goal:** Core analytics endpoints functional, testable via API.
 
-### Solution: FK to Journal on Task
+1. **Extend `insights/services.py`** with new service functions:
+   - `get_admin_dashboard_summary()`
+   - `get_stalled_contacts()`
+   - `get_user_performance()`
+   - `_get_conversion_funnel()`
+   - `_get_team_activity()`
 
-```python
-# Add to apps/tasks/models.py
+2. **Add views to `insights/views.py`**:
+   - `AdminDashboardView`
+   - `StalledContactsView`
+   - `UserPerformanceView`
 
-class Task(TimeStampedModel):
-    # Existing fields...
-    owner = models.ForeignKey(...)
-    contact = models.ForeignKey(...)
+3. **Extend `insights/urls.py`** with new paths
 
-    # NEW: Optional link to journal
-    journal = models.ForeignKey(
-        'journals.Journal',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='tasks',
-        help_text='Journal this task belongs to (optional)'
-    )
+4. **Add indexes** to `JournalStageEvent` model
 
-    class Meta:
-        db_table = 'tasks'
-        # Add journal to indexes
-        indexes = [
-            models.Index(fields=['owner', 'status', 'due_date']),
-            models.Index(fields=['journal', 'status']),  # NEW
-        ]
-```
+5. **Write tests** for each service function (query count, correct results, permission checks)
 
-### Migrations
+**Dependencies:** None. Builds on existing models and permission classes.
 
-```bash
-python manage.py makemigrations tasks
-python manage.py migrate
-```
+**Validation:** Test via API client (Postman, Swagger UI) before starting frontend.
 
-### Usage in Journal Views
+---
 
-```python
-# When creating a task in the context of a journal:
+### Phase 2: Frontend Foundation
 
-task = Task.objects.create(
-    owner=request.user,
-    contact=journal_contact.contact,
-    journal=journal,
-    title='Follow up on decision',
-    due_date=date.today() + timedelta(days=7)
-)
+**Goal:** Pages render with data from API.
 
-# In task list, filter by journal:
-journal.tasks.filter(status='pending')
-```
+1. **Add API client functions** in `api/adminAnalytics.ts`:
+   - `getAdminDashboard()`
+   - `getStalledContacts()`
+   - `getUserPerformance()`
 
-### Why FK Instead of M2M
+2. **Add React Query hooks** in `hooks/useAdminAnalytics.ts`
 
-- Tasks → Journal is one-to-many (one task per journal context)
-- M2M would allow task in multiple journals (overengineering)
-- FK with null=True keeps tasks optional in journal system
+3. **Create placeholder pages**:
+   - `pages/admin/AdminAnalyticsDashboard.tsx` — render summary cards only
+   - `pages/admin/StalledContacts.tsx` — render table only
+   - `pages/admin/UserPerformance.tsx` — render basic metrics only
+
+4. **Add routes** to `App.tsx` with `requiredRole="admin"`
+
+5. **Update navigation** in `AppLayout.tsx` to add Analytics submenu
+
+**Dependencies:** Phase 1 complete (API endpoints working).
+
+**Validation:** Pages load with real data from API.
+
+---
+
+### Phase 3: Dashboard Widgets
+
+**Goal:** Overview page has all widgets functional.
+
+1. **Build chart components**:
+   - `components/analytics/ConversionFunnelChart.tsx` (Recharts BarChart)
+   - `components/analytics/TrendChart.tsx` (Recharts LineChart)
+   - `components/analytics/TeamActivityTable.tsx` (React Table)
+
+2. **Build layout components**:
+   - Summary cards grid
+   - Two-column layout (funnel left, trend right)
+   - Activity table below
+
+3. **Add alerts panel** (severity badges, message list)
+
+4. **Wire up** all components in `AdminAnalyticsDashboard.tsx`
+
+**Dependencies:** Phase 2 complete (API hooks working).
+
+**Validation:** Dashboard page matches mockup, all widgets display data.
+
+---
+
+### Phase 4: Stalled Contacts Page
+
+**Goal:** Stalled contacts page with pagination and sorting.
+
+1. **Build table** with React Table:
+   - Columns: Contact Name, Owner, Days Since Activity, Current Stage, Actions
+   - Sortable by days since activity
+   - Pagination controls
+
+2. **Add filtering** (optional):
+   - By owner (dropdown)
+   - By days threshold (slider: 14, 30, 60 days)
+
+3. **Add actions**:
+   - View contact (link to contact detail)
+   - View journal (link to journal detail)
+
+**Dependencies:** Phase 2 complete (API hooks working).
+
+**Validation:** Stalled contacts page loads, pagination works, sorting works.
+
+---
+
+### Phase 5: User Performance Page
+
+**Goal:** Per-user detail page with trends and journals.
+
+1. **Build user header** (name, email, role, summary metrics)
+
+2. **Build trend charts**:
+   - Donation trend (12 months)
+   - Stage activity (6 stages over time)
+
+3. **Build journals table** (name, goal, deadline, progress)
+
+4. **Add navigation** from team activity table to user detail page
+
+**Dependencies:** Phase 2 complete (API hooks working).
+
+**Validation:** User detail page loads, charts display, journals listed.
+
+---
+
+### Phase 6: Drill-Down Interactions
+
+**Goal:** Click funnel segment to see underlying contacts.
+
+1. **Add click handler** to `ConversionFunnelChart`:
+   - Capture clicked stage
+   - Open `UserDrilldownPanel` with contact list
+
+2. **Build `UserDrilldownPanel`**:
+   - Slide-in sidebar (Radix Dialog or Sheet)
+   - Contact list with links to contact detail
+   - Close button
+
+3. **Add drill-down endpoint** (extend `ConversionFunnelView` to accept `?stage=decision`)
+
+4. **Wire up** panel to funnel chart
+
+**Dependencies:** Phase 3 complete (funnel chart working).
+
+**Validation:** Click funnel stage, panel opens with contact list.
+
+---
+
+### Phase 7: Polish & Optimization
+
+**Goal:** Production-ready performance and UX.
+
+1. **Query optimization audit**:
+   - Run `django-debug-toolbar` on each endpoint
+   - Verify query count <20 per endpoint
+   - Add missing `select_related`/`prefetch_related`
+
+2. **Loading states**:
+   - Skeleton loaders for charts (Recharts has built-in loading state)
+   - Table loading spinner
+
+3. **Error handling**:
+   - API error toast notifications
+   - Empty state messages ("No stalled contacts — great work!")
+
+4. **Accessibility**:
+   - ARIA labels on charts
+   - Keyboard navigation for drill-down panels
+
+5. **Responsive design**:
+   - Mobile layout for admin pages (if needed)
+   - Chart responsiveness (Recharts ResponsiveContainer)
+
+**Dependencies:** Phases 1-6 complete.
+
+**Validation:** Performance audit passes, UX polished.
+
+---
+
+## Suggested Build Order Rationale
+
+**1. Backend first (Phase 1):**
+- API endpoints are testable independently
+- Catches data modeling issues early
+- Frontend can develop against real API, not mocks
+
+**2. Foundation before features (Phase 2):**
+- Routing and navigation working before complex widgets
+- Validates API integration early
+- Reduces context switching
+
+**3. Dashboard before detail pages (Phase 3-4):**
+- Dashboard is the landing page, highest priority
+- Stalled contacts page is simpler (table-only), good second page
+- User performance page reuses patterns from dashboard
+
+**4. Drill-down last (Phase 6):**
+- Enhancement, not MVP requirement
+- Requires both funnel chart and panel working
+- Can be deferred if timeline tight
+
+**5. Polish always last (Phase 7):**
+- Performance optimization requires full feature set
+- UX polish needs user feedback
 
 ---
 
 ## Anti-Patterns to Avoid
 
-### 1. Full Event Replay for Current State
+### 1. Aggregating in Python Instead of Database
 
 **Bad:**
 ```python
-# For every query, compute state from scratch
-def get_current_stage(journal_contact):
-    events = JournalStageEvent.objects.filter(
-        journal_contact=journal_contact
-    ).order_by('-created_at')
-    return events.first().stage if events else None
+users = User.objects.all()
+for user in users:
+    user.journal_count = Journal.objects.filter(owner=user).count()
 ```
 
 **Good:**
 ```python
-# Query denormalized state (instant)
-return journal_contact.stage_state.current_stage
+users = User.objects.annotate(journal_count=Count('journals'))
 ```
 
-**Why:** Event replay is O(N) in event count. Denormalized state is O(1).
+### 2. Separate Apps for Single Feature
 
-### 2. Nested Serializers Without Limits
+**Bad:**
+- Create `admin_analytics` app with 5 views
+- Separate URL namespace, separate permission classes
+- Confusion: "Is this insights or admin_analytics?"
+
+**Good:**
+- Extend `insights` app with new views
+- Reuse existing permission classes
+- Clear boundary: `insights` = all analytics/reports
+
+### 3. Duplicating Existing Analytics Endpoints
+
+**Bad:**
+- Create new `AdminConversionFunnelView` that duplicates `JournalAnalyticsViewSet.pipeline_breakdown`
+
+**Good:**
+- Extend existing endpoint with query params: `?user_id=all` or `?scope=admin`
+- Reuse service functions with role-based filtering
+
+### 4. Frontend Routes Mixing Admin and Insights
+
+**Bad:**
+- `/insights/admin-dashboard`
+- `/admin/stalled-contacts`
+- Inconsistent: admin analytics split between two top-level routes
+
+**Good:**
+- All admin analytics under `/admin/analytics/*`
+- Matches existing admin pages pattern
+- Clear hierarchy
+
+### 5. N+1 Queries in Serializers
 
 **Bad:**
 ```python
-class JournalSerializer(serializers.ModelSerializer):
-    members = JournalMemberSerializer(many=True)
-    decision_history = JournalDecisionHistorySerializer(many=True)
-    stage_events = JournalStageEventSerializer(many=True)
-
-    class Meta:
-        fields = '__all__'
+class ContactSerializer:
+    def get_owner_email(self, obj):
+        return obj.owner.email  # Query per contact if not select_related
 ```
 
 **Good:**
 ```python
-class JournalDetailSerializer(serializers.ModelSerializer):
-    members_count = serializers.SerializerMethodField()
+# In view
+queryset = Contact.objects.select_related('owner')
 
-    def get_members_count(self, obj):
-        return obj.members.filter(is_active=True).count()
-
-    class Meta:
-        fields = ['id', 'name', 'members_count', ...]
+# Serializer can safely access obj.owner.email
 ```
 
-**Why:** Nested serializers with many=True cause N+1 queries and bloated responses.
-
-### 3. Updating History Directly
+### 6. Missing Pagination on Large Result Sets
 
 **Bad:**
 ```python
-# User sees history endpoint and POSTs to it
-PUT /journal-decision-history/{id}/
-{'status': 'committed', 'amount_cents': 500000}
+# Return all stalled contacts (could be 1000+)
+def get_stalled_contacts():
+    return Contact.objects.filter(...)
 ```
 
 **Good:**
 ```python
-# Update current; service creates history
-PUT /journal-members/{id}/
-{'status': 'committed', 'amount_cents': 500000}
-
-# Service does:
-# 1. Create JournalDecisionHistory (copy old values)
-# 2. Update JournalDecisionCurrent
-```
-
-**Why:** History should be immutable. Service layer enforces single entry point.
-
-### 4. Querying Across Unindexed Fields
-
-**Bad:**
-```python
-# Slow: no index on (journal, is_active, decision_status)
-members = JournalContact.objects.filter(
-    journal=journal,
-    is_active=True,
-    decision_current__status='committed'
-).count()
-```
-
-**Good:**
-```python
-# Index on (journal, is_active) + filter in Python
-members = journal.members.filter(is_active=True).select_related(
-    'decision_current'
-).count()
-
-# Or add composite index:
-class Meta:
-    indexes = [
-        models.Index(fields=['journal', 'is_active', 'decision_current']),
-    ]
-```
-
-### 5. Over-Normalizing Pipeline State
-
-**Bad:**
-```python
-# Separate tables for each stage, joined together
-class ContactStage(TimeStampedModel):
-    stage = models.CharField(choices=STAGES)
-    # Broken: this forces nullable fields for non-current stages
-```
-
-**Good:**
-```python
-# One JournalContactStageState per (journal, contact)
-class JournalContactStageState(TimeStampedModel):
-    current_stage = CharField()  # Always has a value
+# Paginate with limit/offset
+def get_stalled_contacts(limit=50, offset=0):
+    qs = Contact.objects.filter(...)
+    total = qs.count()
+    return {
+        'contacts': qs[offset:offset+limit],
+        'total_count': total
+    }
 ```
 
 ---
 
-## Summary: Architecture Decision Matrix
+## Scalability Considerations
 
-| Aspect | Decision | Rationale |
-|--------|----------|-----------|
-| **Event Storage** | Append-only log + denormalized state | Performance (read-heavy), audit trail |
-| **Decision History** | Dual tables (Current + History) | Immutable audit, mutable current access |
-| **Many-to-Many** | Explicit through model (JournalContact) | Extra fields (added_by, notes, is_active) |
-| **App Structure** | Single `journals` app | High cohesion, follows DonorCRM pattern |
-| **API Design** | Flat endpoints + query params | Simplicity, scales better than nested routes |
-| **Permissions** | Queryset filtering + custom classes | Owner-scoped, admin visibility |
-| **Reports** | ORM annotate/aggregate at query time | Avoids N+1, database is powerful |
-| **State Machine** | Warnings not blocks | Flexible workflow, staff judgment |
-| **Task Integration** | FK on Task model | Simple, reuses existing system |
+| Concern | At 10 users | At 100 users | At 500 users |
+|---------|-------------|--------------|--------------|
+| Conversion funnel query | <50ms | <200ms | <500ms |
+| Stalled contacts (50 per page) | <100ms | <300ms | <800ms |
+| Dashboard overview | <200ms | <500ms | 1-2s |
+| Mitigation | — | Add indexes | Add caching (Redis, 2min TTL) |
 
----
+### Caching Strategy (Future)
 
-## Implementation Checklist
+If dashboard queries exceed 1s at scale:
 
-- [ ] Create models: Journal, JournalContact, JournalStageEvent, JournalContactStageState, JournalDecisionCurrent, JournalDecisionHistory
-- [ ] Add FK to Task.journal
-- [ ] Create serializers (simple, detail, list variants)
-- [ ] Create viewsets with filtering and permissions
-- [ ] Create custom permission classes
-- [ ] Create services.py for business logic
-- [ ] Write tests for models, views, permissions
-- [ ] Implement report aggregation queries
-- [ ] Create migrations
-- [ ] Add to INSTALLED_APPS
+```python
+from django.core.cache import cache
+
+def get_admin_dashboard_summary(user):
+    cache_key = 'admin_dashboard_summary'
+    cached = cache.get(cache_key)
+
+    if cached:
+        return cached
+
+    data = {
+        'summary_cards': _get_summary_cards(),
+        'conversion_funnel': _get_conversion_funnel(),
+        # ...
+    }
+
+    cache.set(cache_key, data, timeout=120)  # 2 minute TTL
+    return data
+```
+
+Invalidate cache on:
+- New JournalStageEvent created
+- New Decision created
+- New Donation created
+
+Or use time-based TTL (2-5 minutes) if real-time updates not critical.
 
 ---
 
 ## Sources
 
-- [Django REST Framework Permissions](https://www.django-rest-framework.org/api-guide/permissions/)
-- [Django Model Relationships](https://docs.djangoproject.com/en/4.2/topics/db/models/)
-- [Django ORM Aggregation](https://docs.djangoproject.com/en/6.0/topics/db/aggregation/)
-- [Event Sourcing in Python](https://eventsourcing.readthedocs.io/)
-- [DRF Nested Routers](https://github.com/alanjds/drf-nested-routers)
-- [Django Many-to-Many Best Practices](https://www.sankalpjonna.com/learn-django/the-right-way-to-use-a-manytomanyfield-in-django)
-- [Django-Simple-History](https://django-simple-history.readthedocs.io/)
-- [Django App Organization Best Practices](https://learndjango.com/tutorials/django-best-practices-projects-vs-apps)
-- [DRF Custom Permissions](https://testdriven.io/blog/custom-permission-classes-drf/)
+**Django Optimization:**
+- [Database access optimization | Django documentation](https://docs.djangoproject.com/en/6.0/topics/db/optimization/)
+- [Optimizing Django Queries with select_related and prefetch_related](https://medium.com/django-unleashed/optimizing-django-queries-with-select-related-and-prefetch-related-e404af72e0eb)
+- [Django QuerySet Optimization: Stop Strangling Your API Performance](https://medium.com/@sizanmahmud08/django-queryset-optimization-stop-stranglingyour-api-performance-6bc368d72512)
+
+**Analytics Architecture:**
+- [SaaS Applications with Django: Building Analytics and Dashboards](https://medium.com/@mathur.danduprolu/saas-applications-with-django-building-analytics-and-dashboards-part-5-7-5e5e11ec310a)
+- [Scale Your Django API Like a Pro: The Complete 2026 Guide](https://medium.com/@sizanmahmud08/scale-your-django-api-like-a-pro-the-complete-2026-guide-to-handling-millions-of-requests-f0d3362f767d)
+- [How to create an analytics dashboard in a Django app](https://www.freecodecamp.org/news/how-to-create-an-analytics-dashboard-in-django-app/)
+
+**API Design:**
+- [APIView vs ViewSet in Django REST Framework](https://medium.com/@mathur.danduprolu/apiview-vsviewset-in-django-rest-framework-aa9a77921d53)
+- [Build scalable APIs with Django REST API framework](https://www.kellton.com/kellton-tech-blog/designing-rest-apis-with-django-rest-api-framework)
+
+**Dashboard Architecture:**
+- [Six Principles of Dashboard Information Architecture](https://www.gooddata.com/blog/six-principles-of-dashboard-information-architecture/)
+- [Single App vs. Multiple Apps: Choosing the Right Approach](https://medium.com/@bharathibala21/single-app-vs-multiple-apps-choosing-the-right-approach-for-your-mobile-application-b0d8d420d998)
+
+**Conversion Funnel:**
+- [Conversion Funnel: The Ultimate Guide to Stages & Optimization (2026)](https://improvado.io/blog/conversion-funnel)
+- [Pipeline Funnel Visual](https://docs.visier.com/developer/Analytics/visual%20types/pipeline%20funnel.htm)
