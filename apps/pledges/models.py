@@ -190,12 +190,23 @@ class Pledge(TimeStampedModel):
 
     def record_fulfillment(self, donation):
         """Record that a donation fulfilled this pledge period."""
-        self.last_fulfilled_date = donation.date
-        self.total_received += donation.amount
-        self.next_expected_date = self.calculate_next_expected_date()
-        self.is_late = False
-        self.days_late = 0
-        self.save()
+        from django.db.models import F
+
+        # Calculate next_expected_date before the atomic update
+        # (needs current state which we already have in memory)
+        next_date = self.calculate_next_expected_date()
+
+        # Atomic update using F() expression — prevents race condition
+        # when multiple donations for same pledge are processed concurrently
+        Pledge.objects.filter(pk=self.pk).update(
+            last_fulfilled_date=donation.date,
+            total_received=F('total_received') + donation.amount,
+            next_expected_date=next_date,
+            is_late=False,
+            days_late=0,
+        )
+        # Refresh instance to get updated values
+        self.refresh_from_db()
 
     def pause(self):
         """Pause the pledge."""
