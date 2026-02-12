@@ -10,13 +10,18 @@ from rest_framework.views import APIView
 
 from apps.core.permissions import IsAdmin, IsFinanceOrAdmin
 from apps.insights.services import (
+    get_dashboard_overview,
     get_donations_by_month,
     get_donations_by_year,
     get_follow_ups,
     get_late_donations,
     get_monthly_commitments,
     get_review_queue,
+    get_stalled_contacts,
     get_transactions,
+    get_user_performance,
+    get_conversion_funnel,
+    get_team_activity,
 )
 
 
@@ -155,3 +160,94 @@ class TransactionsView(APIView):
             date_from=date_from,
             date_to=date_to,
         ))
+
+
+# Admin Analytics Views (Phase 13)
+
+
+class DashboardOverviewView(APIView):
+    """
+    GET: Admin dashboard overview with cross-user aggregated stats.
+    Admin-only endpoint.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    @extend_schema(
+        tags=['insights'],
+        summary='Get dashboard overview (admin only)',
+        description='Cross-user aggregation for admin dashboard: total contacts, active journals, stalled count, conversion rate, donation summary.'
+    )
+    def get(self, request):
+        return Response(get_dashboard_overview())
+
+
+class StalledContactsView(APIView):
+    """
+    GET: Get contacts with last journal activity >14 days ago.
+    Admin-only endpoint with pagination.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    @extend_schema(
+        tags=['insights'],
+        summary='Get stalled contacts (admin only)',
+        parameters=[
+            OpenApiParameter(name='limit', description='Max results (default: 50)', type=int),
+            OpenApiParameter(name='offset', description='Offset for pagination (default: 0)', type=int),
+        ]
+    )
+    def get(self, request):
+        limit = int(request.query_params.get('limit', 50))
+        offset = int(request.query_params.get('offset', 0))
+        return Response(get_stalled_contacts(limit=limit, offset=offset))
+
+
+class UserPerformanceView(APIView):
+    """
+    GET: Per-missionary performance metrics.
+    Admin-only endpoint.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    @extend_schema(
+        tags=['insights'],
+        summary='Get user performance metrics (admin only)',
+        description='Per-missionary: total contacts, active journals, decisions logged, donation totals.'
+    )
+    def get(self, request):
+        return Response(get_user_performance())
+
+
+class ConversionFunnelView(APIView):
+    """
+    GET: Pipeline stage distribution across all missionaries.
+    Admin-only endpoint.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    @extend_schema(
+        tags=['insights'],
+        summary='Get conversion funnel (admin only)',
+        description='Pipeline stage distribution with counts and percentages using Journal 6-stage pipeline.'
+    )
+    def get(self, request):
+        return Response(get_conversion_funnel())
+
+
+class TeamActivityView(APIView):
+    """
+    GET: Recent activity across all users.
+    Admin-only endpoint.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    @extend_schema(
+        tags=['insights'],
+        summary='Get team activity (admin only)',
+        parameters=[
+            OpenApiParameter(name='limit', description='Max results (default: 50)', type=int),
+        ]
+    )
+    def get(self, request):
+        limit = int(request.query_params.get('limit', 50))
+        return Response(get_team_activity(limit=limit))
