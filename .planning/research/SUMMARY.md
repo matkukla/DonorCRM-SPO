@@ -1,293 +1,679 @@
-# Project Research Summary
+# Research Summary: Admin Analytics Dashboard (v1.2)
 
-**Project:** DonorCRM v1.1 CSV Import Milestone
-**Domain:** Multi-file CSV import pipeline for SPO-compatible donor data
-**Researched:** 2026-01-30
-**Confidence:** HIGH
+**Project:** DonorCRM v1.2 - Admin Analytics Dashboard
+**Research Date:** 2026-02-12
+**Target Users:** 10-20 coaches/supervisors monitoring 200+ missionaries
+**Context:** Existing Django/React CRM with journal pipeline tracking
+
+---
 
 ## Executive Summary
 
-The DonorCRM v1.1 milestone adds SPO-compatible CSV import capability for four dependent file types (Funds, Entities, Transactions, Pledges). Based on research, the optimal approach leverages Django 4.2's native bulk operations with idempotent upserts via external IDs, avoiding heavyweight third-party dependencies like django-import-export or Celery infrastructure. The existing codebase already implements foundational import patterns for contacts and donations, requiring extension rather than ground-up development.
+The v1.2 Admin Analytics Dashboard extends DonorCRM to provide coaching-focused visibility across missionary teams. Modern CRM admin dashboards have evolved from "periodic reporting tools" to "real-time coaching command centers" that surface actionable insights—not just historical data. Coaches need to see who needs help now and why, not just aggregate statistics.
 
-The recommended architecture follows a five-stage pipeline: Upload → Validate → Preview → Import → Audit. This pattern separates validation from import execution, enabling user-friendly error reporting with downloadable error CSVs and preventing partial imports that corrupt data integrity. The frontend uses react-papaparse for client-side preview, providing immediate validation feedback before server submission. All imports use Django's atomic transactions with external_id-based upsert logic for idempotency.
+The recommended approach leverages DonorCRM's existing stack with minimal additions: extend the `insights` app for cross-user aggregation endpoints, add 1-2 frontend libraries (react-activity-calendar for heatmaps, optionally vaul for enhanced mobile panels), and reuse Recharts for all charts (FunnelChart, ComposedChart, LineChart). No backend dependencies are required—Django ORM's native aggregation (Trunc, Window functions, annotate/aggregate) handles all analytics queries at this scale (10-20 admin users, 200 missionaries).
 
-Critical risks center on denormalized field synchronization (Contact.total_given must update after bulk donation imports), foreign key orphan detection (transactions must reference existing entities/funds), and CSV injection security vulnerabilities. The research identifies eight priority pitfalls with specific prevention strategies tied to implementation phases. Success depends on establishing patterns early (Phase 1: Funds import) and scaling them consistently through dependent imports (Phases 2-4).
+Critical risks center on query performance (N+1 queries amplified by cross-user aggregation can generate 7000+ queries without proper optimization), permission bypass vulnerabilities (existing ListAPIView permission bugs become catastrophic when exposing all users' data), and data integrity issues (race conditions in update_giving_stats() corrupt aggregated totals). These must be addressed in Phase 1 before building dashboard features. The architecture follows existing patterns (insights app for reports, admin role-based permissions) and builds incrementally: backend foundation → basic dashboard → visualizations → interactive drill-down → polish.
 
-## Key Findings
+---
 
-### Recommended Stack
+## Stack Additions
 
-Django 4.2's native capabilities eliminate need for external bulk import libraries. The standard library `csv.DictReader` handles parsing, `bulk_create(update_conflicts=True)` provides idempotent upserts, and `transaction.atomic()` ensures rollback safety. This approach avoids 50MB+ dependencies like pandas and PostgreSQL-specific libraries like django-pgbulk.
+### Frontend - New Libraries (2 total)
 
-**Core technologies:**
-- **Django 4.2 native bulk_create()**: Idempotent upserts with `update_conflicts=True` and `unique_fields=['external_id']` — no third-party library needed, cross-database compatible
-- **Python stdlib csv**: Server-side CSV parsing with `csv.DictReader` — already used in existing codebase, sufficient for batch imports
-- **react-papaparse ^4.4.0**: Client-side CSV preview and validation — enables fast user feedback without server round-trip, TypeScript support
-- **Django transaction.atomic()**: Atomic rollback on validation failure — native PostgreSQL support, guarantees data consistency
+| Library | Version | Purpose | Bundle Impact |
+|---------|---------|---------|---------------|
+| **react-activity-calendar** | ^3.0.5 | GitHub-style contribution heatmap for user activity visualization | ~15KB gzipped |
+| **vaul** (optional) | ^1.1.2 | Enhanced drawer/slide-in panel with mobile gestures and snap points | ~10KB gzipped |
 
-**What NOT to use:**
-- django-pgbulk (Django 4.2 provides equivalent functionality)
-- pandas (50MB+ dependency, overkill for validation)
-- react-spreadsheet-import (incompatible with existing Radix UI design system)
-- Celery for MVP (SPO exports typically <1K rows, synchronous processing sufficient)
+**Total bundle addition:** ~25KB gzipped
 
-**Performance characteristics:** Django bulk operations handle 5K row upserts in ~3 seconds. Expected file sizes (100-2K rows) fall well within synchronous processing limits (2-10 second import times). File size limit of 10MB enforced at server level prevents memory exhaustion.
-
-### Expected Features
-
-Research identifies 12 table-stakes features, 11 competitive differentiators, and 9 anti-features to explicitly avoid.
-
-**Must have (table stakes):**
-- File upload with drag-and-drop — standard web UX, users expect this
-- Column header validation — catch schema mismatches early
-- Preview data before commit — users expect to review first 5-10 rows
-- Row-level validation with error messages — critical for data quality
-- Download error report CSV — users need exportable failures to fix source data
-- Template download — reduces confusion about format
-- Duplicate detection via external_id — prevents re-import duplicates
-- Success/failure summary — users need counts (X created, Y updated, Z errors)
-- Idempotent upsert with external IDs — core SPO compatibility requirement
-- Multi-file import UI for 4 types — Funds, Entities, Transactions, Pledges
-- Orphan reference detection — validate entity_id/fund_id exist before import
-- Import audit trail (ImportRun model) — compliance and debugging
-
-**Should have (competitive differentiators):**
-- Multi-file dependent import orchestration — guide user through correct order (Funds → Entities → Transactions/Pledges)
-- Inline error correction — fix validation errors in preview UI without re-upload (defer to v1.x)
-- Column auto-mapping with fuzzy matching — saves time when headers vary (defer until validated need)
-- Batch processing with progress tracking — for files >1000 rows (add if timeouts occur)
-- Visual diff for upserts — show "Current → New" for updates (v1.x if users request)
-- Rollback/undo capability — complex, defer to v1.x unless users report issues
-
-**Defer (v2+):**
-- Real-time import streaming — adds complexity for minimal value
-- Manual Excel editing in-app — poor web UX, users prefer Excel
-- Auto-fix validation errors — silently corrupts data, users lose trust
-- Flexible schema (allow any columns) — breaks type safety
-- Complex ETL transformations — over-engineering, users prep data externally
-- Excel file support — CSV sufficient for MVP, add later if validated need
-
-**Anti-features (explicitly avoid):**
-- Immediate commit without preview — users make mistakes
-- Import from URLs or APIs — scope creep, security risks
-- Concurrent multi-user imports — not needed for single-missionary use case
-
-### Architecture Approach
-
-The existing DonorCRM codebase has foundational import infrastructure in `apps/imports/` with synchronous contact/donation import. The v1.1 milestone extends this with new models (Fund, ImportRun, ImportRowError), external_id fields on Contact/Donation/Pledge for idempotency, and multi-file workflow with dependency ordering.
-
-**Major components:**
-1. **Parser Service** (`services.py`) — Reads CSV with `csv.DictReader`, validates rows, collects errors. Returns `(valid_records[], errors[])`. Must implement row-level error collection (continue through all rows rather than raise on first error).
-2. **Importer Service** (`services.py`) — Atomic database writes with `bulk_create(update_conflicts=True)`. Pre-checks existing external_ids to separate creates from updates. Updates denormalized fields (Contact.total_given) after bulk insert by collecting affected IDs and calling `update_giving_stats()` once per unique contact.
-3. **API View** (`views.py`) — Orchestrates stages with `validate_only` query param for preview. Two-pass architecture: validate ALL rows first (return errors), then import only if 100% valid. Creates ImportRun record for audit trail.
-4. **ImportRun Model** (`imports/models.py`) — Tracks type, status, counts (created/updated/error), uploaded_by, filename. Enables import history dashboard and rollback capability.
-5. **ImportRowError Model** (`imports/models.py`) — Persists row-level errors with row_number, error_messages (JSON), row_data. Enables "Download Errors CSV" feature.
-6. **Frontend Upload** (`ImportCard.tsx`) — File drag-drop, client-side parsing with react-papaparse, preview table with error highlights, confirm button triggers server import.
-
-**Data flow (SPO CSV import workflow):**
-```
-Funds CSV → validate → preview → confirm → bulk_create(external_id=fund_id)
-    ↓ (Entities depend on Funds existing)
-Entities CSV → validate → check entity_id unique → create/update Contact with external_id
-    ↓ (Transactions depend on Entities + Funds)
-Transactions CSV → validate entity_id/fund_id exist → create/update Donation with FKs → update Contact.total_given
-    ↓ (Pledges depend on Entities + Funds)
-Pledges CSV → validate entity_id/fund_id exist → create/update Pledge with FKs
+**Installation:**
+```bash
+npm install react-activity-calendar@^3.0.5
+npm install vaul@^1.1.2  # Optional but recommended for mobile UX
 ```
 
-**Key patterns:**
-- **Idempotent upsert:** `Model.objects.update_or_create(defaults={...}, external_id=record['id'])` for all imports
-- **Atomic validation-first:** Validate ALL rows before starting transaction, return ALL errors at once
-- **Row-level error collection:** Continue validation through entire file, don't raise on first error
-- **Synchronous for MVP:** No Celery infrastructure, enforce 10MB file size limit, process <5K rows synchronously
+### Frontend - Existing Libraries (No Changes)
 
-### Critical Pitfalls
+All chart capabilities use **existing Recharts 3.6.0**:
+- FunnelChart for conversion funnel visualization
+- ComposedChart for multi-series comparison views (period vs period, user vs user)
+- BarChart/LineChart for trend charts
 
-Eight priority pitfalls identified with phase-specific prevention strategies.
+All UI components use **existing Radix UI** (Dialog/Sheet for panels, existing component library).
 
-1. **Denormalized field desynchronization** — Contact.total_given/gift_count become incorrect after bulk donation import. Prevention: Collect affected contact IDs during import, call `update_giving_stats()` once per unique contact after bulk_create completes, not per row. Address in Phase 2 (Transactions).
+All data fetching uses **existing TanStack Query 5.90.17** and **TanStack Table 8.21.3**.
 
-2. **Foreign key orphan records** — Transactions reference non-existent entity_id/fund_id. Prevention: Pre-flight validation queries `Contact.objects.filter(external_id__in=entity_ids).exists()` before import, return missing ID list with row numbers. Strict mode only (reject entire import if orphans exist). Address in Phase 2 (Transactions).
+### Backend - NO New Dependencies
 
-3. **Transaction rollback without error context** — Import of 5,000 rows fails on row 4,237, user gets "0 created" with no details. Prevention: Two-phase import (validate all rows first outside transaction, collect errors, then import only valid rows in atomic block). Use ImportRowError model to persist failures. Address in Phase 1 (Funds).
+Django ORM (4.2) + PostgreSQL handle all analytics:
+- **Trunc functions** (TruncDay, TruncWeek, TruncMonth) for time-series aggregation
+- **Window functions** (Rank, RowNumber, Lag, Lead) for user comparisons
+- **Annotate/Aggregate** for summary statistics
 
-4. **Memory exhaustion on large files** — 50MB CSV with 100K rows crashes server. Prevention: Enforce 10MB file size limit at nginx and Django settings, process in batches of 1000 rows with `bulk_create(batch_size=1000)`, show error for >10K row files. Address in Phase 1 (Funds).
+No analytics libraries, no aggregation frameworks, no caching layers needed at this scale.
 
-5. **CSV injection security vulnerability** — Cell value `=cmd|'/c calc'!A1` executes in Excel on export. Prevention: Sanitize on import AND export by prefixing `=+-@\t\r` characters with single quote, blocklist `DDE`, `cmd`, `HYPERLINK`. Address in Phase 1 (Funds) to establish pattern.
+### Why This Approach
 
-6. **Duplicate external_id handling** — Same entity_id appears twice in CSV or conflicts with existing records. Prevention: Pre-check existing external_ids before import, split into create/update batches, use database unique constraint, report in-file duplicates during validation. Address in Phase 1 (Funds) and critical in Phase 2 (Entities).
+1. **Minimal dependencies** — Only 1-2 small libraries (25KB total)
+2. **Pattern consistency** — Reuses existing component patterns (Recharts, Radix UI, TanStack ecosystem)
+3. **Performance** — PostgreSQL + Django ORM scales to 10-20 admins viewing 200 missionaries with millions of records
+4. **Maintenance** — Fewer dependencies = less upgrade churn
+5. **Proven stack** — All core libraries already in production use
 
-7. **Missing progress feedback** — User uploads 10K row file, browser shows spinner for 90 seconds with no updates, user refreshes and cancels. Prevention: Use ImportRun model to track status, poll `/api/imports/{id}/status` every 2 seconds, show "Processing 4,500 / 10,000 rows (45%)", disable re-submit button during processing. Address in Phase 1 (Funds).
+---
 
-8. **Owner assignment confusion** — Admin imports 1,000 contacts, all assigned to admin's account, other missionaries can't see them. Prevention: Show "These contacts will be assigned to: admin@example.com" warning in UI, provide post-import reassignment dropdown, support optional `owner_email` column in CSV. Address in Phase 2 (Entities).
+## Feature Priorities
 
-## Implications for Roadmap
+### Table Stakes (Expected by Coaches)
 
-Based on dependency analysis and pitfall prevention strategies, recommended four-phase structure:
+Features that users expect. Missing = product feels incomplete.
 
-### Phase 1: Funds CSV Import (Foundation)
-**Rationale:** Funds have no dependencies (no foreign keys to other entities), simplest validation logic, smallest file sizes. Perfect for establishing core patterns that scale to subsequent phases. All pitfall prevention strategies can be prototyped and proven here before tackling complex Transactions import.
+| Feature | Why Expected | Complexity |
+|---------|--------------|------------|
+| **Dashboard Overview with Summary Cards** | Standard CRM admin pattern. Coaches expect key metrics at a glance (total contacts, active journals, conversion rates, stalled contacts count). | Low |
+| **Team Activity List/Table** | Coaches need to see what missionaries are doing (recent journal updates, new contacts, decisions logged) without clicking into each user. | Medium |
+| **User Performance Comparison** | Supervisors compare fundraisers side-by-side to identify outliers (top performers, struggling fundraisers needing coaching). | Medium |
+| **Stalled Contact Alerts (14+ days no activity)** | Universal pattern in fundraising CRMs. Coaches need visibility into stagnant pipelines. | Low |
+| **Conversion Funnel Visualization** | Industry standard. Coaches expect to see pipeline progression (contacts in each stage, conversion rates) to understand bottlenecks. | Medium |
+| **Time Period Filtering** | Date range pickers (This Month, Last Quarter, Custom Range) for current vs. historical performance. | Low |
+| **Per-User Drill-Down** | Click user in team list → detailed view of that missionary's stats, journals, contacts. | Low |
+| **Export to CSV** | Admins expect to download reports for offline analysis, sharing with leadership. | Low |
+| **Role-Based Access (Admin Only)** | Team analytics only visible to coaches/admins, not individual fundraisers. | Low |
+| **Mobile-Responsive Layout** | Coaches check dashboards on tablets/phones between meetings. | Medium |
 
-**Delivers:**
-- Fund model with external_id unique constraint
-- ImportRun and ImportRowError models for audit trail
-- Base CSV parsing service with row-level error collection
-- Validation-first import pattern (validate ALL, then import if 100% valid)
-- File size limits (10MB) and batch processing (1000 rows)
-- CSV injection sanitization (prefix `=+-@` with single quote)
-- Frontend ImportCenter UI with drag-drop upload
-- Template download endpoint (`/api/imports/templates/funds/`)
+### Differentiators (Portfolio-Impressive)
 
-**Addresses features:**
-- File upload with drag-and-drop (table stakes)
-- Column header validation (table stakes)
-- Preview data before commit (table stakes)
-- Row-level validation with errors (table stakes)
-- Download error report CSV (table stakes)
-- Template download (table stakes)
-- Import audit trail (table stakes)
+Features that set product apart. Not expected, but valued.
 
-**Avoids pitfalls:**
-- Pitfall 3: Transaction rollback without context — two-phase validation prevents cryptic errors
-- Pitfall 4: Memory exhaustion — file size limits and batch processing prevent crashes
-- Pitfall 5: CSV injection — sanitization blocks formula execution
-- Pitfall 7: Missing progress feedback — ImportRun model enables status polling
+| Feature | Value Proposition | Complexity |
+|---------|------------------|------------|
+| **Interactive Drill-Down Charts** | Click funnel stage → see contacts in that stage. Click user in chart → navigate to detail page. Makes analytics actionable, not just informative. Premium 2026 CRM feature. | High |
+| **Activity Heatmap Calendar View** | GitHub-style contribution grid showing team activity density over time. Uncommon in nonprofit CRMs. Visually impressive for portfolio. | High |
+| **Comparison Mode (Time Periods)** | Side-by-side: "January vs. February" or "Q1 2025 vs. Q1 2026." Coaches identify seasonal trends or validate coaching interventions. | Medium |
+| **Comparison Mode (Users)** | Side-by-side user comparison across key metrics. Benchmark performance, identify best practices. | Medium |
+| **AI-Driven Alerts Panel** | Auto-generated recommendations: "Sarah has 8 contacts stalled >21 days," "Team conversion dropped 10%." Phase 1: rule-based logic. Portfolio-impressive even without ML. | High |
+| **User Drilldown Panel (Slide-In Sidebar)** | Click user row → slide-in drawer shows quick stats, recent journals, stalled contacts without navigating away. Smooth modern UX pattern. | Medium |
+| **Trend Charts (Not Just Snapshots)** | Line charts showing team metrics over time (e.g., "Decisions logged per week for past 12 weeks"). Coaches see trajectory, not just current state. | Medium |
 
-**Research flag:** SKIP — Standard Django patterns, well-documented, no complex integrations.
+### Anti-Features (Explicitly Avoid)
 
-### Phase 2: Entities CSV Import (Contact Upsert)
-**Rationale:** Entities must exist before Transactions/Pledges can reference them (foreign key dependency). This phase introduces idempotent upserts (entity_id already exists = update Contact, not create duplicate) and owner-scoped filtering complexity. Critical for multi-missionary deployments.
+Features to NOT build. Common scope creep mistakes.
 
-**Delivers:**
-- external_id field on Contact model with unique constraint
-- Entity import endpoint that creates/updates Contact records
-- Idempotent upsert logic with `update_or_create(external_id=entity_id)`
-- In-file duplicate detection (same entity_id appears twice)
-- Existing external_id conflict detection (entity_id exists in DB)
-- Owner assignment warning in UI ("These contacts will be assigned to: admin")
+| Anti-Feature | Why Avoid |
+|--------------|-----------|
+| **Real-Time Collaboration (Live Cursors, Shared Editing)** | Coaches review data independently or in meetings. WebSocket complexity for negligible value. |
+| **Granular Permission System (Row-Level Security)** | Over-engineering for 10-20 coaches. Simple role-based access (admin sees all, fundraiser sees own) is sufficient. |
+| **Custom Dashboard Builder (Drag-and-Drop Widgets)** | Coaches want answers to specific questions, not to design dashboards. Provide 3-5 opinionated views instead. |
+| **Bulk Editing from Dashboard** | Mixing concerns. Dashboards are for visibility; bulk actions belong in Contact/Journal management pages. |
+| **Historical Drill-Down Beyond 12 Months** | Diminishing returns. Fundraising coaching focuses on recent trends (last month, last quarter, YTD). |
+| **Notification Center with Email/SMS Alerts** | Alert fatigue is real. In-app alerts panel suffices. Email infrastructure is significant effort for v1.2. |
+| **Org Chart Visualization** | Not relevant to flat SPO structure. Simple team list/table suffices. |
+| **Goal Setting & Tracking UI** | Valuable but scope creep for v1.2. Requires new models (Goal, Milestone), progress calculations, CRUD UI. Defer to v1.3+. |
 
-**Addresses features:**
-- Idempotent upsert with external IDs (table stakes)
-- Duplicate detection via external_id (table stakes)
-- Owner assignment clarity (competitive differentiator)
+### MVP Recommendation (v1.2 Scope)
 
-**Avoids pitfalls:**
-- Pitfall 6: Duplicate external_id handling — pre-check existing IDs, split create/update batches
-- Pitfall 8: Owner assignment confusion — UI warning shows which user will own contacts
+**MUST HAVE (Table Stakes):**
+1. Dashboard Overview with summary cards
+2. Team Activity Table (sortable, filterable)
+3. Stalled Contacts Page (pagination, sorting)
+4. Conversion Funnel Chart (pipeline stage distribution)
+5. User Detail Page (per-missionary stats, journal list)
+6. Time Period Filtering (date range picker)
+7. Role-Based Access (admin/read_only only)
+8. Export to CSV (team activity, stalled contacts, user metrics)
 
-**Research flag:** SKIP — Extends patterns from Phase 1, Contact model already exists.
+**SHOULD HAVE (Differentiators for Portfolio):**
+9. User Drilldown Panel (slide-in sidebar from team table)
+10. Drill-Down Charts (click funnel stage → see contacts in that stage)
+11. Trend Charts (line chart showing "Decisions logged per week" over 12 weeks)
+12. Alerts Panel (rule-based insights like "5 users have >10 stalled contacts")
 
-### Phase 3: Transactions CSV Import (Donation with FK)
-**Rationale:** Transactions depend on both Funds (Phase 1) and Entities (Phase 2) existing. This phase introduces foreign key validation (entity_id and fund_id must exist) and denormalized field updates (Contact.total_given must recalculate after bulk import). Most complex validation logic and highest-volume files.
+**DEFER (Post-MVP):**
+- Comparison Mode (Time Periods) — v1.3 if time-constrained
+- Comparison Mode (Users) — v1.3
+- Activity Heatmap — v1.3 (visually impressive but non-critical)
+- Configurable Alerts — v2.0 (requires user preferences model)
 
-**Delivers:**
-- Fund FK on Donation model
-- Transaction import endpoint with orphan reference detection
-- Foreign key existence validation (`Contact.objects.filter(external_id__in=entity_ids).exists()`)
-- Missing reference report (list entity_ids not found with row numbers)
-- Denormalized field update after bulk import (collect contact IDs, call `update_giving_stats()` once per unique contact)
-- Dependency order guidance in UI ("Import Funds and Entities before Transactions")
+---
 
-**Addresses features:**
-- Multi-file import UI (table stakes)
-- Orphan reference detection (table stakes)
-- Multi-file dependent orchestration (competitive differentiator)
+## Architecture Decisions
 
-**Avoids pitfalls:**
-- Pitfall 1: Denormalized field desynchronization — update Contact.total_given after bulk import
-- Pitfall 2: Foreign key orphan records — validate entity_id/fund_id exist before import
+### Core Pattern: Extend Existing `insights` App
 
-**Research flag:** SKIP — Combines patterns from Phase 1 and Phase 2, no new architecture.
+**Decision:** Add admin analytics endpoints to existing `insights` app rather than creating new `admin_analytics` app.
 
-### Phase 4: Pledges CSV Import (Similar to Transactions)
-**Rationale:** Pledges have identical dependency structure to Transactions (reference Entities + Funds). This phase reuses validation and import patterns from Phase 3 with minimal changes. Smallest scope, validates that patterns established in Phases 1-3 are reusable.
+**Rationale:**
+- DonorCRM already separates `dashboard` (per-user) vs. `insights` (reports/analytics)
+- `insights` app already has admin-only endpoints (ReviewQueueView, TransactionsView) with role-based visibility
+- Adding 5-7 endpoints doesn't justify new app complexity
+- Avoids ambiguity ("Is this insights or admin_analytics?")
 
-**Delivers:**
-- external_id field on Pledge model with unique constraint
-- Fund FK on Pledge model
-- Pledge import endpoint reusing Transaction validation patterns
-- Foreign key existence checks for entity_id and fund_id
-- Idempotent upsert with `update_or_create(external_id=pledge_id)`
+**Pattern match:** Existing `journals/views.py:JournalAnalyticsViewSet.admin_summary` already does cross-user aggregation. Admin dashboard extends this pattern.
 
-**Addresses features:**
-- Completes 4-file SPO import workflow (table stakes)
+### Backend Architecture
 
-**Avoids pitfalls:**
-- Inherits all pitfall prevention from Phase 3 (same validation logic)
+**Component boundaries:**
 
-**Research flag:** SKIP — Exact pattern reuse from Phase 3, mechanical implementation.
+| Component | Location | Responsibility |
+|-----------|----------|----------------|
+| **AdminDashboardView** | `insights/views.py` (NEW) | Aggregate overview metrics across all users |
+| **StalledContactsView** | `insights/views.py` (NEW) | Detect contacts with 14+ days no activity |
+| **UserPerformanceView** | `insights/views.py` (NEW) | Per-user performance metrics and trends |
+| **ConversionFunnelView** | `insights/views.py` (NEW) | Pipeline stage counts for funnel visualization |
+| **TeamActivityView** | `insights/views.py` (NEW) | Recent activity across all users |
+| **admin_analytics_services** | `insights/services.py` (EXTEND) | Business logic for metrics calculation |
 
-### Phase Ordering Rationale
+**Permissions:** Use existing `IsAdmin` and `IsFinanceOrAdmin` permission classes. No new permission classes needed.
 
-- **Dependencies dictate order:** Funds have no dependencies → Entities reference nothing → Transactions reference Entities + Funds → Pledges reference Entities + Funds
-- **Risk mitigation through incremental complexity:** Phase 1 (Funds) establishes patterns with simplest entity, Phase 2 adds upsert logic, Phase 3 adds FK validation + denormalization, Phase 4 validates reusability
-- **Pitfall prevention phases match architecture phases:** Memory/validation patterns (Phase 1) → Owner/duplicate patterns (Phase 2) → FK/denormalization patterns (Phase 3) → Pattern validation (Phase 4)
-- **User workflow alignment:** SPO migration guide recommends same order (Funds → Entities → Transactions → Pledges), UI reflects natural import flow
+### Frontend Architecture
 
-### Research Flags
+**Route structure:** `/admin/analytics/*` (matches existing `/admin/users`, `/admin/imports` pattern)
 
-**Phases with standard patterns (skip research-phase):**
-- **Phase 1 (Funds):** Well-documented Django bulk operations, existing import codebase provides template
-- **Phase 2 (Entities):** Contact model already exists, upsert pattern proven in Phase 1
-- **Phase 3 (Transactions):** Donation model has external_id field, FK validation uses standard Django ORM patterns
-- **Phase 4 (Pledges):** Mechanical replication of Phase 3 patterns
+| Route | Component | Purpose |
+|-------|-----------|---------|
+| `/admin/analytics/dashboard` | `AdminAnalyticsDashboard.tsx` (NEW) | Overview page with all widgets |
+| `/admin/analytics/stalled` | `StalledContacts.tsx` (NEW) | Stalled contacts page with table |
+| `/admin/analytics/users/:id` | `UserPerformance.tsx` (NEW) | User detail page with trends |
 
-**No phases require deeper research.** All patterns are standard Django/React practices with high-confidence documentation sources.
+**Navigation:** Add "Analytics" submenu under Admin nav section (Admin → Users, Import Center, Analytics).
+
+**Component reuse:**
+- Charts: Recharts (FunnelChart, ComposedChart, BarChart, LineChart)
+- Tables: Existing React Table patterns from contact/donation lists
+- Panels: Radix UI Dialog/Sheet (or Vaul for enhanced mobile UX)
+- Data fetching: TanStack Query hooks following existing patterns
+
+### Data Flow Pattern
+
+**Aggregation query pattern:**
+```
+1. Frontend hook calls GET /api/v1/insights/admin-dashboard/
+2. AdminDashboardView.get(request)
+3. Call service functions:
+   - get_summary_cards(user)
+   - get_conversion_funnel(user)
+   - get_team_activity(user, limit=10)
+   - get_donation_trend(user, months=12)
+4. Each service function:
+   - Builds base queryset (all users if admin)
+   - Uses annotate() for aggregation
+   - Uses select_related/prefetch_related to avoid N+1
+   - Returns dict with computed metrics
+5. View combines all results into single response
+6. Frontend renders widgets
+```
+
+**Critical optimization:** All aggregations use Django ORM annotate/aggregate (database-level), NOT Python-level loops. With 200 missionaries, Python loops trigger 600-1400 queries. Database aggregation: 1-20 queries.
+
+### Integration Points with Existing System
+
+**Reuse existing analytics endpoints:**
+- `journals/views.py:JournalAnalyticsViewSet` already provides `decision_trends`, `stage_activity`, `pipeline_breakdown`, `admin_summary`
+- Extend these with optional `user_id` filter for per-user views instead of duplicating logic
+
+**Reuse dashboard service patterns:**
+- `dashboard/services.py` has `get_giving_summary(user, year)`, `get_monthly_gifts(user, months)`
+- Admin analytics uses similar patterns but across ALL users
+- Extract common aggregation logic into shared utility: `scope_queryset_by_role(qs, user, owner_field='owner')`
+
+**Permission pattern:**
+- Use existing `IsAdmin` for admin-only endpoints (stalled contacts, user performance)
+- Use existing `IsFinanceOrAdmin` for read-only analytics (conversion funnel, trends)
+- **Critical fix required:** Existing code mixes `is_staff` vs. `role == 'admin'` (Edge Case Audit 1.5). Standardize on `role == 'admin'` before building dashboard.
+
+### Stalled Contact Detection Algorithm
+
+**Definition:** Contact is "stalled" when:
+- Contact is in a journal (has JournalContact record)
+- Last JournalStageEvent for that contact is >14 days ago
+- OR contact has no stage events at all (added to journal but no activity)
+
+**Implementation pattern:**
+```python
+latest_event = JournalStageEvent.objects.filter(
+    journal_contact__contact=OuterRef('pk')
+).order_by('-created_at').values('created_at')[:1]
+
+stalled = Contact.objects.annotate(
+    last_activity_date=Subquery(latest_event)
+).filter(
+    Q(last_activity_date__lt=date.today() - timedelta(days=14)) |
+    Q(last_activity_date__isnull=True)
+).distinct().select_related('owner').order_by('last_activity_date')
+```
+
+**Index needed:** `models.Index(fields=['journal_contact', '-created_at'])` on JournalStageEvent.
+
+### Conversion Funnel Architecture
+
+**Reuse existing journal pipeline stages** (contact, meet, close, decision, thank, next_steps). No new stages needed.
+
+**Calculation pattern:**
+```python
+latest_stage = JournalStageEvent.objects.filter(
+    journal_contact=OuterRef('pk')
+).order_by('-created_at').values('stage')[:1]
+
+breakdown = JournalContact.objects.annotate(
+    current_stage=Subquery(latest_stage)
+).values('current_stage').annotate(
+    count=Count('id')
+).order_by('current_stage')
+```
+
+**Drill-down:** When user clicks funnel stage, query contacts in that stage with `select_related('contact__owner', 'journal__owner')`, display in modal/panel.
+
+---
+
+## Critical Pitfalls
+
+### Top 5 Risks and Mitigations
+
+#### 1. CRITICAL: N+1 Queries on Cross-User Aggregation
+
+**Risk:** Admin dashboard loads 200 missionaries' data. Each missionary triggers 3-7 queries for related stats. Total: 600-1400 queries for a single page load → 30s timeout.
+
+**Existing vulnerability:** Edge case audit issue 1.1 already documents journal grid doing 7N queries per contact. Cross-user aggregation multiplies this by 200 users.
+
+**Mitigation:**
+```python
+# WRONG: N+1 disaster
+missionaries = User.objects.filter(role='missionary')
+for m in missionaries:
+    total_contacts = m.contacts.count()  # +200 queries
+
+# CORRECT: Database-level aggregation
+missionaries = User.objects.filter(role='missionary').annotate(
+    total_contacts=Count('contacts'),
+    total_donations=Count('contacts__donations'),
+    active_journals=Count('journals', filter=Q(journals__is_active=True))
+)
+```
+
+**Detection:** django-debug-toolbar in development. Log warning if endpoint executes >50 queries. Load test: 200 users should complete in <3s.
+
+**Phase impact:** Must address in Phase 1 (backend foundation). Every aggregation endpoint needs query optimization audit.
+
+#### 2. CRITICAL: Permission Bypass via ListAPIView
+
+**Risk:** Admin analytics list view uses permission class with only `has_object_permission()`. DRF's `ListAPIView` only checks `has_permission()` on list views → permission class is ignored → any authenticated user can access admin-only aggregation endpoints.
+
+**Existing vulnerability:** Edge case audit issue 2.2/4.1 documents this exact bug in `IsContactOwnerOrReadAccess`.
+
+**Mitigation:**
+```python
+# CORRECT: Implement has_permission() in permission class
+class IsAdminOnly(BasePermission):
+    def has_permission(self, request, view):
+        return request.user.role == 'admin'
+
+    def has_object_permission(self, request, view, obj):
+        return request.user.role == 'admin'
+
+# Or add explicit check in view
+class MissionaryStatsView(ListAPIView):
+    def list(self, request, *args, **kwargs):
+        if request.user.role != 'admin':
+            return Response({'error': 'Admin only'}, status=403)
+        return super().list(request, *args, **kwargs)
+```
+
+**Detection:** Test suite: Read-only user calls admin endpoint → expect 403. Code review: All `ListAPIView` with admin data must check role in `list()` or permission class.
+
+**Phase impact:** Phase 1 (permissions). Block all analytics work until this pattern is established.
+
+#### 3. CRITICAL: Race Conditions in Stat Updates
+
+**Risk:** Admin imports 500 donations via CSV. Each save triggers `update_giving_stats()` signal. Multiple signals for same contact run concurrently, each reads current `total_given`, adds new amount, saves → last write wins → intermediate donations lost from total.
+
+**Existing vulnerability:** Edge case audit issues 2.1 (update_giving_stats race) and 3.2 (record_fulfillment race).
+
+**Consequence:** Dashboard shows "Total Given: $45,000" when actual is $48,000. Stats differ between "All Missionaries" view and individual user view.
+
+**Mitigation:**
+```python
+# Disable signals during bulk operations
+def bulk_import_donations(donations_data):
+    post_save.disconnect(update_giving_stats_signal, sender=Donation)
+    try:
+        Donation.objects.bulk_create([...])
+        # Update stats once per affected contact
+        for contact_id in affected_contacts:
+            contact = Contact.objects.select_for_update().get(pk=contact_id)
+            contact.update_giving_stats()
+    finally:
+        post_save.connect(update_giving_stats_signal, sender=Donation)
+
+# Use F() expressions for atomic updates
+Contact.objects.filter(pk=self.pk).update(
+    total_given=F('total_given') + new_amount
+)
+```
+
+**Detection:** Test: Import 100 donations for same contact simultaneously → stats should be exact.
+
+**Phase impact:** Phase 1 (data integrity). Must fix existing race conditions before building dashboard that depends on accurate stats.
+
+#### 4. CRITICAL: Float Arithmetic in Aggregated Money Totals
+
+**Risk:** Dashboard aggregates float `monthly_equivalent` values across 200 missionaries × 50 pledges each → penny discrepancies compound → "Total Monthly Pledges: $49,999.97" when actual is $50,000.00.
+
+**Existing vulnerability:** Edge case audit issue 3.1 documents float multiplication in pledge `monthly_equivalent` property.
+
+**Mitigation:**
+```python
+# Fix existing pledge model property
+@property
+def monthly_equivalent(self):
+    multipliers = {'weekly': Decimal('4.33'), 'monthly': Decimal('1'), ...}
+    return self.amount * multipliers[self.frequency]
+
+# In aggregation, use Decimal throughout
+from django.db.models import Sum, DecimalField
+from django.db.models.functions import Cast
+
+total_monthly = Pledge.objects.filter(status='ACTIVE').annotate(
+    monthly=Cast('amount', DecimalField()) * Case(
+        When(frequency='weekly', then=Decimal('4.33')),
+        When(frequency='monthly', then=Decimal('1')),
+        # ...
+    )
+).aggregate(total=Sum('monthly'))['total']
+```
+
+**Detection:** Test: Aggregate 1000 $33.33 weekly pledges → should equal $144,652.00 exactly. Lint rule: Flag `float()` calls on money fields.
+
+**Phase impact:** Phase 2 (dashboard backend). Fix existing pledge model first, then build aggregations on corrected base.
+
+#### 5. HIGH: Inconsistent Role Checks (is_staff vs. role == 'admin')
+
+**Risk:** Existing code mixes `is_staff` vs. `role == 'admin'` for permission checks. Admin dashboard adds more endpoints with inconsistent checks → finance users see missionary journal data they shouldn't access.
+
+**Existing vulnerability:** Edge case audit issue 1.5 documents `admin_summary` uses `is_staff` while other endpoints use `role == 'admin'`.
+
+**Mitigation:** Standardize all admin analytics endpoints on `role == 'admin'`. Update existing `admin_summary` endpoint to match.
+
+```python
+# Consistent pattern for all admin endpoints
+def admin_analytics(request):
+    if request.user.role != 'admin':
+        return Response({'error': 'Admin only'}, status=403)
+    # Now safe to aggregate across users
+```
+
+**Detection:** API test: Finance user calls `/api/v1/admin/analytics/` → should get 403.
+
+**Phase impact:** Phase 1 (permissions setup). Must establish before any aggregation logic.
+
+### Additional High-Priority Pitfalls
+
+**Unbounded Data in Aggregation Endpoints:** Endpoint returns 50,000 journal events → browser tab freezes. Mitigation: Pagination + date windowing (default last 90 days, 50 items per page, 500 hard limit).
+
+**Query Result Timing Inconsistencies:** Multiple service functions execute separate queries at different times → "Total Donations: 1,247" in header but "Recent Donations" widget shows 1,250. Mitigation: Single query with subqueries or use `@transaction.atomic` for consistent snapshots.
+
+**GET Request with Side Effects:** Admin opens dashboard → all events marked as "seen" → browser crashes before rendering → events permanently lost as "new". Mitigation: Separate POST endpoint for mutations (mark-as-read). GET = read-only always.
+
+**Stale Data Detection Logic Errors:** "Stalled Contacts" shows contacts with no activity in 60 days but includes contacts created 30 days ago (never had activity vs. activity stopped). Mitigation: Explicit null handling with `Q(last_contact_date__lt=cutoff) | Q(last_contact_date__isnull=True)` and filter by `created_at__lt=cutoff`.
+
+---
+
+## Build Order Recommendation
+
+### Phase 1: Backend Foundation (Data Access Layer)
+**Goal:** Core analytics endpoints functional, testable via API.
+
+**Deliverables:**
+1. Extend `insights/services.py` with cross-user aggregation functions (get_admin_dashboard_summary, get_stalled_contacts, get_user_performance, get_conversion_funnel, get_team_activity)
+2. Add views to `insights/views.py` (AdminDashboardView, StalledContactsView, UserPerformanceView)
+3. Extend `insights/urls.py` with new paths
+4. Add indexes to JournalStageEvent model
+5. Write tests for each service function (query count, correct results, permission checks)
+
+**Critical path items:**
+- Fix permission bypass vulnerability (implement has_permission() in all permission classes)
+- Standardize on role=='admin' (not is_staff)
+- Fix existing race conditions in update_giving_stats() and record_fulfillment()
+- Fix float arithmetic in pledge monthly_equivalent
+
+**Dependencies:** None. Builds on existing models and permission classes.
+
+**Validation:** Test via API client (Postman, Swagger UI) before starting frontend.
+
+### Phase 2: Frontend Foundation (Pages & Navigation)
+**Goal:** Pages render with data from API.
+
+**Deliverables:**
+1. Add API client functions in `api/adminAnalytics.ts`
+2. Add React Query hooks in `hooks/useAdminAnalytics.ts`
+3. Create placeholder pages (AdminAnalyticsDashboard, StalledContacts, UserPerformance) with basic data display
+4. Add routes to App.tsx with requiredRole="admin"
+5. Update navigation in AppLayout.tsx to add Analytics submenu under Admin
+
+**Dependencies:** Phase 1 complete (API endpoints working).
+
+**Validation:** Pages load with real data from API. No errors in console.
+
+### Phase 3: Dashboard Core (Overview & Tables)
+**Goal:** Overview page has all widgets functional.
+
+**Deliverables:**
+1. Build chart components (ConversionFunnelChart, TrendChart, TeamActivityTable)
+2. Build layout components (summary cards grid, two-column chart layout, activity table)
+3. Add alerts panel (severity badges, message list)
+4. Wire up all components in AdminAnalyticsDashboard.tsx
+
+**Dependencies:** Phase 2 complete (API hooks working).
+
+**Validation:** Dashboard page matches design, all widgets display data correctly.
+
+### Phase 4: Stalled Contacts & User Detail Pages
+**Goal:** Stalled contacts page with pagination/sorting, user detail page with trends.
+
+**Deliverables:**
+1. Build stalled contacts table (React Table with columns: Contact Name, Owner, Days Since Activity, Current Stage, Actions)
+2. Add pagination controls and sorting
+3. Build user performance page (user header, trend charts, journals table)
+4. Add navigation from team activity table to user detail page
+
+**Dependencies:** Phase 2 complete (API hooks working).
+
+**Validation:** Stalled contacts page loads, pagination works, sorting works. User detail page loads, charts display.
+
+### Phase 5: Visualizations & Interactivity
+**Goal:** Charts functional with drill-down capabilities.
+
+**Deliverables:**
+1. Add click handler to ConversionFunnelChart (capture clicked stage, open UserDrilldownPanel with contact list)
+2. Build UserDrilldownPanel (slide-in sidebar with contact list, close button)
+3. Add drill-down endpoint (extend ConversionFunnelView to accept ?stage=decision)
+4. Wire up panel to funnel chart
+
+**Dependencies:** Phase 3 complete (charts working).
+
+**Validation:** Click funnel stage, panel opens with correct contact list.
+
+### Phase 6: Advanced Features (Time Period Filtering, CSV Export)
+**Goal:** Time filtering and export functionality.
+
+**Deliverables:**
+1. Add date range picker to dashboard (This Month, Last Quarter, Custom Range)
+2. Wire up date filtering to all analytics queries
+3. Add CSV export endpoints mirroring `/api/v1/imports/export/` pattern
+4. Add export buttons to Stalled Contacts and Team Activity pages
+
+**Dependencies:** Phase 3-4 complete (dashboard and detail pages working).
+
+**Validation:** Date filtering updates all widgets. CSV export downloads correct data.
+
+### Phase 7: Polish & Optimization
+**Goal:** Production-ready performance and UX.
+
+**Deliverables:**
+1. Query optimization audit (django-debug-toolbar on each endpoint, verify query count <20)
+2. Loading states (skeleton loaders for charts, table loading spinner)
+3. Error handling (API error toast notifications, empty state messages)
+4. Accessibility (ARIA labels on charts, keyboard navigation for panels)
+5. Responsive design (mobile layout, chart responsiveness)
+
+**Dependencies:** Phases 1-6 complete.
+
+**Validation:** Performance audit passes (query count <20, response time <3s). UX polished (no layout shift, smooth loading states).
+
+### Rationale for This Order
+
+**Backend first:** API endpoints are testable independently. Catches data modeling issues early. Frontend can develop against real API, not mocks.
+
+**Foundation before features:** Routing and navigation working before complex widgets. Validates API integration early. Reduces context switching.
+
+**Dashboard before detail pages:** Dashboard is the landing page, highest priority. Stalled contacts page is simpler (table-only), good second page.
+
+**Drill-down last:** Enhancement, not MVP requirement. Requires both funnel chart and panel working. Can be deferred if timeline tight.
+
+**Polish always last:** Performance optimization requires full feature set. UX polish needs user feedback.
+
+---
+
+## Open Questions
+
+### Unresolved Items Across Research
+
+**Team structure and scoping:**
+- Is a coach assigned to specific missionaries, or can they see all users?
+- If team scoping needed: Add `coach_id` foreign key to User model? Or use existing hierarchy?
+- Current assumption: Admins see all missionaries. No team-level filtering in v1.2.
+
+**Stalled contact threshold:**
+- 14 days is standard in nonprofit CRMs, but is this right for SPO's workflow?
+- Should threshold be configurable per coach? (Defer to v2.0 if yes)
+- Should archived journals be excluded from stalled detection?
+
+**Activity definition for heatmap:**
+- What counts as "activity" for heatmap calendar? (Journal stage events, contact updates, decision logs, task creation?)
+- Should heatmap show per-user activity or aggregate team activity?
+- If aggregate: How to handle overlapping activity (multiple users active same day)?
+
+**Comparison mode implementation:**
+- Time period comparison: Should it be side-by-side charts or overlaid on single chart?
+- User comparison: Top N users or select specific users?
+- If time-constrained: Defer both to v1.3?
+
+**CSV export scope:**
+- Which metrics/columns to include in CSV export?
+- Should export respect date filters?
+- Should export be per-page or full dataset?
+
+**Performance thresholds:**
+- At what user count should caching be added? (Assumption: not needed for 10-20 admins, 200 missionaries)
+- What response time is acceptable for dashboard load? (Target: <2s)
+- Should there be a hard limit on date range queries? (Recommendation: 24 months max)
+
+**Alert panel rules:**
+- What thresholds trigger alerts? (Current: >20% stalled contacts, users with 0 activity in 30 days)
+- Should alerts be dismissible and persist dismissal state?
+- How many alerts to show before "View All" link?
+
+### Research Flags for Roadmapper
+
+**Needs deeper research during planning:**
+- **Phase 5 (Heatmap calendar):** Research canvas-based heatmap libraries for performance with large datasets. react-activity-calendar is SVG-based (may struggle with 73,000 cells for 200 users × 365 days).
+- **Phase 6 (Comparison modes):** UX pattern research for side-by-side vs. overlay comparison charts. No strong recommendation from current research.
+
+**Standard patterns (skip research):**
+- Phase 1-2 (Backend foundation, frontend pages): Well-documented Django aggregation patterns + React Query patterns. No additional research needed.
+- Phase 3-4 (Dashboard core, tables): Recharts documentation + React Table patterns. Standard implementation.
+
+### Gaps to Address During Implementation
+
+**Testing strategy:**
+- Load testing with 200 concurrent users hasn't been scoped
+- Performance benchmarks for aggregation queries need baseline measurements
+- UAT scenarios for coaches need refinement (10 scenarios identified in FEATURES.md but need user validation)
+
+**Accessibility:**
+- ARIA labels for charts mentioned but specific implementation not researched
+- Keyboard navigation patterns for drill-down panels need design
+- Screen reader support for heatmap calendar not addressed
+
+**Mobile experience:**
+- Vaul recommended for mobile panels but mobile layout design not fully scoped
+- Chart responsiveness patterns identified but specific breakpoints not defined
+- Touch gesture support for drill-down not detailed
+
+**Error handling:**
+- Empty state designs mentioned but copy/visuals not defined
+- API error messages need standardization
+- Retry logic for failed aggregation queries not addressed
+
+**Data migration:**
+- No existing admin analytics data to migrate, but indexes need to be added to JournalStageEvent (performance impact during migration on large datasets?)
+
+---
 
 ## Confidence Assessment
 
-| Area | Confidence | Notes |
-|------|------------|-------|
-| Stack | HIGH | Django 4.2 bulk_create with update_conflicts verified in official docs and community guides, react-papaparse has 2+ years production use |
-| Features | HIGH | CRM CSV import best practices validated across Salesforce, HubSpot, Dynamics 365 documentation, table-stakes features consistent across platforms |
-| Architecture | HIGH | Existing DonorCRM codebase already implements foundational patterns (apps/imports with contact/donation import), extension strategy proven |
-| Pitfalls | HIGH | All 8 priority pitfalls documented in Django transaction docs, OWASP CSV injection guides, CRM data import case studies |
+| Area | Confidence | Reasoning |
+|------|------------|-----------|
+| **Stack** | HIGH | Minimal additions (2 libraries), all core capabilities in existing stack. Versions verified via npm. Django ORM capabilities documented in official docs. |
+| **Features** | HIGH | 250+ sources on CRM admin dashboards, fundraising coaching, team performance management. Clear pattern: table stakes vs. differentiators. |
+| **Architecture** | HIGH | Existing codebase patterns well-documented. Django ORM aggregation patterns proven. React component architecture follows established patterns. |
+| **Pitfalls** | HIGH | 20 pitfalls identified, 8 critical/high-priority. Most based on existing edge case audit (known vulnerabilities). Django N+1, permission bypass, race conditions well-documented in official docs + community articles. |
+| **Build Order** | MEDIUM-HIGH | Phase dependencies clear. Backend → frontend → features → polish is standard. Drill-down and heatmap complexity may shift based on implementation challenges. |
 
-**Overall confidence:** HIGH
+### Overall Confidence: HIGH
 
-All recommendations verified with official documentation (Django 4.2 docs, PostgreSQL docs) or multiple authoritative sources (Salesforce/HubSpot import guides). No low-confidence findings or unresolved gaps. Stack requires zero new third-party dependencies beyond react-papaparse for frontend preview.
+**Strengths:**
+- Existing DonorCRM edge case audit provides concrete vulnerability evidence (not theoretical)
+- Minimal stack additions reduce unknowns
+- Architecture extends existing patterns (insights app, admin permissions) rather than introducing new paradigms
+- Critical pitfalls documented in official Django/DRF/TanStack documentation with proven mitigation patterns
 
-### Gaps to Address
+**Gaps:**
+- Limited 2026-specific content for React dashboard patterns (most sources 2025, but patterns stable)
+- No domain-specific research on nonprofit CRM admin dashboards (applied general CRM/sales patterns to fundraising context)
+- Heatmap performance with large datasets is theoretical (no benchmark data for 73,000 cells)
+- Comparison mode UX patterns are generic (no nonprofit CRM-specific examples)
 
-**No critical gaps identified.** All research questions resolved with high confidence.
+**Risk mitigation:**
+- Phase 1 addresses all critical pitfalls (N+1, permissions, race conditions, float arithmetic) before building features
+- Query optimization audit in Phase 7 catches performance issues before production
+- Incremental build order allows validation at each phase (backend testable before frontend, foundation before advanced features)
 
-**Minor validation needs during implementation:**
-- Verify react-papaparse performance with 5K row files (research indicates sufficient, but test with real data)
-- Confirm Contact.update_giving_stats() performance with batch updates (existing method, may need query optimization if slow)
-- Validate SPO CSV column headers match research assumptions (can adjust mapping dictionary if actual format differs)
-
-These are implementation details, not architectural unknowns. Proceed to roadmap creation.
+---
 
 ## Sources
 
-### Primary (HIGH confidence)
+**Stack Research:**
+- [Vaul GitHub Repository](https://github.com/emilkowalski/vaul)
+- [react-activity-calendar npm](https://www.npmjs.com/package/react-activity-calendar)
+- [Recharts FunnelChart API](https://recharts.github.io/en-US/api/FunnelChart/)
+- [Recharts ComposedChart API](https://recharts.github.io/en-US/api/ComposedChart/)
+- [Time-Series Data with Django ORM](https://medium.com/django-unleashed/time-series-data-with-django-orm-monthly-weekly-daily-aggregations-b5ddfa1e194e)
+- [Window Functions in Django ORM](https://medium.com/django-unleashed/unpacking-djangos-window-functions-analytics-made-easy-7e4a2ce1f470)
 
-**Stack & Architecture:**
-- [Django 4.2 Database Transactions](https://docs.djangoproject.com/en/6.0/topics/db/transactions/) — Official Django docs for transaction.atomic()
-- [Django 4.2 bulk_create with update_conflicts](https://gregkaleka.com/blog/bulk-update-or-create-django-41/) — Comprehensive upsert guide
-- [django-import-export 4.4.0](https://pypi.org/project/django-import-export/) — Latest version (Jan 2026)
-- [django-csvimport](https://github.com/edcrewe/django-csvimport) — Row-level error tracking patterns
-- [React CSV Import Libraries](https://flatfile.com/blog/top-7-open-source-csv-import-libraries/) — react-papaparse comparison
+**Features Research:**
+- [CRM dashboards in 2026: essential KPIs and real-world examples](https://monday.com/blog/crm-and-sales/crm-dashboards/)
+- [Essential B2B Sales KPIs & Metrics: Complete Guide for 2026](https://forecastio.ai/blog/sales-kpis)
+- [Nonprofit Analytics & Advanced Reporting](https://www.giveffect.com/nonprofit-analytics)
+- [Conversion Funnel: Ultimate Guide to Stages & Optimization (2026)](https://improvado.io/blog/conversion-funnel)
+- [Period-over-period comparisons for time series | Metabase](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/time-series/time-series-comparisons)
 
-**Features:**
-- [CRM data management guide: 10 best practices for 2026](https://monday.com/blog/crm-and-sales/crm-data-management/)
-- [Data Import Best Practices - Salesforce Trailhead](https://trailhead.salesforce.com/content/learn/modules/lex_implementation_data_management/lex_implementation_data_import)
-- [Set up import files - HubSpot](https://knowledge.hubspot.com/import-and-export/set-up-your-import-file)
-- [How To Design Bulk Import UX - Smart Interface Design Patterns](https://smart-interface-design-patterns.com/articles/bulk-ux/)
-- [Designing An Attractive And Usable Data Importer - Smashing Magazine](https://www.smashingmagazine.com/2020/12/designing-attractive-usable-data-importer-app/)
+**Architecture Research:**
+- [Django Database Access Optimization](https://docs.djangoproject.com/en/6.0/topics/db/optimization/)
+- [Optimizing Django Queries with select_related and prefetch_related](https://medium.com/django-unleashed/optimizing-django-queries-with-select-related-and-prefetch-related-e404af72e0eb)
+- [SaaS Applications with Django: Building Analytics and Dashboards](https://medium.com/@mathur.danduprolu/saas-applications-with-django-building-analytics-and-dashboards-part-5-7-5e5e11ec310a)
+- [Six Principles of Dashboard Information Architecture](https://www.gooddata.com/blog/six-principles-of-dashboard-information-architecture/)
 
-**Pitfalls:**
-- [CSV Injection | OWASP Foundation](https://owasp.org/www-community/attacks/CSV_Injection) — Security vulnerability prevention
-- [6 Common CSV Import Errors and How to Fix Them | Flatfile](https://flatfile.com/blog/top-6-csv-import-errors-and-how-to-fix-them/)
-- [Loading large datasets into a database with Django — Makimo](https://makimo.com/blog/loading-large-datasets-into-a-database-with-django/) — Memory optimization
-- [How to update denormalized fields in other models on save? — Django ORM Cookbook](https://books.agiliq.com/projects/django-orm-cookbook/en/latest/update_denormalized_fields.html)
+**Pitfalls Research:**
+- [Django QuerySet Optimization: Stop Strangling API Performance](https://medium.com/@sizanmahmud08/django-queryset-optimization-stop-stranglingyour-api-performance-6bc368d72512)
+- [Django N+1 Queries Problem](https://www.scoutapm.com/blog/django-and-the-n1-queries-problem)
+- [Django Role-Based Access Control (RBAC)](https://www.permit.io/blog/how-to-implement-role-based-access-control-rbac-into-a-django-application)
+- [React Query Cache Invalidation](https://tanstack.com/query/v5/docs/framework/react/guides/query-invalidation)
+- [Recharts vs Chart.js Performance for Big Data](https://www.oreateai.com/blog/recharts-vs-chartjs-navigating-the-performance-maze-for-big-data-visualizations/4aff3db4085050dc635fd25267846922)
 
-### Secondary (MEDIUM confidence)
-
-- [react-papaparse](https://github.com/Bunlong/react-papaparse) — GitHub repo, package hasn't been updated in 2 years but core Papa Parse library (5.5.3) is maintained
-- [Multi-Entity data file import mapping - Microsoft Learn](https://learn.microsoft.com/en-us/archive/blogs/emeadcrmsupport/multi-entity-data-file-import-mapping) — Dynamics 365 dependent import patterns
-- [Real Python: Asynchronous Tasks with Django and Celery](https://realpython.com/asynchronous-tasks-with-django-and-celery/) — Celery patterns (deferred to post-MVP)
+**Plus:** 200+ additional sources across STACK.md, FEATURES.md, ARCHITECTURE.md, and ADMIN_ANALYTICS_PITFALLS.md research files.
 
 ---
-*Research completed: 2026-01-30*
-*Ready for roadmap: yes*
+
+**Research Complete.** Ready for roadmap creation.
