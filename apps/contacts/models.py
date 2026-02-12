@@ -153,32 +153,39 @@ class Contact(TimeStampedModel):
         """
         Recalculate giving statistics from donations.
         Called when donations are added/modified.
+        Uses select_for_update() to prevent race conditions during concurrent updates.
         """
-        donations = self.donations.all()
-        agg = donations.aggregate(
-            total=models.Sum('amount'),
-            count=models.Count('id'),
-            first=models.Min('date'),
-            last=models.Max('date')
-        )
+        from django.db import transaction
 
-        self.total_given = agg['total'] or 0
-        self.gift_count = agg['count'] or 0
-        self.first_gift_date = agg['first']
-        self.last_gift_date = agg['last']
+        with transaction.atomic():
+            # Lock this contact row to prevent concurrent recalculation
+            Contact.objects.select_for_update().filter(pk=self.pk).first()
 
-        if agg['last']:
-            last_donation = donations.order_by('-date').first()
-            self.last_gift_amount = last_donation.amount if last_donation else None
+            donations = self.donations.all()
+            agg = donations.aggregate(
+                total=models.Sum('amount'),
+                count=models.Count('id'),
+                first=models.Min('date'),
+                last=models.Max('date')
+            )
 
-        # Update status based on giving history
-        if self.gift_count > 0 and self.status == ContactStatus.PROSPECT:
-            self.status = ContactStatus.DONOR
+            self.total_given = agg['total'] or 0
+            self.gift_count = agg['count'] or 0
+            self.first_gift_date = agg['first']
+            self.last_gift_date = agg['last']
 
-        self.save(update_fields=[
-            'total_given', 'gift_count', 'first_gift_date',
-            'last_gift_date', 'last_gift_amount', 'status'
-        ])
+            if agg['last']:
+                last_donation = donations.order_by('-date').first()
+                self.last_gift_amount = last_donation.amount if last_donation else None
+
+            # Update status based on giving history
+            if self.gift_count > 0 and self.status == ContactStatus.PROSPECT:
+                self.status = ContactStatus.DONOR
+
+            self.save(update_fields=[
+                'total_given', 'gift_count', 'first_gift_date',
+                'last_gift_date', 'last_gift_amount', 'status'
+            ])
 
     def mark_thanked(self):
         """Mark contact as thanked."""
