@@ -8,6 +8,7 @@ from rest_framework import permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.core.permissions import IsAdmin, IsFinanceOrAdmin
 from apps.insights.services import (
     get_donations_by_month,
     get_donations_by_year,
@@ -108,12 +109,10 @@ class ReviewQueueView(APIView):
     GET: Get items pending admin review.
     Admin-only endpoint.
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
 
     @extend_schema(tags=['insights'], summary='Get review queue (admin only)')
     def get(self, request):
-        if request.user.role != 'admin':
-            return Response({'detail': 'Admin access required'}, status=403)
         return Response(get_review_queue(request.user))
 
 
@@ -122,7 +121,7 @@ class TransactionsView(APIView):
     GET: Get full transaction ledger.
     Admin/finance-only endpoint.
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsFinanceOrAdmin]
 
     @extend_schema(
         tags=['insights'],
@@ -136,9 +135,6 @@ class TransactionsView(APIView):
         ]
     )
     def get(self, request):
-        if request.user.role not in ['admin', 'finance']:
-            return Response({'detail': 'Admin or finance access required'}, status=403)
-
         limit = int(request.query_params.get('limit', 100))
         offset = int(request.query_params.get('offset', 0))
         contact_id = request.query_params.get('contact_id')

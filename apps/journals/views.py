@@ -13,7 +13,7 @@ from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
-from apps.core.permissions import IsOwnerOrAdmin
+from apps.core.permissions import IsAdmin, IsOwnerOrAdmin
 from apps.journals.models import (
     Decision,
     DecisionHistory,
@@ -529,16 +529,10 @@ class JournalAnalyticsViewSet(viewsets.ViewSet):
             for step in steps
         ])
 
-    @action(detail=False, methods=['get'], url_path='admin-summary')
+    @action(detail=False, methods=['get'], url_path='admin-summary',
+            permission_classes=[permissions.IsAuthenticated, IsAdmin])
     def admin_summary(self, request):
         """Cross-missionary aggregation data (admin only)."""
-        # Check if user is staff
-        if not request.user.is_staff:
-            return Response(
-                {'detail': 'Admin access required'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
         # Aggregate across ALL journals (no owner filter)
         total_journals = Journal.objects.filter(is_archived=False).count()
         total_decisions = Decision.objects.count()

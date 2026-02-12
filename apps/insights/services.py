@@ -232,11 +232,8 @@ def get_follow_ups(user, limit=50):
 def get_review_queue(user):
     """
     Get items pending admin review.
-    Admin-only endpoint - returns empty if not admin.
+    Admin-only endpoint.
     """
-    if user.role != 'admin':
-        return {'items': [], 'total_count': 0}
-
     # Placeholder for review queue items
     # In a real implementation, this would query items flagged for review
     # For now, we'll return contacts needing thank-you as a proxy
@@ -265,9 +262,6 @@ def get_transactions(user, limit=100, offset=0, contact_id=None, date_from=None,
     Get full transaction ledger (donations).
     Admin/finance-only endpoint.
     """
-    if user.role not in ['admin', 'finance']:
-        return {'transactions': [], 'total_count': 0}
-
     donations = Donation.objects.all().select_related('contact', 'pledge')
 
     # Apply filters
