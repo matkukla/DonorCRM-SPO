@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-02-12)
 
 Milestone: v1.2 Admin Analytics Dashboard
 Phase: 13 of 19 (Backend Foundation & Security)
-Plan: 1 of 3 complete
+Plan: 2 of 3 complete
 Status: In progress
-Last activity: 2026-02-12 - Completed 13-01-PLAN.md (Backend security fixes)
+Last activity: 2026-02-12 - Completed 13-02-PLAN.md (Admin analytics endpoints)
 
-Progress: [█░░░░░░░░░░░░░░░░░░░] 5% (v1.2 - 1/TBD plans complete)
+Progress: [██░░░░░░░░░░░░░░░░░░] 10% (v1.2 - 2/TBD plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 40 (24 v1.0 + 15 v1.1 + 1 v1.2)
+- Total plans completed: 41 (24 v1.0 + 15 v1.1 + 2 v1.2)
 - Average duration: 3.5 minutes
-- Total execution time: 2.5 hours
+- Total execution time: 2.6 hours
 
 **By Milestone:**
 
@@ -30,7 +30,7 @@ Progress: [█░░░░░░░░░░░░░░░░░░░] 5% (v1.
 |-----------|-------|-------|----------|
 | v1.0 (Phases 1-6) | 24 | 1.4 hours | 2.8 min |
 | v1.1 (Phases 7-12) | 15 | 76m 43s | 5.1 min |
-| v1.2 (Phases 13-19) | 1 | 3m | 3.0 min |
+| v1.2 (Phases 13-19) | 2 | 8m | 4.0 min |
 
 *Updated after each plan completion*
 
@@ -54,6 +54,9 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - F() expressions for atomic numeric updates (13-01)
 - select_for_update() for row-level locking during recalculation (13-01)
 - DRF permission classes over manual role checks (13-01)
+- Database-level aggregation using annotate/aggregate/Subquery (13-02)
+- Admin service functions without user parameter for cross-user aggregation (13-02)
+- Subquery annotation pattern for correlated queries (13-02)
 
 ### Pending Todos
 
@@ -64,9 +67,9 @@ None yet.
 **v1.2 Critical Path Items (Phase 13):**
 - ✅ Standardize role checks (inconsistent use of is_staff vs role=='admin') - FIXED in 13-01
 - ✅ Fix race conditions in update_giving_stats() and record_fulfillment() - FIXED in 13-01
+- ✅ Establish query optimization patterns (<20 queries per endpoint) - DONE in 13-02
 - Fix float arithmetic in pledge monthly_equivalent property (follow-up)
-- Establish query optimization patterns (<20 queries per endpoint) - 13-02
-- Fix existing permission bypass vulnerability (ListAPIView only checks has_object_permission) - 13-02
+- Fix existing permission bypass vulnerability (ListAPIView only checks has_object_permission) - 13-03 or later
 
 **Research Findings:**
 - Edge Case Audit identified 16 issues; several directly impact admin analytics
@@ -75,10 +78,10 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-12T23:44:14Z
-Stopped at: Completed 13-01-PLAN.md
+Last session: 2026-02-12T23:53:22Z
+Stopped at: Completed 13-02-PLAN.md
 Resume file: None
 
 ---
 
-*Last updated: 2026-02-12 (Completed 13-01: Backend security fixes)*
+*Last updated: 2026-02-12 (Completed 13-02: Admin analytics endpoints)*
