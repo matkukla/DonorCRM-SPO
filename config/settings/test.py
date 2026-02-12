@@ -11,12 +11,12 @@ PASSWORD_HASHERS = [
 ]
 
 # Use in-memory SQLite for faster tests (optional - can use PostgreSQL)
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': ':memory:',
-#     }
-# }
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': ':memory:',
+    }
+}
 
 # Disable migrations for faster test runs
 class DisableMigrations:
