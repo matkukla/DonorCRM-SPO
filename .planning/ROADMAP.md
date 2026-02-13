@@ -102,8 +102,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 14-01-PLAN.md -- Fix N+1 in user performance, add conversion_rate, add serializers, safe query param validation
-- [ ] 14-02-PLAN.md -- Fix days_stalled for zero-activity contacts, add sorting to stalled contacts, add tests
+- [x] 14-01-PLAN.md -- Fix N+1 in user performance, add conversion_rate, add serializers, safe query param validation
+- [x] 14-02-PLAN.md -- Fix days_stalled for zero-activity contacts, add sorting to stalled contacts, add tests
 
 ---
 
@@ -234,7 +234,7 @@ Phases execute in numeric order: 13 → 14 → 15 → 16 → 17 → 18 → 19
 | 11. Pledges CSV Import | v1.1 | 2/2 | Complete | 2026-02-03 |
 | 12. Import Center UI | v1.1 | 5/5 | Complete | 2026-02-04 |
 | 13. Backend Foundation & Security | v1.2 | 2/2 | Complete | 2026-02-12 |
-| 14. Core Analytics Endpoints | v1.2 | 0/TBD | Not started | - |
+| 14. Core Analytics Endpoints | v1.2 | 2/2 | Complete | 2026-02-13 |
 | 15. Frontend Foundation & Routing | v1.2 | 0/TBD | Not started | - |
 | 16. Dashboard Overview Page | v1.2 | 0/TBD | Not started | - |
 | 17. Stalled Contacts & User Detail Pages | v1.2 | 0/TBD | Not started | - |
@@ -243,4 +243,4 @@ Phases execute in numeric order: 13 → 14 → 15 → 16 → 17 → 18 → 19
 
 ---
 
-*Last updated: 2026-02-12 (Phase 13 complete - 2/2 plans executed, verified)*
+*Last updated: 2026-02-13 (Phase 14 complete - 2/2 plans executed, verified)*
