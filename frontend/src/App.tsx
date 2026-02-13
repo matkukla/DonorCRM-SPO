@@ -28,6 +28,9 @@ import Settings from "@/pages/settings/Settings"
 import AdminUsers from "@/pages/admin/AdminUsers"
 import ImportCenter from "@/pages/admin/ImportCenter"
 import ImportExport from "@/pages/imports/ImportExport"
+import AdminAnalyticsDashboard from "@/pages/admin/analytics/AdminAnalyticsDashboard"
+import StalledContacts from "@/pages/admin/analytics/StalledContacts"
+import UserDetail from "@/pages/admin/analytics/UserDetail"
 import JournalDetail from "@/pages/journals/JournalDetail"
 import JournalList from "@/pages/journals/JournalList"
 import {
@@ -100,6 +103,10 @@ function App() {
             <Route path="/settings" element={<ProtectedPage><Settings /></ProtectedPage>} />
             <Route path="/admin" element={<ProtectedPage requiredRole="admin"><AdminUsers /></ProtectedPage>} />
             <Route path="/admin/imports" element={<ProtectedPage requiredRole="admin"><ImportCenter /></ProtectedPage>} />
+            <Route path="/admin/analytics" element={<Navigate to="/admin/analytics/dashboard" replace />} />
+            <Route path="/admin/analytics/dashboard" element={<ProtectedPage requiredRole="admin"><AdminAnalyticsDashboard /></ProtectedPage>} />
+            <Route path="/admin/analytics/stalled" element={<ProtectedPage requiredRole="admin"><StalledContacts /></ProtectedPage>} />
+            <Route path="/admin/analytics/users/:id" element={<ProtectedPage requiredRole="admin"><UserDetail /></ProtectedPage>} />
             <Route path="/import-export" element={<ProtectedPage><ImportExport /></ProtectedPage>} />
 
             {/* Catch-all redirect */}
