@@ -23,6 +23,22 @@ from apps.insights.services import (
     get_conversion_funnel,
     get_team_activity,
 )
+from apps.insights.serializers import (
+    DashboardOverviewSerializer,
+    StalledContactsResponseSerializer,
+    UserPerformanceResponseSerializer,
+    ConversionFunnelResponseSerializer,
+    TeamActivityResponseSerializer,
+)
+
+
+def get_safe_int_param(request, key, default, min_val=1, max_val=1000):
+    """Safely parse integer query parameter with bounds."""
+    try:
+        value = int(request.query_params.get(key, default))
+    except (ValueError, TypeError):
+        return default
+    return max(min_val, min(value, max_val))
 
 
 class DonationsByMonthView(APIView):
@@ -175,10 +191,13 @@ class DashboardOverviewView(APIView):
     @extend_schema(
         tags=['insights'],
         summary='Get dashboard overview (admin only)',
-        description='Cross-user aggregation for admin dashboard: total contacts, active journals, stalled count, conversion rate, donation summary.'
+        description='Cross-user aggregation for admin dashboard: total contacts, active journals, stalled count, conversion rate, donation summary.',
+        responses={200: DashboardOverviewSerializer}
     )
     def get(self, request):
-        return Response(get_dashboard_overview())
+        data = get_dashboard_overview()
+        serializer = DashboardOverviewSerializer(data)
+        return Response(serializer.data)
 
 
 class StalledContactsView(APIView):
@@ -194,12 +213,15 @@ class StalledContactsView(APIView):
         parameters=[
             OpenApiParameter(name='limit', description='Max results (default: 50)', type=int),
             OpenApiParameter(name='offset', description='Offset for pagination (default: 0)', type=int),
-        ]
+        ],
+        responses={200: StalledContactsResponseSerializer}
     )
     def get(self, request):
-        limit = int(request.query_params.get('limit', 50))
-        offset = int(request.query_params.get('offset', 0))
-        return Response(get_stalled_contacts(limit=limit, offset=offset))
+        limit = get_safe_int_param(request, 'limit', default=50, min_val=1, max_val=100)
+        offset = get_safe_int_param(request, 'offset', default=0, min_val=0, max_val=100000)
+        data = get_stalled_contacts(limit=limit, offset=offset)
+        serializer = StalledContactsResponseSerializer(data)
+        return Response(serializer.data)
 
 
 class UserPerformanceView(APIView):
@@ -212,10 +234,13 @@ class UserPerformanceView(APIView):
     @extend_schema(
         tags=['insights'],
         summary='Get user performance metrics (admin only)',
-        description='Per-missionary: total contacts, active journals, decisions logged, donation totals.'
+        description='Per-missionary: total contacts, active journals, decisions logged, donation totals.',
+        responses={200: UserPerformanceResponseSerializer}
     )
     def get(self, request):
-        return Response(get_user_performance())
+        data = get_user_performance()
+        serializer = UserPerformanceResponseSerializer(data)
+        return Response(serializer.data)
 
 
 class ConversionFunnelView(APIView):
@@ -228,10 +253,13 @@ class ConversionFunnelView(APIView):
     @extend_schema(
         tags=['insights'],
         summary='Get conversion funnel (admin only)',
-        description='Pipeline stage distribution with counts and percentages using Journal 6-stage pipeline.'
+        description='Pipeline stage distribution with counts and percentages using Journal 6-stage pipeline.',
+        responses={200: ConversionFunnelResponseSerializer}
     )
     def get(self, request):
-        return Response(get_conversion_funnel())
+        data = get_conversion_funnel()
+        serializer = ConversionFunnelResponseSerializer(data)
+        return Response(serializer.data)
 
 
 class TeamActivityView(APIView):
@@ -246,8 +274,11 @@ class TeamActivityView(APIView):
         summary='Get team activity (admin only)',
         parameters=[
             OpenApiParameter(name='limit', description='Max results (default: 50)', type=int),
-        ]
+        ],
+        responses={200: TeamActivityResponseSerializer}
     )
     def get(self, request):
-        limit = int(request.query_params.get('limit', 50))
-        return Response(get_team_activity(limit=limit))
+        limit = get_safe_int_param(request, 'limit', default=50, min_val=1, max_val=200)
+        data = get_team_activity(limit=limit)
+        serializer = TeamActivityResponseSerializer(data)
+        return Response(serializer.data)
