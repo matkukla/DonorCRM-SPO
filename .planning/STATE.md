@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-02-12)
 
 Milestone: v1.2 Admin Analytics Dashboard
 Phase: 15 of 19 (Frontend Foundation & Routing)
-Plan: Not started
-Status: Phase 14 complete, Phase 15 ready for planning
-Last activity: 2026-02-13 - Completed Phase 14 (Core Analytics Endpoints)
+Plan: 1 of ~4
+Status: In progress
+Last activity: 2026-02-13 - Completed 15-01-PLAN.md (Data Layer & Routes)
 
-Progress: [███░░░░░░░░░░░░░░░░░] 29% (v1.2 - 4/~14 plans complete)
+Progress: [████░░░░░░░░░░░░░░░░] 36% (v1.2 - 5/~14 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 43 (24 v1.0 + 15 v1.1 + 4 v1.2)
-- Average duration: 3.5 minutes
-- Total execution time: 2.8 hours
+- Total plans completed: 44 (24 v1.0 + 15 v1.1 + 5 v1.2)
+- Average duration: 3.4 minutes
+- Total execution time: 2.9 hours
 
 **By Milestone:**
 
@@ -30,7 +30,7 @@ Progress: [███░░░░░░░░░░░░░░░░░] 29% (v1
 |-----------|-------|-------|----------|
 | v1.0 (Phases 1-6) | 24 | 1.4 hours | 2.8 min |
 | v1.1 (Phases 7-12) | 15 | 76m 43s | 5.1 min |
-| v1.2 (Phases 13-19) | 4 | 16m 56s | 4.2 min |
+| v1.2 (Phases 13-19) | 5 | 23m | 4.6 min |
 
 *Updated after each plan completion*
 
@@ -60,6 +60,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - DRF serializers for read-only response formatting and validation (14-01)
 - Safe query parameter parsing with bounded defaults (14-01, 14-02)
 - Expression-based sorting with Coalesce for null-safe ordering (14-02)
+- Hierarchical React Query keys for admin analytics: ['insights', 'admin', 'endpoint-name'] (15-01)
+- Stub page components for incremental feature development (15-01)
 
 ### Pending Todos
 
@@ -92,9 +94,9 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Phase 14 complete - Phase 15 ready for planning
+Stopped at: Completed 15-01-PLAN.md
 Resume file: None
 
 ---
 
-*Last updated: 2026-02-13 (Phase 14 complete, verified)*
+*Last updated: 2026-02-13 (Phase 15 Plan 01 complete)*
