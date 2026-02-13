@@ -5,7 +5,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from dateutil.relativedelta import relativedelta
-from django.db.models import Count, Sum, Q, OuterRef, Subquery, Value, CharField
+from django.db.models import Count, Sum, Q, OuterRef, Subquery, Value, CharField, DecimalField, IntegerField
 from django.db.models.functions import TruncMonth, TruncYear, TruncDate, Coalesce
 from django.utils import timezone
 
@@ -406,6 +406,33 @@ def get_user_performance():
     Per-missionary performance metrics aggregated at database level.
     Target: <10 queries.
     """
+    # Subquery for donation totals per user
+    donation_totals = Donation.objects.filter(
+        contact__owner=OuterRef('pk')
+    ).values('contact__owner').annotate(
+        total=Sum('amount')
+    ).values('total')
+
+    # Subquery for donation counts per user
+    donation_counts = Donation.objects.filter(
+        contact__owner=OuterRef('pk')
+    ).values('contact__owner').annotate(
+        count=Count('id')
+    ).values('count')
+
+    # Subquery for decision counts per user
+    decision_counts = Decision.objects.filter(
+        journal_contact__journal__owner=OuterRef('pk')
+    ).values('journal_contact__journal__owner').annotate(
+        count=Count('id')
+    ).values('count')
+
+    # Subquery for count of distinct contacts with decisions per user
+    # Count the number of distinct contact IDs that have decisions for this user's journals
+    contacts_with_decisions_subquery = Decision.objects.filter(
+        journal_contact__journal__owner=OuterRef('pk')
+    ).values('journal_contact__contact').distinct()
+
     users = User.objects.filter(
         role__in=['staff', 'admin']
     ).annotate(
@@ -415,22 +442,30 @@ def get_user_performance():
             filter=Q(journals__is_archived=False),
             distinct=True
         ),
+        total_donation_amount=Coalesce(
+            Subquery(donation_totals, output_field=DecimalField()),
+            Decimal('0')
+        ),
+        donation_count=Coalesce(
+            Subquery(donation_counts, output_field=IntegerField()),
+            0
+        ),
+        decisions_logged=Coalesce(
+            Subquery(decision_counts, output_field=IntegerField()),
+            0
+        ),
+        _contacts_with_decisions=Count(
+            'journals__journal_contacts__decisions__journal_contact__contact',
+            distinct=True
+        ),
     ).order_by('-total_contacts')
 
     result = []
     for user in users:
-        # Per-user donation stats
-        donation_stats = Donation.objects.filter(
-            contact__owner=user
-        ).aggregate(
-            total_amount=Sum('amount'),
-            total_count=Count('id')
+        conversion_rate = round(
+            (user._contacts_with_decisions / user.total_contacts * 100) if user.total_contacts > 0 else 0,
+            1
         )
-
-        # Per-user decision count
-        decision_count = Decision.objects.filter(
-            journal_contact__journal__owner=user
-        ).count()
 
         result.append({
             'id': str(user.id),
@@ -439,9 +474,10 @@ def get_user_performance():
             'role': user.role,
             'total_contacts': user.total_contacts,
             'active_journals': user.active_journals,
-            'decisions_logged': decision_count,
-            'total_donations': float(donation_stats['total_amount'] or 0),
-            'donation_count': donation_stats['total_count'] or 0,
+            'decisions_logged': user.decisions_logged,
+            'conversion_rate': conversion_rate,
+            'total_donations': float(user.total_donation_amount),
+            'donation_count': user.donation_count,
         })
 
     return {'users': result}
