@@ -354,21 +354,33 @@ def get_dashboard_overview():
     }
 
 
-def get_stalled_contacts(limit=50, offset=0):
+def get_stalled_contacts(limit=50, offset=0, sort_by='days_stalled', sort_dir='desc'):
     """
     Find contacts with last journal activity >14 days ago.
     Uses Subquery annotation per requirement API-04.
     Returns paginated results.
     Target: <5 queries.
+
+    Args:
+        limit: Max results to return
+        offset: Pagination offset
+        sort_by: Field to sort by (days_stalled, full_name, owner_name, last_activity_date)
+        sort_dir: Sort direction (asc or desc)
     """
     last_activity = JournalStageEvent.objects.filter(
         journal_contact__contact=OuterRef('pk')
     ).order_by('-created_at').values('created_at')[:1]
 
+    # Subquery for earliest journal membership date (for zero-activity contacts)
+    journal_membership_date = JournalContact.objects.filter(
+        contact=OuterRef('pk')
+    ).order_by('created_at').values('created_at')[:1]
+
     cutoff_date = timezone.now() - timedelta(days=14)
 
     base_qs = Contact.objects.annotate(
-        last_activity_date=Subquery(last_activity)
+        last_activity_date=Subquery(last_activity),
+        journal_membership_date=Subquery(journal_membership_date),
     ).filter(
         Q(last_activity_date__lt=cutoff_date) | Q(last_activity_date__isnull=True),
         journal_memberships__isnull=False
@@ -376,10 +388,33 @@ def get_stalled_contacts(limit=50, offset=0):
 
     total_count = base_qs.count()
 
-    stalled = base_qs.order_by(
-        # Nulls last for isnull contacts, then oldest activity first
-        Coalesce('last_activity_date', Value('1970-01-01')).asc()
-    )[offset:offset + limit]
+    # Define allowed sort fields (security: prevent arbitrary field ordering)
+    SORT_FIELDS = {
+        'days_stalled': Coalesce('last_activity_date', 'journal_membership_date', Value('1970-01-01')),
+        'full_name': 'first_name',
+        'owner_name': 'owner__first_name',
+        'last_activity_date': Coalesce('last_activity_date', Value('1970-01-01')),
+    }
+
+    # Apply sorting
+    sort_field = SORT_FIELDS.get(sort_by, SORT_FIELDS['days_stalled'])
+
+    # For days_stalled: older date = more stalled, so desc on days_stalled = asc on date
+    # For date fields, we need to invert the direction
+    if sort_by in ('days_stalled', 'last_activity_date'):
+        # Invert direction for date-based sorting
+        effective_dir = 'asc' if sort_dir == 'desc' else 'desc'
+    else:
+        effective_dir = sort_dir
+
+    if hasattr(sort_field, 'asc'):
+        # Expression object (Coalesce)
+        ordering = sort_field.asc() if effective_dir == 'asc' else sort_field.desc()
+    else:
+        # String field name
+        ordering = sort_field if effective_dir == 'asc' else f'-{sort_field}'
+
+    stalled = base_qs.order_by(ordering)[offset:offset + limit]
 
     return {
         'stalled_contacts': [
@@ -390,7 +425,13 @@ def get_stalled_contacts(limit=50, offset=0):
                 'owner_email': c.owner.email,
                 'owner_name': f'{c.owner.first_name} {c.owner.last_name}'.strip(),
                 'last_activity_date': c.last_activity_date.isoformat() if c.last_activity_date else None,
-                'days_stalled': (timezone.now() - c.last_activity_date).days if c.last_activity_date else None,
+                'days_stalled': (
+                    (timezone.now() - c.last_activity_date).days
+                    if c.last_activity_date
+                    else (timezone.now() - c.journal_membership_date).days
+                    if c.journal_membership_date
+                    else None
+                ),
                 'status': c.status,
             }
             for c in stalled
