@@ -99,11 +99,11 @@ Plans:
   4. ConversionFunnelView returns pipeline stage distribution with counts and percentages across all missionaries
   5. TeamActivityView returns recent activity across all users (journal updates, new contacts, decisions logged)
 
-**Plans:** TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 14-01-PLAN.md
-- [ ] 14-02-PLAN.md
+- [ ] 14-01-PLAN.md -- Fix N+1 in user performance, add conversion_rate, add serializers, safe query param validation
+- [ ] 14-02-PLAN.md -- Fix days_stalled for zero-activity contacts, add sorting to stalled contacts, add tests
 
 ---
 
