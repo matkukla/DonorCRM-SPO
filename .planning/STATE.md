@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-02-12)
 
 Milestone: v1.2 Admin Analytics Dashboard
 Phase: 14 of 19 (Core Analytics Endpoints)
-Plan: 01 of 1 (complete)
-Status: Phase 14 complete - Core Analytics Endpoints optimized
-Last activity: 2026-02-13 - Completed 14-01-PLAN.md (Query Optimization & Serializers)
+Plan: 02 of 2 (complete)
+Status: Phase 14 complete - Core Analytics Endpoints enhanced with sorting and tests
+Last activity: 2026-02-13 - Completed 14-02-PLAN.md (Core Analytics Enhancements)
 
-Progress: [███░░░░░░░░░░░░░░░░░] 21% (v1.2 - 3/~14 plans complete)
+Progress: [███░░░░░░░░░░░░░░░░░] 22% (v1.2 - 4/~14 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 42 (24 v1.0 + 15 v1.1 + 3 v1.2)
-- Average duration: 3.4 minutes
-- Total execution time: 2.7 hours
+- Total plans completed: 43 (24 v1.0 + 15 v1.1 + 4 v1.2)
+- Average duration: 3.5 minutes
+- Total execution time: 2.8 hours
 
 **By Milestone:**
 
@@ -30,7 +30,7 @@ Progress: [███░░░░░░░░░░░░░░░░░] 21% (v1
 |-----------|-------|-------|----------|
 | v1.0 (Phases 1-6) | 24 | 1.4 hours | 2.8 min |
 | v1.1 (Phases 7-12) | 15 | 76m 43s | 5.1 min |
-| v1.2 (Phases 13-19) | 3 | 12m 47s | 4.3 min |
+| v1.2 (Phases 13-19) | 4 | 16m 56s | 4.2 min |
 
 *Updated after each plan completion*
 
@@ -56,9 +56,10 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - DRF permission classes over manual role checks (13-01)
 - Database-level aggregation using annotate/aggregate/Subquery (13-02)
 - Admin service functions without user parameter for cross-user aggregation (13-02)
-- Subquery annotation pattern for correlated queries (13-02, 14-01)
+- Subquery annotation pattern for correlated queries (13-02, 14-01, 14-02)
 - DRF serializers for read-only response formatting and validation (14-01)
-- Safe query parameter parsing with bounded defaults (14-01)
+- Safe query parameter parsing with bounded defaults (14-01, 14-02)
+- Expression-based sorting with Coalesce for null-safe ordering (14-02)
 
 ### Pending Todos
 
@@ -76,6 +77,9 @@ None yet.
 - ✅ Fix N+1 query problem in get_user_performance() - FIXED in 14-01
 - ✅ Add missing conversion_rate field to user metrics - DONE in 14-01
 - ✅ Add DRF serializers for consistent response formatting - DONE in 14-01
+- ✅ Fix days_stalled for zero-activity contacts - DONE in 14-02
+- ✅ Add sorting support to stalled contacts endpoint - DONE in 14-02
+- ✅ Comprehensive test coverage for Phase 14 enhancements - DONE in 14-02
 
 **Remaining:**
 - Fix float arithmetic in pledge monthly_equivalent property (follow-up)
@@ -88,9 +92,9 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed 14-01-PLAN.md - Phase 14 complete
+Stopped at: Completed 14-02-PLAN.md - Phase 14 complete (enhancements)
 Resume file: None
 
 ---
 
-*Last updated: 2026-02-13 (Phase 14 complete)*
+*Last updated: 2026-02-13 (Phase 14 complete - enhanced)*
