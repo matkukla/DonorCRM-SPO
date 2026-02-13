@@ -201,3 +201,138 @@ export async function getTransactions(params?: {
   })
   return response.data
 }
+
+// Admin Analytics Types and Functions
+
+export interface DonationSummary {
+  total_amount: number
+  total_count: number
+}
+
+export interface DashboardOverviewResponse {
+  total_contacts: number
+  active_journals: number
+  stalled_contacts: number
+  conversion_rate: number
+  donations_12m: DonationSummary
+}
+
+export interface StalledContactItem {
+  id: string
+  full_name: string
+  email: string | null
+  owner_email: string
+  owner_name: string
+  last_activity_date: string | null
+  days_stalled: number | null
+  status: string
+}
+
+export interface StalledContactsParams {
+  limit?: number
+  offset?: number
+  sort_by?: string
+  sort_dir?: string
+}
+
+export interface StalledContactsResponse {
+  stalled_contacts: StalledContactItem[]
+  total_count: number
+  limit: number
+  offset: number
+}
+
+export interface UserPerformanceItem {
+  id: string
+  email: string
+  name: string
+  role: string
+  total_contacts: number
+  active_journals: number
+  decisions_logged: number
+  conversion_rate: number
+  total_donations: number
+  donation_count: number
+}
+
+export interface UserPerformanceResponse {
+  users: UserPerformanceItem[]
+}
+
+export interface FunnelStage {
+  stage: string | null
+  label: string
+  count: number
+  percentage: number
+}
+
+export interface ConversionFunnelResponse {
+  funnel: FunnelStage[]
+  total_contacts_in_pipeline: number
+}
+
+export interface TeamActivityItem {
+  id: string
+  user_email: string
+  user_name: string
+  event_type: string
+  title: string
+  message: string
+  severity: string
+  contact_id: string | null
+  contact_name: string | null
+  created_at: string
+}
+
+export interface TeamActivityParams {
+  limit?: number
+}
+
+export interface TeamActivityResponse {
+  activities: TeamActivityItem[]
+  total_count: number
+}
+
+/**
+ * Get admin dashboard overview metrics
+ */
+export async function getAdminDashboardOverview(): Promise<DashboardOverviewResponse> {
+  const response = await apiClient.get<DashboardOverviewResponse>("/insights/admin/dashboard-overview/")
+  return response.data
+}
+
+/**
+ * Get admin stalled contacts list
+ */
+export async function getAdminStalledContacts(params?: StalledContactsParams): Promise<StalledContactsResponse> {
+  const response = await apiClient.get<StalledContactsResponse>("/insights/admin/stalled-contacts/", {
+    params,
+  })
+  return response.data
+}
+
+/**
+ * Get admin user performance metrics
+ */
+export async function getAdminUserPerformance(): Promise<UserPerformanceResponse> {
+  const response = await apiClient.get<UserPerformanceResponse>("/insights/admin/user-performance/")
+  return response.data
+}
+
+/**
+ * Get admin conversion funnel visualization data
+ */
+export async function getAdminConversionFunnel(): Promise<ConversionFunnelResponse> {
+  const response = await apiClient.get<ConversionFunnelResponse>("/insights/admin/conversion-funnel/")
+  return response.data
+}
+
+/**
+ * Get admin team activity feed
+ */
+export async function getAdminTeamActivity(params?: TeamActivityParams): Promise<TeamActivityResponse> {
+  const response = await apiClient.get<TeamActivityResponse>("/insights/admin/team-activity/", {
+    params,
+  })
+  return response.data
+}
