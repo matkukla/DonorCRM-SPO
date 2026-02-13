@@ -11,16 +11,16 @@ See: .planning/PROJECT.md (updated 2026-02-12)
 
 Milestone: v1.2 Admin Analytics Dashboard
 Phase: 15 of 19 (Frontend Foundation & Routing)
-Plan: 1 of ~4
+Plan: 2 of ~4
 Status: In progress
-Last activity: 2026-02-13 - Completed 15-01-PLAN.md (Data Layer & Routes)
+Last activity: 2026-02-13 - Completed 15-02-PLAN.md (Admin Analytics Pages)
 
-Progress: [████░░░░░░░░░░░░░░░░] 36% (v1.2 - 5/~14 plans complete)
+Progress: [████░░░░░░░░░░░░░░░░] 38% (v1.2 - 6/~14 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 44 (24 v1.0 + 15 v1.1 + 5 v1.2)
+- Total plans completed: 45 (24 v1.0 + 15 v1.1 + 6 v1.2)
 - Average duration: 3.4 minutes
 - Total execution time: 2.9 hours
 
@@ -30,7 +30,7 @@ Progress: [████░░░░░░░░░░░░░░░░] 36% (v1
 |-----------|-------|-------|----------|
 | v1.0 (Phases 1-6) | 24 | 1.4 hours | 2.8 min |
 | v1.1 (Phases 7-12) | 15 | 76m 43s | 5.1 min |
-| v1.2 (Phases 13-19) | 5 | 23m | 4.6 min |
+| v1.2 (Phases 13-19) | 6 | 26m | 4.3 min |
 
 *Updated after each plan completion*
 
@@ -62,6 +62,9 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - Expression-based sorting with Coalesce for null-safe ordering (14-02)
 - Hierarchical React Query keys for admin analytics: ['insights', 'admin', 'endpoint-name'] (15-01)
 - Stub page components for incremental feature development (15-01)
+- Admin sub-navigation pattern (Users, Import Center, Analytics) with NavLink active state (15-02)
+- Loading/error state handling pattern for admin analytics pages (15-02)
+- Currency formatting (cents to dollars) and date formatting for admin analytics (15-02)
 
 ### Pending Todos
 
@@ -94,9 +97,9 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed 15-01-PLAN.md
+Stopped at: Completed 15-02-PLAN.md
 Resume file: None
 
 ---
 
-*Last updated: 2026-02-13 (Phase 15 Plan 01 complete)*
+*Last updated: 2026-02-13 (Phase 15 Plan 02 complete)*
