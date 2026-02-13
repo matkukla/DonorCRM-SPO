@@ -105,7 +105,7 @@
 | COMP-01 | Phase 19 | Pending |
 | COMP-02 | Phase 19 | Pending |
 | COMP-03 | Phase 19 | Pending |
-| API-01 | Phase 13, Phase 14 | Pending |
+| API-01 | Phase 13, Phase 14 | Complete |
 | API-02 | Phase 13 | Complete |
 | API-03 | Phase 13 | Complete |
 | API-04 | Phase 13 | Complete |
