@@ -7,6 +7,13 @@ import {
   getMonthlyCommitments,
   getReviewQueue,
   getTransactions,
+  getAdminDashboardOverview,
+  getAdminStalledContacts,
+  getAdminUserPerformance,
+  getAdminConversionFunnel,
+  getAdminTeamActivity,
+  type StalledContactsParams,
+  type TeamActivityParams,
 } from "@/api/insights"
 
 const STALE_TIME = 5 * 60 * 1000 // 5 minutes
@@ -69,6 +76,48 @@ export function useTransactions(params?: {
   return useQuery({
     queryKey: ["insights", "transactions", params],
     queryFn: () => getTransactions(params),
+    staleTime: STALE_TIME,
+  })
+}
+
+// Admin Analytics Hooks
+
+export function useAdminDashboardOverview() {
+  return useQuery({
+    queryKey: ["insights", "admin", "dashboard"],
+    queryFn: getAdminDashboardOverview,
+    staleTime: STALE_TIME,
+  })
+}
+
+export function useAdminStalledContacts(params?: StalledContactsParams) {
+  return useQuery({
+    queryKey: ["insights", "admin", "stalled-contacts", params],
+    queryFn: () => getAdminStalledContacts(params),
+    staleTime: STALE_TIME,
+  })
+}
+
+export function useAdminUserPerformance() {
+  return useQuery({
+    queryKey: ["insights", "admin", "user-performance"],
+    queryFn: getAdminUserPerformance,
+    staleTime: STALE_TIME,
+  })
+}
+
+export function useAdminConversionFunnel() {
+  return useQuery({
+    queryKey: ["insights", "admin", "conversion-funnel"],
+    queryFn: getAdminConversionFunnel,
+    staleTime: STALE_TIME,
+  })
+}
+
+export function useAdminTeamActivity(params?: TeamActivityParams) {
+  return useQuery({
+    queryKey: ["insights", "admin", "team-activity", params],
+    queryFn: () => getAdminTeamActivity(params),
     staleTime: STALE_TIME,
   })
 }
