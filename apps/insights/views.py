@@ -203,7 +203,7 @@ class DashboardOverviewView(APIView):
 class StalledContactsView(APIView):
     """
     GET: Get contacts with last journal activity >14 days ago.
-    Admin-only endpoint with pagination.
+    Admin-only endpoint with pagination and sorting.
     """
     permission_classes = [permissions.IsAuthenticated, IsAdmin]
 
@@ -213,13 +213,26 @@ class StalledContactsView(APIView):
         parameters=[
             OpenApiParameter(name='limit', description='Max results (default: 50)', type=int),
             OpenApiParameter(name='offset', description='Offset for pagination (default: 0)', type=int),
+            OpenApiParameter(name='sort_by', description='Sort field (days_stalled, full_name, owner_name, last_activity_date)', type=str),
+            OpenApiParameter(name='sort_dir', description='Sort direction (asc, desc)', type=str),
         ],
         responses={200: StalledContactsResponseSerializer}
     )
     def get(self, request):
         limit = get_safe_int_param(request, 'limit', default=50, min_val=1, max_val=100)
         offset = get_safe_int_param(request, 'offset', default=0, min_val=0, max_val=100000)
-        data = get_stalled_contacts(limit=limit, offset=offset)
+
+        # Parse and validate sort parameters
+        sort_by = request.query_params.get('sort_by', 'days_stalled')
+        sort_dir = request.query_params.get('sort_dir', 'desc')
+
+        # Validate sort_by against allowed values
+        if sort_by not in ('days_stalled', 'full_name', 'owner_name', 'last_activity_date'):
+            sort_by = 'days_stalled'
+        if sort_dir not in ('asc', 'desc'):
+            sort_dir = 'desc'
+
+        data = get_stalled_contacts(limit=limit, offset=offset, sort_by=sort_by, sort_dir=sort_dir)
         serializer = StalledContactsResponseSerializer(data)
         return Response(serializer.data)
 
