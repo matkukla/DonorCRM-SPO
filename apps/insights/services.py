@@ -680,3 +680,126 @@ def get_team_trends(weeks=12):
         'trends': result,
         'weeks': weeks,
     }
+
+
+def get_user_trends(user_id, weeks=12):
+    """
+    Get user activity trends over past N weeks for a specific user.
+    Returns weekly aggregated metrics: decisions logged, donations received, stage progressions.
+    User-scoped aggregation (filters by user_id) — admin sees data for one missionary.
+    Target: <10 queries.
+
+    Args:
+        user_id: User ID to filter by
+        weeks: Number of weeks to return (default 12)
+
+    Returns:
+        Dictionary with 'trends' list and 'weeks' count
+    """
+    # Calculate date range
+    today = timezone.now().date()
+    # Get Monday of current week
+    days_since_monday = today.weekday()
+    current_week_monday = today - timedelta(days=days_since_monday)
+    start_date = current_week_monday - timedelta(weeks=weeks - 1)
+
+    # Query decisions by week for this user
+    decisions_by_week = Decision.objects.filter(
+        journal_contact__journal__owner_id=user_id,
+        created_at__gte=start_date
+    ).annotate(
+        week=TruncWeek('created_at')
+    ).values('week').annotate(
+        count=Count('id')
+    ).order_by('week')
+
+    # Query donations by week for this user
+    donations_by_week = Donation.objects.filter(
+        contact__owner_id=user_id,
+        date__gte=start_date
+    ).annotate(
+        week=TruncWeek('date')
+    ).values('week').annotate(
+        count=Count('id')
+    ).order_by('week')
+
+    # Query stage progressions by week for this user
+    stage_events_by_week = JournalStageEvent.objects.filter(
+        journal_contact__journal__owner_id=user_id,
+        created_at__gte=start_date
+    ).annotate(
+        week=TruncWeek('created_at')
+    ).values('week').annotate(
+        count=Count('id')
+    ).order_by('week')
+
+    # Build maps for quick lookup
+    # Note: TruncWeek on DateTimeField returns datetime, on DateField returns date
+    def normalize_to_date(dt):
+        """Convert datetime or date to date object."""
+        return dt.date() if hasattr(dt, 'date') and callable(dt.date) else dt
+
+    decisions_map = {normalize_to_date(item['week']): item['count'] for item in decisions_by_week}
+    donations_map = {normalize_to_date(item['week']): item['count'] for item in donations_by_week}
+    stage_events_map = {normalize_to_date(item['week']): item['count'] for item in stage_events_by_week}
+
+    # Build complete week list (fill gaps with 0)
+    result = []
+    for week_num in range(weeks):
+        week_start = start_date + timedelta(weeks=week_num)
+        # Format label (e.g., "Feb 3")
+        week_label = week_start.strftime('%b %-d')
+
+        result.append({
+            'week_start': week_start.isoformat(),
+            'week_label': week_label,
+            'decisions_logged': decisions_map.get(week_start, 0),
+            'donations_received': donations_map.get(week_start, 0),
+            'stage_progressions': stage_events_map.get(week_start, 0),
+        })
+
+    return {
+        'trends': result,
+        'weeks': weeks,
+    }
+
+
+def get_user_journals(user_id):
+    """
+    Get journals for a specific user with progress indicators.
+    Returns journal list with member count, decision count, and active member count.
+    User-scoped (filters by user_id) — admin sees data for one missionary.
+    Target: <5 queries.
+
+    Args:
+        user_id: User ID to filter by
+
+    Returns:
+        Dictionary with 'journals' list
+    """
+    journals = Journal.objects.filter(
+        owner_id=user_id,
+        is_archived=False
+    ).annotate(
+        member_count=Count('journal_contacts', distinct=True),
+        decision_count=Count('journal_contacts__decisions', distinct=True),
+        active_member_count=Count(
+            'journal_contacts',
+            filter=Q(journal_contacts__decisions__isnull=False),
+            distinct=True
+        )
+    ).order_by('-created_at')
+
+    return {
+        'journals': [
+            {
+                'id': str(j.id),
+                'name': j.name,
+                'member_count': j.member_count,
+                'decision_count': j.decision_count,
+                'active_member_count': j.active_member_count,
+                'created_at': j.created_at.isoformat(),
+            }
+            for j in journals
+        ]
+    }

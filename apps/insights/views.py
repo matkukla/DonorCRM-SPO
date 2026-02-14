@@ -23,6 +23,8 @@ from apps.insights.services import (
     get_conversion_funnel,
     get_team_activity,
     get_team_trends,
+    get_user_trends,
+    get_user_journals,
 )
 from apps.insights.serializers import (
     DashboardOverviewSerializer,
@@ -31,6 +33,8 @@ from apps.insights.serializers import (
     ConversionFunnelResponseSerializer,
     TeamActivityResponseSerializer,
     TeamTrendsResponseSerializer,
+    UserTrendsResponseSerializer,
+    UserJournalsResponseSerializer,
 )
 
 
@@ -319,4 +323,58 @@ class TeamTrendsView(APIView):
         weeks = get_safe_int_param(request, 'weeks', default=12, min_val=1, max_val=52)
         data = get_team_trends(weeks=weeks)
         serializer = TeamTrendsResponseSerializer(data)
+        return Response(serializer.data)
+
+
+class UserTrendsView(APIView):
+    """
+    GET: User activity trends over past N weeks for a specific user.
+    Admin-only endpoint.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    @extend_schema(
+        tags=['insights'],
+        summary='Get user trends (admin only)',
+        description='Weekly aggregated metrics for a specific user: decisions logged, donations received, stage progressions.',
+        parameters=[
+            OpenApiParameter(name='user_id', description='User ID (required)', type=str, required=True),
+            OpenApiParameter(name='weeks', description='Number of weeks (default: 12, min: 1, max: 52)', type=int),
+        ],
+        responses={200: UserTrendsResponseSerializer}
+    )
+    def get(self, request):
+        user_id = request.query_params.get('user_id')
+        if not user_id:
+            return Response({'error': 'user_id parameter is required'}, status=400)
+
+        weeks = get_safe_int_param(request, 'weeks', default=12, min_val=1, max_val=52)
+        data = get_user_trends(user_id=user_id, weeks=weeks)
+        serializer = UserTrendsResponseSerializer(data)
+        return Response(serializer.data)
+
+
+class UserJournalsView(APIView):
+    """
+    GET: User journals with progress indicators for a specific user.
+    Admin-only endpoint.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    @extend_schema(
+        tags=['insights'],
+        summary='Get user journals (admin only)',
+        description='Journal list with member count, decision count, and active member count for a specific user.',
+        parameters=[
+            OpenApiParameter(name='user_id', description='User ID (required)', type=str, required=True),
+        ],
+        responses={200: UserJournalsResponseSerializer}
+    )
+    def get(self, request):
+        user_id = request.query_params.get('user_id')
+        if not user_id:
+            return Response({'error': 'user_id parameter is required'}, status=400)
+
+        data = get_user_journals(user_id=user_id)
+        serializer = UserJournalsResponseSerializer(data)
         return Response(serializer.data)

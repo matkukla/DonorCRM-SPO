@@ -17,6 +17,8 @@ from apps.insights.views import (
     TeamTrendsView,
     TransactionsView,
     UserPerformanceView,
+    UserTrendsView,
+    UserJournalsView,
 )
 
 app_name = 'insights'
@@ -37,4 +39,6 @@ urlpatterns = [
     path('admin/conversion-funnel/', ConversionFunnelView.as_view(), name='admin-conversion-funnel'),
     path('admin/team-activity/', TeamActivityView.as_view(), name='admin-team-activity'),
     path('admin/team-trends/', TeamTrendsView.as_view(), name='admin-team-trends'),
+    path('admin/user-trends/', UserTrendsView.as_view(), name='admin-user-trends'),
+    path('admin/user-journals/', UserJournalsView.as_view(), name='admin-user-journals'),
 ]
