@@ -11,9 +11,9 @@ See: .planning/PROJECT.md (updated 2026-02-12)
 
 Milestone: v1.2 Admin Analytics Dashboard
 Phase: 16 of 19 (Dashboard Overview Page)
-Plan: 16-02 complete
+Plan: 16-01 complete
 Status: Phase 16 in progress
-Last activity: 2026-02-14 - Completed 16-02-PLAN.md (Dashboard Widgets)
+Last activity: 2026-02-14 - Completed 16-01-PLAN.md (Team Trends Endpoint)
 
 Progress: [████░░░░░░░░░░░░░░░░] 50% (v1.2 - 7/~14 plans complete)
 
@@ -21,8 +21,8 @@ Progress: [████░░░░░░░░░░░░░░░░] 50% (v1
 
 **Velocity:**
 - Total plans completed: 46 (24 v1.0 + 15 v1.1 + 7 v1.2)
-- Average duration: 3.3 minutes
-- Total execution time: 2.9 hours
+- Average duration: 3.4 minutes
+- Total execution time: 3.0 hours
 
 **By Milestone:**
 
@@ -30,7 +30,7 @@ Progress: [████░░░░░░░░░░░░░░░░] 50% (v1
 |-----------|-------|-------|----------|
 | v1.0 (Phases 1-6) | 24 | 1.4 hours | 2.8 min |
 | v1.1 (Phases 7-12) | 15 | 76m 43s | 5.1 min |
-| v1.2 (Phases 13-19) | 7 | 28m | 4.0 min |
+| v1.2 (Phases 13-19) | 7 | 33m 33s | 4.8 min |
 
 *Updated after each plan completion*
 
@@ -68,6 +68,9 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - Client-side table sorting with TanStack Table getSortedRowModel for small datasets (16-02)
 - Extracted alert computation functions for separation of concerns and testability (16-02)
 - Severity-based color styling (red/amber/blue) for coaching alerts (16-02)
+- TruncWeek aggregation for weekly time-series data (16-01)
+- Normalize datetime/date objects from TruncWeek for consistent mapping (16-01)
+- Zero-filled week list pattern for complete time series (16-01)
 
 ### Pending Todos
 
@@ -100,9 +103,9 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Completed 16-02-PLAN.md (Dashboard Widgets)
+Stopped at: Completed 16-01-PLAN.md (Team Trends Endpoint)
 Resume file: None
 
 ---
 
-*Last updated: 2026-02-14 (16-02 complete)*
+*Last updated: 2026-02-14 (16-01 complete)*
