@@ -336,3 +336,30 @@ export async function getAdminTeamActivity(params?: TeamActivityParams): Promise
   })
   return response.data
 }
+
+export interface TrendDataPoint {
+  week_start: string
+  week_label: string
+  decisions_logged: number
+  donations_received: number
+  stage_progressions: number
+}
+
+export interface TeamTrendsResponse {
+  trends: TrendDataPoint[]
+  weeks: number
+}
+
+export interface TeamTrendsParams {
+  weeks?: number
+}
+
+/**
+ * Get admin team trends (weekly metrics over time)
+ */
+export async function getAdminTeamTrends(params?: TeamTrendsParams): Promise<TeamTrendsResponse> {
+  const response = await apiClient.get<TeamTrendsResponse>("/insights/admin/team-trends/", {
+    params,
+  })
+  return response.data
+}
