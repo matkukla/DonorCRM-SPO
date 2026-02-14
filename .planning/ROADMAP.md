@@ -188,11 +188,11 @@ Plans:
   4. Drill-down panel displays without navigating away from current page
   5. Drill-down contact list loads data from backend endpoint filtered by stage parameter
 
-**Plans:** TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 18-01-PLAN.md
-- [ ] 18-02-PLAN.md
+- [ ] 18-01-PLAN.md -- Funnel stage drill-down with backend endpoint and slide-in contact list panel
+- [ ] 18-02-PLAN.md -- User Drilldown Panel with key stats, journals, and Quick View button in Team Activity Table
 
 ---
 
@@ -238,9 +238,9 @@ Phases execute in numeric order: 13 -> 14 -> 15 -> 16 -> 17 -> 18 -> 19
 | 15. Frontend Foundation & Routing | v1.2 | 2/2 | Complete | 2026-02-13 |
 | 16. Dashboard Overview Page | v1.2 | 3/3 | Complete | 2026-02-14 |
 | 17. Stalled Contacts & User Detail Pages | v1.2 | 2/2 | Complete | 2026-02-14 |
-| 18. Interactive Visualizations & Drill-Down | v1.2 | 0/TBD | Not started | - |
+| 18. Interactive Visualizations & Drill-Down | v1.2 | 0/2 | Not started | - |
 | 19. Advanced Features & Export | v1.2 | 0/TBD | Not started | - |
 
 ---
 
-*Last updated: 2026-02-14 (Phase 17 complete - 2 plans executed, verified)*
+*Last updated: 2026-02-14 (Phase 18 planned - 2 plans in 2 waves)*
