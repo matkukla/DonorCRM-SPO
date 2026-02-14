@@ -97,3 +97,31 @@ class TrendDataPointSerializer(serializers.Serializer):
 class TeamTrendsResponseSerializer(serializers.Serializer):
     trends = TrendDataPointSerializer(many=True)
     weeks = serializers.IntegerField()
+
+
+# User Detail Serializers (Phase 17)
+
+class UserTrendDataPointSerializer(serializers.Serializer):
+    week_start = serializers.CharField()
+    week_label = serializers.CharField()
+    decisions_logged = serializers.IntegerField()
+    donations_received = serializers.IntegerField()
+    stage_progressions = serializers.IntegerField()
+
+
+class UserTrendsResponseSerializer(serializers.Serializer):
+    trends = UserTrendDataPointSerializer(many=True)
+    weeks = serializers.IntegerField()
+
+
+class UserJournalItemSerializer(serializers.Serializer):
+    id = serializers.CharField()
+    name = serializers.CharField()
+    member_count = serializers.IntegerField()
+    decision_count = serializers.IntegerField()
+    active_member_count = serializers.IntegerField()
+    created_at = serializers.CharField()
+
+
+class UserJournalsResponseSerializer(serializers.Serializer):
+    journals = UserJournalItemSerializer(many=True)
