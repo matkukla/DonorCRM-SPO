@@ -363,3 +363,38 @@ export async function getAdminTeamTrends(params?: TeamTrendsParams): Promise<Tea
   })
   return response.data
 }
+
+// User Detail Types (Phase 17)
+
+export interface UserTrendsParams {
+  user_id: string
+  weeks?: number
+}
+
+export interface UserTrendsResponse {
+  trends: TrendDataPoint[]  // Reuse existing TrendDataPoint interface
+  weeks: number
+}
+
+export interface UserJournalItem {
+  id: string
+  name: string
+  member_count: number
+  decision_count: number
+  active_member_count: number
+  created_at: string
+}
+
+export interface UserJournalsResponse {
+  journals: UserJournalItem[]
+}
+
+export async function getAdminUserTrends(params: UserTrendsParams): Promise<UserTrendsResponse> {
+  const response = await apiClient.get<UserTrendsResponse>("/insights/admin/user-trends/", { params })
+  return response.data
+}
+
+export async function getAdminUserJournals(params: { user_id: string }): Promise<UserJournalsResponse> {
+  const response = await apiClient.get<UserJournalsResponse>("/insights/admin/user-journals/", { params })
+  return response.data
+}

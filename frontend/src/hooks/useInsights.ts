@@ -13,9 +13,12 @@ import {
   getAdminConversionFunnel,
   getAdminTeamActivity,
   getAdminTeamTrends,
+  getAdminUserTrends,
+  getAdminUserJournals,
   type StalledContactsParams,
   type TeamActivityParams,
   type TeamTrendsParams,
+  type UserTrendsParams,
 } from "@/api/insights"
 
 const STALE_TIME = 5 * 60 * 1000 // 5 minutes
@@ -129,5 +132,23 @@ export function useAdminTeamTrends(params?: TeamTrendsParams) {
     queryKey: ["insights", "admin", "team-trends", params],
     queryFn: () => getAdminTeamTrends(params),
     staleTime: STALE_TIME,
+  })
+}
+
+export function useAdminUserTrends(userId: string, weeks = 12) {
+  return useQuery({
+    queryKey: ["insights", "admin", "user-trends", userId, weeks],
+    queryFn: () => getAdminUserTrends({ user_id: userId, weeks }),
+    staleTime: STALE_TIME,
+    enabled: !!userId,
+  })
+}
+
+export function useAdminUserJournals(userId: string) {
+  return useQuery({
+    queryKey: ["insights", "admin", "user-journals", userId],
+    queryFn: () => getAdminUserJournals({ user_id: userId }),
+    staleTime: STALE_TIME,
+    enabled: !!userId,
   })
 }
