@@ -143,12 +143,12 @@ Plans:
   4. Dashboard Overview displays Trend Charts (line chart) showing team metrics over past 12 weeks
   5. Dashboard Overview displays Conversion Funnel Chart showing pipeline stage distribution with counts and percentages
 
-**Plans:** TBD
+**Plans:** 3 plans
 
 Plans:
-- [ ] 16-01-PLAN.md
-- [ ] 16-02-PLAN.md
-- [ ] 16-03-PLAN.md
+- [ ] 16-01-PLAN.md -- Backend team trends endpoint + frontend types and React Query hook
+- [ ] 16-02-PLAN.md -- Team Activity Table and Alerts Panel widget components
+- [ ] 16-03-PLAN.md -- Trend Charts, Conversion Funnel Chart, and dashboard page assembly
 
 ---
 
@@ -236,11 +236,11 @@ Phases execute in numeric order: 13 -> 14 -> 15 -> 16 -> 17 -> 18 -> 19
 | 13. Backend Foundation & Security | v1.2 | 2/2 | Complete | 2026-02-12 |
 | 14. Core Analytics Endpoints | v1.2 | 2/2 | Complete | 2026-02-13 |
 | 15. Frontend Foundation & Routing | v1.2 | 2/2 | Complete | 2026-02-13 |
-| 16. Dashboard Overview Page | v1.2 | 0/TBD | Not started | - |
+| 16. Dashboard Overview Page | v1.2 | 0/3 | Not started | - |
 | 17. Stalled Contacts & User Detail Pages | v1.2 | 0/TBD | Not started | - |
 | 18. Interactive Visualizations & Drill-Down | v1.2 | 0/TBD | Not started | - |
 | 19. Advanced Features & Export | v1.2 | 0/TBD | Not started | - |
 
 ---
 
-*Last updated: 2026-02-13 (Phase 15 complete - 2/2 plans executed, verified)*
+*Last updated: 2026-02-14 (Phase 16 planned - 3 plans in 2 waves)*
