@@ -11,17 +11,17 @@ See: .planning/PROJECT.md (updated 2026-02-12)
 
 Milestone: v1.2 Admin Analytics Dashboard
 Phase: 16 of 19 (Dashboard Overview Page)
-Plan: Not started
-Status: Phase 15 complete, Phase 16 ready for planning
-Last activity: 2026-02-13 - Completed Phase 15 (Frontend Foundation & Routing)
+Plan: 16-02 complete
+Status: Phase 16 in progress
+Last activity: 2026-02-14 - Completed 16-02-PLAN.md (Dashboard Widgets)
 
-Progress: [████░░░░░░░░░░░░░░░░] 43% (v1.2 - 6/~14 plans complete)
+Progress: [████░░░░░░░░░░░░░░░░] 50% (v1.2 - 7/~14 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 45 (24 v1.0 + 15 v1.1 + 6 v1.2)
-- Average duration: 3.4 minutes
+- Total plans completed: 46 (24 v1.0 + 15 v1.1 + 7 v1.2)
+- Average duration: 3.3 minutes
 - Total execution time: 2.9 hours
 
 **By Milestone:**
@@ -30,7 +30,7 @@ Progress: [████░░░░░░░░░░░░░░░░] 43% (v1
 |-----------|-------|-------|----------|
 | v1.0 (Phases 1-6) | 24 | 1.4 hours | 2.8 min |
 | v1.1 (Phases 7-12) | 15 | 76m 43s | 5.1 min |
-| v1.2 (Phases 13-19) | 6 | 26m | 4.3 min |
+| v1.2 (Phases 13-19) | 7 | 28m | 4.0 min |
 
 *Updated after each plan completion*
 
@@ -65,6 +65,9 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - Admin sub-navigation pattern (Users, Import Center, Analytics) with NavLink active state (15-02)
 - Loading/error state handling pattern for admin analytics pages (15-02)
 - Currency formatting (cents to dollars) and date formatting for admin analytics (15-02)
+- Client-side table sorting with TanStack Table getSortedRowModel for small datasets (16-02)
+- Extracted alert computation functions for separation of concerns and testability (16-02)
+- Severity-based color styling (red/amber/blue) for coaching alerts (16-02)
 
 ### Pending Todos
 
@@ -96,10 +99,10 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-13
-Stopped at: Phase 15 complete - Phase 16 ready for planning
+Last session: 2026-02-14
+Stopped at: Completed 16-02-PLAN.md (Dashboard Widgets)
 Resume file: None
 
 ---
 
-*Last updated: 2026-02-13 (Phase 15 complete, verified)*
+*Last updated: 2026-02-14 (16-02 complete)*
