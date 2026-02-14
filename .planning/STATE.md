@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-12)
 
 **Core value:** Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems.
-**Current focus:** v1.2 Admin Analytics Dashboard - Phase 16 Dashboard Overview Page
+**Current focus:** v1.2 Admin Analytics Dashboard - Phase 17 Stalled Contacts & User Detail Pages
 
 ## Current Position
 
 Milestone: v1.2 Admin Analytics Dashboard
 Phase: 17 of 19 (Stalled Contacts & User Detail Pages)
-Plan: Not started
-Status: Phase 16 complete, Phase 17 ready for planning
-Last activity: 2026-02-14 - Completed Phase 16 (Dashboard Overview Page)
+Plan: 01 of 02
+Status: In progress
+Last activity: 2026-02-14 - Completed 17-01-PLAN.md (Stalled Contacts Pagination & Sorting)
 
-Progress: [██████░░░░░░░░░░░░░░] 64% (v1.2 - 9/~14 plans complete)
+Progress: [███████░░░░░░░░░░░░░] 67% (v1.2 - 10/~14 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 48 (24 v1.0 + 15 v1.1 + 9 v1.2)
-- Average duration: 3.4 minutes
+- Total plans completed: 49 (24 v1.0 + 15 v1.1 + 10 v1.2)
+- Average duration: 3.3 minutes
 - Total execution time: 3.1 hours
 
 **By Milestone:**
@@ -30,7 +30,7 @@ Progress: [██████░░░░░░░░░░░░░░] 64% (v1
 |-----------|-------|-------|----------|
 | v1.0 (Phases 1-6) | 24 | 1.4 hours | 2.8 min |
 | v1.1 (Phases 7-12) | 15 | 76m 43s | 5.1 min |
-| v1.2 (Phases 13-19) | 9 | 46m 7s | 5.1 min |
+| v1.2 (Phases 13-19) | 10 | 47m 37s | 4.8 min |
 
 *Updated after each plan completion*
 
@@ -75,6 +75,10 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - Multi-line LineChart with isAnimationActive={false} to avoid dashboard sluggishness (16-03)
 - Independent widget loading pattern: each widget manages its own data fetching (16-03)
 - Responsive dashboard grid: lg:grid-cols-2 for charts, lg:grid-cols-3 with col-span for activity+alerts (16-03)
+- Server-side pagination: pageIndex state, computed offset, pageCount from total_count (17-01)
+- Sort toggle logic: same column toggles direction, new column resets to desc (17-01)
+- Pagination reset on sort change: setPageIndex(0) in handleSortChange (17-01)
+- Loading state differentiation: isLoading for initial load, isFetching for control disabling (17-01)
 
 ### Pending Todos
 
@@ -107,9 +111,9 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Phase 16 complete - Phase 17 ready for planning
+Stopped at: Completed 17-01-PLAN.md (Stalled Contacts Pagination & Sorting)
 Resume file: None
 
 ---
 
-*Last updated: 2026-02-14 (Phase 16 complete, verified)*
+*Last updated: 2026-02-14 (17-01 complete)*
