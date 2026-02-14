@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-02-12)
 
 Milestone: v1.2 Admin Analytics Dashboard
 Phase: 17 of 19 (Stalled Contacts & User Detail Pages)
-Plan: 01 of 02
-Status: In progress
-Last activity: 2026-02-14 - Completed 17-01-PLAN.md (Stalled Contacts Pagination & Sorting)
+Plan: 02 of 02
+Status: Phase complete
+Last activity: 2026-02-14 - Completed 17-02-PLAN.md (User Detail Endpoints & Page)
 
-Progress: [███████░░░░░░░░░░░░░] 67% (v1.2 - 10/~14 plans complete)
+Progress: [███████░░░░░░░░░░░░░] 70% (v1.2 - 11/~14 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 49 (24 v1.0 + 15 v1.1 + 10 v1.2)
+- Total plans completed: 50 (24 v1.0 + 15 v1.1 + 11 v1.2)
 - Average duration: 3.3 minutes
-- Total execution time: 3.1 hours
+- Total execution time: 3.2 hours
 
 **By Milestone:**
 
@@ -30,7 +30,7 @@ Progress: [███████░░░░░░░░░░░░░] 67% (v1
 |-----------|-------|-------|----------|
 | v1.0 (Phases 1-6) | 24 | 1.4 hours | 2.8 min |
 | v1.1 (Phases 7-12) | 15 | 76m 43s | 5.1 min |
-| v1.2 (Phases 13-19) | 10 | 47m 37s | 4.8 min |
+| v1.2 (Phases 13-19) | 11 | 52m 44s | 4.8 min |
 
 *Updated after each plan completion*
 
@@ -79,6 +79,9 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - Sort toggle logic: same column toggles direction, new column resets to desc (17-01)
 - Pagination reset on sort change: setPageIndex(0) in handleSortChange (17-01)
 - Loading state differentiation: isLoading for initial load, isFetching for control disabling (17-01)
+- User-scoped service functions follow team endpoint patterns with user_id parameter (17-02)
+- Detail pages load data independently (metrics, trends, journals) for better UX (17-02)
+- Progress indicators show ratio format (X/Y active) instead of percentage (17-02)
 
 ### Pending Todos
 
@@ -111,9 +114,9 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Completed 17-01-PLAN.md (Stalled Contacts Pagination & Sorting)
+Stopped at: Completed 17-02-PLAN.md (User Detail Endpoints & Page) - Phase 17 complete
 Resume file: None
 
 ---
 
-*Last updated: 2026-02-14 (17-01 complete)*
+*Last updated: 2026-02-14 (Phase 17 complete, verified)*
