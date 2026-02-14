@@ -6,7 +6,7 @@ from decimal import Decimal
 
 from dateutil.relativedelta import relativedelta
 from django.db.models import Count, Sum, Q, OuterRef, Subquery, Value, CharField, DecimalField, IntegerField
-from django.db.models.functions import TruncMonth, TruncYear, TruncDate, Coalesce
+from django.db.models.functions import TruncMonth, TruncYear, TruncDate, TruncWeek, Coalesce
 from django.utils import timezone
 
 from apps.contacts.models import Contact, ContactStatus
@@ -601,4 +601,82 @@ def get_team_activity(limit=50):
             for e in recent_events
         ],
         'total_count': Event.objects.count(),
+    }
+
+
+def get_team_trends(weeks=12):
+    """
+    Get team activity trends over past N weeks.
+    Returns weekly aggregated metrics: decisions logged, donations received, stage progressions.
+    Cross-user aggregation (no user parameter) — admin sees all data.
+    Target: <10 queries.
+
+    Args:
+        weeks: Number of weeks to return (default 12)
+
+    Returns:
+        Dictionary with 'trends' list and 'weeks' count
+    """
+    # Calculate date range
+    today = timezone.now().date()
+    # Get Monday of current week
+    days_since_monday = today.weekday()
+    current_week_monday = today - timedelta(days=days_since_monday)
+    start_date = current_week_monday - timedelta(weeks=weeks - 1)
+
+    # Query decisions by week
+    decisions_by_week = Decision.objects.filter(
+        created_at__gte=start_date
+    ).annotate(
+        week=TruncWeek('created_at')
+    ).values('week').annotate(
+        count=Count('id')
+    ).order_by('week')
+
+    # Query donations by week
+    donations_by_week = Donation.objects.filter(
+        date__gte=start_date
+    ).annotate(
+        week=TruncWeek('date')
+    ).values('week').annotate(
+        count=Count('id')
+    ).order_by('week')
+
+    # Query stage progressions by week
+    stage_events_by_week = JournalStageEvent.objects.filter(
+        created_at__gte=start_date
+    ).annotate(
+        week=TruncWeek('created_at')
+    ).values('week').annotate(
+        count=Count('id')
+    ).order_by('week')
+
+    # Build maps for quick lookup
+    # Note: TruncWeek on DateTimeField returns datetime, on DateField returns date
+    def normalize_to_date(dt):
+        """Convert datetime or date to date object."""
+        return dt.date() if hasattr(dt, 'date') and callable(dt.date) else dt
+
+    decisions_map = {normalize_to_date(item['week']): item['count'] for item in decisions_by_week}
+    donations_map = {normalize_to_date(item['week']): item['count'] for item in donations_by_week}
+    stage_events_map = {normalize_to_date(item['week']): item['count'] for item in stage_events_by_week}
+
+    # Build complete week list (fill gaps with 0)
+    result = []
+    for week_num in range(weeks):
+        week_start = start_date + timedelta(weeks=week_num)
+        # Format label (e.g., "Feb 3")
+        week_label = week_start.strftime('%b %-d')
+
+        result.append({
+            'week_start': week_start.isoformat(),
+            'week_label': week_label,
+            'decisions_logged': decisions_map.get(week_start, 0),
+            'donations_received': donations_map.get(week_start, 0),
+            'stage_progressions': stage_events_map.get(week_start, 0),
+        })
+
+    return {
+        'trends': result,
+        'weeks': weeks,
     }

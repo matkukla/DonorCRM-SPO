@@ -84,3 +84,16 @@ class ConversionFunnelResponseSerializer(serializers.Serializer):
 class TeamActivityResponseSerializer(serializers.Serializer):
     activities = TeamActivityItemSerializer(many=True)
     total_count = serializers.IntegerField()
+
+
+class TrendDataPointSerializer(serializers.Serializer):
+    week_start = serializers.CharField()
+    week_label = serializers.CharField()
+    decisions_logged = serializers.IntegerField()
+    donations_received = serializers.IntegerField()
+    stage_progressions = serializers.IntegerField()
+
+
+class TeamTrendsResponseSerializer(serializers.Serializer):
+    trends = TrendDataPointSerializer(many=True)
+    weeks = serializers.IntegerField()
