@@ -5,7 +5,8 @@ source:
   - 15-01-SUMMARY.md
   - 15-02-SUMMARY.md
 started: 2026-02-14T05:15:00Z
-updated: 2026-02-14T05:25:00Z
+updated: 2026-02-14T13:45:30Z
+resolved: 2026-02-14T13:45:30Z
 ---
 
 ## Current Test
@@ -67,11 +68,18 @@ skipped: 0
 ## Gaps
 
 - truth: "User Detail page loads showing user's name, email, role, and 6 metric cards when navigating to /admin/analytics/users/:id with valid user ID"
-  status: failed
+  status: resolved
   reason: "User reported: I'm seeing 'User not found' for a legit contact"
   severity: major
   test: 5
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "React Router's useParams<{ id: string }>() returns { id: string | undefined } at runtime despite type assertion. UserDetail.tsx line 117 compares u.id === id without checking if id is defined first, causing u.id === undefined to always be false."
+  artifacts:
+    - path: "frontend/src/pages/admin/analytics/UserDetail.tsx"
+      issue: "Missing undefined check before using id parameter in filter comparison at line 117"
+  missing:
+    - "Add undefined guard after extracting id parameter: if (!id) { return <ErrorState /> }"
+  debug_session: ".planning/debug/user-detail-not-found.md"
+  resolution:
+    plan: "15-03-PLAN.md"
+    commit: "06090bc"
+    fix: "Added `if (!id)` guard at line 116 before user lookup. Guard renders full UI with admin sub-nav, error message, and back link."
