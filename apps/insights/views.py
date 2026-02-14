@@ -22,6 +22,7 @@ from apps.insights.services import (
     get_user_performance,
     get_conversion_funnel,
     get_team_activity,
+    get_team_trends,
 )
 from apps.insights.serializers import (
     DashboardOverviewSerializer,
@@ -29,6 +30,7 @@ from apps.insights.serializers import (
     UserPerformanceResponseSerializer,
     ConversionFunnelResponseSerializer,
     TeamActivityResponseSerializer,
+    TeamTrendsResponseSerializer,
 )
 
 
@@ -294,4 +296,27 @@ class TeamActivityView(APIView):
         limit = get_safe_int_param(request, 'limit', default=50, min_val=1, max_val=200)
         data = get_team_activity(limit=limit)
         serializer = TeamActivityResponseSerializer(data)
+        return Response(serializer.data)
+
+
+class TeamTrendsView(APIView):
+    """
+    GET: Team activity trends over past N weeks.
+    Admin-only endpoint.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    @extend_schema(
+        tags=['insights'],
+        summary='Get team trends (admin only)',
+        description='Weekly aggregated metrics: decisions logged, donations received, stage progressions.',
+        parameters=[
+            OpenApiParameter(name='weeks', description='Number of weeks (default: 12, min: 1, max: 52)', type=int),
+        ],
+        responses={200: TeamTrendsResponseSerializer}
+    )
+    def get(self, request):
+        weeks = get_safe_int_param(request, 'weeks', default=12, min_val=1, max_val=52)
+        data = get_team_trends(weeks=weeks)
+        serializer = TeamTrendsResponseSerializer(data)
         return Response(serializer.data)

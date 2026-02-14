@@ -14,6 +14,7 @@ from apps.insights.views import (
     ReviewQueueView,
     StalledContactsView,
     TeamActivityView,
+    TeamTrendsView,
     TransactionsView,
     UserPerformanceView,
 )
@@ -35,4 +36,5 @@ urlpatterns = [
     path('admin/user-performance/', UserPerformanceView.as_view(), name='admin-user-performance'),
     path('admin/conversion-funnel/', ConversionFunnelView.as_view(), name='admin-conversion-funnel'),
     path('admin/team-activity/', TeamActivityView.as_view(), name='admin-team-activity'),
+    path('admin/team-trends/', TeamTrendsView.as_view(), name='admin-team-trends'),
 ]
