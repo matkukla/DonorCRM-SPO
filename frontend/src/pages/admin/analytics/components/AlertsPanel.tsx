@@ -1,0 +1,143 @@
+import { useMemo } from "react"
+import { Link } from "react-router-dom"
+import { AlertTriangle } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
+import { useAdminDashboardOverview, useAdminUserPerformance } from "@/hooks/useInsights"
+import type { DashboardOverviewResponse, UserPerformanceItem } from "@/api/insights"
+
+interface CoachingAlert {
+  id: string
+  message: string
+  severity: "high" | "medium" | "low"
+  actionLink?: string
+}
+
+function computeAlerts(
+  overview?: DashboardOverviewResponse,
+  users?: UserPerformanceItem[]
+): CoachingAlert[] {
+  const alerts: CoachingAlert[] = []
+
+  if (!overview || !users) {
+    return alerts
+  }
+
+  // HIGH: Stalled contacts >20
+  if (overview.stalled_contacts > 20) {
+    alerts.push({
+      id: "stalled-contacts-high",
+      message: `${overview.stalled_contacts} contacts stalled >14 days across team`,
+      severity: "high",
+      actionLink: "/admin/analytics/stalled-contacts",
+    })
+  }
+
+  // MEDIUM: Low conversion rate users
+  users.forEach((user) => {
+    if (user.conversion_rate < 10 && user.total_contacts >= 5) {
+      alerts.push({
+        id: `low-conversion-${user.id}`,
+        message: `${user.name} has ${user.conversion_rate.toFixed(1)}% conversion rate`,
+        severity: "medium",
+        actionLink: `/admin/analytics/users/${user.id}`,
+      })
+    }
+  })
+
+  // MEDIUM: Users with contacts but no active journals
+  users.forEach((user) => {
+    if (user.active_journals === 0 && user.total_contacts > 0) {
+      alerts.push({
+        id: `no-journals-${user.id}`,
+        message: `${user.name} has ${user.total_contacts} contacts but no active journals`,
+        severity: "medium",
+        actionLink: `/admin/analytics/users/${user.id}`,
+      })
+    }
+  })
+
+  // LOW: Team conversion rate below threshold
+  if (overview.conversion_rate < 15) {
+    alerts.push({
+      id: "team-conversion-low",
+      message: `Team conversion rate at ${overview.conversion_rate.toFixed(1)}% (below 15% threshold)`,
+      severity: "low",
+    })
+  }
+
+  // LOW: No active journals across team
+  if (overview.active_journals === 0) {
+    alerts.push({
+      id: "no-active-journals",
+      message: "No active journals across team",
+      severity: "low",
+    })
+  }
+
+  return alerts
+}
+
+const severityStyles = {
+  high: "bg-red-50 border-red-100 text-red-900",
+  medium: "bg-amber-50 border-amber-100 text-amber-900",
+  low: "bg-blue-50 border-blue-100 text-blue-900",
+}
+
+export function AlertsPanel() {
+  const { data: overview, isLoading: overviewLoading } = useAdminDashboardOverview()
+  const { data: usersData, isLoading: usersLoading } = useAdminUserPerformance()
+
+  const alerts = useMemo(
+    () => computeAlerts(overview, usersData?.users),
+    [overview, usersData]
+  )
+
+  const isLoading = overviewLoading || usersLoading
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="h-5 w-5 text-amber-500" />
+          <CardTitle>Coaching Alerts</CardTitle>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="space-y-3">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-20 bg-muted rounded animate-pulse" />
+            ))}
+          </div>
+        ) : alerts.length === 0 ? (
+          <p className="text-muted-foreground text-sm py-8 text-center">
+            All clear! No coaching alerts at this time.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {alerts.map((alert) => (
+              <div
+                key={alert.id}
+                className={cn(
+                  "p-4 border rounded-lg",
+                  severityStyles[alert.severity]
+                )}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <p className="text-sm font-medium flex-1">{alert.message}</p>
+                  {alert.actionLink && (
+                    <Button variant="link" size="sm" asChild className="p-0 h-auto shrink-0">
+                      <Link to={alert.actionLink}>View details</Link>
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
