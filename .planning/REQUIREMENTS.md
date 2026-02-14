@@ -88,11 +88,11 @@
 
 | REQ | Phase | Status |
 |-----|-------|--------|
-| DASH-01 | Phase 16 | Pending |
-| DASH-02 | Phase 16 | Pending |
-| DASH-03 | Phase 16 | Pending |
-| DASH-04 | Phase 16 | Pending |
-| PIPE-01 | Phase 16 | Pending |
+| DASH-01 | Phase 16 | Complete |
+| DASH-02 | Phase 16 | Complete |
+| DASH-03 | Phase 16 | Complete |
+| DASH-04 | Phase 16 | Complete |
+| PIPE-01 | Phase 16 | Complete |
 | PIPE-02 | Phase 18 | Pending |
 | CMON-01 | Phase 17 | Pending |
 | CMON-02 | Phase 17 | Pending |
