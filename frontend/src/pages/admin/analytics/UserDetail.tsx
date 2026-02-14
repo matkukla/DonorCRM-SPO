@@ -113,6 +113,61 @@ export default function UserDetail() {
 
   if (!data) return null
 
+  if (!id) {
+    return (
+      <Section>
+        <Container>
+          <div className="space-y-6">
+            {/* Admin Sub-Navigation */}
+            <div className="flex gap-4 border-b border-border pb-2">
+              <NavLink
+                to="/admin"
+                end
+                className={({ isActive }) =>
+                  cn(
+                    "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
+                    isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+                  )
+                }
+              >
+                Users
+              </NavLink>
+              <NavLink
+                to="/admin/imports"
+                className={({ isActive }) =>
+                  cn(
+                    "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
+                    isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+                  )
+                }
+              >
+                Import Center
+              </NavLink>
+              <NavLink
+                to="/admin/analytics"
+                className={({ isActive }) =>
+                  cn(
+                    "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
+                    isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+                  )
+                }
+              >
+                Analytics
+              </NavLink>
+            </div>
+
+            <div>
+              <p className="text-destructive">User not found</p>
+              <Link to="/admin/analytics/dashboard" className="text-primary underline mt-2 inline-block">
+                Back to Dashboard
+              </Link>
+            </div>
+          </div>
+        </Container>
+      </Section>
+    )
+  }
+
   // Find the specific user by ID
   const user = data.users.find((u) => u.id === id)
 
