@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { NavLink } from "react-router-dom"
+import { ArrowUpDown } from "lucide-react"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,9 +13,11 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { useAdminStalledContacts } from "@/hooks/useInsights"
-import type { StalledContactsParams } from "@/api/insights"
 import { cn } from "@/lib/utils"
+
+const PAGE_SIZE = 50
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return "Never"
@@ -26,14 +29,33 @@ function formatDate(dateStr: string | null): string {
 }
 
 export default function StalledContacts() {
-  const [params] = useState<StalledContactsParams>({
-    limit: 50,
-    offset: 0,
-    sort_by: "days_stalled",
-    sort_dir: "desc",
+  const [pageIndex, setPageIndex] = useState(0)
+  const [sortBy, setSortBy] = useState<"days_stalled" | "full_name" | "owner_name">("days_stalled")
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc")
+
+  const offset = pageIndex * PAGE_SIZE
+
+  const { data, isLoading, error, isFetching } = useAdminStalledContacts({
+    limit: PAGE_SIZE,
+    offset,
+    sort_by: sortBy,
+    sort_dir: sortDir,
   })
 
-  const { data, isLoading, error } = useAdminStalledContacts(params)
+  const pageCount = Math.ceil((data?.total_count || 0) / PAGE_SIZE)
+
+  const handleSortChange = (column: "days_stalled" | "full_name" | "owner_name") => {
+    if (sortBy === column) {
+      // Toggle direction if same column
+      setSortDir(sortDir === "asc" ? "desc" : "asc")
+    } else {
+      // New column: set column and reset to desc
+      setSortBy(column)
+      setSortDir("desc")
+    }
+    // Always reset to page 1 on sort change
+    setPageIndex(0)
+  }
 
   if (isLoading) {
     return (
@@ -199,14 +221,38 @@ export default function StalledContacts() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Contact Name</TableHead>
-                        <TableHead>Owner</TableHead>
+                        <TableHead>
+                          <button
+                            className="flex items-center gap-1 hover:text-foreground cursor-pointer"
+                            onClick={() => handleSortChange("full_name")}
+                          >
+                            Contact Name
+                            <ArrowUpDown className="h-4 w-4" />
+                          </button>
+                        </TableHead>
+                        <TableHead>
+                          <button
+                            className="flex items-center gap-1 hover:text-foreground cursor-pointer"
+                            onClick={() => handleSortChange("owner_name")}
+                          >
+                            Owner
+                            <ArrowUpDown className="h-4 w-4" />
+                          </button>
+                        </TableHead>
                         <TableHead>Last Activity</TableHead>
-                        <TableHead>Days Stalled</TableHead>
+                        <TableHead>
+                          <button
+                            className="flex items-center gap-1 hover:text-foreground cursor-pointer"
+                            onClick={() => handleSortChange("days_stalled")}
+                          >
+                            Days Stalled
+                            <ArrowUpDown className="h-4 w-4" />
+                          </button>
+                        </TableHead>
                         <TableHead>Status</TableHead>
                       </TableRow>
                     </TableHeader>
-                    <TableBody>
+                    <TableBody className={cn("", isFetching && "opacity-50 pointer-events-none")}>
                       {data.stalled_contacts.map((item) => (
                         <TableRow key={item.id}>
                           <TableCell className="font-medium">{item.full_name}</TableCell>
@@ -238,9 +284,31 @@ export default function StalledContacts() {
                       ))}
                     </TableBody>
                   </Table>
-                  <p className="text-sm text-muted-foreground mt-4">
-                    Showing {data.stalled_contacts.length} of {data.total_count} contacts
-                  </p>
+
+                  {/* Pagination Controls */}
+                  <div className="flex justify-between items-center mt-4">
+                    <div className="text-sm text-muted-foreground">
+                      Showing {offset + 1}-{Math.min(offset + PAGE_SIZE, data.total_count)} of {data.total_count} contacts
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPageIndex(pageIndex - 1)}
+                        disabled={pageIndex === 0 || isFetching}
+                      >
+                        Previous
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPageIndex(pageIndex + 1)}
+                        disabled={pageIndex >= pageCount - 1 || isFetching}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
                 </>
               ) : (
                 <p className="text-muted-foreground text-center py-8">No stalled contacts found</p>
