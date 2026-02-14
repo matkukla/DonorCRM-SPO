@@ -169,8 +169,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 17-01-PLAN.md -- Stalled Contacts page with server-side pagination and sortable columns
-- [ ] 17-02-PLAN.md -- User Detail page with trend charts, journal list, and new backend endpoints
+- [x] 17-01-PLAN.md -- Stalled Contacts page with server-side pagination and sortable columns
+- [x] 17-02-PLAN.md -- User Detail page with trend charts, journal list, and new backend endpoints
 
 ---
 
@@ -237,10 +237,10 @@ Phases execute in numeric order: 13 -> 14 -> 15 -> 16 -> 17 -> 18 -> 19
 | 14. Core Analytics Endpoints | v1.2 | 2/2 | Complete | 2026-02-13 |
 | 15. Frontend Foundation & Routing | v1.2 | 2/2 | Complete | 2026-02-13 |
 | 16. Dashboard Overview Page | v1.2 | 3/3 | Complete | 2026-02-14 |
-| 17. Stalled Contacts & User Detail Pages | v1.2 | 0/2 | Not started | - |
+| 17. Stalled Contacts & User Detail Pages | v1.2 | 2/2 | Complete | 2026-02-14 |
 | 18. Interactive Visualizations & Drill-Down | v1.2 | 0/TBD | Not started | - |
 | 19. Advanced Features & Export | v1.2 | 0/TBD | Not started | - |
 
 ---
 
-*Last updated: 2026-02-14 (Phase 17 planned - 2 plans in 1 wave)*
+*Last updated: 2026-02-14 (Phase 17 complete - 2 plans executed, verified)*
