@@ -125,3 +125,19 @@ class UserJournalItemSerializer(serializers.Serializer):
 
 class UserJournalsResponseSerializer(serializers.Serializer):
     journals = UserJournalItemSerializer(many=True)
+
+
+# Stage Contacts Serializers (Phase 18)
+
+class StageContactItemSerializer(serializers.Serializer):
+    id = serializers.CharField()
+    full_name = serializers.CharField()
+    email = serializers.CharField(allow_null=True, allow_blank=True)
+    owner_name = serializers.CharField()
+    last_activity_date = serializers.CharField(allow_null=True)
+
+
+class StageContactsResponseSerializer(serializers.Serializer):
+    contacts = StageContactItemSerializer(many=True)
+    total_count = serializers.IntegerField()
+    stage = serializers.CharField()

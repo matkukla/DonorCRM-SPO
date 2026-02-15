@@ -25,6 +25,7 @@ from apps.insights.services import (
     get_team_trends,
     get_user_trends,
     get_user_journals,
+    get_stage_contacts,
 )
 from apps.insights.serializers import (
     DashboardOverviewSerializer,
@@ -35,6 +36,7 @@ from apps.insights.serializers import (
     TeamTrendsResponseSerializer,
     UserTrendsResponseSerializer,
     UserJournalsResponseSerializer,
+    StageContactsResponseSerializer,
 )
 
 
@@ -377,4 +379,37 @@ class UserJournalsView(APIView):
 
         data = get_user_journals(user_id=user_id)
         serializer = UserJournalsResponseSerializer(data)
+        return Response(serializer.data)
+
+
+class StageContactsView(APIView):
+    """
+    GET: Get contacts currently in a given pipeline stage.
+    Admin-only endpoint.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    @extend_schema(
+        tags=['insights'],
+        summary='Get stage contacts (admin only)',
+        description='Contacts currently in a specific pipeline stage. Pass stage parameter (contact, meet, close, decision, thank, next_steps) or "none" for no activity.',
+        parameters=[
+            OpenApiParameter(name='stage', description='Pipeline stage (required)', type=str, required=True),
+            OpenApiParameter(name='limit', description='Max results (default: 100, min: 1, max: 500)', type=int),
+        ],
+        responses={200: StageContactsResponseSerializer}
+    )
+    def get(self, request):
+        stage = request.query_params.get('stage')
+        if stage is None:
+            return Response({'error': 'stage parameter is required'}, status=400)
+
+        # Handle special value "none" for null stage (No Activity contacts)
+        if stage == 'none' or stage == '':
+            stage = None
+
+        limit = get_safe_int_param(request, 'limit', default=100, min_val=1, max_val=500)
+
+        data = get_stage_contacts(stage=stage, limit=limit)
+        serializer = StageContactsResponseSerializer(data)
         return Response(serializer.data)

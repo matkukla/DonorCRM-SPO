@@ -803,3 +803,69 @@ def get_user_journals(user_id):
             for j in journals
         ]
     }
+
+
+def get_stage_contacts(stage, limit=100):
+    """
+    Get contacts currently in a given pipeline stage.
+    Returns contacts with their current stage from JournalStageEvent.
+    Admin-only function (no user scoping) — admin sees all contacts.
+    Target: <5 queries.
+
+    Args:
+        stage: PipelineStage value (string) or None for "No Activity" (contacts with no stage events)
+        limit: Max results to return (default 100)
+
+    Returns:
+        Dictionary with 'contacts' list and 'total_count'
+    """
+    # Subquery to get most recent stage per journal_contact
+    latest_stage = JournalStageEvent.objects.filter(
+        journal_contact=OuterRef('pk')
+    ).order_by('-created_at').values('stage')[:1]
+
+    # Subquery for last activity date (most recent stage event)
+    last_activity = JournalStageEvent.objects.filter(
+        journal_contact__contact=OuterRef('pk')
+    ).order_by('-created_at').values('created_at')[:1]
+
+    # Get JournalContacts with current stage annotation
+    journal_contacts_qs = JournalContact.objects.annotate(
+        current_stage=Subquery(latest_stage, output_field=CharField())
+    )
+
+    # Filter by stage (handle None for "No Activity")
+    if stage is None or stage == 'none':
+        # Contacts with no stage events
+        journal_contacts_qs = journal_contacts_qs.filter(current_stage__isnull=True)
+    else:
+        # Contacts in the specified stage
+        journal_contacts_qs = journal_contacts_qs.filter(current_stage=stage)
+
+    # Get distinct contact IDs from matching JournalContacts
+    contact_ids = journal_contacts_qs.values_list('contact_id', flat=True).distinct()
+
+    # Count total before applying limit
+    total_count = contact_ids.count()
+
+    # Get Contact objects with owner and last activity
+    contacts = Contact.objects.filter(
+        id__in=contact_ids[:limit]
+    ).annotate(
+        last_activity_date=Subquery(last_activity)
+    ).select_related('owner')
+
+    return {
+        'contacts': [
+            {
+                'id': str(c.id),
+                'full_name': c.full_name,
+                'email': c.email,
+                'owner_name': f'{c.owner.first_name} {c.owner.last_name}'.strip(),
+                'last_activity_date': c.last_activity_date.isoformat() if c.last_activity_date else None,
+            }
+            for c in contacts
+        ],
+        'total_count': total_count,
+        'stage': stage or 'none',
+    }
