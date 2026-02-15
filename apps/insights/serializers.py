@@ -176,3 +176,14 @@ class UserDrilldownResponseSerializer(serializers.Serializer):
     user = UserDrilldownUserSerializer()
     stats = UserDrilldownStatsSerializer()
     journals = UserDrilldownJournalSerializer(many=True)
+
+
+# Activity Heatmap Serializers (Phase 19)
+
+class ActivityHeatmapDaySerializer(serializers.Serializer):
+    date = serializers.CharField()
+    count = serializers.IntegerField()
+
+
+class ActivityHeatmapResponseSerializer(serializers.Serializer):
+    activities = ActivityHeatmapDaySerializer(many=True)
