@@ -27,6 +27,7 @@ from apps.insights.services import (
     get_user_journals,
     get_stage_contacts,
     get_user_drilldown,
+    get_activity_heatmap,
 )
 from apps.insights.serializers import (
     DashboardOverviewSerializer,
@@ -39,6 +40,7 @@ from apps.insights.serializers import (
     UserJournalsResponseSerializer,
     StageContactsResponseSerializer,
     UserDrilldownResponseSerializer,
+    ActivityHeatmapResponseSerializer,
 )
 
 
@@ -202,10 +204,25 @@ class DashboardOverviewView(APIView):
         tags=['insights'],
         summary='Get dashboard overview (admin only)',
         description='Cross-user aggregation for admin dashboard: total contacts, active journals, stalled count, conversion rate, donation summary.',
+        parameters=[
+            OpenApiParameter(name='date_from', description='Filter start date (YYYY-MM-DD)', type=str),
+            OpenApiParameter(name='date_to', description='Filter end date (YYYY-MM-DD)', type=str),
+        ],
         responses={200: DashboardOverviewSerializer}
     )
     def get(self, request):
-        data = get_dashboard_overview()
+        date_from = request.query_params.get('date_from')
+        date_to = request.query_params.get('date_to')
+
+        # Validate date format if provided
+        for param_name, param_val in [('date_from', date_from), ('date_to', date_to)]:
+            if param_val:
+                try:
+                    datetime.strptime(param_val, '%Y-%m-%d')
+                except ValueError:
+                    return Response({'error': f'Invalid {param_name} format. Use YYYY-MM-DD.'}, status=400)
+
+        data = get_dashboard_overview(date_from=date_from, date_to=date_to)
         serializer = DashboardOverviewSerializer(data)
         return Response(serializer.data)
 
@@ -225,6 +242,8 @@ class StalledContactsView(APIView):
             OpenApiParameter(name='offset', description='Offset for pagination (default: 0)', type=int),
             OpenApiParameter(name='sort_by', description='Sort field (days_stalled, full_name, owner_name, last_activity_date)', type=str),
             OpenApiParameter(name='sort_dir', description='Sort direction (asc, desc)', type=str),
+            OpenApiParameter(name='date_from', description='Filter start date (YYYY-MM-DD)', type=str),
+            OpenApiParameter(name='date_to', description='Filter end date (YYYY-MM-DD)', type=str),
         ],
         responses={200: StalledContactsResponseSerializer}
     )
@@ -242,7 +261,18 @@ class StalledContactsView(APIView):
         if sort_dir not in ('asc', 'desc'):
             sort_dir = 'desc'
 
-        data = get_stalled_contacts(limit=limit, offset=offset, sort_by=sort_by, sort_dir=sort_dir)
+        # Parse and validate date parameters
+        date_from = request.query_params.get('date_from')
+        date_to = request.query_params.get('date_to')
+
+        for param_name, param_val in [('date_from', date_from), ('date_to', date_to)]:
+            if param_val:
+                try:
+                    datetime.strptime(param_val, '%Y-%m-%d')
+                except ValueError:
+                    return Response({'error': f'Invalid {param_name} format. Use YYYY-MM-DD.'}, status=400)
+
+        data = get_stalled_contacts(limit=limit, offset=offset, sort_by=sort_by, sort_dir=sort_dir, date_from=date_from, date_to=date_to)
         serializer = StalledContactsResponseSerializer(data)
         return Response(serializer.data)
 
@@ -277,10 +307,25 @@ class ConversionFunnelView(APIView):
         tags=['insights'],
         summary='Get conversion funnel (admin only)',
         description='Pipeline stage distribution with counts and percentages using Journal 6-stage pipeline.',
+        parameters=[
+            OpenApiParameter(name='date_from', description='Filter start date (YYYY-MM-DD)', type=str),
+            OpenApiParameter(name='date_to', description='Filter end date (YYYY-MM-DD)', type=str),
+        ],
         responses={200: ConversionFunnelResponseSerializer}
     )
     def get(self, request):
-        data = get_conversion_funnel()
+        # Parse and validate date parameters
+        date_from = request.query_params.get('date_from')
+        date_to = request.query_params.get('date_to')
+
+        for param_name, param_val in [('date_from', date_from), ('date_to', date_to)]:
+            if param_val:
+                try:
+                    datetime.strptime(param_val, '%Y-%m-%d')
+                except ValueError:
+                    return Response({'error': f'Invalid {param_name} format. Use YYYY-MM-DD.'}, status=400)
+
+        data = get_conversion_funnel(date_from=date_from, date_to=date_to)
         serializer = ConversionFunnelResponseSerializer(data)
         return Response(serializer.data)
 
@@ -297,12 +342,26 @@ class TeamActivityView(APIView):
         summary='Get team activity (admin only)',
         parameters=[
             OpenApiParameter(name='limit', description='Max results (default: 50)', type=int),
+            OpenApiParameter(name='date_from', description='Filter start date (YYYY-MM-DD)', type=str),
+            OpenApiParameter(name='date_to', description='Filter end date (YYYY-MM-DD)', type=str),
         ],
         responses={200: TeamActivityResponseSerializer}
     )
     def get(self, request):
         limit = get_safe_int_param(request, 'limit', default=50, min_val=1, max_val=200)
-        data = get_team_activity(limit=limit)
+
+        # Parse and validate date parameters
+        date_from = request.query_params.get('date_from')
+        date_to = request.query_params.get('date_to')
+
+        for param_name, param_val in [('date_from', date_from), ('date_to', date_to)]:
+            if param_val:
+                try:
+                    datetime.strptime(param_val, '%Y-%m-%d')
+                except ValueError:
+                    return Response({'error': f'Invalid {param_name} format. Use YYYY-MM-DD.'}, status=400)
+
+        data = get_team_activity(limit=limit, date_from=date_from, date_to=date_to)
         serializer = TeamActivityResponseSerializer(data)
         return Response(serializer.data)
 
@@ -320,12 +379,26 @@ class TeamTrendsView(APIView):
         description='Weekly aggregated metrics: decisions logged, donations received, stage progressions.',
         parameters=[
             OpenApiParameter(name='weeks', description='Number of weeks (default: 12, min: 1, max: 52)', type=int),
+            OpenApiParameter(name='date_from', description='Filter start date (YYYY-MM-DD)', type=str),
+            OpenApiParameter(name='date_to', description='Filter end date (YYYY-MM-DD)', type=str),
         ],
         responses={200: TeamTrendsResponseSerializer}
     )
     def get(self, request):
         weeks = get_safe_int_param(request, 'weeks', default=12, min_val=1, max_val=52)
-        data = get_team_trends(weeks=weeks)
+
+        # Parse and validate date parameters
+        date_from = request.query_params.get('date_from')
+        date_to = request.query_params.get('date_to')
+
+        for param_name, param_val in [('date_from', date_from), ('date_to', date_to)]:
+            if param_val:
+                try:
+                    datetime.strptime(param_val, '%Y-%m-%d')
+                except ValueError:
+                    return Response({'error': f'Invalid {param_name} format. Use YYYY-MM-DD.'}, status=400)
+
+        data = get_team_trends(weeks=weeks, date_from=date_from, date_to=date_to)
         serializer = TeamTrendsResponseSerializer(data)
         return Response(serializer.data)
 
@@ -445,4 +518,38 @@ class UserDrilldownView(APIView):
             return Response(data, status=404)
 
         serializer = UserDrilldownResponseSerializer(data)
+        return Response(serializer.data)
+
+
+class ActivityHeatmapView(APIView):
+    """
+    GET: Get daily activity counts for heatmap visualization.
+    Admin-only endpoint.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    @extend_schema(
+        tags=['insights'],
+        summary='Get activity heatmap (admin only)',
+        description='Daily activity counts for past 365 days (or custom date range) aggregating JournalStageEvents, Decisions, and Events.',
+        parameters=[
+            OpenApiParameter(name='date_from', description='Start date (YYYY-MM-DD, default: 365 days ago)', type=str),
+            OpenApiParameter(name='date_to', description='End date (YYYY-MM-DD, default: today)', type=str),
+        ],
+        responses={200: ActivityHeatmapResponseSerializer}
+    )
+    def get(self, request):
+        # Parse and validate date parameters
+        date_from = request.query_params.get('date_from')
+        date_to = request.query_params.get('date_to')
+
+        for param_name, param_val in [('date_from', date_from), ('date_to', date_to)]:
+            if param_val:
+                try:
+                    datetime.strptime(param_val, '%Y-%m-%d')
+                except ValueError:
+                    return Response({'error': f'Invalid {param_name} format. Use YYYY-MM-DD.'}, status=400)
+
+        data = get_activity_heatmap(date_from=date_from, date_to=date_to)
+        serializer = ActivityHeatmapResponseSerializer(data)
         return Response(serializer.data)

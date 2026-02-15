@@ -21,6 +21,7 @@ from apps.insights.views import (
     UserJournalsView,
     StageContactsView,
     UserDrilldownView,
+    ActivityHeatmapView,
 )
 
 app_name = 'insights'
@@ -45,4 +46,5 @@ urlpatterns = [
     path('admin/user-journals/', UserJournalsView.as_view(), name='admin-user-journals'),
     path('admin/stage-contacts/', StageContactsView.as_view(), name='admin-stage-contacts'),
     path('admin/user-drilldown/', UserDrilldownView.as_view(), name='admin-user-drilldown'),
+    path('admin/activity-heatmap/', ActivityHeatmapView.as_view(), name='admin-activity-heatmap'),
 ]

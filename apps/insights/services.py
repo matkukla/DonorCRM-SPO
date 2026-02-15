@@ -18,6 +18,23 @@ from apps.tasks.models import Task, TaskStatus
 from apps.users.models import User
 
 
+def _parse_date_range(date_from=None, date_to=None):
+    """Parse date range strings to timezone-aware datetimes.
+    Returns (dt_from, dt_to) tuple, either may be None.
+    """
+    from datetime import datetime as dt_class
+    dt_from_val = None
+    dt_to_val = None
+    if date_from:
+        dt_from_val = timezone.make_aware(dt_class.strptime(date_from, '%Y-%m-%d'))
+    if date_to:
+        # Include entire day
+        dt_to_val = timezone.make_aware(
+            dt_class.strptime(date_to, '%Y-%m-%d')
+        ) + timedelta(days=1)
+    return dt_from_val, dt_to_val
+
+
 def _scope_donations(user):
     """Return donation queryset scoped by user role."""
     if user.role in ['admin', 'finance', 'read_only']:
@@ -302,28 +319,49 @@ def get_transactions(user, limit=100, offset=0, contact_id=None, date_from=None,
 # Admin Analytics Endpoints (Phase 13)
 
 
-def get_dashboard_overview():
+def get_dashboard_overview(date_from=None, date_to=None):
     """
     Admin dashboard overview with cross-user aggregated stats.
     No user scoping — admin sees all data.
     Target: <10 queries.
+
+    Args:
+        date_from: Start date (YYYY-MM-DD string) for filtering
+        date_to: End date (YYYY-MM-DD string) for filtering
     """
-    total_contacts = Contact.objects.count()
-    active_journals = Journal.objects.filter(is_archived=False).count()
+    dt_from, dt_to = _parse_date_range(date_from, date_to)
+
+    # Filter contacts by created_at if date range provided
+    contacts_qs = Contact.objects.all()
+    if dt_from:
+        contacts_qs = contacts_qs.filter(created_at__gte=dt_from)
+    if dt_to:
+        contacts_qs = contacts_qs.filter(created_at__lt=dt_to)
+    total_contacts = contacts_qs.count()
+
+    # Filter journals by created_at if date range provided
+    journals_qs = Journal.objects.filter(is_archived=False)
+    if dt_from:
+        journals_qs = journals_qs.filter(created_at__gte=dt_from)
+    if dt_to:
+        journals_qs = journals_qs.filter(created_at__lt=dt_to)
+    active_journals = journals_qs.count()
 
     # Stalled contacts count (last journal activity >14 days ago)
-    cutoff_date = timezone.now() - timedelta(days=14)
+    # If date_to provided, use it as "now" for stalled calculation
+    cutoff_date = (dt_to if dt_to else timezone.now()) - timedelta(days=14)
     last_activity = JournalStageEvent.objects.filter(
         journal_contact__contact=OuterRef('pk')
     ).order_by('-created_at').values('created_at')[:1]
 
-    stalled_count = Contact.objects.annotate(
+    stalled_qs = Contact.objects.annotate(
         last_activity_date=Subquery(last_activity)
     ).filter(
         Q(last_activity_date__lt=cutoff_date) | Q(last_activity_date__isnull=True),
         # Only count contacts that are in at least one journal
         journal_memberships__isnull=False
-    ).distinct().count()
+    ).distinct()
+    stalled_count = stalled_qs.count()
 
     # Conversion rate: contacts with a Decision / total contacts in journals
     contacts_in_journals = JournalContact.objects.values('contact').distinct().count()
@@ -333,11 +371,18 @@ def get_dashboard_overview():
         1
     )
 
-    # Donation summary (last 12 months)
-    twelve_months_ago = date.today() - relativedelta(months=12)
-    donation_stats = Donation.objects.filter(
-        date__gte=twelve_months_ago
-    ).aggregate(
+    # Donation summary - filter by date range if provided, else default to last 12 months
+    if dt_from or dt_to:
+        donation_qs = Donation.objects.all()
+        if dt_from:
+            donation_qs = donation_qs.filter(date__gte=dt_from.date())
+        if dt_to:
+            donation_qs = donation_qs.filter(date__lt=dt_to.date())
+    else:
+        twelve_months_ago = date.today() - relativedelta(months=12)
+        donation_qs = Donation.objects.filter(date__gte=twelve_months_ago)
+
+    donation_stats = donation_qs.aggregate(
         total_amount=Sum('amount'),
         total_count=Count('id')
     )
@@ -354,7 +399,7 @@ def get_dashboard_overview():
     }
 
 
-def get_stalled_contacts(limit=50, offset=0, sort_by='days_stalled', sort_dir='desc'):
+def get_stalled_contacts(limit=50, offset=0, sort_by='days_stalled', sort_dir='desc', date_from=None, date_to=None):
     """
     Find contacts with last journal activity >14 days ago.
     Uses Subquery annotation per requirement API-04.
@@ -366,7 +411,11 @@ def get_stalled_contacts(limit=50, offset=0, sort_by='days_stalled', sort_dir='d
         offset: Pagination offset
         sort_by: Field to sort by (days_stalled, full_name, owner_name, last_activity_date)
         sort_dir: Sort direction (asc or desc)
+        date_from: Start date (YYYY-MM-DD string) for filtering last_activity_date
+        date_to: End date (YYYY-MM-DD string) - if provided, used as "now" for stalled calculation
     """
+    dt_from, dt_to = _parse_date_range(date_from, date_to)
+
     last_activity = JournalStageEvent.objects.filter(
         journal_contact__contact=OuterRef('pk')
     ).order_by('-created_at').values('created_at')[:1]
@@ -376,7 +425,8 @@ def get_stalled_contacts(limit=50, offset=0, sort_by='days_stalled', sort_dir='d
         contact=OuterRef('pk')
     ).order_by('created_at').values('created_at')[:1]
 
-    cutoff_date = timezone.now() - timedelta(days=14)
+    # Use date_to as "now" if provided, else current time
+    cutoff_date = (dt_to if dt_to else timezone.now()) - timedelta(days=14)
 
     base_qs = Contact.objects.annotate(
         last_activity_date=Subquery(last_activity),
@@ -385,6 +435,12 @@ def get_stalled_contacts(limit=50, offset=0, sort_by='days_stalled', sort_dir='d
         Q(last_activity_date__lt=cutoff_date) | Q(last_activity_date__isnull=True),
         journal_memberships__isnull=False
     ).distinct().select_related('owner')
+
+    # Apply date range filter on last_activity_date if provided
+    if dt_from:
+        base_qs = base_qs.filter(
+            Q(last_activity_date__gte=dt_from) | Q(last_activity_date__isnull=True)
+        )
 
     total_count = base_qs.count()
 
@@ -416,6 +472,9 @@ def get_stalled_contacts(limit=50, offset=0, sort_by='days_stalled', sort_dir='d
 
     stalled = base_qs.order_by(ordering)[offset:offset + limit]
 
+    # Use dt_to as reference point if provided, else current time
+    reference_time = dt_to if dt_to else timezone.now()
+
     return {
         'stalled_contacts': [
             {
@@ -426,9 +485,9 @@ def get_stalled_contacts(limit=50, offset=0, sort_by='days_stalled', sort_dir='d
                 'owner_name': f'{c.owner.first_name} {c.owner.last_name}'.strip(),
                 'last_activity_date': c.last_activity_date.isoformat() if c.last_activity_date else None,
                 'days_stalled': (
-                    (timezone.now() - c.last_activity_date).days
+                    (reference_time - c.last_activity_date).days
                     if c.last_activity_date
-                    else (timezone.now() - c.journal_membership_date).days
+                    else (reference_time - c.journal_membership_date).days
                     if c.journal_membership_date
                     else None
                 ),
@@ -524,14 +583,26 @@ def get_user_performance():
     return {'users': result}
 
 
-def get_conversion_funnel():
+def get_conversion_funnel(date_from=None, date_to=None):
     """
     Pipeline stage distribution with counts and percentages across all missionaries.
     Reuses existing Journal 6-stage pipeline (PipelineStage).
     Target: <5 queries.
+
+    Args:
+        date_from: Start date (YYYY-MM-DD string) for filtering stage events
+        date_to: End date (YYYY-MM-DD string) for filtering stage events
     """
-    # Subquery to get most recent stage per journal_contact
-    latest_stage = JournalStageEvent.objects.filter(
+    dt_from, dt_to = _parse_date_range(date_from, date_to)
+
+    # Subquery to get most recent stage per journal_contact (with date filtering)
+    stage_events_qs = JournalStageEvent.objects.all()
+    if dt_from:
+        stage_events_qs = stage_events_qs.filter(created_at__gte=dt_from)
+    if dt_to:
+        stage_events_qs = stage_events_qs.filter(created_at__lt=dt_to)
+
+    latest_stage = stage_events_qs.filter(
         journal_contact=OuterRef('pk')
     ).order_by('-created_at').values('stage')[:1]
 
@@ -575,14 +646,30 @@ def get_conversion_funnel():
     }
 
 
-def get_team_activity(limit=50):
+def get_team_activity(limit=50, date_from=None, date_to=None):
     """
     Recent activity across all users — journal updates, new contacts, decisions.
     Target: <10 queries.
+
+    Args:
+        limit: Max results to return
+        date_from: Start date (YYYY-MM-DD string) for filtering events by created_at
+        date_to: End date (YYYY-MM-DD string) for filtering events by created_at
     """
-    recent_events = Event.objects.select_related(
+    dt_from, dt_to = _parse_date_range(date_from, date_to)
+
+    events_qs = Event.objects.all()
+    if dt_from:
+        events_qs = events_qs.filter(created_at__gte=dt_from)
+    if dt_to:
+        events_qs = events_qs.filter(created_at__lt=dt_to)
+
+    recent_events = events_qs.select_related(
         'user', 'contact'
     ).order_by('-created_at')[:limit]
+
+    # Count with same filters for total_count
+    total_count = events_qs.count()
 
     return {
         'activities': [
@@ -601,11 +688,11 @@ def get_team_activity(limit=50):
             }
             for e in recent_events
         ],
-        'total_count': Event.objects.count(),
+        'total_count': total_count,
     }
 
 
-def get_team_trends(weeks=12):
+def get_team_trends(weeks=12, date_from=None, date_to=None):
     """
     Get team activity trends over past N weeks.
     Returns weekly aggregated metrics: decisions logged, donations received, stage progressions.
@@ -614,16 +701,31 @@ def get_team_trends(weeks=12):
 
     Args:
         weeks: Number of weeks to return (default 12)
+        date_from: Start date (YYYY-MM-DD string) - if provided, compute weekly buckets within range
+        date_to: End date (YYYY-MM-DD string) - if provided, compute weekly buckets within range
 
     Returns:
         Dictionary with 'trends' list and 'weeks' count
     """
+    dt_from, dt_to = _parse_date_range(date_from, date_to)
+
     # Calculate date range
-    today = timezone.now().date()
-    # Get Monday of current week
-    days_since_monday = today.weekday()
-    current_week_monday = today - timedelta(days=days_since_monday)
-    start_date = current_week_monday - timedelta(weeks=weeks - 1)
+    if dt_from and dt_to:
+        # Use provided range
+        start_date = dt_from.date()
+        end_date = dt_to.date()
+        # Calculate weeks from range
+        weeks = max(1, ((end_date - start_date).days // 7) + 1)
+        # Align to Monday
+        days_since_monday = start_date.weekday()
+        start_date = start_date - timedelta(days=days_since_monday)
+    else:
+        # Default: past N weeks from today
+        today = timezone.now().date()
+        # Get Monday of current week
+        days_since_monday = today.weekday()
+        current_week_monday = today - timedelta(days=days_since_monday)
+        start_date = current_week_monday - timedelta(weeks=weeks - 1)
 
     # Query decisions by week
     decisions_by_week = Decision.objects.filter(
@@ -970,3 +1072,142 @@ def get_user_drilldown(user_id):
             for j in recent_journals
         ]
     }
+
+
+def get_activity_heatmap(date_from=None, date_to=None):
+    """
+    Get daily activity counts for heatmap visualization.
+    Aggregates JournalStageEvent, Decision, and Event models by date.
+    Target: <5 queries.
+
+    Args:
+        date_from: Start date (YYYY-MM-DD string) - defaults to 365 days ago
+        date_to: End date (YYYY-MM-DD string) - defaults to today
+
+    Returns:
+        Dictionary with 'activities' list of {date: "YYYY-MM-DD", count: N}
+    """
+    dt_from, dt_to = _parse_date_range(date_from, date_to)
+
+    # Default range: past 365 days
+    if not dt_from:
+        dt_from = timezone.now() - timedelta(days=365)
+    if not dt_to:
+        # Default to end of today (tomorrow's start)
+        dt_to = timezone.make_aware(
+            timezone.datetime.combine(
+                timezone.now().date() + timedelta(days=1),
+                timezone.datetime.min.time()
+            )
+        )
+
+    # Query each model and aggregate by date
+    stage_events_by_date = JournalStageEvent.objects.filter(
+        created_at__gte=dt_from,
+        created_at__lt=dt_to
+    ).annotate(
+        activity_date=TruncDate('created_at')
+    ).values('activity_date').annotate(
+        count=Count('id')
+    )
+
+    decisions_by_date = Decision.objects.filter(
+        created_at__gte=dt_from,
+        created_at__lt=dt_to
+    ).annotate(
+        activity_date=TruncDate('created_at')
+    ).values('activity_date').annotate(
+        count=Count('id')
+    )
+
+    events_by_date = Event.objects.filter(
+        created_at__gte=dt_from,
+        created_at__lt=dt_to
+    ).annotate(
+        activity_date=TruncDate('created_at')
+    ).values('activity_date').annotate(
+        count=Count('id')
+    )
+
+    # Combine counts by date
+    activity_map = {}
+    for item in stage_events_by_date:
+        activity_map[item['activity_date']] = activity_map.get(item['activity_date'], 0) + item['count']
+    for item in decisions_by_date:
+        activity_map[item['activity_date']] = activity_map.get(item['activity_date'], 0) + item['count']
+    for item in events_by_date:
+        activity_map[item['activity_date']] = activity_map.get(item['activity_date'], 0) + item['count']
+
+    # Build complete date list (fill gaps with 0)
+    result = []
+    current_date = dt_from.date()
+    end_date = dt_to.date()
+    while current_date < end_date:
+        result.append({
+            'date': current_date.isoformat(),
+            'count': activity_map.get(current_date, 0),
+        })
+        current_date += timedelta(days=1)
+
+    return {
+        'activities': result
+    }
+
+
+def get_pace_calculation(date_from=None, date_to=None):
+    """
+    Calculate average days between consecutive stage transitions for contacts.
+    Returns overall average pace across all contacts.
+    Target: <10 queries.
+
+    Args:
+        date_from: Start date (YYYY-MM-DD string) for filtering stage events
+        date_to: End date (YYYY-MM-DD string) for filtering stage events
+
+    Returns:
+        Dictionary with 'average_days_between_stages' (float or None)
+    """
+    dt_from, dt_to = _parse_date_range(date_from, date_to)
+
+    # Query stage events with date filtering if provided
+    stage_events_qs = JournalStageEvent.objects.all()
+    if dt_from:
+        stage_events_qs = stage_events_qs.filter(created_at__gte=dt_from)
+    if dt_to:
+        stage_events_qs = stage_events_qs.filter(created_at__lt=dt_to)
+
+    # Get all stage events ordered by journal_contact and created_at
+    stage_events = stage_events_qs.order_by(
+        'journal_contact_id', 'created_at'
+    ).values('journal_contact_id', 'created_at')
+
+    # Calculate intervals between consecutive events for each contact
+    intervals = []
+    prev_contact_id = None
+    prev_time = None
+
+    for event in stage_events:
+        contact_id = event['journal_contact_id']
+        created_at = event['created_at']
+
+        if contact_id == prev_contact_id and prev_time:
+            # Calculate interval in days
+            interval = (created_at - prev_time).days
+            if interval > 0:  # Only count positive intervals
+                intervals.append(interval)
+
+        prev_contact_id = contact_id
+        prev_time = created_at
+
+    # Calculate average
+    if intervals:
+        average_pace = sum(intervals) / len(intervals)
+        return {
+            'average_days_between_stages': round(average_pace, 1),
+            'total_intervals': len(intervals),
+        }
+    else:
+        return {
+            'average_days_between_stages': None,
+            'total_intervals': 0,
+        }
