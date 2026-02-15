@@ -5,24 +5,24 @@
 See: .planning/PROJECT.md (updated 2026-02-12)
 
 **Core value:** Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems.
-**Current focus:** v1.2 Admin Analytics Dashboard - Phase 17 Stalled Contacts & User Detail Pages
+**Current focus:** v1.2 Admin Analytics Dashboard - Phase 18 Interactive Visualizations & Drill-Down
 
 ## Current Position
 
 Milestone: v1.2 Admin Analytics Dashboard
-Phase: 17 of 19 (Stalled Contacts & User Detail Pages)
-Plan: 02 of 02
+Phase: 18 of 19 (Interactive Visualizations & Drill-Down)
+Plan: 01 of 01
 Status: Phase complete
-Last activity: 2026-02-14 - Completed 17-02-PLAN.md (User Detail Endpoints & Page)
+Last activity: 2026-02-15 - Completed 18-01-PLAN.md (Funnel Stage Drill-Down)
 
-Progress: [███████░░░░░░░░░░░░░] 70% (v1.2 - 11/~14 plans complete)
+Progress: [████████░░░░░░░░░░░░] 75% (v1.2 - 12/~14 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 50 (24 v1.0 + 15 v1.1 + 11 v1.2)
-- Average duration: 3.3 minutes
-- Total execution time: 3.2 hours
+- Total plans completed: 51 (24 v1.0 + 15 v1.1 + 12 v1.2)
+- Average duration: 3.4 minutes
+- Total execution time: 3.3 hours
 
 **By Milestone:**
 
@@ -30,7 +30,7 @@ Progress: [███████░░░░░░░░░░░░░] 70% (v1
 |-----------|-------|-------|----------|
 | v1.0 (Phases 1-6) | 24 | 1.4 hours | 2.8 min |
 | v1.1 (Phases 7-12) | 15 | 76m 43s | 5.1 min |
-| v1.2 (Phases 13-19) | 11 | 52m 44s | 4.8 min |
+| v1.2 (Phases 13-19) | 12 | 57m 44s | 4.8 min |
 
 *Updated after each plan completion*
 
@@ -82,6 +82,10 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - User-scoped service functions follow team endpoint patterns with user_id parameter (17-02)
 - Detail pages load data independently (metrics, trends, journals) for better UX (17-02)
 - Progress indicators show ratio format (X/Y active) instead of percentage (17-02)
+- Recharts onClick handler pattern for interactive chart drill-downs (18-01)
+- TanStack Query enabled option for conditional data fetching (prevents eager loading) (18-01)
+- Local component state (useState) for transient drill-down UI (not URL state) (18-01)
+- Radix UI Sheet slide-in panels for drill-down details with accessibility built-in (18-01)
 
 ### Pending Todos
 
@@ -113,10 +117,10 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-14
-Stopped at: Completed 17-02-PLAN.md (User Detail Endpoints & Page) - Phase 17 complete
+Last session: 2026-02-15
+Stopped at: Completed 18-01-PLAN.md (Funnel Stage Drill-Down) - Phase 18 complete
 Resume file: None
 
 ---
 
-*Last updated: 2026-02-14 (Phase 17 complete, verified)*
+*Last updated: 2026-02-15 (Phase 18 complete, verified)*
