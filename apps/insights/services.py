@@ -588,6 +588,7 @@ def get_team_activity(limit=50):
         'activities': [
             {
                 'id': str(e.id),
+                'user_id': str(e.user.id),
                 'user_email': e.user.email,
                 'user_name': f'{e.user.first_name} {e.user.last_name}'.strip(),
                 'event_type': e.event_type,
@@ -868,4 +869,104 @@ def get_stage_contacts(stage, limit=100):
         ],
         'total_count': total_count,
         'stage': stage or 'none',
+    }
+
+
+def get_user_drilldown(user_id):
+    """
+    Get combined summary for quick user inspection (user drilldown panel).
+    Returns user info, key stats, stalled count, and recent journals.
+    Admin-only function (no user scoping) — admin sees specific user data.
+    Target: <15 queries.
+
+    Args:
+        user_id: User ID to get drilldown data for
+
+    Returns:
+        Dictionary with 'user', 'stats', and 'journals' or error dict if user not found
+    """
+    # Fetch user object
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return {'error': 'User not found'}
+
+    # Per-user stats (reusing patterns from get_user_performance)
+    total_contacts = Contact.objects.filter(owner_id=user_id).count()
+    active_journals = Journal.objects.filter(owner_id=user_id, is_archived=False).count()
+    decisions_logged = Decision.objects.filter(journal_contact__journal__owner_id=user_id).count()
+
+    # Conversion rate: contacts with decisions / total contacts * 100
+    contacts_with_decision = Decision.objects.filter(
+        journal_contact__journal__owner_id=user_id
+    ).values('journal_contact__contact').distinct().count()
+    conversion_rate = round(
+        (contacts_with_decision / total_contacts * 100) if total_contacts > 0 else 0,
+        1
+    )
+
+    # Donation stats
+    donation_stats = Donation.objects.filter(
+        contact__owner_id=user_id
+    ).aggregate(
+        total_amount=Sum('amount'),
+        donation_count=Count('id')
+    )
+
+    # Stalled contact count for this user (last journal activity >14 days ago)
+    cutoff_date = timezone.now() - timedelta(days=14)
+    last_activity = JournalStageEvent.objects.filter(
+        journal_contact__contact=OuterRef('pk')
+    ).order_by('-created_at').values('created_at')[:1]
+
+    stalled_count = Contact.objects.filter(
+        owner_id=user_id
+    ).annotate(
+        last_activity_date=Subquery(last_activity)
+    ).filter(
+        Q(last_activity_date__lt=cutoff_date) | Q(last_activity_date__isnull=True),
+        journal_memberships__isnull=False
+    ).distinct().count()
+
+    # Recent journals (top 5, non-archived) with annotations
+    recent_journals = Journal.objects.filter(
+        owner_id=user_id,
+        is_archived=False
+    ).annotate(
+        member_count=Count('journal_contacts', distinct=True),
+        decision_count=Count('journal_contacts__decisions', distinct=True),
+        active_member_count=Count(
+            'journal_contacts',
+            filter=Q(journal_contacts__decisions__isnull=False),
+            distinct=True
+        )
+    ).order_by('-created_at')[:5]
+
+    return {
+        'user': {
+            'id': str(user.id),
+            'name': f'{user.first_name} {user.last_name}'.strip(),
+            'email': user.email,
+            'role': user.role,
+        },
+        'stats': {
+            'total_contacts': total_contacts,
+            'active_journals': active_journals,
+            'decisions_logged': decisions_logged,
+            'conversion_rate': conversion_rate,
+            'total_donations': float(donation_stats['total_amount'] or 0),
+            'donation_count': donation_stats['donation_count'] or 0,
+            'stalled_contacts': stalled_count,
+        },
+        'journals': [
+            {
+                'id': str(j.id),
+                'name': j.name,
+                'member_count': j.member_count,
+                'decision_count': j.decision_count,
+                'active_member_count': j.active_member_count,
+                'created_at': j.created_at.isoformat(),
+            }
+            for j in recent_journals
+        ]
     }
