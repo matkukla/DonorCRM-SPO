@@ -44,6 +44,7 @@ class FunnelStageSerializer(serializers.Serializer):
 
 class TeamActivityItemSerializer(serializers.Serializer):
     id = serializers.CharField()
+    user_id = serializers.CharField()
     user_email = serializers.CharField()
     user_name = serializers.CharField()
     event_type = serializers.CharField()
@@ -141,3 +142,37 @@ class StageContactsResponseSerializer(serializers.Serializer):
     contacts = StageContactItemSerializer(many=True)
     total_count = serializers.IntegerField()
     stage = serializers.CharField()
+
+
+# User Drilldown Serializers (Phase 18)
+
+class UserDrilldownUserSerializer(serializers.Serializer):
+    id = serializers.CharField()
+    name = serializers.CharField()
+    email = serializers.CharField()
+    role = serializers.CharField()
+
+
+class UserDrilldownStatsSerializer(serializers.Serializer):
+    total_contacts = serializers.IntegerField()
+    active_journals = serializers.IntegerField()
+    decisions_logged = serializers.IntegerField()
+    conversion_rate = serializers.FloatField()
+    total_donations = serializers.FloatField()
+    donation_count = serializers.IntegerField()
+    stalled_contacts = serializers.IntegerField()
+
+
+class UserDrilldownJournalSerializer(serializers.Serializer):
+    id = serializers.CharField()
+    name = serializers.CharField()
+    member_count = serializers.IntegerField()
+    decision_count = serializers.IntegerField()
+    active_member_count = serializers.IntegerField()
+    created_at = serializers.CharField()
+
+
+class UserDrilldownResponseSerializer(serializers.Serializer):
+    user = UserDrilldownUserSerializer()
+    stats = UserDrilldownStatsSerializer()
+    journals = UserDrilldownJournalSerializer(many=True)

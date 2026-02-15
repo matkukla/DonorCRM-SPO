@@ -26,6 +26,7 @@ from apps.insights.services import (
     get_user_trends,
     get_user_journals,
     get_stage_contacts,
+    get_user_drilldown,
 )
 from apps.insights.serializers import (
     DashboardOverviewSerializer,
@@ -37,6 +38,7 @@ from apps.insights.serializers import (
     UserTrendsResponseSerializer,
     UserJournalsResponseSerializer,
     StageContactsResponseSerializer,
+    UserDrilldownResponseSerializer,
 )
 
 
@@ -412,4 +414,35 @@ class StageContactsView(APIView):
 
         data = get_stage_contacts(stage=stage, limit=limit)
         serializer = StageContactsResponseSerializer(data)
+        return Response(serializer.data)
+
+
+class UserDrilldownView(APIView):
+    """
+    GET: Get combined summary for quick user inspection (user drilldown panel).
+    Admin-only endpoint.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    @extend_schema(
+        tags=['insights'],
+        summary='Get user drilldown (admin only)',
+        description='Combined user summary with key stats, stalled count, and recent journals for quick inspection.',
+        parameters=[
+            OpenApiParameter(name='user_id', description='User ID (required)', type=str, required=True),
+        ],
+        responses={200: UserDrilldownResponseSerializer}
+    )
+    def get(self, request):
+        user_id = request.query_params.get('user_id')
+        if not user_id:
+            return Response({'error': 'user_id parameter is required'}, status=400)
+
+        data = get_user_drilldown(user_id=user_id)
+
+        # Check if service returned an error (user not found)
+        if 'error' in data:
+            return Response(data, status=404)
+
+        serializer = UserDrilldownResponseSerializer(data)
         return Response(serializer.data)
