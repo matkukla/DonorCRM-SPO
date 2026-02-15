@@ -487,6 +487,27 @@ export async function getAdminUserDrilldown(params: UserDrilldownParams): Promis
   return response.data
 }
 
+// Activity Heatmap Types (Phase 19)
+
+export interface ActivityHeatmapDay {
+  date: string  // YYYY-MM-DD
+  count: number
+}
+
+export interface ActivityHeatmapResponse {
+  activities: ActivityHeatmapDay[]
+}
+
+export interface ActivityHeatmapParams {
+  date_from?: string
+  date_to?: string
+}
+
+export async function getAdminActivityHeatmap(params?: ActivityHeatmapParams): Promise<ActivityHeatmapResponse> {
+  const response = await apiClient.get<ActivityHeatmapResponse>("/insights/admin/activity-heatmap/", { params })
+  return response.data
+}
+
 // CSV Export Functions (Phase 19)
 
 /**

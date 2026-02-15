@@ -17,6 +17,7 @@ import {
   getAdminUserJournals,
   getAdminStageContacts,
   getAdminUserDrilldown,
+  getAdminActivityHeatmap,
   exportStalledContactsCSV,
   exportTeamActivityCSV,
   type StalledContactsParams,
@@ -24,6 +25,7 @@ import {
   type TeamTrendsParams,
   type DashboardOverviewParams,
   type ConversionFunnelParams,
+  type ActivityHeatmapParams,
 } from "@/api/insights"
 
 const STALE_TIME = 5 * 60 * 1000 // 5 minutes
@@ -173,6 +175,14 @@ export function useAdminUserDrilldown(userId: string | null) {
     queryFn: () => getAdminUserDrilldown({ user_id: userId! }),
     staleTime: STALE_TIME,
     enabled: !!userId,
+  })
+}
+
+export function useAdminActivityHeatmap(params?: ActivityHeatmapParams) {
+  return useQuery({
+    queryKey: ["insights", "admin", "activity-heatmap", params],
+    queryFn: () => getAdminActivityHeatmap(params),
+    staleTime: STALE_TIME,
   })
 }
 
