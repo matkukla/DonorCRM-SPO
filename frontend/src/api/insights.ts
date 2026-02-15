@@ -398,3 +398,29 @@ export async function getAdminUserJournals(params: { user_id: string }): Promise
   const response = await apiClient.get<UserJournalsResponse>("/insights/admin/user-journals/", { params })
   return response.data
 }
+
+// Stage Contacts Types (Phase 18)
+
+export interface StageContactItem {
+  id: string
+  full_name: string
+  email: string | null
+  owner_name: string
+  last_activity_date: string | null
+}
+
+export interface StageContactsResponse {
+  contacts: StageContactItem[]
+  total_count: number
+  stage: string
+}
+
+export interface StageContactsParams {
+  stage: string
+  limit?: number
+}
+
+export async function getAdminStageContacts(params: StageContactsParams): Promise<StageContactsResponse> {
+  const response = await apiClient.get<StageContactsResponse>("/insights/admin/stage-contacts/", { params })
+  return response.data
+}
