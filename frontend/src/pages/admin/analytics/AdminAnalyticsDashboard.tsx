@@ -10,6 +10,7 @@ import { AlertsPanel } from "./components/AlertsPanel"
 import { TrendCharts } from "./components/TrendCharts"
 import { ConversionFunnelChart } from "./components/ConversionFunnelChart"
 import { FunnelDrilldownPanel } from "./components/FunnelDrilldownPanel"
+import { UserDrilldownPanel } from "./components/UserDrilldownPanel"
 
 export default function AdminAnalyticsDashboard() {
   const { data, isLoading, error } = useAdminDashboardOverview()
@@ -19,12 +20,25 @@ export default function AdminAnalyticsDashboard() {
     stage: string | null
   }>({ open: false, stage: null })
 
+  const [userDrilldown, setUserDrilldown] = useState<{
+    open: boolean
+    userId: string | null
+  }>({ open: false, userId: null })
+
   const handleStageClick = (stage: string) => {
     setFunnelDrilldown({ open: true, stage })
   }
 
   const handleFunnelClose = () => {
     setFunnelDrilldown({ open: false, stage: null })
+  }
+
+  const handleUserDrilldown = (userId: string) => {
+    setUserDrilldown({ open: true, userId })
+  }
+
+  const handleUserDrilldownClose = () => {
+    setUserDrilldown({ open: false, userId: null })
   }
 
   return (
@@ -171,7 +185,7 @@ export default function AdminAnalyticsDashboard() {
           {/* Activity and Alerts Row: Team Activity Table (2/3) + Alerts Panel (1/3) */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
-              <TeamActivityTable />
+              <TeamActivityTable onUserDrilldown={handleUserDrilldown} />
             </div>
             <div className="lg:col-span-1">
               <AlertsPanel />
@@ -184,6 +198,11 @@ export default function AdminAnalyticsDashboard() {
           open={funnelDrilldown.open}
           stage={funnelDrilldown.stage}
           onClose={handleFunnelClose}
+        />
+        <UserDrilldownPanel
+          open={userDrilldown.open}
+          userId={userDrilldown.userId}
+          onClose={handleUserDrilldownClose}
         />
       </Container>
     </Section>

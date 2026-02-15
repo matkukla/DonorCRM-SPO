@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { format } from "date-fns"
 import {
   useReactTable,
@@ -8,7 +8,7 @@ import {
   flexRender,
   type SortingState,
 } from "@tanstack/react-table"
-import { ArrowUpDown } from "lucide-react"
+import { ArrowUpDown, Eye } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Table,
@@ -19,6 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { useAdminTeamActivity } from "@/hooks/useInsights"
 import type { TeamActivityItem } from "@/api/insights"
 
@@ -33,48 +34,76 @@ const eventTypeBadgeVariant = (eventType: string) => {
   return mapping[eventType] || "secondary"
 }
 
-const columns = [
-  columnHelper.accessor("created_at", {
-    header: ({ column }) => (
-      <button
-        className="flex items-center gap-2 hover:text-foreground cursor-pointer"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-      >
-        Date
-        <ArrowUpDown className="h-4 w-4" />
-      </button>
-    ),
-    cell: (info) => format(new Date(info.getValue()), "MMM d, yyyy h:mm a"),
-  }),
-  columnHelper.accessor("user_name", {
-    header: ({ column }) => (
-      <button
-        className="flex items-center gap-2 hover:text-foreground cursor-pointer"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-      >
-        User
-        <ArrowUpDown className="h-4 w-4" />
-      </button>
-    ),
-    cell: (info) => info.getValue(),
-  }),
-  columnHelper.accessor("event_type", {
-    header: "Event",
-    cell: (info) => (
-      <Badge variant={eventTypeBadgeVariant(info.getValue())}>
-        {info.getValue()}
-      </Badge>
-    ),
-  }),
-  columnHelper.accessor("title", {
-    header: "Description",
-    cell: (info) => info.getValue(),
-  }),
-]
+interface TeamActivityTableProps {
+  onUserDrilldown?: (userId: string) => void
+}
 
-export function TeamActivityTable() {
+export function TeamActivityTable({ onUserDrilldown }: TeamActivityTableProps) {
   const { data, isLoading } = useAdminTeamActivity({ limit: 50 })
   const [sorting, setSorting] = useState<SortingState>([{ id: "created_at", desc: true }])
+
+  const columns = useMemo(() => {
+    const baseColumns = [
+      columnHelper.accessor("created_at", {
+        header: ({ column }) => (
+          <button
+            className="flex items-center gap-2 hover:text-foreground cursor-pointer"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            Date
+            <ArrowUpDown className="h-4 w-4" />
+          </button>
+        ),
+        cell: (info) => format(new Date(info.getValue()), "MMM d, yyyy h:mm a"),
+      }),
+      columnHelper.accessor("user_name", {
+        header: ({ column }) => (
+          <button
+            className="flex items-center gap-2 hover:text-foreground cursor-pointer"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            User
+            <ArrowUpDown className="h-4 w-4" />
+          </button>
+        ),
+        cell: (info) => info.getValue(),
+      }),
+      columnHelper.accessor("event_type", {
+        header: "Event",
+        cell: (info) => (
+          <Badge variant={eventTypeBadgeVariant(info.getValue())}>
+            {info.getValue()}
+          </Badge>
+        ),
+      }),
+      columnHelper.accessor("title", {
+        header: "Description",
+        cell: (info) => info.getValue(),
+      }),
+    ]
+
+    // Conditionally add Actions column if onUserDrilldown is provided
+    if (onUserDrilldown) {
+      baseColumns.push(
+        columnHelper.display({
+          id: "actions",
+          header: "Actions",
+          cell: ({ row }) => (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onUserDrilldown(row.original.user_id)}
+            >
+              <Eye className="h-4 w-4 mr-1" />
+              Quick View
+            </Button>
+          ),
+        })
+      )
+    }
+
+    return baseColumns
+  }, [onUserDrilldown])
 
   const table = useReactTable({
     data: data?.activities || [],

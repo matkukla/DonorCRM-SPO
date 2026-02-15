@@ -273,6 +273,7 @@ export interface ConversionFunnelResponse {
 
 export interface TeamActivityItem {
   id: string
+  user_id: string
   user_email: string
   user_name: string
   event_type: string
@@ -422,5 +423,46 @@ export interface StageContactsParams {
 
 export async function getAdminStageContacts(params: StageContactsParams): Promise<StageContactsResponse> {
   const response = await apiClient.get<StageContactsResponse>("/insights/admin/stage-contacts/", { params })
+  return response.data
+}
+
+// User Drilldown Types (Phase 18)
+
+export interface UserDrilldownJournal {
+  id: string
+  name: string
+  member_count: number
+  decision_count: number
+  active_member_count: number
+  created_at: string
+}
+
+export interface UserDrilldownStats {
+  total_contacts: number
+  active_journals: number
+  decisions_logged: number
+  conversion_rate: number
+  total_donations: number
+  donation_count: number
+  stalled_contacts: number
+}
+
+export interface UserDrilldownResponse {
+  user: {
+    id: string
+    name: string
+    email: string
+    role: string
+  }
+  stats: UserDrilldownStats
+  journals: UserDrilldownJournal[]
+}
+
+export interface UserDrilldownParams {
+  user_id: string
+}
+
+export async function getAdminUserDrilldown(params: UserDrilldownParams): Promise<UserDrilldownResponse> {
+  const response = await apiClient.get<UserDrilldownResponse>("/insights/admin/user-drilldown/", { params })
   return response.data
 }
