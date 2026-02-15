@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { NavLink } from "react-router-dom"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
@@ -8,9 +9,23 @@ import { TeamActivityTable } from "./components/TeamActivityTable"
 import { AlertsPanel } from "./components/AlertsPanel"
 import { TrendCharts } from "./components/TrendCharts"
 import { ConversionFunnelChart } from "./components/ConversionFunnelChart"
+import { FunnelDrilldownPanel } from "./components/FunnelDrilldownPanel"
 
 export default function AdminAnalyticsDashboard() {
   const { data, isLoading, error } = useAdminDashboardOverview()
+
+  const [funnelDrilldown, setFunnelDrilldown] = useState<{
+    open: boolean
+    stage: string | null
+  }>({ open: false, stage: null })
+
+  const handleStageClick = (stage: string) => {
+    setFunnelDrilldown({ open: true, stage })
+  }
+
+  const handleFunnelClose = () => {
+    setFunnelDrilldown({ open: false, stage: null })
+  }
 
   return (
     <Section>
@@ -150,7 +165,7 @@ export default function AdminAnalyticsDashboard() {
           {/* Charts Row: Trend Charts + Conversion Funnel */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <TrendCharts />
-            <ConversionFunnelChart />
+            <ConversionFunnelChart onStageClick={handleStageClick} />
           </div>
 
           {/* Activity and Alerts Row: Team Activity Table (2/3) + Alerts Panel (1/3) */}
@@ -163,6 +178,13 @@ export default function AdminAnalyticsDashboard() {
             </div>
           </div>
         </div>
+
+        {/* Drill-down Panels */}
+        <FunnelDrilldownPanel
+          open={funnelDrilldown.open}
+          stage={funnelDrilldown.stage}
+          onClose={handleFunnelClose}
+        />
       </Container>
     </Section>
   )

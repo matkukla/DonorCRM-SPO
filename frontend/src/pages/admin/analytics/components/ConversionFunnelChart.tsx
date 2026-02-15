@@ -13,7 +13,11 @@ const FUNNEL_COLORS = [
   "hsl(var(--chart-6))",
 ]
 
-export function ConversionFunnelChart() {
+interface ConversionFunnelChartProps {
+  onStageClick?: (stage: string) => void
+}
+
+export function ConversionFunnelChart({ onStageClick }: ConversionFunnelChartProps) {
   const { data, isLoading } = useAdminConversionFunnel()
 
   const chartData = useMemo(() => {
@@ -22,9 +26,16 @@ export function ConversionFunnelChart() {
       name: stage.label,
       value: stage.count,
       percentage: stage.percentage,
+      stage: stage.stage,
       fill: FUNNEL_COLORS[index % FUNNEL_COLORS.length],
     }))
   }, [data])
+
+  const handleClick = (data: any, index: number, e: React.MouseEvent) => {
+    if (data.stage !== undefined && onStageClick) {
+      onStageClick(data.stage ?? 'none')
+    }
+  }
 
   if (isLoading) return <ChartSkeleton />
   if (!chartData.length) return <EmptyChart />
@@ -34,7 +45,7 @@ export function ConversionFunnelChart() {
       <CardHeader>
         <CardTitle>Pipeline Funnel</CardTitle>
         <CardDescription>
-          {data?.total_contacts_in_pipeline} contacts in pipeline
+          {data?.total_contacts_in_pipeline} contacts in pipeline. Click a stage to view contacts.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -58,6 +69,8 @@ export function ConversionFunnelChart() {
               dataKey="value"
               data={chartData}
               isAnimationActive
+              onClick={handleClick}
+              cursor="pointer"
             >
               <LabelList
                 position="right"

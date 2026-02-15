@@ -15,6 +15,7 @@ import {
   getAdminTeamTrends,
   getAdminUserTrends,
   getAdminUserJournals,
+  getAdminStageContacts,
   type StalledContactsParams,
   type TeamActivityParams,
   type TeamTrendsParams,
@@ -150,5 +151,14 @@ export function useAdminUserJournals(userId: string) {
     queryFn: () => getAdminUserJournals({ user_id: userId }),
     staleTime: STALE_TIME,
     enabled: !!userId,
+  })
+}
+
+export function useAdminStageContacts(stage: string | null) {
+  return useQuery({
+    queryKey: ["insights", "admin", "stage-contacts", stage],
+    queryFn: () => getAdminStageContacts({ stage: stage! }),
+    staleTime: STALE_TIME,
+    enabled: !!stage,
   })
 }
