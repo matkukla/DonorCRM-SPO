@@ -14,11 +14,12 @@ const FUNNEL_COLORS = [
 ]
 
 interface ConversionFunnelChartProps {
+  dateParams?: { date_from?: string; date_to?: string }
   onStageClick?: (stage: string) => void
 }
 
-export function ConversionFunnelChart({ onStageClick }: ConversionFunnelChartProps) {
-  const { data, isLoading } = useAdminConversionFunnel()
+export function ConversionFunnelChart({ dateParams, onStageClick }: ConversionFunnelChartProps) {
+  const { data, isLoading } = useAdminConversionFunnel(dateParams)
 
   const chartData = useMemo(() => {
     if (!data?.funnel) return []
