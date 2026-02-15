@@ -14,6 +14,9 @@ import { TrendCharts } from "./components/TrendCharts"
 import { ConversionFunnelChart } from "./components/ConversionFunnelChart"
 import { FunnelDrilldownPanel } from "./components/FunnelDrilldownPanel"
 import { UserDrilldownPanel } from "./components/UserDrilldownPanel"
+import { ActivityHeatmap } from "./components/ActivityHeatmap"
+import { TimePeriodComparison } from "./components/TimePeriodComparison"
+import { UserComparison } from "./components/UserComparison"
 
 export default function AdminAnalyticsDashboard() {
   const [dateRange, setDateRange] = useState<DateRange | null>(null)
@@ -199,6 +202,15 @@ export default function AdminAnalyticsDashboard() {
             <div className="lg:col-span-1">
               <AlertsPanel />
             </div>
+          </div>
+
+          {/* Heatmap - Full Width */}
+          <ActivityHeatmap dateParams={dateParams} />
+
+          {/* Comparison Row: Time Period (1/2) + User Comparison (1/2) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <TimePeriodComparison dateParams={dateParams} />
+            <UserComparison />
           </div>
         </div>
 
