@@ -31,7 +31,7 @@ export function ConversionFunnelChart({ onStageClick }: ConversionFunnelChartPro
     }))
   }, [data])
 
-  const handleClick = (data: any, index: number, e: React.MouseEvent) => {
+  const handleClick = (data: any) => {
     if (data.stage !== undefined && onStageClick) {
       onStageClick(data.stage ?? 'none')
     }
