@@ -1,6 +1,6 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { NavLink } from "react-router-dom"
-import { ArrowUpDown } from "lucide-react"
+import { ArrowUpDown, Download } from "lucide-react"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,8 +14,11 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { useAdminStalledContacts } from "@/hooks/useInsights"
+import { useAdminStalledContacts, useExportStalledContacts } from "@/hooks/useInsights"
 import { cn } from "@/lib/utils"
+import type { DateRange } from "@/lib/date-presets"
+import { dateRangeToParams } from "@/lib/date-presets"
+import { DateRangePicker } from "@/components/ui/date-range-picker"
 
 const PAGE_SIZE = 50
 
@@ -32,7 +35,9 @@ export default function StalledContacts() {
   const [pageIndex, setPageIndex] = useState(0)
   const [sortBy, setSortBy] = useState<"days_stalled" | "full_name" | "owner_name">("days_stalled")
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc")
+  const [dateRange, setDateRange] = useState<DateRange | null>(null)
 
+  const dateParams = dateRangeToParams(dateRange)
   const offset = pageIndex * PAGE_SIZE
 
   const { data, isLoading, error, isFetching } = useAdminStalledContacts({
@@ -40,7 +45,15 @@ export default function StalledContacts() {
     offset,
     sort_by: sortBy,
     sort_dir: sortDir,
+    ...dateParams,
   })
+
+  const exportMutation = useExportStalledContacts()
+
+  // Reset pagination when date range changes
+  useEffect(() => {
+    setPageIndex(0)
+  }, [dateRange])
 
   const pageCount = Math.ceil((data?.total_count || 0) / PAGE_SIZE)
 
@@ -203,11 +216,24 @@ export default function StalledContacts() {
           </div>
 
           {/* Header */}
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight">Stalled Contacts</h1>
-            <p className="text-muted-foreground mt-1">
-              {data.total_count} contacts with no activity in 14+ days
-            </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-semibold tracking-tight">Stalled Contacts</h1>
+              <p className="text-muted-foreground mt-1">
+                {data.total_count} contacts with no activity in 14+ days
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <DateRangePicker value={dateRange} onChange={setDateRange} />
+              <Button
+                variant="outline"
+                onClick={() => exportMutation.mutate({ ...dateParams, sort_by: sortBy, sort_dir: sortDir })}
+                disabled={exportMutation.isPending}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                {exportMutation.isPending ? 'Exporting...' : 'Export CSV'}
+              </Button>
+            </div>
           </div>
 
           {/* Table */}

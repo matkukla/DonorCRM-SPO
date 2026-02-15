@@ -209,6 +209,11 @@ export interface DonationSummary {
   total_count: number
 }
 
+export interface DashboardOverviewParams {
+  date_from?: string
+  date_to?: string
+}
+
 export interface DashboardOverviewResponse {
   total_contacts: number
   active_journals: number
@@ -233,6 +238,8 @@ export interface StalledContactsParams {
   offset?: number
   sort_by?: string
   sort_dir?: string
+  date_from?: string
+  date_to?: string
 }
 
 export interface StalledContactsResponse {
@@ -287,6 +294,8 @@ export interface TeamActivityItem {
 
 export interface TeamActivityParams {
   limit?: number
+  date_from?: string
+  date_to?: string
 }
 
 export interface TeamActivityResponse {
@@ -297,8 +306,10 @@ export interface TeamActivityResponse {
 /**
  * Get admin dashboard overview metrics
  */
-export async function getAdminDashboardOverview(): Promise<DashboardOverviewResponse> {
-  const response = await apiClient.get<DashboardOverviewResponse>("/insights/admin/dashboard-overview/")
+export async function getAdminDashboardOverview(params?: DashboardOverviewParams): Promise<DashboardOverviewResponse> {
+  const response = await apiClient.get<DashboardOverviewResponse>("/insights/admin/dashboard-overview/", {
+    params,
+  })
   return response.data
 }
 
@@ -323,8 +334,10 @@ export async function getAdminUserPerformance(): Promise<UserPerformanceResponse
 /**
  * Get admin conversion funnel visualization data
  */
-export async function getAdminConversionFunnel(): Promise<ConversionFunnelResponse> {
-  const response = await apiClient.get<ConversionFunnelResponse>("/insights/admin/conversion-funnel/")
+export async function getAdminConversionFunnel(params?: ConversionFunnelParams): Promise<ConversionFunnelResponse> {
+  const response = await apiClient.get<ConversionFunnelResponse>("/insights/admin/conversion-funnel/", {
+    params,
+  })
   return response.data
 }
 
@@ -353,6 +366,13 @@ export interface TeamTrendsResponse {
 
 export interface TeamTrendsParams {
   weeks?: number
+  date_from?: string
+  date_to?: string
+}
+
+export interface ConversionFunnelParams {
+  date_from?: string
+  date_to?: string
 }
 
 /**
@@ -465,4 +485,58 @@ export interface UserDrilldownParams {
 export async function getAdminUserDrilldown(params: UserDrilldownParams): Promise<UserDrilldownResponse> {
   const response = await apiClient.get<UserDrilldownResponse>("/insights/admin/user-drilldown/", { params })
   return response.data
+}
+
+// CSV Export Functions (Phase 19)
+
+/**
+ * Export stalled contacts to CSV file
+ */
+export async function exportStalledContactsCSV(params?: {
+  date_from?: string
+  date_to?: string
+  sort_by?: string
+  sort_dir?: string
+}): Promise<void> {
+  const response = await apiClient.get("/insights/admin/stalled-contacts/export/", {
+    params,
+    responseType: 'blob',
+  })
+  const blob = new Blob([response.data], { type: 'text/csv' })
+  const url = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  const dateStr = params?.date_from && params?.date_to
+    ? `${params.date_from}_to_${params.date_to}`
+    : new Date().toISOString().split('T')[0]
+  link.download = `stalled_contacts_${dateStr}.csv`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  window.URL.revokeObjectURL(url)
+}
+
+/**
+ * Export team activity to CSV file
+ */
+export async function exportTeamActivityCSV(params?: {
+  date_from?: string
+  date_to?: string
+}): Promise<void> {
+  const response = await apiClient.get("/insights/admin/team-activity/export/", {
+    params,
+    responseType: 'blob',
+  })
+  const blob = new Blob([response.data], { type: 'text/csv' })
+  const url = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  const dateStr = params?.date_from && params?.date_to
+    ? `${params.date_from}_to_${params.date_to}`
+    : new Date().toISOString().split('T')[0]
+  link.download = `team_activity_${dateStr}.csv`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  window.URL.revokeObjectURL(url)
 }

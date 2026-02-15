@@ -5,6 +5,9 @@ import { Section } from "@/components/layout/Section"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAdminDashboardOverview } from "@/hooks/useInsights"
 import { cn } from "@/lib/utils"
+import type { DateRange } from "@/lib/date-presets"
+import { dateRangeToParams } from "@/lib/date-presets"
+import { DateRangePicker } from "@/components/ui/date-range-picker"
 import { TeamActivityTable } from "./components/TeamActivityTable"
 import { AlertsPanel } from "./components/AlertsPanel"
 import { TrendCharts } from "./components/TrendCharts"
@@ -13,7 +16,10 @@ import { FunnelDrilldownPanel } from "./components/FunnelDrilldownPanel"
 import { UserDrilldownPanel } from "./components/UserDrilldownPanel"
 
 export default function AdminAnalyticsDashboard() {
-  const { data, isLoading, error } = useAdminDashboardOverview()
+  const [dateRange, setDateRange] = useState<DateRange | null>(null)
+  const dateParams = dateRangeToParams(dateRange)
+
+  const { data, isLoading, error } = useAdminDashboardOverview(dateParams)
 
   const [funnelDrilldown, setFunnelDrilldown] = useState<{
     open: boolean
@@ -84,11 +90,14 @@ export default function AdminAnalyticsDashboard() {
           </div>
 
           {/* Header */}
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight">Analytics Dashboard</h1>
-            <p className="text-muted-foreground mt-1">
-              Organization-wide fundraising analytics
-            </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-semibold tracking-tight">Analytics Dashboard</h1>
+              <p className="text-muted-foreground mt-1">
+                Organization-wide fundraising analytics
+              </p>
+            </div>
+            <DateRangePicker value={dateRange} onChange={setDateRange} />
           </div>
 
           {/* Summary Cards Row */}
@@ -178,14 +187,14 @@ export default function AdminAnalyticsDashboard() {
 
           {/* Charts Row: Trend Charts + Conversion Funnel */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <TrendCharts />
-            <ConversionFunnelChart onStageClick={handleStageClick} />
+            <TrendCharts dateParams={dateParams} />
+            <ConversionFunnelChart dateParams={dateParams} onStageClick={handleStageClick} />
           </div>
 
           {/* Activity and Alerts Row: Team Activity Table (2/3) + Alerts Panel (1/3) */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
-              <TeamActivityTable onUserDrilldown={handleUserDrilldown} />
+              <TeamActivityTable dateParams={dateParams} onUserDrilldown={handleUserDrilldown} />
             </div>
             <div className="lg:col-span-1">
               <AlertsPanel />

@@ -10,8 +10,12 @@ const trendConfig = {
   stage_progressions: { label: "Stage Changes", color: "hsl(var(--chart-3))" },
 } satisfies ChartConfig
 
-export function TrendCharts() {
-  const { data, isLoading } = useAdminTeamTrends()
+interface TrendChartsProps {
+  dateParams?: { date_from?: string; date_to?: string }
+}
+
+export function TrendCharts({ dateParams }: TrendChartsProps) {
+  const { data, isLoading } = useAdminTeamTrends(dateParams)
 
   if (isLoading) return <ChartSkeleton />
   if (!data?.trends.length) return <EmptyChart />

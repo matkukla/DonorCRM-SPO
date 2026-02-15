@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useMutation } from "@tanstack/react-query"
 import {
   getDonationsByMonth,
   getDonationsByYear,
@@ -17,9 +17,13 @@ import {
   getAdminUserJournals,
   getAdminStageContacts,
   getAdminUserDrilldown,
+  exportStalledContactsCSV,
+  exportTeamActivityCSV,
   type StalledContactsParams,
   type TeamActivityParams,
   type TeamTrendsParams,
+  type DashboardOverviewParams,
+  type ConversionFunnelParams,
 } from "@/api/insights"
 
 const STALE_TIME = 5 * 60 * 1000 // 5 minutes
@@ -88,10 +92,10 @@ export function useTransactions(params?: {
 
 // Admin Analytics Hooks
 
-export function useAdminDashboardOverview() {
+export function useAdminDashboardOverview(params?: DashboardOverviewParams) {
   return useQuery({
-    queryKey: ["insights", "admin", "dashboard"],
-    queryFn: getAdminDashboardOverview,
+    queryKey: ["insights", "admin", "dashboard", params],
+    queryFn: () => getAdminDashboardOverview(params),
     staleTime: STALE_TIME,
   })
 }
@@ -112,10 +116,10 @@ export function useAdminUserPerformance() {
   })
 }
 
-export function useAdminConversionFunnel() {
+export function useAdminConversionFunnel(params?: ConversionFunnelParams) {
   return useQuery({
-    queryKey: ["insights", "admin", "conversion-funnel"],
-    queryFn: getAdminConversionFunnel,
+    queryKey: ["insights", "admin", "conversion-funnel", params],
+    queryFn: () => getAdminConversionFunnel(params),
     staleTime: STALE_TIME,
   })
 }
@@ -169,5 +173,19 @@ export function useAdminUserDrilldown(userId: string | null) {
     queryFn: () => getAdminUserDrilldown({ user_id: userId! }),
     staleTime: STALE_TIME,
     enabled: !!userId,
+  })
+}
+
+// CSV Export Hooks
+
+export function useExportStalledContacts() {
+  return useMutation({
+    mutationFn: exportStalledContactsCSV,
+  })
+}
+
+export function useExportTeamActivity() {
+  return useMutation({
+    mutationFn: exportTeamActivityCSV,
   })
 }

@@ -35,11 +35,12 @@ const eventTypeBadgeVariant = (eventType: string) => {
 }
 
 interface TeamActivityTableProps {
+  dateParams?: { date_from?: string; date_to?: string }
   onUserDrilldown?: (userId: string) => void
 }
 
-export function TeamActivityTable({ onUserDrilldown }: TeamActivityTableProps) {
-  const { data, isLoading } = useAdminTeamActivity({ limit: 50 })
+export function TeamActivityTable({ dateParams, onUserDrilldown }: TeamActivityTableProps) {
+  const { data, isLoading } = useAdminTeamActivity({ ...dateParams, limit: 50 })
   const [sorting, setSorting] = useState<SortingState>([{ id: "created_at", desc: true }])
 
   const columns = useMemo(() => {
