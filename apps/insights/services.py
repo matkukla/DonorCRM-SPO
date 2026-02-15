@@ -470,7 +470,11 @@ def get_stalled_contacts(limit=50, offset=0, sort_by='days_stalled', sort_dir='d
         # String field name
         ordering = sort_field if effective_dir == 'asc' else f'-{sort_field}'
 
-    stalled = base_qs.order_by(ordering)[offset:offset + limit]
+    # Apply pagination (limit=None means no limit for CSV export)
+    if limit is not None:
+        stalled = base_qs.order_by(ordering)[offset:offset + limit]
+    else:
+        stalled = base_qs.order_by(ordering)[offset:]
 
     # Use dt_to as reference point if provided, else current time
     reference_time = dt_to if dt_to else timezone.now()

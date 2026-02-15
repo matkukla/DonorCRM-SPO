@@ -23,6 +23,10 @@ from apps.insights.views import (
     UserDrilldownView,
     ActivityHeatmapView,
 )
+from apps.insights.export_views import (
+    StalledContactsCSVView,
+    TeamActivityCSVView,
+)
 
 app_name = 'insights'
 
@@ -47,4 +51,6 @@ urlpatterns = [
     path('admin/stage-contacts/', StageContactsView.as_view(), name='admin-stage-contacts'),
     path('admin/user-drilldown/', UserDrilldownView.as_view(), name='admin-user-drilldown'),
     path('admin/activity-heatmap/', ActivityHeatmapView.as_view(), name='admin-activity-heatmap'),
+    path('admin/stalled-contacts/export/', StalledContactsCSVView.as_view(), name='admin-stalled-contacts-export'),
+    path('admin/team-activity/export/', TeamActivityCSVView.as_view(), name='admin-team-activity-export'),
 ]
