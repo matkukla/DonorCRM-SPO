@@ -19,6 +19,7 @@ from apps.insights.views import (
     UserPerformanceView,
     UserTrendsView,
     UserJournalsView,
+    StageContactsView,
 )
 
 app_name = 'insights'
@@ -41,4 +42,5 @@ urlpatterns = [
     path('admin/team-trends/', TeamTrendsView.as_view(), name='admin-team-trends'),
     path('admin/user-trends/', UserTrendsView.as_view(), name='admin-user-trends'),
     path('admin/user-journals/', UserJournalsView.as_view(), name='admin-user-journals'),
+    path('admin/stage-contacts/', StageContactsView.as_view(), name='admin-stage-contacts'),
 ]
