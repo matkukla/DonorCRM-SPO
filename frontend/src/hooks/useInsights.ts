@@ -20,7 +20,6 @@ import {
   type StalledContactsParams,
   type TeamActivityParams,
   type TeamTrendsParams,
-  type UserTrendsParams,
 } from "@/api/insights"
 
 const STALE_TIME = 5 * 60 * 1000 // 5 minutes

@@ -98,7 +98,7 @@ export function TeamActivityTable({ onUserDrilldown }: TeamActivityTableProps) {
               Quick View
             </Button>
           ),
-        })
+        }) as any
       )
     }
 
