@@ -36,9 +36,9 @@
 
 ### Comparison & Advanced Viz (COMP)
 
-- [ ] **COMP-01**: Admin can compare metrics across two time periods side-by-side (e.g., "This Month vs Last Month") with trend arrows showing change
-- [ ] **COMP-02**: Admin can compare two missionaries side-by-side across key metrics (contacts, decisions, conversion rate)
-- [ ] **COMP-03**: Admin can view an Activity Heatmap Calendar (GitHub-style contribution grid) showing team activity density by day
+- [x] **COMP-01**: Admin can compare metrics across two time periods side-by-side (e.g., "This Month vs Last Month") with trend arrows showing change
+- [x] **COMP-02**: Admin can compare two missionaries side-by-side across key metrics (contacts, decisions, conversion rate)
+- [x] **COMP-03**: Admin can view an Activity Heatmap Calendar (GitHub-style contribution grid) showing team activity density by day
 
 ### API & Access Control (API)
 
@@ -50,9 +50,9 @@
 
 ### Data Management (DATA)
 
-- [ ] **DATA-01**: Admin can filter all dashboard views by date range (preset: This Month, Last Quarter, YTD, Custom Range)
-- [ ] **DATA-02**: Admin can export Stalled Contacts list and Team Activity data to CSV
-- [ ] **DATA-03**: Pace calculation computes average days between stage transitions per contact
+- [x] **DATA-01**: Admin can filter all dashboard views by date range (preset: This Month, Last Quarter, YTD, Custom Range)
+- [x] **DATA-02**: Admin can export Stalled Contacts list and Team Activity data to CSV
+- [x] **DATA-03**: Pace calculation computes average days between stage transitions per contact
 
 ---
 
