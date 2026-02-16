@@ -38,10 +38,10 @@ const navItems: NavItem[] = [
   { label: "Pledges", href: "/pledges", icon: <FileText className="h-5 w-5" /> },
   { label: "Tasks", href: "/tasks", icon: <CheckSquare className="h-5 w-5" /> },
   { label: "Groups", href: "/groups", icon: <UsersRound className="h-5 w-5" /> },
+  { label: "Journals", href: "/journals", icon: <BookOpen className="h-5 w-5" /> },
 ]
 
 const insightsItems: NavItem[] = [
-  { label: "Journals", href: "/journals", icon: <BookOpen className="h-4 w-4" /> },
   { label: "Donations by Month/Year", href: "/insights/donations-by-month-year", icon: <Calendar className="h-4 w-4" /> },
   { label: "Monthly Commitments", href: "/insights/monthly-commitments", icon: <TrendingUp className="h-4 w-4" /> },
   { label: "Late Donations", href: "/insights/late-donations", icon: <AlertCircle className="h-4 w-4" /> },
@@ -68,7 +68,7 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
   const location = useLocation()
 
   // Check if any insights route is active
-  const isInsightsActive = location.pathname.startsWith("/insights") || location.pathname === "/journals"
+  const isInsightsActive = location.pathname.startsWith("/insights")
 
   // Persist open state in localStorage
   const [isInsightsOpen, setIsInsightsOpen] = React.useState(() => {
