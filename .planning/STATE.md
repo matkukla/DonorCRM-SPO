@@ -40,7 +40,7 @@ All decisions logged in PROJECT.md Key Decisions table.
 
 ### Pending Todos
 
-3 pending todo(s). See `.planning/todos/pending/`.
+4 pending todo(s). See `.planning/todos/pending/`.
 
 ### Blockers/Concerns
 
