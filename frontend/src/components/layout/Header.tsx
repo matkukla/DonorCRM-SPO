@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { Menu, LogOut, User, Settings } from "lucide-react"
+import { Menu, LogOut, User, Settings, Sun, Moon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -18,10 +18,12 @@ import {
 } from "@/components/ui/sheet"
 import { Sidebar } from "./Sidebar"
 import { useAuth } from "@/providers/AuthProvider"
+import { useTheme } from "@/providers/ThemeProvider"
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { user, logout } = useAuth()
+  const { resolvedTheme, setTheme } = useTheme()
   const navigate = useNavigate()
 
   const handleLogout = () => {
@@ -29,9 +31,13 @@ export function Header() {
     navigate("/login")
   }
 
+  const toggleTheme = () => {
+    setTheme(resolvedTheme === "dark" ? "light" : "dark")
+  }
+
   return (
     <>
-      <header className="h-16 border-b border-border bg-white flex items-center justify-between px-4 lg:px-6">
+      <header className="h-16 border-b border-border bg-background flex items-center justify-between px-4 lg:px-6">
         {/* Mobile menu button */}
         <Button
           variant="ghost"
@@ -51,8 +57,25 @@ export function Header() {
         {/* Spacer for desktop */}
         <div className="hidden lg:block" />
 
-        {/* User menu */}
-        <DropdownMenu>
+        {/* Right side: Theme toggle + User menu */}
+        <div className="flex items-center gap-2">
+          {/* Theme toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleTheme}
+            aria-label="Toggle theme"
+          >
+            {resolvedTheme === "dark" ? (
+              <Sun className="h-5 w-5" />
+            ) : (
+              <Moon className="h-5 w-5" />
+            )}
+            <span className="sr-only">Toggle theme</span>
+          </Button>
+
+          {/* User menu */}
+          <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="gap-2">
               <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
@@ -84,6 +107,7 @@ export function Header() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        </div>
       </header>
 
       {/* Mobile navigation sheet */}

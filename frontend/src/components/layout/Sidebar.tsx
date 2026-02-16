@@ -98,7 +98,7 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
   const filteredInsightsItems = insightsItems.filter(canAccess)
 
   return (
-    <aside className={cn("flex flex-col h-full bg-white border-r border-border", className)}>
+    <aside className={cn("flex flex-col h-full bg-background border-r border-border", className)}>
       {/* Logo */}
       <div className="h-16 flex items-center px-6 border-b border-border">
         <span className="text-xl font-semibold text-primary">DonorCRM</span>

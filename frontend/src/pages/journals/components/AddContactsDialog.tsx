@@ -101,7 +101,7 @@ export const AddContactsDialog = React.memo(function AddContactsDialog({
                     className="flex items-center justify-between p-3 border rounded-lg"
                   >
                     <div className="flex-1">
-                      <div className="font-medium">{contact.name}</div>
+                      <div className="font-medium">{contact.full_name}</div>
                       {contact.email && (
                         <div className="text-sm text-muted-foreground">
                           {contact.email}
