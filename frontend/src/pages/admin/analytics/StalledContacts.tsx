@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { NavLink } from "react-router-dom"
+import { NavLink, useSearchParams } from "react-router-dom"
 import { ArrowUpDown, Download } from "lucide-react"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils"
 import type { DateRange } from "@/lib/date-presets"
 import { dateRangeToParams } from "@/lib/date-presets"
 import { DateRangePicker } from "@/components/ui/date-range-picker"
+import { parseISO, isValid, format } from "date-fns"
 
 const PAGE_SIZE = 50
 
@@ -32,10 +33,30 @@ function formatDate(dateStr: string | null): string {
 }
 
 export default function StalledContacts() {
+  const [searchParams, setSearchParams] = useSearchParams()
+
   const [pageIndex, setPageIndex] = useState(0)
   const [sortBy, setSortBy] = useState<"days_stalled" | "full_name" | "owner_name">("days_stalled")
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc")
-  const [dateRange, setDateRange] = useState<DateRange | null>(null)
+  const [dateRange, setDateRange] = useState<DateRange | null>(() => {
+    // Read and validate URL params on mount
+    const dateFrom = searchParams.get('date_from')
+    const dateTo = searchParams.get('date_to')
+
+    if (dateFrom && dateTo) {
+      const fromDate = parseISO(dateFrom)
+      const toDate = parseISO(dateTo)
+
+      // Validate both dates are valid and from is before to
+      if (isValid(fromDate) && isValid(toDate) && fromDate <= toDate) {
+        return { from: fromDate, to: toDate }
+      }
+      // Invalid dates: clear params and show console warning
+      console.warn('Invalid date params in URL, ignoring:', { dateFrom, dateTo })
+    }
+
+    return null
+  })
 
   const dateParams = dateRangeToParams(dateRange)
   const offset = pageIndex * PAGE_SIZE
@@ -68,6 +89,20 @@ export default function StalledContacts() {
     }
     // Always reset to page 1 on sort change
     setPageIndex(0)
+  }
+
+  const handleDateRangeChange = (newRange: DateRange | null) => {
+    setDateRange(newRange)
+
+    // Sync URL params
+    if (newRange?.from && newRange?.to) {
+      setSearchParams({
+        date_from: format(newRange.from, 'yyyy-MM-dd'),
+        date_to: format(newRange.to, 'yyyy-MM-dd'),
+      })
+    } else {
+      setSearchParams({}) // Clear params
+    }
   }
 
   if (isLoading) {
@@ -224,7 +259,7 @@ export default function StalledContacts() {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <DateRangePicker value={dateRange} onChange={setDateRange} />
+              <DateRangePicker value={dateRange} onChange={handleDateRangeChange} />
               <Button
                 variant="outline"
                 onClick={() => exportMutation.mutate({ ...dateParams, sort_by: sortBy, sort_dir: sortDir })}
