@@ -20,13 +20,13 @@ const buttonVariants = cva(
       variant: {
         // Default: Outlined red CTA (SPO style)
         default:
-          "border-2 border-primary bg-white text-primary hover:bg-primary hover:text-white tracking-wide",
+          "border-2 border-primary bg-background text-primary hover:bg-primary hover:text-white tracking-wide",
         // Destructive: Solid red (use sparingly)
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90",
         // Outline: Same as default (for compatibility)
         outline:
-          "border-2 border-primary bg-white text-primary hover:bg-primary hover:text-white tracking-wide",
+          "border-2 border-primary bg-background text-primary hover:bg-primary hover:text-white tracking-wide",
         // Secondary: Subtle neutral background
         secondary:
           "bg-secondary text-secondary-foreground border border-border hover:bg-secondary/80",
