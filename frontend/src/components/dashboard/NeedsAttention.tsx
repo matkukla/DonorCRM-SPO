@@ -39,7 +39,7 @@ export function NeedsAttention({
     <Card>
       <CardHeader>
         <div className="flex items-center gap-2">
-          <AlertTriangle className="h-5 w-5 text-amber-500" />
+          <AlertTriangle className="h-5 w-5 text-amber-500 dark:text-amber-400" />
           <div>
             <CardTitle>Needs Attention</CardTitle>
             <CardDescription>Items requiring your action</CardDescription>
@@ -61,19 +61,19 @@ export function NeedsAttention({
           <div className="space-y-4">
             {/* Overdue Tasks */}
             {overdueTaskCount > 0 && (
-              <div className="p-4 bg-red-50 border border-red-100 rounded-lg">
+              <div className="p-4 bg-red-50 dark:bg-red-950/50 border border-red-100 dark:border-red-900/50 rounded-lg">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <CheckSquare className="h-4 w-4 text-red-600" />
-                    <span className="font-medium text-red-900">
+                    <CheckSquare className="h-4 w-4 text-red-600 dark:text-red-400" />
+                    <span className="font-medium text-red-900 dark:text-red-200">
                       {overdueTaskCount} Overdue Task{overdueTaskCount !== 1 ? "s" : ""}
                     </span>
                   </div>
-                  <Button variant="link" size="sm" asChild className="text-red-600 p-0 h-auto">
+                  <Button variant="link" size="sm" asChild className="text-red-600 dark:text-red-400 p-0 h-auto">
                     <Link to="/tasks?filter=overdue">View all</Link>
                   </Button>
                 </div>
-                <ul className="space-y-1 text-sm text-red-800">
+                <ul className="space-y-1 text-sm text-red-800 dark:text-red-300">
                   {overdueTasks.slice(0, 3).map((task) => (
                     <li key={task.id} className="truncate">
                       {task.title}
@@ -85,19 +85,19 @@ export function NeedsAttention({
 
             {/* Late Pledges */}
             {latePledgeCount > 0 && (
-              <div className="p-4 bg-amber-50 border border-amber-100 rounded-lg">
+              <div className="p-4 bg-amber-50 dark:bg-amber-950/50 border border-amber-100 dark:border-amber-900/50 rounded-lg">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-amber-600" />
-                    <span className="font-medium text-amber-900">
+                    <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                    <span className="font-medium text-amber-900 dark:text-amber-200">
                       {latePledgeCount} Late Pledge{latePledgeCount !== 1 ? "s" : ""}
                     </span>
                   </div>
-                  <Button variant="link" size="sm" asChild className="text-amber-600 p-0 h-auto">
+                  <Button variant="link" size="sm" asChild className="text-amber-600 dark:text-amber-400 p-0 h-auto">
                     <Link to="/pledges?filter=late">View all</Link>
                   </Button>
                 </div>
-                <ul className="space-y-1 text-sm text-amber-800">
+                <ul className="space-y-1 text-sm text-amber-800 dark:text-amber-300">
                   {latePledges.slice(0, 3).map((pledge) => (
                     <li key={pledge.id}>
                       {formatCurrency(pledge.amount)} ({pledge.days_late} days late)
@@ -109,24 +109,24 @@ export function NeedsAttention({
 
             {/* Thank You Queue */}
             {thankYouCount > 0 && (
-              <div className="p-4 bg-blue-50 border border-blue-100 rounded-lg">
+              <div className="p-4 bg-blue-50 dark:bg-blue-950/50 border border-blue-100 dark:border-blue-900/50 rounded-lg">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <Heart className="h-4 w-4 text-blue-600" />
-                    <span className="font-medium text-blue-900">
+                    <Heart className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <span className="font-medium text-blue-900 dark:text-blue-200">
                       {thankYouCount} Thank You{thankYouCount !== 1 ? "s" : ""} Needed
                     </span>
                   </div>
-                  <Button variant="link" size="sm" asChild className="text-blue-600 p-0 h-auto">
+                  <Button variant="link" size="sm" asChild className="text-blue-600 dark:text-blue-400 p-0 h-auto">
                     <Link to="/contacts?filter=needs_thank_you">View all</Link>
                   </Button>
                 </div>
-                <ul className="space-y-1 text-sm text-blue-800">
+                <ul className="space-y-1 text-sm text-blue-800 dark:text-blue-300">
                   {thankYouNeeded.slice(0, 3).map((contact) => (
                     <li key={contact.id}>
                       {contact.first_name} {contact.last_name}
                       {contact.last_gift_amount && (
-                        <span className="text-blue-600 ml-1">
+                        <span className="text-blue-600 dark:text-blue-400 ml-1">
                           ({formatCurrency(contact.last_gift_amount)})
                         </span>
                       )}

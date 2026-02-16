@@ -54,6 +54,9 @@
 
     /* Border Radius - 12px, NOT pill */
     --radius: 0.75rem;
+
+    /* Chart Colors */
+    --chart-1: 220 34% 34%;          /* SPO Blue for charts */
   }
 
   .dark {
@@ -93,6 +96,9 @@
     --border: 217 33% 25%;
     --input: 217 33% 25%;
     --ring: 210 40% 70%;
+
+    /* Chart Colors */
+    --chart-1: 210 40% 98%;          /* White/near-white for chart elements */
   }
 
   * {
