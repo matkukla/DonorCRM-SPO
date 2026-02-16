@@ -13,7 +13,7 @@ Milestone: None active (v1.2 shipped 2026-02-16)
 Phase: N/A
 Plan: N/A
 Status: Between milestones
-Last activity: 2026-02-16 - Completed quick task 6: Move Journals to sidebar & add action dialogs
+Last activity: 2026-02-16 - Completed quick task 7: Implement light and dark mode toggle
 
 Progress: All 3 milestones shipped (v1.0, v1.1, v1.2)
 
@@ -54,13 +54,14 @@ None.
 |---|-------------|------|--------|-----------|
 | 5 | Remove analytics tab from left sidebar | 2026-02-16 | db2b504 | [5-remove-analytics-tab-from-left-sidebar-a](./quick/5-remove-analytics-tab-from-left-sidebar-a/) |
 | 6 | Move Journals to sidebar & add action dialogs | 2026-02-16 | 34097d1 | [6-move-journal-tab-to-own-sidebar-tab-add-](./quick/6-move-journal-tab-to-own-sidebar-tab-add-/) |
+| 7 | Implement light and dark mode toggle | 2026-02-16 | ccb4c67 | [7-implement-light-and-dark-mode-toggle](./quick/7-implement-light-and-dark-mode-toggle/) |
 
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed quick-6 (Move Journals to sidebar & add action dialogs)
+Stopped at: Completed quick-7 (Implement light and dark mode toggle)
 Resume file: None
 
 ---
 
-*Last updated: 2026-02-16 (completed quick-6)*
+*Last updated: 2026-02-16 (completed quick-7)*
