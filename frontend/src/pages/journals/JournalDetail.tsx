@@ -1,10 +1,10 @@
 import * as React from "react"
 import { useParams, Link } from "react-router-dom"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, UserPlus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useJournal, useJournalMembers } from "@/hooks/useJournals"
-import { JournalGrid, EventTimelineDrawer, JournalHeader, DecisionTrendsChart, StageActivityChart, PipelineBreakdownChart, NextStepsQueue } from "./components"
+import { JournalGrid, EventTimelineDrawer, JournalHeader, DecisionTrendsChart, StageActivityChart, PipelineBreakdownChart, NextStepsQueue, AddContactsDialog } from "./components"
 import type { PipelineStage } from "@/types/journals"
 
 /**
@@ -44,6 +44,9 @@ export default function JournalDetail() {
 
   // Drawer state
   const [drawer, setDrawer] = React.useState<DrawerState>(initialDrawerState)
+
+  // Add contacts dialog state
+  const [showAddContacts, setShowAddContacts] = React.useState(false)
 
   // Handle stage cell click - open drawer
   const handleStageCellClick = React.useCallback(
@@ -96,16 +99,21 @@ export default function JournalDetail() {
   }
 
   const members = membersData?.results ?? []
+  const existingContactIds = members.map(m => m.contact)
 
   return (
     <div className="container mx-auto py-8 space-y-6">
-      {/* Back button */}
-      <div className="flex items-center gap-4">
+      {/* Back button and Add Contacts */}
+      <div className="flex items-center justify-between">
         <Link to="/journals">
           <Button variant="ghost" size="icon">
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
+        <Button variant="outline" onClick={() => setShowAddContacts(true)}>
+          <UserPlus className="h-4 w-4 mr-2" />
+          Add Contacts
+        </Button>
       </div>
 
       {/* Header with stats */}
@@ -154,6 +162,14 @@ export default function JournalDetail() {
         contactName={drawer.contactName}
         isOpen={drawer.isOpen}
         onClose={handleCloseDrawer}
+      />
+
+      {/* Add Contacts Dialog */}
+      <AddContactsDialog
+        open={showAddContacts}
+        onOpenChange={setShowAddContacts}
+        journalId={id ?? ""}
+        existingContactIds={existingContactIds}
       />
     </div>
   )
