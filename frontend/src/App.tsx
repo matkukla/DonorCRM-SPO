@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import { QueryProvider } from "@/providers/QueryProvider"
 import { AuthProvider } from "@/providers/AuthProvider"
+import { ThemeProvider } from "@/providers/ThemeProvider"
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
 import { AppLayout } from "@/components/layout/AppLayout"
 import { Toaster } from "@/components/ui/sonner"
@@ -61,60 +62,62 @@ function ProtectedPage({ children, requiredRole }: { children: React.ReactNode; 
 function App() {
   return (
     <QueryProvider>
-      <AuthProvider>
-        <BrowserRouter>
-          <Routes>
-            {/* Public routes */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/styleguide" element={<Styleguide />} />
+      <ThemeProvider>
+        <AuthProvider>
+          <BrowserRouter>
+            <Routes>
+              {/* Public routes */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/styleguide" element={<Styleguide />} />
 
-            {/* Protected routes with app layout */}
-            <Route path="/" element={<ProtectedPage><Dashboard /></ProtectedPage>} />
-            <Route path="/contacts" element={<ProtectedPage><ContactList /></ProtectedPage>} />
-            <Route path="/contacts/new" element={<ProtectedPage><ContactForm /></ProtectedPage>} />
-            <Route path="/contacts/:id" element={<ProtectedPage><ContactDetail /></ProtectedPage>} />
-            <Route path="/contacts/:id/edit" element={<ProtectedPage><ContactForm /></ProtectedPage>} />
-            <Route path="/donations" element={<ProtectedPage><DonationList /></ProtectedPage>} />
-            <Route path="/donations/new" element={<ProtectedPage><DonationForm /></ProtectedPage>} />
-            <Route path="/donations/:id" element={<ProtectedPage><DonationDetail /></ProtectedPage>} />
-            <Route path="/donations/:id/edit" element={<ProtectedPage><DonationForm /></ProtectedPage>} />
-            <Route path="/pledges" element={<ProtectedPage><PledgeList /></ProtectedPage>} />
-            <Route path="/pledges/new" element={<ProtectedPage><PledgeForm /></ProtectedPage>} />
-            <Route path="/pledges/:id" element={<ProtectedPage><PledgeDetail /></ProtectedPage>} />
-            <Route path="/pledges/:id/edit" element={<ProtectedPage><PledgeForm /></ProtectedPage>} />
-            <Route path="/tasks" element={<ProtectedPage><TaskList /></ProtectedPage>} />
-            <Route path="/tasks/new" element={<ProtectedPage><TaskForm /></ProtectedPage>} />
-            <Route path="/tasks/:id" element={<ProtectedPage><TaskDetail /></ProtectedPage>} />
-            <Route path="/tasks/:id/edit" element={<ProtectedPage><TaskForm /></ProtectedPage>} />
-            <Route path="/groups" element={<ProtectedPage><GroupList /></ProtectedPage>} />
-            <Route path="/groups/:id" element={<ProtectedPage><GroupDetail /></ProtectedPage>} />
-            <Route path="/groups/:id/edit" element={<ProtectedPage><GroupForm /></ProtectedPage>} />
-            <Route path="/journals" element={<ProtectedPage><JournalList /></ProtectedPage>} />
-            <Route path="/journals/:id" element={<ProtectedPage><JournalDetail /></ProtectedPage>} />
+              {/* Protected routes with app layout */}
+              <Route path="/" element={<ProtectedPage><Dashboard /></ProtectedPage>} />
+              <Route path="/contacts" element={<ProtectedPage><ContactList /></ProtectedPage>} />
+              <Route path="/contacts/new" element={<ProtectedPage><ContactForm /></ProtectedPage>} />
+              <Route path="/contacts/:id" element={<ProtectedPage><ContactDetail /></ProtectedPage>} />
+              <Route path="/contacts/:id/edit" element={<ProtectedPage><ContactForm /></ProtectedPage>} />
+              <Route path="/donations" element={<ProtectedPage><DonationList /></ProtectedPage>} />
+              <Route path="/donations/new" element={<ProtectedPage><DonationForm /></ProtectedPage>} />
+              <Route path="/donations/:id" element={<ProtectedPage><DonationDetail /></ProtectedPage>} />
+              <Route path="/donations/:id/edit" element={<ProtectedPage><DonationForm /></ProtectedPage>} />
+              <Route path="/pledges" element={<ProtectedPage><PledgeList /></ProtectedPage>} />
+              <Route path="/pledges/new" element={<ProtectedPage><PledgeForm /></ProtectedPage>} />
+              <Route path="/pledges/:id" element={<ProtectedPage><PledgeDetail /></ProtectedPage>} />
+              <Route path="/pledges/:id/edit" element={<ProtectedPage><PledgeForm /></ProtectedPage>} />
+              <Route path="/tasks" element={<ProtectedPage><TaskList /></ProtectedPage>} />
+              <Route path="/tasks/new" element={<ProtectedPage><TaskForm /></ProtectedPage>} />
+              <Route path="/tasks/:id" element={<ProtectedPage><TaskDetail /></ProtectedPage>} />
+              <Route path="/tasks/:id/edit" element={<ProtectedPage><TaskForm /></ProtectedPage>} />
+              <Route path="/groups" element={<ProtectedPage><GroupList /></ProtectedPage>} />
+              <Route path="/groups/:id" element={<ProtectedPage><GroupDetail /></ProtectedPage>} />
+              <Route path="/groups/:id/edit" element={<ProtectedPage><GroupForm /></ProtectedPage>} />
+              <Route path="/journals" element={<ProtectedPage><JournalList /></ProtectedPage>} />
+              <Route path="/journals/:id" element={<ProtectedPage><JournalDetail /></ProtectedPage>} />
 
-            {/* Insights routes */}
-            <Route path="/insights/donations-by-month-year" element={<ProtectedPage><DonationsByMonthYear /></ProtectedPage>} />
-            <Route path="/insights/monthly-commitments" element={<ProtectedPage><MonthlyCommitments /></ProtectedPage>} />
-            <Route path="/insights/late-donations" element={<ProtectedPage><LateDonations /></ProtectedPage>} />
-            <Route path="/insights/follow-ups" element={<ProtectedPage><FollowUps /></ProtectedPage>} />
-            <Route path="/insights/review-queue" element={<ProtectedPage requiredRole="admin"><ReviewQueue /></ProtectedPage>} />
-            <Route path="/insights/transactions" element={<ProtectedPage requiredRole="admin"><Transactions /></ProtectedPage>} />
+              {/* Insights routes */}
+              <Route path="/insights/donations-by-month-year" element={<ProtectedPage><DonationsByMonthYear /></ProtectedPage>} />
+              <Route path="/insights/monthly-commitments" element={<ProtectedPage><MonthlyCommitments /></ProtectedPage>} />
+              <Route path="/insights/late-donations" element={<ProtectedPage><LateDonations /></ProtectedPage>} />
+              <Route path="/insights/follow-ups" element={<ProtectedPage><FollowUps /></ProtectedPage>} />
+              <Route path="/insights/review-queue" element={<ProtectedPage requiredRole="admin"><ReviewQueue /></ProtectedPage>} />
+              <Route path="/insights/transactions" element={<ProtectedPage requiredRole="admin"><Transactions /></ProtectedPage>} />
 
-            <Route path="/settings" element={<ProtectedPage><Settings /></ProtectedPage>} />
-            <Route path="/admin" element={<ProtectedPage requiredRole="admin"><AdminUsers /></ProtectedPage>} />
-            <Route path="/admin/imports" element={<ProtectedPage requiredRole="admin"><ImportCenter /></ProtectedPage>} />
-            <Route path="/admin/analytics" element={<Navigate to="/admin/analytics/dashboard" replace />} />
-            <Route path="/admin/analytics/dashboard" element={<ProtectedPage requiredRole="admin"><AdminAnalyticsDashboard /></ProtectedPage>} />
-            <Route path="/admin/analytics/stalled" element={<ProtectedPage requiredRole="admin"><StalledContacts /></ProtectedPage>} />
-            <Route path="/admin/analytics/users/:id" element={<ProtectedPage requiredRole="admin"><UserDetail /></ProtectedPage>} />
-            <Route path="/import-export" element={<ProtectedPage><ImportExport /></ProtectedPage>} />
+              <Route path="/settings" element={<ProtectedPage><Settings /></ProtectedPage>} />
+              <Route path="/admin" element={<ProtectedPage requiredRole="admin"><AdminUsers /></ProtectedPage>} />
+              <Route path="/admin/imports" element={<ProtectedPage requiredRole="admin"><ImportCenter /></ProtectedPage>} />
+              <Route path="/admin/analytics" element={<Navigate to="/admin/analytics/dashboard" replace />} />
+              <Route path="/admin/analytics/dashboard" element={<ProtectedPage requiredRole="admin"><AdminAnalyticsDashboard /></ProtectedPage>} />
+              <Route path="/admin/analytics/stalled" element={<ProtectedPage requiredRole="admin"><StalledContacts /></ProtectedPage>} />
+              <Route path="/admin/analytics/users/:id" element={<ProtectedPage requiredRole="admin"><UserDetail /></ProtectedPage>} />
+              <Route path="/import-export" element={<ProtectedPage><ImportExport /></ProtectedPage>} />
 
-            {/* Catch-all redirect */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </BrowserRouter>
-        <Toaster position="bottom-right" />
-      </AuthProvider>
+              {/* Catch-all redirect */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </BrowserRouter>
+          <Toaster position="bottom-right" />
+        </AuthProvider>
+      </ThemeProvider>
     </QueryProvider>
   )
 }

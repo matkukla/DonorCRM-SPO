@@ -3,9 +3,9 @@
 @tailwind utilities;
 
 /*
- * SPO Design System - Light Only
+ * SPO Design System - Light & Dark Mode
  * Colors: SPO Blue (#3A4D75), SPO Red (#D74F59), SPO White (#FFFFFF)
- * No dark mode. Clean, calm, nonprofit aesthetic.
+ * Clean, calm, nonprofit aesthetic with theme toggle support.
  */
 
 @layer base {
@@ -54,6 +54,45 @@
 
     /* Border Radius - 12px, NOT pill */
     --radius: 0.75rem;
+  }
+
+  .dark {
+    /* Background & Foreground */
+    --background: 222 47% 11%;        /* Dark navy ~#0f172a */
+    --foreground: 210 40% 98%;        /* Light text ~#f8fafc */
+
+    /* Card */
+    --card: 222 47% 14%;              /* Slightly lighter ~#1e293b */
+    --card-foreground: 210 40% 98%;
+
+    /* Popover */
+    --popover: 222 47% 14%;
+    --popover-foreground: 210 40% 98%;
+
+    /* Primary - Keep SPO Red the same */
+    --primary: 348 85% 61%;           /* #F04763 */
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary */
+    --secondary: 217 33% 20%;
+    --secondary-foreground: 210 40% 98%;
+
+    /* Muted */
+    --muted: 217 33% 18%;
+    --muted-foreground: 215 20% 65%;
+
+    /* Accent - Keep SPO Red */
+    --accent: 355 62% 58%;            /* #D74F59 */
+    --accent-foreground: 0 0% 100%;
+
+    /* Destructive */
+    --destructive: 0 63% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Border, Input, Ring */
+    --border: 217 33% 25%;
+    --input: 217 33% 25%;
+    --ring: 210 40% 70%;
   }
 
   * {
