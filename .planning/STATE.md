@@ -2,27 +2,27 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-12)
+See: .planning/PROJECT.md (updated 2026-02-16)
 
-**Core value:** Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems.
-**Current focus:** v1.2 Admin Analytics Dashboard - COMPLETE
+**Core value:** Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems, and leadership can proactively support their teams through cross-missionary analytics.
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-Milestone: v1.2 Admin Analytics Dashboard
-Phase: 19 of 19 (Advanced Features - Export & Data Tools)
-Plan: 04 of 04
-Status: Milestone complete - ALL UAT GAPS CLOSED
-Last activity: 2026-02-16 - Completed 19-04-PLAN.md (UAT Gap Closure)
+Milestone: None active (v1.2 shipped 2026-02-16)
+Phase: N/A
+Plan: N/A
+Status: Between milestones
+Last activity: 2026-02-16 - Completed v1.2 Admin Analytics Dashboard
 
-Progress: [████████████████████] 100% (v1.2 - 17/17 plans complete)
+Progress: All 3 milestones shipped (v1.0, v1.1, v1.2)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 56 (24 v1.0 + 15 v1.1 + 17 v1.2)
-- Average duration: 4.4 minutes
-- Total execution time: 4.1 hours
+- Total plans completed: 57 (24 v1.0 + 15 v1.1 + 18 v1.2)
+- Average duration: 4.3 minutes
+- Total execution time: ~4.1 hours
 
 **By Milestone:**
 
@@ -30,119 +30,30 @@ Progress: [████████████████████] 100% (v
 |-----------|-------|-------|----------|
 | v1.0 (Phases 1-6) | 24 | 1.4 hours | 2.8 min |
 | v1.1 (Phases 7-12) | 15 | 76m 43s | 5.1 min |
-| v1.2 (Phases 13-19) | 17 | 108m 48s | 6.4 min |
-
-*Updated after each plan completion*
+| v1.2 (Phases 13-19) | 18 | 108m 48s | 6.0 min |
 
 ## Accumulated Context
 
 ### Decisions
 
-Decisions are logged in PROJECT.md Key Decisions table.
-
-**Architecture for v1.2:**
-- Extend existing `insights` app (not new app) for admin analytics endpoints
-- Reuse journal pipeline for conversion funnel visualization
-- Backend-first build order: permissions/optimization → endpoints → frontend → features
-- Address critical pitfalls from research: N+1 queries, permission bypass, race conditions
-
-**Key patterns established:**
-- Django/DRF backend, React/TypeScript frontend
-- Owner-scoped data with admin visibility
-- Recharts for all visualizations
-- Tailwind CSS + Radix UI components
-- F() expressions for atomic numeric updates (13-01)
-- select_for_update() for row-level locking during recalculation (13-01)
-- DRF permission classes over manual role checks (13-01)
-- Database-level aggregation using annotate/aggregate/Subquery (13-02)
-- Admin service functions without user parameter for cross-user aggregation (13-02)
-- Subquery annotation pattern for correlated queries (13-02, 14-01, 14-02)
-- DRF serializers for read-only response formatting and validation (14-01)
-- Safe query parameter parsing with bounded defaults (14-01, 14-02)
-- Expression-based sorting with Coalesce for null-safe ordering (14-02)
-- Hierarchical React Query keys for admin analytics: ['insights', 'admin', 'endpoint-name'] (15-01)
-- Stub page components for incremental feature development (15-01)
-- Admin sub-navigation pattern (Users, Import Center, Analytics) with NavLink active state (15-02)
-- Loading/error state handling pattern for admin analytics pages (15-02)
-- Currency formatting (cents to dollars) and date formatting for admin analytics (15-02)
-- Client-side table sorting with TanStack Table getSortedRowModel for small datasets (16-02)
-- Extracted alert computation functions for separation of concerns and testability (16-02)
-- Severity-based color styling (red/amber/blue) for coaching alerts (16-02)
-- TruncWeek aggregation for weekly time-series data (16-01)
-- Normalize datetime/date objects from TruncWeek for consistent mapping (16-01)
-- Zero-filled week list pattern for complete time series (16-01)
-- Recharts FunnelChart with useMemo data transformation for proper chart format (16-03)
-- Multi-line LineChart with isAnimationActive={false} to avoid dashboard sluggishness (16-03)
-- Independent widget loading pattern: each widget manages its own data fetching (16-03)
-- Responsive dashboard grid: lg:grid-cols-2 for charts, lg:grid-cols-3 with col-span for activity+alerts (16-03)
-- Server-side pagination: pageIndex state, computed offset, pageCount from total_count (17-01)
-- Sort toggle logic: same column toggles direction, new column resets to desc (17-01)
-- Pagination reset on sort change: setPageIndex(0) in handleSortChange (17-01)
-- Loading state differentiation: isLoading for initial load, isFetching for control disabling (17-01)
-- User-scoped service functions follow team endpoint patterns with user_id parameter (17-02)
-- Detail pages load data independently (metrics, trends, journals) for better UX (17-02)
-- Progress indicators show ratio format (X/Y active) instead of percentage (17-02)
-- Recharts onClick handler pattern for interactive chart drill-downs (18-01)
-- TanStack Query enabled option for conditional data fetching (prevents eager loading) (18-01)
-- Local component state (useState) for transient drill-down UI (not URL state) (18-01)
-- Radix UI Sheet slide-in panels for drill-down details with accessibility built-in (18-01)
-- Quick View button pattern for rapid inspection without navigation (18-02)
-- Conditional column rendering with useMemo for table performance (18-02)
-- Visual prominence (amber highlighting) for actionable metrics (18-02)
-- Cents-to-dollars currency formatting at display time (18-02)
-- Date range parameter parsing with try/except datetime.strptime validation (19-01)
-- StreamingHttpResponse with csv.writer and Echo pseudo-buffer for large exports (19-01)
-- Dynamic CSV filename generation with date range inclusion (19-01)
-- Support limit=None in service functions for full dataset exports (19-01)
-- TruncDate aggregation for daily activity heatmap data (19-01)
-- DateRangePicker reusable component with preset sidebar and dual-month calendar (19-02)
-- dateRangeToParams helper for converting DateRange to API params (19-02)
-- Blob download pattern for CSV exports with dynamic filename generation (19-02)
-- Date parameter propagation: page state → widget props → hooks → API (19-02)
-- Pagination reset on filter change pattern with useEffect (19-02)
-- GitHub-style contribution grid with 5 color density levels (19-03)
-- Auto-calculated prior period comparison with trend arrows (19-03)
-- Side-by-side user comparison with value highlighting (19-03)
-- Safari-compatible date format conversion for date libraries (19-03)
-- Export button in CardHeader with flex layout for consistent UX (19-04)
-- Radix UI Tooltip with rectRender prop for custom chart elements (19-04)
-- URL param validation on mount with console warning for invalid values (19-04)
-- Bidirectional URL sync with date range state (19-04)
+All decisions logged in PROJECT.md Key Decisions table.
 
 ### Pending Todos
 
-None yet.
+None.
 
 ### Blockers/Concerns
 
-**Resolved in Phase 13:**
-- ✅ Standardize role checks (inconsistent use of is_staff vs role=='admin') - FIXED in 13-01
-- ✅ Fix race conditions in update_giving_stats() and record_fulfillment() - FIXED in 13-01
-- ✅ Establish query optimization patterns (<20 queries per endpoint) - DONE in 13-02
-- ✅ 5 admin analytics endpoints created with tests - DONE in 13-02
-
-**Resolved in Phase 14:**
-- ✅ Fix N+1 query problem in get_user_performance() - FIXED in 14-01
-- ✅ Add missing conversion_rate field to user metrics - DONE in 14-01
-- ✅ Add DRF serializers for consistent response formatting - DONE in 14-01
-- ✅ Fix days_stalled for zero-activity contacts - DONE in 14-02
-- ✅ Add sorting support to stalled contacts endpoint - DONE in 14-02
-- ✅ Comprehensive test coverage for Phase 14 enhancements - DONE in 14-02
-
-**Remaining:**
-- Fix float arithmetic in pledge monthly_equivalent property (follow-up)
-- Fix existing permission bypass vulnerability (ListAPIView only checks has_object_permission) - future phase
-
-**Research Findings:**
-- Edge Case Audit identified 16 issues; several directly impact admin analytics
-- Signal skip mechanism now available for bulk imports (13-01)
+**Known tech debt (non-blocking):**
+- Fix float arithmetic in pledge monthly_equivalent property
+- Fix existing permission bypass vulnerability (ListAPIView only checks has_object_permission) — non-analytics endpoints
 
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 19-04-PLAN.md (UAT Gap Closure) - v1.2 MILESTONE COMPLETE - ALL UAT GAPS CLOSED
+Stopped at: Completed v1.2 milestone archival
 Resume file: None
 
 ---
 
-*Last updated: 2026-02-16 (v1.2 Admin Analytics Dashboard COMPLETE - 17/17 plans)*
+*Last updated: 2026-02-16 (v1.2 milestone archived)*
