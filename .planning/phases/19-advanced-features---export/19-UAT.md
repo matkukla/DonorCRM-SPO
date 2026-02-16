@@ -1,9 +1,9 @@
 ---
-status: diagnosed
+status: resolved
 phase: 19-advanced-features---export
 source: 19-01-SUMMARY.md, 19-02-SUMMARY.md, 19-03-SUMMARY.md
 started: 2026-02-16T12:00:00Z
-updated: 2026-02-16T12:10:00Z
+updated: 2026-02-16T12:30:00Z
 ---
 
 ## Current Test
@@ -69,7 +69,7 @@ skipped: 0
 ## Gaps
 
 - truth: "Export CSV button exists for team activity data on the Dashboard, clicking it downloads a CSV"
-  status: failed
+  status: resolved
   reason: "User reported: I don't see the Export CSV option. Can you check again and verify that it is there?"
   severity: major
   test: 5
@@ -82,7 +82,7 @@ skipped: 0
     - "Add Export CSV button in CardHeader matching StalledContacts pattern"
     - "Pass dateParams to export mutation"
 - truth: "Hovering over heatmap cells shows activity count tooltip"
-  status: failed
+  status: resolved
   reason: "User reported: When I hover over the cells, activity count isn't shown"
   severity: minor
   test: 6
@@ -94,7 +94,7 @@ skipped: 0
     - "Add rectRender prop to HeatMap component with tooltip showing date and count"
     - "Use existing shadcn/ui Tooltip component for consistent styling"
 - truth: "Invalid date params in URL return 400 error with helpful message"
-  status: failed
+  status: resolved
   reason: "User reported: does not return any error"
   severity: minor
   test: 10
