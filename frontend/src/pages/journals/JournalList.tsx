@@ -1,24 +1,33 @@
+import * as React from "react"
 import { Link } from "react-router-dom"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useJournals } from "@/hooks/useJournals"
-import { BookOpen, ChevronRight } from "lucide-react"
+import { BookOpen, ChevronRight, Plus } from "lucide-react"
+import { CreateJournalDialog } from "./components"
 
 export default function JournalList() {
   const { data, isLoading, error } = useJournals()
+  const [showCreateDialog, setShowCreateDialog] = React.useState(false)
 
   return (
     <Section>
       <Container>
         <div className="space-y-6">
           {/* Header */}
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight">Journals</h1>
-            <p className="text-muted-foreground mt-1">
-              Your fundraising pipeline journals
-            </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-semibold tracking-tight">Journals</h1>
+              <p className="text-muted-foreground mt-1">
+                Your fundraising pipeline journals
+              </p>
+            </div>
+            <Button onClick={() => setShowCreateDialog(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              New Journal
+            </Button>
           </div>
 
           {error && (
@@ -78,6 +87,9 @@ export default function JournalList() {
             </div>
           )}
         </div>
+
+        {/* Create Journal Dialog */}
+        <CreateJournalDialog open={showCreateDialog} onOpenChange={setShowCreateDialog} />
       </Container>
     </Section>
   )

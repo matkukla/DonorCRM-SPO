@@ -24,6 +24,7 @@ import {
   getStageActivity,
   getPipelineBreakdown,
   getNextStepsQueue,
+  addContactToJournal,
 } from "@/api/journals"
 import type {
   JournalFilters,
@@ -491,5 +492,20 @@ export function useNextStepsQueue() {
     queryKey: ['journals', 'analytics', 'next-steps-queue'],
     queryFn: getNextStepsQueue,
     staleTime: 2 * 60 * 1000, // 2 minutes - more time-sensitive
+  })
+}
+
+/** Hook for adding a contact to a journal */
+export function useAddContactToJournal(journalId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (contactId: string) => addContactToJournal(journalId, contactId),
+    onSuccess: () => {
+      toast.success("Contact added to journal")
+      queryClient.invalidateQueries({ queryKey: ["journals", journalId, "members"] })
+    },
+    onError: () => {
+      toast.error("Failed to add contact")
+    },
   })
 }

@@ -245,3 +245,12 @@ export async function getNextStepsQueue(): Promise<NextStepsQueueItem[]> {
   )
   return response.data
 }
+
+/** Add a contact to a journal */
+export async function addContactToJournal(journalId: string, contactId: string): Promise<JournalMember> {
+  const response = await apiClient.post<JournalMember>('/journals/journal-members/', {
+    journal: journalId,
+    contact: contactId,
+  })
+  return response.data
+}
