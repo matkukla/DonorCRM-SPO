@@ -104,7 +104,7 @@ export function GivingSummaryCard() {
           <div className="flex-1 space-y-3 w-full">
             <div className="flex justify-between items-center py-1.5 border-b">
               <span className="text-sm text-muted-foreground">Given</span>
-              <span className="text-sm font-semibold text-green-600">
+              <span className="text-sm font-semibold text-green-600 dark:text-green-400">
                 {formatCurrency(data.given)}
               </span>
             </div>
