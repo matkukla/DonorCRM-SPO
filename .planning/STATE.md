@@ -13,7 +13,7 @@ Milestone: None active (v1.2 shipped 2026-02-16)
 Phase: N/A
 Plan: N/A
 Status: Between milestones
-Last activity: 2026-02-16 - Completed v1.2 Admin Analytics Dashboard
+Last activity: 2026-02-16 - Completed quick task 5: Remove analytics tab from sidebar
 
 Progress: All 3 milestones shipped (v1.0, v1.1, v1.2)
 
@@ -47,6 +47,12 @@ None.
 **Known tech debt (non-blocking):**
 - Fix float arithmetic in pledge monthly_equivalent property
 - Fix existing permission bypass vulnerability (ListAPIView only checks has_object_permission) — non-analytics endpoints
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 5 | Remove analytics tab from left sidebar | 2026-02-16 | db2b504 | [5-remove-analytics-tab-from-left-sidebar-a](./quick/5-remove-analytics-tab-from-left-sidebar-a/) |
 
 ## Session Continuity
 
