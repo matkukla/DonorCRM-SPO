@@ -1,5 +1,5 @@
 ---
-status: complete
+status: diagnosed
 phase: 19-advanced-features---export
 source: 19-01-SUMMARY.md, 19-02-SUMMARY.md, 19-03-SUMMARY.md
 started: 2026-02-16T12:00:00Z
@@ -73,19 +73,36 @@ skipped: 0
   reason: "User reported: I don't see the Export CSV option. Can you check again and verify that it is there?"
   severity: major
   test: 5
-  artifacts: []
-  missing: []
+  root_cause: "useExportTeamActivity hook and backend endpoint exist but no Export CSV button was added to TeamActivityTable component"
+  artifacts:
+    - path: "frontend/src/pages/admin/analytics/components/TeamActivityTable.tsx"
+      issue: "Missing Export CSV button — hook exists but never wired to UI"
+  missing:
+    - "Import useExportTeamActivity hook and Download icon"
+    - "Add Export CSV button in CardHeader matching StalledContacts pattern"
+    - "Pass dateParams to export mutation"
 - truth: "Hovering over heatmap cells shows activity count tooltip"
   status: failed
   reason: "User reported: When I hover over the cells, activity count isn't shown"
   severity: minor
   test: 6
-  artifacts: []
-  missing: []
+  root_cause: "ActivityHeatmap component missing rectRender prop required for tooltips in @uiw/react-heat-map"
+  artifacts:
+    - path: "frontend/src/pages/admin/analytics/components/ActivityHeatmap.tsx"
+      issue: "No rectRender prop — library requires it for custom tooltip rendering"
+  missing:
+    - "Add rectRender prop to HeatMap component with tooltip showing date and count"
+    - "Use existing shadcn/ui Tooltip component for consistent styling"
 - truth: "Invalid date params in URL return 400 error with helpful message"
   status: failed
   reason: "User reported: does not return any error"
   severity: minor
   test: 10
-  artifacts: []
-  missing: []
+  root_cause: "Frontend never reads date params from URL — dateRange is component state only, so invalid URL params are silently ignored"
+  artifacts:
+    - path: "frontend/src/pages/admin/analytics/AdminAnalyticsDashboard.tsx"
+      issue: "dateRange initialized from useState(null), no URL query param reading"
+  missing:
+    - "Read date_from/date_to from URL search params on mount"
+    - "Validate URL params and show error or initialize dateRange state"
+    - "Optional: sync URL when DateRangePicker changes"
