@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems, and leadership can proactively support their teams through cross-missionary analytics.
-**Current focus:** Planning next milestone
+**Current focus:** v1.3 — Smartsheet Import, Filters & Polish
 
 ## Current Position
 
-Milestone: None active (v1.2 shipped 2026-02-16)
-Phase: N/A
-Plan: N/A
-Status: Between milestones
-Last activity: 2026-02-16 - Completed quick task 7: Implement light and dark mode toggle
+Milestone: v1.3 — Smartsheet Import, Filters & Polish
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-02-16 — Milestone v1.3 started
 
-Progress: All 3 milestones shipped (v1.0, v1.1, v1.2)
+Progress: All 3 milestones shipped (v1.0, v1.1, v1.2), v1.3 in progress
 
 ## Performance Metrics
 
@@ -59,9 +59,9 @@ All decisions logged in PROJECT.md Key Decisions table.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed quick-7 (Implement light and dark mode toggle)
+Stopped at: Started v1.3 milestone
 Resume file: None
 
 ---
 
-*Last updated: 2026-02-16 (completed quick-7)*
+*Last updated: 2026-02-16 (started v1.3)*

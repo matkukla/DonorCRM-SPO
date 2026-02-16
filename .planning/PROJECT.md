@@ -49,7 +49,14 @@ Missionaries can manage donor relationships efficiently, with accurate data impo
 
 ### Active
 
-*None — ready for next milestone planning*
+**Current Milestone: v1.3 — Smartsheet Import, Filters & Polish**
+
+**Goal:** Enable Smartsheet file import with column mapping, add comprehensive filtering across all list pages, and conduct a quality/dark mode audit.
+
+**Target features:**
+- Smartsheet file import (Excel/CSV upload with column mapping to DonorCRM fields)
+- Comprehensive filters for contacts, journals, and transactions/donations pages
+- Full quality audit (security, dark mode consistency, code quality, performance)
 
 ### Out of Scope
 
@@ -120,4 +127,4 @@ Missionaries can manage donor relationships efficiently, with accurate data impo
 | URL param sync for date filters (v1.2) | Shareable dashboard URLs, browser back/forward works | ✓ Good |
 
 ---
-*Last updated: 2026-02-16 after v1.2 milestone*
+*Last updated: 2026-02-16 after v1.3 milestone start*
