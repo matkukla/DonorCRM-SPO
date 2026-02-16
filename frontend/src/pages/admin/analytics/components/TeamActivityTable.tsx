@@ -8,7 +8,7 @@ import {
   flexRender,
   type SortingState,
 } from "@tanstack/react-table"
-import { ArrowUpDown, Eye } from "lucide-react"
+import { ArrowUpDown, Eye, Download } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Table,
@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { useAdminTeamActivity } from "@/hooks/useInsights"
+import { useAdminTeamActivity, useExportTeamActivity } from "@/hooks/useInsights"
 import type { TeamActivityItem } from "@/api/insights"
 
 const columnHelper = createColumnHelper<TeamActivityItem>()
@@ -41,6 +41,7 @@ interface TeamActivityTableProps {
 
 export function TeamActivityTable({ dateParams, onUserDrilldown }: TeamActivityTableProps) {
   const { data, isLoading } = useAdminTeamActivity({ ...dateParams, limit: 50 })
+  const exportMutation = useExportTeamActivity()
   const [sorting, setSorting] = useState<SortingState>([{ id: "created_at", desc: true }])
 
   const columns = useMemo(() => {
@@ -120,7 +121,18 @@ export function TeamActivityTable({ dateParams, onUserDrilldown }: TeamActivityT
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Recent Team Activity</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle>Recent Team Activity</CardTitle>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => exportMutation.mutate(dateParams)}
+            disabled={exportMutation.isPending}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            {exportMutation.isPending ? 'Exporting...' : 'Export CSV'}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         {isLoading ? (
