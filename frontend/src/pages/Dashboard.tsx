@@ -1,5 +1,6 @@
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useAuth } from "@/providers/AuthProvider"
+import { markEventsSeen } from "@/api/dashboard"
 import { useDashboardSummary } from "@/hooks/useDashboard"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
@@ -27,6 +28,18 @@ export default function Dashboard() {
   const { user } = useAuth()
   const { data, isLoading, error } = useDashboardSummary()
   const [quickLogContactId, setQuickLogContactId] = useState<string | null>(null)
+
+  // Mark events as seen once after dashboard data loads (QAL-09)
+  const markedSeen = useRef(false)
+
+  useEffect(() => {
+    if (data && !isLoading && !markedSeen.current) {
+      markedSeen.current = true
+      markEventsSeen().catch(() => {
+        // Silently ignore -- marking seen is best-effort
+      })
+    }
+  }, [data, isLoading])
 
   // Calculate total donations this month from recent gifts
   const totalDonationsThisMonth = data?.recent_gifts?.reduce((sum, gift) => {

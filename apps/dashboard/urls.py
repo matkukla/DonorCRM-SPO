@@ -7,6 +7,7 @@ from apps.dashboard.views import (
     DashboardView,
     GivingSummaryView,
     LateDonationsView,
+    MarkEventsSeenView,
     MonthlyGiftsView,
     NeedsAttentionView,
     RecentGiftsView,
@@ -20,6 +21,7 @@ app_name = 'dashboard'
 
 urlpatterns = [
     path('', DashboardView.as_view(), name='dashboard'),
+    path('mark-seen/', MarkEventsSeenView.as_view(), name='mark-events-seen'),
     path('what-changed/', WhatChangedView.as_view(), name='what-changed'),
     path('needs-attention/', NeedsAttentionView.as_view(), name='needs-attention'),
     path('late-donations/', LateDonationsView.as_view(), name='late-donations'),
