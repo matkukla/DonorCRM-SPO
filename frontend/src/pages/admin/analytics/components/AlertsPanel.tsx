@@ -80,9 +80,9 @@ function computeAlerts(
 }
 
 const severityStyles = {
-  high: "bg-red-50 border-red-100 text-red-900",
-  medium: "bg-amber-50 border-amber-100 text-amber-900",
-  low: "bg-blue-50 border-blue-100 text-blue-900",
+  high: "bg-red-50 dark:bg-red-950/50 border-red-100 dark:border-red-900/50 text-red-900 dark:text-red-200",
+  medium: "bg-amber-50 dark:bg-amber-950/50 border-amber-100 dark:border-amber-900/50 text-amber-900 dark:text-amber-200",
+  low: "bg-blue-50 dark:bg-blue-950/50 border-blue-100 dark:border-blue-900/50 text-blue-900 dark:text-blue-200",
 }
 
 export function AlertsPanel() {

@@ -15,13 +15,13 @@ const badgeVariants = cva(
           "border-transparent bg-destructive text-destructive-foreground",
         outline: "text-foreground",
         success:
-          "border-transparent bg-green-100 text-green-800",
+          "border-transparent bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200",
         warning:
-          "border-transparent bg-amber-100 text-amber-800",
+          "border-transparent bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200",
         info:
-          "border-transparent bg-blue-100 text-blue-800",
+          "border-transparent bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200",
         orange:
-          "border-transparent bg-orange-100 text-orange-800",
+          "border-transparent bg-orange-100 dark:bg-orange-900/50 text-orange-800 dark:text-orange-200",
       },
     },
     defaultVariants: {

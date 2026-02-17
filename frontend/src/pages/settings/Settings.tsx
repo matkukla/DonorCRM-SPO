@@ -178,7 +178,7 @@ export default function Settings() {
                 )}
 
                 {goalSuccess && (
-                  <div className="flex items-center gap-2 text-sm text-green-600">
+                  <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
                     <CheckCircle className="h-4 w-4" />
                     Goal updated successfully
                   </div>
@@ -254,7 +254,7 @@ export default function Settings() {
                   )}
 
                   {profileSuccess && (
-                    <div className="flex items-center gap-2 text-sm text-green-600">
+                    <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
                       <CheckCircle className="h-4 w-4" />
                       Profile updated successfully
                     </div>
@@ -316,7 +316,7 @@ export default function Settings() {
                   )}
 
                   {passwordSuccess && (
-                    <div className="flex items-center gap-2 text-sm text-green-600">
+                    <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
                       <CheckCircle className="h-4 w-4" />
                       Password changed successfully
                     </div>

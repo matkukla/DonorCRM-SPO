@@ -143,7 +143,7 @@ export function UserComparison() {
                     <div className="grid grid-cols-2 gap-3">
                       <div
                         className={`text-lg font-semibold ${
-                          user1Higher ? 'text-green-600' : ''
+                          user1Higher ? 'text-green-600 dark:text-green-400' : ''
                         }`}
                       >
                         {formatValue(metric.user1Value)}
@@ -151,7 +151,7 @@ export function UserComparison() {
                       </div>
                       <div
                         className={`text-lg font-semibold ${
-                          user2Higher ? 'text-green-600' : ''
+                          user2Higher ? 'text-green-600 dark:text-green-400' : ''
                         }`}
                       >
                         {formatValue(metric.user2Value)}

@@ -266,7 +266,7 @@ export default function GroupDetail() {
                           type="checkbox"
                           checked={selectedContacts.size === contacts.length}
                           onChange={toggleAllContacts}
-                          className="rounded border-gray-300"
+                          className="rounded border-border"
                         />
                       </TableHead>
                       <TableHead>Name</TableHead>
@@ -286,7 +286,7 @@ export default function GroupDetail() {
                             type="checkbox"
                             checked={selectedContacts.has(contact.id)}
                             onChange={() => toggleContact(contact.id)}
-                            className="rounded border-gray-300"
+                            className="rounded border-border"
                           />
                         </TableCell>
                         <TableCell className="font-medium">{contact.full_name}</TableCell>
