@@ -140,9 +140,9 @@ export function SPOImportTile({
 
         {/* Dependency warning */}
         {warning.show && (
-          <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5 flex-shrink-0" />
-            <p className="text-sm text-yellow-800">{warning.message}</p>
+          <div className="flex items-start gap-2 p-3 bg-yellow-50 dark:bg-yellow-950/50 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+            <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-yellow-800 dark:text-yellow-200">{warning.message}</p>
           </div>
         )}
 

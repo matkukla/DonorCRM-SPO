@@ -153,7 +153,7 @@ export function ImportCard({
             isDragging
               ? "border-primary bg-primary/5"
               : file
-              ? "border-green-500 bg-green-50"
+              ? "border-green-500 dark:border-green-400 bg-green-50 dark:bg-green-950/50"
               : "border-border hover:border-primary/50"
           }`}
           onDragOver={handleDragOver}
@@ -162,7 +162,7 @@ export function ImportCard({
         >
           {file ? (
             <div className="flex items-center justify-center gap-3">
-              <FileText className="h-8 w-8 text-green-600" />
+              <FileText className="h-8 w-8 text-green-600 dark:text-green-400" />
               <div className="text-left">
                 <p className="font-medium">{file.name}</p>
                 <p className="text-sm text-muted-foreground">
@@ -215,7 +215,7 @@ export function ImportCard({
         {/* Results */}
         {result && (
           <div className={`p-4 rounded-lg ${
-            result.error_count === 0 ? "bg-green-50 border border-green-200" : "bg-yellow-50 border border-yellow-200"
+            result.error_count === 0 ? "bg-green-50 dark:bg-green-950/50 border border-green-200 dark:border-green-800" : "bg-yellow-50 dark:bg-yellow-950/50 border border-yellow-200 dark:border-yellow-800"
           }`}>
             <div className="flex items-center gap-4 mb-2">
               {result.error_count === 0 ? (
