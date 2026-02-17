@@ -92,7 +92,23 @@ Cross-missionary visibility into fundraising activity, pipeline health, and stal
 
 ## In Progress Milestones
 
-*None currently*
+### v1.3 — Smartsheet Import, Filters & Polish
+**Started:** 2026-02-16
+
+Enable Smartsheet file import with column mapping, add comprehensive filtering across all list pages, and fix security/quality/dark mode issues.
+
+**Scope:**
+- 35 requirements defined
+- 6 phases planned (20-25)
+- 3 categories: Smartsheet Import (10), List Page Filters (13), Quality Audit (12)
+
+**Key Features:**
+- Smartsheet file import (Excel/CSV) with column mapping UI and auto-detection
+- Comprehensive filters on all list pages (date range, amount, group, owner, presets)
+- Security fixes (permission bypass, cross-user access)
+- Dark mode color audit and WCAG contrast compliance
+- Performance fixes (N+1 queries, file size limits)
+- UI polish (error boundary, route guards, stat refresh)
 
 ---
 
@@ -112,4 +128,4 @@ Planned requirements from v1 deferral:
 
 ---
 
-*Last updated: 2026-02-16*
+*Last updated: 2026-02-16 (v1.3 roadmap created)*
