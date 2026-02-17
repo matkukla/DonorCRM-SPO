@@ -5,22 +5,22 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems, and leadership can proactively support their teams through cross-missionary analytics.
-**Current focus:** Phase 21 in progress (v1.3)
+**Current focus:** Phase 21 complete, ready for Phase 22 (v1.3)
 
 ## Current Position
 
 Milestone: v1.3 — Smartsheet Import, Filters & Polish
-Phase: 21 of 25 (Dark Mode & UI Polish)
-Plan: 2 of 3
-Status: Executing
-Last activity: 2026-02-17 — Completed 21-02 (Donation edit stats fix & CSV export sanitization)
+Phase: 21 of 25 (Dark Mode & UI Polish) -- COMPLETE
+Plan: 3 of 3
+Status: Phase Complete
+Last activity: 2026-02-17 — Completed 21-03 (Error Boundary & dark mode verification)
 
-Progress: [#######################.......] 75% (62/82 total plans complete, 2/3 phase 21 plans)
+Progress: [########################......] 77% (63/82 total plans complete, 3/3 phase 21 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 62 (24 v1.0 + 15 v1.1 + 18 v1.2 + 5 v1.3)
+- Total plans completed: 63 (24 v1.0 + 15 v1.1 + 18 v1.2 + 6 v1.3)
 - Average duration: 4.2 minutes
 - Total execution time: ~4.2 hours
 
@@ -48,6 +48,8 @@ All decisions logged in PROJECT.md Key Decisions table.
 - **21-01:** Replaced generic grays (text-gray-400, border-gray-300) with semantic tokens (text-muted-foreground, border-border)
 - **21-02:** Used OWASP single-quote prefix for CSV sanitization (spreadsheet-native text-mode indicator)
 - **21-02:** Kept event creation, thank-you marking, and pledge fulfillment as create-only in signal
+- **21-03:** ErrorBoundary placed inside ThemeProvider but outside AuthProvider/BrowserRouter (dark mode works in fallback, auth/routing errors caught)
+- **21-03:** Used instanceof check for unknown error type in FallbackProps (react-error-boundary v6 TypeScript strict mode)
 
 ### Pending Todos
 
@@ -72,9 +74,9 @@ All decisions logged in PROJECT.md Key Decisions table.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Completed 21-01-PLAN.md SUMMARY (dark mode color fixes across 12 files)
-Resume file: 21-03-PLAN.md
+Stopped at: Completed 21-03-PLAN.md -- Phase 21 fully complete
+Resume file: Phase 22 (next phase)
 
 ---
 
-*Last updated: 2026-02-17 (21-01 SUMMARY created)*
+*Last updated: 2026-02-17 (21-03 SUMMARY created, Phase 21 complete)*
