@@ -137,13 +137,14 @@ class Pledge(TimeStampedModel):
     @property
     def monthly_equivalent(self):
         """Calculate monthly equivalent for support tracking."""
+        from decimal import Decimal
         multipliers = {
-            PledgeFrequency.MONTHLY: 1,
-            PledgeFrequency.QUARTERLY: 1 / 3,
-            PledgeFrequency.SEMI_ANNUAL: 1 / 6,
-            PledgeFrequency.ANNUAL: 1 / 12,
+            PledgeFrequency.MONTHLY: Decimal('1'),
+            PledgeFrequency.QUARTERLY: Decimal('1') / Decimal('3'),
+            PledgeFrequency.SEMI_ANNUAL: Decimal('1') / Decimal('6'),
+            PledgeFrequency.ANNUAL: Decimal('1') / Decimal('12'),
         }
-        return float(self.amount) * multipliers.get(self.frequency, 1)
+        return round(self.amount * multipliers.get(self.frequency, Decimal('1')), 2)
 
     @property
     def fulfillment_percentage(self):

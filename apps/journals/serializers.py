@@ -218,7 +218,10 @@ class JournalStageEventSerializer(serializers.ModelSerializer):
         if not validated_data.get('journal_contact') and contact_id:
             from apps.contacts.models import Contact
 
-            contact = Contact.objects.get(id=contact_id)
+            if user and user.role == 'admin':
+                contact = Contact.objects.get(id=contact_id)
+            else:
+                contact = Contact.objects.get(id=contact_id, owner=user)
             journal = Journal.objects.filter(
                 owner=user, is_archived=False
             ).first()
