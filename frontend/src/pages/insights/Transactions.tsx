@@ -1,5 +1,6 @@
-import { useState } from "react"
 import { Link } from "react-router-dom"
+import { useFilterParams, transactionFilterParsers } from "@/hooks/useFilterParams"
+import { FilterBar } from "@/components/shared/FilterBar"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -36,32 +37,31 @@ const paymentMethodLabels: Record<string, string> = {
 const PAGE_SIZE = 50
 
 export default function Transactions() {
-  const [offset, setOffset] = useState(0)
-  const [dateFrom, setDateFrom] = useState("")
-  const [dateTo, setDateTo] = useState("")
+  const {
+    filters,
+    setFilters,
+    clearAll,
+    activeFilters,
+  } = useFilterParams(transactionFilterParsers)
 
   const { data, isLoading, error } = useTransactions({
     limit: PAGE_SIZE,
-    offset,
-    date_from: dateFrom || undefined,
-    date_to: dateTo || undefined,
+    offset: filters.offset,
+    date_from: filters.date_from || undefined,
+    date_to: filters.date_to || undefined,
   })
 
   const totalPages = data ? Math.ceil(data.total_count / PAGE_SIZE) : 0
-  const currentPage = Math.floor(offset / PAGE_SIZE) + 1
+  const currentPage = Math.floor(filters.offset / PAGE_SIZE) + 1
 
   const handlePrevPage = () => {
-    setOffset(Math.max(0, offset - PAGE_SIZE))
+    setFilters({ offset: Math.max(0, filters.offset - PAGE_SIZE) })
   }
 
   const handleNextPage = () => {
-    if (data && offset + PAGE_SIZE < data.total_count) {
-      setOffset(offset + PAGE_SIZE)
+    if (data && filters.offset + PAGE_SIZE < data.total_count) {
+      setFilters({ offset: filters.offset + PAGE_SIZE })
     }
-  }
-
-  const handleFilterChange = () => {
-    setOffset(0) // Reset to first page when filters change
   }
 
   return (
@@ -83,52 +83,42 @@ export default function Transactions() {
           )}
 
           {/* Filters */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Filters</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex gap-4 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <label className="text-sm text-muted-foreground">From:</label>
-                  <Input
-                    type="date"
-                    value={dateFrom}
-                    onChange={(e) => {
-                      setDateFrom(e.target.value)
-                      handleFilterChange()
-                    }}
-                    className="w-[150px]"
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <label className="text-sm text-muted-foreground">To:</label>
-                  <Input
-                    type="date"
-                    value={dateTo}
-                    onChange={(e) => {
-                      setDateTo(e.target.value)
-                      handleFilterChange()
-                    }}
-                    className="w-[150px]"
-                  />
-                </div>
-                {(dateFrom || dateTo) && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setDateFrom("")
-                      setDateTo("")
-                      handleFilterChange()
-                    }}
-                  >
-                    Clear Filters
-                  </Button>
-                )}
+          <FilterBar
+            activeFilters={activeFilters}
+            onClearAll={clearAll}
+            onRemoveFilter={(key) => setFilters({ [key]: null, offset: 0 })}
+            filterLabels={{
+              date_from: "From",
+              date_to: "To",
+            }}
+          >
+            <div className="flex gap-4 flex-wrap">
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-muted-foreground">From:</label>
+                <Input
+                  type="date"
+                  value={filters.date_from || ""}
+                  onChange={(e) => setFilters({
+                    date_from: e.target.value || null,
+                    offset: 0,
+                  })}
+                  className="w-[150px]"
+                />
               </div>
-            </CardContent>
-          </Card>
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-muted-foreground">To:</label>
+                <Input
+                  type="date"
+                  value={filters.date_to || ""}
+                  onChange={(e) => setFilters({
+                    date_to: e.target.value || null,
+                    offset: 0,
+                  })}
+                  className="w-[150px]"
+                />
+              </div>
+            </div>
+          </FilterBar>
 
           {isLoading ? (
             <div className="flex items-center justify-center h-64 text-muted-foreground">
@@ -215,7 +205,7 @@ export default function Transactions() {
                               variant="outline"
                               size="sm"
                               onClick={handlePrevPage}
-                              disabled={offset === 0}
+                              disabled={filters.offset === 0}
                             >
                               <ChevronLeft className="h-4 w-4 mr-1" />
                               Previous
@@ -224,7 +214,7 @@ export default function Transactions() {
                               variant="outline"
                               size="sm"
                               onClick={handleNextPage}
-                              disabled={offset + PAGE_SIZE >= data.total_count}
+                              disabled={filters.offset + PAGE_SIZE >= data.total_count}
                             >
                               Next
                               <ChevronRight className="h-4 w-4 ml-1" />
