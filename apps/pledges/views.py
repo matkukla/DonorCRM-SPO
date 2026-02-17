@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.permissions import IsContactOwnerOrReadAccess
+from apps.pledges.filters import PledgeFilterSet
 from apps.pledges.models import Pledge, PledgeStatus
 from apps.pledges.serializers import (
     PledgeCreateSerializer,
@@ -23,7 +24,7 @@ class PledgeListCreateView(generics.ListCreateAPIView):
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     ordering_fields = ['created_at', 'amount', 'start_date']
     ordering = ['-created_at']
-    filterset_fields = ['status', 'frequency', 'is_late']
+    filterset_class = PledgeFilterSet
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
@@ -35,11 +36,6 @@ class PledgeListCreateView(generics.ListCreateAPIView):
         else:
             # Staffs see only pledges for their contacts
             queryset = Pledge.objects.filter(contact__owner=user)
-
-        # Contact filter
-        contact_id = self.request.query_params.get('contact')
-        if contact_id:
-            queryset = queryset.filter(contact_id=contact_id)
 
         return queryset.select_related('contact')
 

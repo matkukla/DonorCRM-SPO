@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.permissions import IsContactOwnerOrReadAccess, IsFinanceOrAdmin
+from apps.donations.filters import DonationFilterSet
 from apps.donations.models import Donation
 from apps.donations.serializers import (
     DonationCreateSerializer,
@@ -40,7 +41,7 @@ class DonationListCreateView(generics.ListCreateAPIView):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     ordering_fields = ['date', 'amount', 'created_at']
     ordering = ['-date']
-    filterset_fields = ['donation_type', 'payment_method', 'thanked']
+    filterset_class = DonationFilterSet
 
     def get_permissions(self):
         # All authenticated users can create donations for their contacts
@@ -56,19 +57,6 @@ class DonationListCreateView(generics.ListCreateAPIView):
         else:
             # Staffs see only donations to their contacts
             queryset = Donation.objects.filter(contact__owner=user)
-
-        # Date range filter
-        start_date = self.request.query_params.get('start_date')
-        end_date = self.request.query_params.get('end_date')
-        if start_date:
-            queryset = queryset.filter(date__gte=start_date)
-        if end_date:
-            queryset = queryset.filter(date__lte=end_date)
-
-        # Contact filter
-        contact_id = self.request.query_params.get('contact')
-        if contact_id:
-            queryset = queryset.filter(contact_id=contact_id)
 
         return queryset.select_related('contact', 'pledge')
 
