@@ -103,11 +103,12 @@ Plans:
   3. An unhandled React error on any page shows a user-friendly fallback instead of a white screen
   4. Editing a donation amount correctly updates the associated contact's lifetime and monthly stats
   5. Exported CSV files do not contain unsanitized formula characters that could execute in spreadsheet software
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 21-01: TBD
-- [ ] 21-02: TBD
+- [ ] 21-01-PLAN.md — Fix all 50 hardcoded dark mode colors across 12 files with paired dark: variants (QAL-03)
+- [ ] 21-02-PLAN.md — Fix donation edit stats bug (QAL-11) and CSV export formula sanitization (QAL-12)
+- [ ] 21-03-PLAN.md — React Error Boundary with fallback UI (QAL-10) and visual WCAG contrast verification (QAL-04)
 
 ### Phase 22: Filter Infrastructure
 **Goal**: A reusable, server-side filter system exists that any list page can plug into with URL persistence, presets, and export
@@ -194,7 +195,7 @@ Phases execute in numeric order: 20 -> 21 -> 22 -> 23 -> 24 -> 25
 | 18. Interactive Visualizations & Drill-Down | v1.2 | 2/2 | Complete | 2026-02-15 |
 | 19. Advanced Features & Export | v1.2 | 4/4 | Complete | 2026-02-16 |
 | 20. Security & Performance Fixes | v1.3 | 3/3 | Complete | 2026-02-17 |
-| 21. Dark Mode & UI Polish | v1.3 | 0/? | Not started | - |
+| 21. Dark Mode & UI Polish | v1.3 | 0/3 | Not started | - |
 | 22. Filter Infrastructure | v1.3 | 0/? | Not started | - |
 | 23. Per-Page Filter Implementation | v1.3 | 0/? | Not started | - |
 | 24. Smartsheet Import Backend | v1.3 | 0/? | Not started | - |
@@ -202,4 +203,4 @@ Phases execute in numeric order: 20 -> 21 -> 22 -> 23 -> 24 -> 25
 
 ---
 
-*Last updated: 2026-02-17 (Phase 20 complete)*
+*Last updated: 2026-02-17 (Phase 21 planned)*
