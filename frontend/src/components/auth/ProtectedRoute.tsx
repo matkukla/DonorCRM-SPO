@@ -1,5 +1,7 @@
+import { useEffect, useRef } from "react"
 import { Navigate, useLocation } from "react-router-dom"
 import { useAuth } from "@/providers/AuthProvider"
+import { toast } from "sonner"
 import type { ReactNode } from "react"
 
 interface ProtectedRouteProps {
@@ -14,6 +16,19 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
   const { isAuthenticated, isLoading, user } = useAuth()
   const location = useLocation()
+  const toastShown = useRef(false)
+
+  useEffect(() => {
+    if (requiredRole && user) {
+      const roleHierarchy: Record<string, number> = { admin: 4, finance: 3, staff: 2, read_only: 1 }
+      const userLevel = roleHierarchy[user.role]
+      const requiredLevel = roleHierarchy[requiredRole]
+      if (userLevel < requiredLevel && !toastShown.current) {
+        toastShown.current = true
+        toast.info("You don't have access to that page")
+      }
+    }
+  }, [requiredRole, user])
 
   // Show nothing while checking auth status
   if (isLoading) {
@@ -29,23 +44,14 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
     return <Navigate to="/login" state={{ from: location }} replace />
   }
 
-  // Check role if required
+  // Redirect to home if insufficient role
   if (requiredRole && user) {
     const roleHierarchy: Record<string, number> = { admin: 4, finance: 3, staff: 2, read_only: 1 }
     const userLevel = roleHierarchy[user.role]
     const requiredLevel = roleHierarchy[requiredRole]
 
     if (userLevel < requiredLevel) {
-      return (
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center space-y-4">
-            <h1 className="text-2xl font-semibold">Access Denied</h1>
-            <p className="text-muted-foreground">
-              You don't have permission to view this page.
-            </p>
-          </div>
-        </div>
-      )
+      return <Navigate to="/" replace />
     }
   }
 
