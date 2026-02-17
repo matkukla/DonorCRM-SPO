@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.permissions import IsOwnerOrAdmin
+from apps.tasks.filters import TaskFilterSet
 from apps.tasks.models import Task, TaskStatus
 from apps.tasks.serializers import TaskCreateSerializer, TaskSerializer
 
@@ -22,7 +23,7 @@ class TaskListCreateView(generics.ListCreateAPIView):
     search_fields = ['title', 'description']
     ordering_fields = ['due_date', 'priority', 'created_at']
     ordering = ['due_date', '-priority']
-    filterset_fields = ['status', 'task_type', 'priority']
+    filterset_class = TaskFilterSet
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
@@ -34,11 +35,6 @@ class TaskListCreateView(generics.ListCreateAPIView):
         else:
             # Others see only their own tasks
             queryset = Task.objects.filter(owner=user)
-
-        # Contact filter
-        contact_id = self.request.query_params.get('contact')
-        if contact_id:
-            queryset = queryset.filter(contact_id=contact_id)
 
         return queryset.select_related('owner', 'contact')
 

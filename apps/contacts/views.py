@@ -9,6 +9,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.contacts.filters import ContactFilterSet
 from apps.contacts.models import Contact, ContactStatus
 from apps.contacts.serializers import (
     ContactCreateSerializer,
@@ -50,7 +51,7 @@ class ContactListCreateView(generics.ListCreateAPIView):
     search_fields = ['first_name', 'last_name', 'email']
     ordering_fields = ['last_name', 'first_name', 'created_at', 'last_gift_date', 'total_given']
     ordering = ['last_name', 'first_name']
-    filterset_fields = ['status', 'needs_thank_you']
+    filterset_class = ContactFilterSet
 
     def get_queryset(self):
         user = self.request.user
@@ -62,15 +63,10 @@ class ContactListCreateView(generics.ListCreateAPIView):
             # Staffs see only their own contacts
             queryset = Contact.objects.filter(owner=user)
 
-        # Optional owner filter for admin
+        # Optional owner filter for admin (intentionally NOT in FilterSet - security)
         owner_id = self.request.query_params.get('owner')
         if owner_id and user.role == 'admin':
             queryset = queryset.filter(owner_id=owner_id)
-
-        # Optional group filter
-        group_id = self.request.query_params.get('group')
-        if group_id:
-            queryset = queryset.filter(groups__id=group_id)
 
         return queryset.select_related('owner')
 
