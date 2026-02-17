@@ -69,6 +69,8 @@ export interface ContactFilters {
   group?: string
   owner?: string
   ordering?: string
+  last_gift_after?: string
+  last_gift_before?: string
   page?: number
   page_size?: number
 }
@@ -85,6 +87,8 @@ export async function getContacts(filters: ContactFilters = {}): Promise<Paginat
   if (filters.group) params.append("group", filters.group)
   if (filters.owner) params.append("owner", filters.owner)
   if (filters.ordering) params.append("ordering", filters.ordering)
+  if (filters.last_gift_after) params.append("last_gift_after", filters.last_gift_after)
+  if (filters.last_gift_before) params.append("last_gift_before", filters.last_gift_before)
   if (filters.page) params.append("page", String(filters.page))
   if (filters.page_size) params.append("page_size", String(filters.page_size))
 
