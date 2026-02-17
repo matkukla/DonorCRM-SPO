@@ -86,11 +86,12 @@ See milestones/v1.2-ROADMAP.md for complete phase details.
   3. Journal grid page loads with fewer than 10 database queries regardless of data volume
   4. File upload endpoints reject files exceeding the configured size limit with a clear error message
   5. Frontend routes for admin-only pages redirect non-admin users to an appropriate page
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 20-01: TBD
-- [ ] 20-02: TBD
+- [ ] 20-01-PLAN.md — Backend security fixes: permission scoping (QAL-01), cross-user contact validation (QAL-02), Decimal arithmetic (QAL-07)
+- [ ] 20-02-PLAN.md — File upload limits (QAL-06) and frontend route guards with redirect + toast (QAL-08)
+- [ ] 20-03-PLAN.md — N+1 query fix in journal grid (QAL-05) and dashboard GET side-effect removal (QAL-09)
 
 ### Phase 21: Dark Mode & UI Polish
 **Goal**: The application looks correct and accessible in both light and dark mode, with resilient error handling
