@@ -44,6 +44,8 @@ All decisions logged in PROJECT.md Key Decisions table.
 - **20-02:** Used useRef guard pattern for toast to prevent duplicate notifications on ProtectedRoute redirect
 - **20-03:** Skipped visual indicators for unseen events (is_new has no current UI distinction; decoupling marking from GET is the core fix)
 - **20-03:** Used getattr fallback pattern so serializer works with and without prefetch
+- **21-01:** Used dark:bg-*-950/50 opacity pattern for dark backgrounds (matches NeedsAttention.tsx reference)
+- **21-01:** Replaced generic grays (text-gray-400, border-gray-300) with semantic tokens (text-muted-foreground, border-border)
 - **21-02:** Used OWASP single-quote prefix for CSV sanitization (spreadsheet-native text-mode indicator)
 - **21-02:** Kept event creation, thank-you marking, and pledge fulfillment as create-only in signal
 
@@ -70,9 +72,9 @@ All decisions logged in PROJECT.md Key Decisions table.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Completed 21-02-PLAN.md (donation edit stats fix & CSV export sanitization)
+Stopped at: Completed 21-01-PLAN.md SUMMARY (dark mode color fixes across 12 files)
 Resume file: 21-03-PLAN.md
 
 ---
 
-*Last updated: 2026-02-17 (21-02 complete)*
+*Last updated: 2026-02-17 (21-01 SUMMARY created)*
