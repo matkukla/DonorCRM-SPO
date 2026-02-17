@@ -146,7 +146,12 @@ class ContactDonationsView(generics.ListAPIView):
         from apps.donations.models import Donation
 
         contact_id = self.kwargs.get('pk')
-        return Donation.objects.filter(contact_id=contact_id).order_by('-date')
+        user = self.request.user
+        if user.role in ['admin', 'finance', 'read_only']:
+            return Donation.objects.filter(contact_id=contact_id).order_by('-date')
+        return Donation.objects.filter(
+            contact_id=contact_id, contact__owner=user
+        ).order_by('-date')
 
     def get_serializer_class(self):
         from apps.donations.serializers import DonationSerializer
@@ -164,7 +169,12 @@ class ContactPledgesView(generics.ListAPIView):
         from apps.pledges.models import Pledge
 
         contact_id = self.kwargs.get('pk')
-        return Pledge.objects.filter(contact_id=contact_id).order_by('-created_at')
+        user = self.request.user
+        if user.role in ['admin', 'finance', 'read_only']:
+            return Pledge.objects.filter(contact_id=contact_id).order_by('-created_at')
+        return Pledge.objects.filter(
+            contact_id=contact_id, contact__owner=user
+        ).order_by('-created_at')
 
     def get_serializer_class(self):
         from apps.pledges.serializers import PledgeSerializer
