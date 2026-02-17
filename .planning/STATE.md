@@ -61,9 +61,9 @@ All decisions logged in PROJECT.md Key Decisions table.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Phase 20 context gathered
-Resume file: .planning/phases/20-security-performance-fixes/20-CONTEXT.md
+Stopped at: Phase 20 planned (3 plans, 2 waves), ready to execute
+Resume file: .planning/phases/20-security-performance-fixes/20-01-PLAN.md
 
 ---
 
-*Last updated: 2026-02-17 (Phase 20 context gathered)*
+*Last updated: 2026-02-17 (Phase 20 planned)*
