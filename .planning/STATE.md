@@ -15,12 +15,12 @@ Plan: 2 of 3
 Status: Executing
 Last activity: 2026-02-17 — Completed 22-02 (Frontend filter infrastructure)
 
-Progress: [########################......] 78% (64/82 total plans complete, 1/3 phase 22 plans)
+Progress: [#########################.....] 79% (65/82 total plans complete, 2/3 phase 22 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 64 (24 v1.0 + 15 v1.1 + 18 v1.2 + 7 v1.3)
+- Total plans completed: 65 (24 v1.0 + 15 v1.1 + 18 v1.2 + 8 v1.3)
 - Average duration: 4.2 minutes
 - Total execution time: ~4.2 hours
 
@@ -50,6 +50,9 @@ All decisions logged in PROJECT.md Key Decisions table.
 - **21-02:** Kept event creation, thank-you marking, and pledge fulfillment as create-only in signal
 - **21-03:** ErrorBoundary placed inside ThemeProvider but outside AuthProvider/BrowserRouter (dark mode works in fallback, auth/routing errors caught)
 - **21-03:** Used instanceof check for unknown error type in FallbackProps (react-error-boundary v6 TypeScript strict mode)
+- **22-01:** Used individual DateFilter fields instead of DateFromToRangeFilter (avoids 24.3 suffix breaking change)
+- **22-01:** Owner field excluded from all FilterSets (admin-only owner filtering stays in get_queryset for security)
+- **22-01:** Echo pseudo-buffer defined locally in each export_views.py (matching insights pattern)
 - **22-02:** Used nuqs useQueryStates with shallow:false to trigger React Query re-renders on filter change
 - **22-02:** Generic useFilterParams<T> hook instead of per-page hooks for maximum reuse
 - **22-02:** Presets explicitly null other filter fields to prevent filter stacking between presets
@@ -83,4 +86,4 @@ Resume file: 22-03-PLAN.md (filter wiring to pages)
 
 ---
 
-*Last updated: 2026-02-17 (22-02 SUMMARY created)*
+*Last updated: 2026-02-17 (22-01 + 22-02 SUMMARY created)*
