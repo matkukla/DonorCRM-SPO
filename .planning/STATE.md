@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-16)
 
 Milestone: v1.3 — Smartsheet Import, Filters & Polish
 Phase: 22 of 25 (Filter Infrastructure)
-Plan: 2 of 3
-Status: Executing
-Last activity: 2026-02-17 — Completed 22-02 (Frontend filter infrastructure)
+Plan: 3 of 3 (awaiting human verification checkpoint)
+Status: Checkpoint
+Last activity: 2026-02-17 — Completed 22-03 Tasks 1-2 (filter wiring to pages)
 
-Progress: [#########################.....] 79% (65/82 total plans complete, 2/3 phase 22 plans)
+Progress: [##########################....] 80% (66/82 total plans complete, 3/3 phase 22 plans pending verification)
 
 ## Performance Metrics
 
@@ -57,6 +57,9 @@ All decisions logged in PROJECT.md Key Decisions table.
 - **22-02:** Generic useFilterParams<T> hook instead of per-page hooks for maximum reuse
 - **22-02:** Presets explicitly null other filter fields to prevent filter stacking between presets
 - **22-02:** Button variant="secondary" for Presets/Export (not "outline" which is the red CTA style)
+- **22-03:** Used Record<string, any> for FilterParsers type (SingleParserBuilder incompatible with ReturnType<>)
+- **22-03:** Kept local searchInput state with useEffect sync for controlled search input in ContactList
+- **22-03:** Removed Transactions separate Filters Card wrapper in favor of FilterBar-managed layout
 
 ### Pending Todos
 
@@ -81,9 +84,9 @@ All decisions logged in PROJECT.md Key Decisions table.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Completed 22-02-PLAN.md (frontend filter infrastructure)
-Resume file: 22-03-PLAN.md (filter wiring to pages)
+Stopped at: Completed 22-03-PLAN.md Tasks 1-2 (filter wiring to pages)
+Resume: 22-03 Task 3 human-verify checkpoint (end-to-end filter testing)
 
 ---
 
-*Last updated: 2026-02-17 (22-01 + 22-02 SUMMARY created)*
+*Last updated: 2026-02-17 (22-03 Tasks 1-2 complete, awaiting checkpoint verification)*
