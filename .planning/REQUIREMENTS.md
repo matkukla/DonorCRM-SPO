@@ -92,13 +92,47 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| — | — | — |
+| IMP-01 | Phase 24 | Pending |
+| IMP-02 | Phase 24 | Pending |
+| IMP-03 | Phase 25 | Pending |
+| IMP-04 | Phase 25 | Pending |
+| IMP-05 | Phase 24 | Pending |
+| IMP-06 | Phase 25 | Pending |
+| IMP-07 | Phase 25 | Pending |
+| IMP-08 | Phase 24 | Pending |
+| IMP-09 | Phase 24 | Pending |
+| IMP-10 | Phase 25 | Pending |
+| FLT-01 | Phase 23 | Pending |
+| FLT-02 | Phase 23 | Pending |
+| FLT-03 | Phase 23 | Pending |
+| FLT-04 | Phase 23 | Pending |
+| FLT-05 | Phase 23 | Pending |
+| FLT-06 | Phase 23 | Pending |
+| FLT-07 | Phase 23 | Pending |
+| FLT-08 | Phase 22 | Pending |
+| FLT-09 | Phase 22 | Pending |
+| FLT-10 | Phase 22 | Pending |
+| FLT-11 | Phase 22 | Pending |
+| FLT-12 | Phase 22 | Pending |
+| FLT-13 | Phase 22 | Pending |
+| QAL-01 | Phase 20 | Pending |
+| QAL-02 | Phase 20 | Pending |
+| QAL-03 | Phase 21 | Pending |
+| QAL-04 | Phase 21 | Pending |
+| QAL-05 | Phase 20 | Pending |
+| QAL-06 | Phase 20 | Pending |
+| QAL-07 | Phase 20 | Pending |
+| QAL-08 | Phase 20 | Pending |
+| QAL-09 | Phase 20 | Pending |
+| QAL-10 | Phase 21 | Pending |
+| QAL-11 | Phase 21 | Pending |
+| QAL-12 | Phase 21 | Pending |
 
 **Coverage:**
 - v1.3 requirements: 35 total
-- Mapped to phases: 0
-- Unmapped: 35 ⚠️
+- Mapped to phases: 35
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-16*
-*Last updated: 2026-02-16 after initial definition*
+*Last updated: 2026-02-16 after roadmap creation*

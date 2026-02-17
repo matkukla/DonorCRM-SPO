@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems, and leadership can proactively support their teams through cross-missionary analytics.
-**Current focus:** v1.3 — Smartsheet Import, Filters & Polish
+**Current focus:** Phase 20 — Security & Performance Fixes (v1.3)
 
 ## Current Position
 
 Milestone: v1.3 — Smartsheet Import, Filters & Polish
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-02-16 — Milestone v1.3 started
+Phase: 20 of 25 (Security & Performance Fixes)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-02-16 — v1.3 roadmap created (6 phases, 35 requirements mapped)
 
-Progress: All 3 milestones shipped (v1.0, v1.1, v1.2), v1.3 in progress
+Progress: [####################..........] 68% (57/57 prior plans complete, 0/? v1.3 plans)
 
 ## Performance Metrics
 
@@ -44,9 +44,11 @@ All decisions logged in PROJECT.md Key Decisions table.
 
 ### Blockers/Concerns
 
-**Known tech debt (non-blocking):**
-- Fix float arithmetic in pledge monthly_equivalent property
-- Fix existing permission bypass vulnerability (ListAPIView only checks has_object_permission) — non-analytics endpoints
+**Ordering constraints (from research):**
+- QAL-01, QAL-02 (security) MUST precede filter work (Phase 20 before 22-23)
+- QAL-05 (N+1 fix) MUST precede journal filters (Phase 20 before 23)
+- QAL-06 (file size limits) MUST precede Smartsheet import (Phase 20 before 24-25)
+- django-filter must be pinned to 24.3 (NOT 25.2) -- 25.2 requires Django 5.2+
 
 ### Quick Tasks Completed
 
@@ -59,9 +61,9 @@ All decisions logged in PROJECT.md Key Decisions table.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Started v1.3 milestone
+Stopped at: v1.3 roadmap created, ready to plan Phase 20
 Resume file: None
 
 ---
 
-*Last updated: 2026-02-16 (started v1.3)*
+*Last updated: 2026-02-16 (v1.3 roadmap created)*
