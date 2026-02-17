@@ -11,16 +11,16 @@ See: .planning/PROJECT.md (updated 2026-02-16)
 
 Milestone: v1.3 — Smartsheet Import, Filters & Polish
 Phase: 20 of 25 (Security & Performance Fixes)
-Plan: 1 of 3
+Plan: 2 of 3
 Status: Executing
-Last activity: 2026-02-17 — Completed 20-01 (security & data integrity fixes)
+Last activity: 2026-02-17 — Completed 20-02 (file upload limits & route guards)
 
-Progress: [####################..........] 69% (58/60 prior+v1.3 plans complete, 1/3 phase 20 plans)
+Progress: [#####################.........] 70% (59/60 prior+v1.3 plans complete, 2/3 phase 20 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 58 (24 v1.0 + 15 v1.1 + 18 v1.2 + 1 v1.3)
+- Total plans completed: 59 (24 v1.0 + 15 v1.1 + 18 v1.2 + 2 v1.3)
 - Average duration: 4.2 minutes
 - Total execution time: ~4.1 hours
 
@@ -40,6 +40,8 @@ All decisions logged in PROJECT.md Key Decisions table.
 
 - **20-01:** No data migration needed for monthly_equivalent (computed @property, not stored field)
 - **20-01:** Admin users bypass owner filter in stage event creation (consistent with ContactThankView pattern)
+- **20-02:** Skipped SPOImportTile.tsx size check (no file handler; ImportDialog handles file selection)
+- **20-02:** Used useRef guard pattern for toast to prevent duplicate notifications on ProtectedRoute redirect
 
 ### Pending Todos
 
@@ -64,9 +66,9 @@ All decisions logged in PROJECT.md Key Decisions table.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Completed 20-01-PLAN.md
-Resume file: .planning/phases/20-security-performance-fixes/20-02-PLAN.md
+Stopped at: Completed 20-02-PLAN.md
+Resume file: .planning/phases/20-security-performance-fixes/20-03-PLAN.md
 
 ---
 
-*Last updated: 2026-02-17 (20-01 executed)*
+*Last updated: 2026-02-17 (20-02 executed)*
