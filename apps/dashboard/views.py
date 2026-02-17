@@ -31,11 +31,20 @@ class DashboardView(APIView):
     def get(self, request):
         user = request.user
         data = get_dashboard_summary(user)
-
-        # Mark events as not new (user has seen dashboard)
-        mark_events_as_not_new(user)
-
         return Response(data)
+
+
+class MarkEventsSeenView(APIView):
+    """
+    POST: Mark all new events as seen for the authenticated user.
+    Separated from DashboardView.get() to avoid GET side effects (QAL-09).
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(tags=['dashboard'], summary='Mark events as seen')
+    def post(self, request):
+        mark_events_as_not_new(request.user)
+        return Response({'detail': 'Events marked as seen.'})
 
 
 class WhatChangedView(APIView):

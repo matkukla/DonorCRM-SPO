@@ -131,6 +131,14 @@ export interface MonthlyGiftsResponse {
 }
 
 /**
+ * Mark dashboard events as seen (POST).
+ * Called after dashboard renders to decouple marking from GET (QAL-09).
+ */
+export async function markEventsSeen(): Promise<void> {
+  await apiClient.post("/dashboard/mark-seen/")
+}
+
+/**
  * Get complete dashboard summary
  */
 export async function getDashboardSummary(): Promise<DashboardSummary> {
