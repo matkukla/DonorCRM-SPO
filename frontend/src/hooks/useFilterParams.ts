@@ -9,21 +9,26 @@ type FilterParsers = Record<string, any>
  * clearing filters, listing active filters, and building API query params.
  */
 export function useFilterParams<T extends FilterParsers>(parsers: T) {
-  const [filters, setFilters] = useQueryStates(parsers, {
-    shallow: false, // trigger React re-render for React Query refetch
-  })
+  const [filters, setFilters] = useQueryStates(parsers)
 
-  // Clear all filters (reset to null), keeping page at 1
+  // Clear all filters, keeping pagination keys at defaults
   const clearAll = () => {
     const cleared = Object.fromEntries(
-      Object.keys(parsers).map((key) => [key, key === "page" ? 1 : null])
+      Object.keys(parsers).map((key) => {
+        if (key === "page") return [key, 1]
+        if (key === "offset") return [key, 0]
+        return [key, null]
+      })
     ) as Parameters<typeof setFilters>[0]
     setFilters(cleared)
   }
 
-  // Get list of active filters (non-null, excluding 'page' and 'search')
+  // Keys that are not user-facing filters (pagination, sort, search)
+  const excludedKeys = new Set(["page", "search", "offset", "ordering"])
+
+  // Get list of active filters (non-null, excluding internal keys)
   const activeFilters = Object.entries(filters).filter(
-    ([key, value]) => value !== null && key !== "page" && key !== "search"
+    ([key, value]) => value !== null && !excludedKeys.has(key)
   ) as [string, string | boolean | number][]
 
   const activeFilterCount = activeFilters.length

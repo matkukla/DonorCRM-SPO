@@ -68,7 +68,7 @@ class ContactExportCSVView(APIView):
                     sanitize_csv_value(contact.email or ''),
                     sanitize_csv_value(contact.phone or ''),
                     sanitize_csv_value(contact.status or ''),
-                    sanitize_csv_value(contact.owner.get_full_name() if contact.owner else ''),
+                    sanitize_csv_value(contact.owner.full_name if contact.owner else ''),
                     contact.last_gift_date or '',
                     str(contact.total_given or 0),
                 ])
