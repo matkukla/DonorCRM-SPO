@@ -1,4 +1,5 @@
 import { useState, useRef } from "react"
+import { toast } from "sonner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -11,6 +12,8 @@ import {
   Download,
 } from "lucide-react"
 import type { ImportResult } from "@/api/imports"
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10 MB
 
 interface ImportCardProps {
   title: string
@@ -52,6 +55,10 @@ export function ImportCard({
     setIsDragging(false)
     const droppedFile = e.dataTransfer.files[0]
     if (droppedFile && droppedFile.name.endsWith(".csv")) {
+      if (droppedFile.size > MAX_FILE_SIZE) {
+        toast.error("File too large (max 10 MB)")
+        return
+      }
       setFile(droppedFile)
       setResult(null)
       setError(null)
@@ -63,6 +70,10 @@ export function ImportCard({
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
     if (selectedFile && selectedFile.name.endsWith(".csv")) {
+      if (selectedFile.size > MAX_FILE_SIZE) {
+        toast.error("File too large (max 10 MB)")
+        return
+      }
       setFile(selectedFile)
       setResult(null)
       setError(null)

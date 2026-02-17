@@ -1,4 +1,5 @@
 import { useReducer, useRef } from "react"
+import { toast } from "sonner"
 import { useCSVReader } from "react-papaparse"
 import {
   Dialog,
@@ -23,6 +24,8 @@ import { CSVPreviewTable } from "./CSVPreviewTable"
 import { useSPOImport } from "@/hooks/useImports"
 import { downloadImportErrorsCSV } from "@/api/imports"
 import type { ImportType, SPOImportResult } from "@/api/imports"
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10 MB
 
 // State machine types
 type ImportStep = "upload" | "preview" | "validating" | "validated" | "importing" | "complete" | "error"
@@ -133,6 +136,13 @@ export function ImportDialog({ importType, open, onClose }: ImportDialogProps) {
   }
 
   const handleFileUpload = (results: { data: Record<string, string>[] }) => {
+    const uploadedFile = acceptedFileRef.current
+    if (uploadedFile && uploadedFile.size > MAX_FILE_SIZE) {
+      toast.error("File too large (max 10 MB)")
+      acceptedFileRef.current = null
+      return
+    }
+
     const rows = results.data.filter((row) =>
       Object.values(row).some((val) => val && val.trim() !== "")
     )
@@ -140,7 +150,7 @@ export function ImportDialog({ importType, open, onClose }: ImportDialogProps) {
 
     dispatch({
       type: "UPLOAD_FILE",
-      file: acceptedFileRef.current || new File([], "unknown.csv"),
+      file: uploadedFile || new File([], "unknown.csv"),
       headers,
       rows: rows.slice(0, 25), // Preview first 25 rows only
     })

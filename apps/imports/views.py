@@ -44,6 +44,9 @@ from apps.imports.tasks import (
 
 logger = logging.getLogger(__name__)
 
+# File upload size limit (10 MB)
+MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10 MB
+
 # Threshold for using async import (number of rows)
 ASYNC_THRESHOLD = 50
 
@@ -67,6 +70,11 @@ class ContactImportView(APIView):
             )
 
         file = request.FILES['file']
+        if file.size > MAX_UPLOAD_SIZE:
+            return Response(
+                {'detail': 'File too large (max 10 MB)'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         if not file.name.endswith('.csv'):
             return Response(
                 {'detail': 'File must be a CSV.'},
@@ -147,6 +155,11 @@ class DonationImportView(APIView):
             )
 
         file = request.FILES['file']
+        if file.size > MAX_UPLOAD_SIZE:
+            return Response(
+                {'detail': 'File too large (max 10 MB)'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         if not file.name.endswith('.csv'):
             return Response(
                 {'detail': 'File must be a CSV.'},
@@ -304,6 +317,11 @@ class FundImportView(APIView):
             )
 
         file = request.FILES['file']
+        if file.size > MAX_UPLOAD_SIZE:
+            return Response(
+                {'detail': 'File too large (max 10 MB)'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         if not file.name.endswith('.csv'):
             return Response(
                 {'detail': 'File must be a CSV.'},
@@ -394,6 +412,11 @@ class EntityImportView(APIView):
             )
 
         file = request.FILES['file']
+        if file.size > MAX_UPLOAD_SIZE:
+            return Response(
+                {'detail': 'File too large (max 10 MB)'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         if not file.name.endswith('.csv'):
             return Response(
                 {'detail': 'File must be a CSV.'},
@@ -488,6 +511,11 @@ class TransactionImportView(APIView):
             )
 
         file = request.FILES['file']
+        if file.size > MAX_UPLOAD_SIZE:
+            return Response(
+                {'detail': 'File too large (max 10 MB)'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         if not file.name.endswith('.csv'):
             return Response(
                 {'detail': 'File must be a CSV.'},
@@ -608,6 +636,11 @@ class PledgeImportView(APIView):
             return Response({'detail': 'No file provided.'}, status=400)
 
         file = request.FILES['file']
+        if file.size > MAX_UPLOAD_SIZE:
+            return Response(
+                {'detail': 'File too large (max 10 MB)'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         if not file.name.endswith('.csv'):
             return Response({'detail': 'File must be a CSV.'}, status=400)
 
