@@ -5,24 +5,24 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems, and leadership can proactively support their teams through cross-missionary analytics.
-**Current focus:** Phase 20 — Security & Performance Fixes (v1.3)
+**Current focus:** Phase 20 complete, ready for Phase 21 (v1.3)
 
 ## Current Position
 
 Milestone: v1.3 — Smartsheet Import, Filters & Polish
-Phase: 20 of 25 (Security & Performance Fixes)
-Plan: 2 of 3
-Status: Executing
-Last activity: 2026-02-17 — Completed 20-02 (file upload limits & route guards)
+Phase: 20 of 25 (Security & Performance Fixes) -- COMPLETE
+Plan: 3 of 3
+Status: Phase Complete
+Last activity: 2026-02-17 — Completed 20-03 (N+1 query fix & dashboard side effect decoupling)
 
-Progress: [#####################.........] 70% (59/60 prior+v1.3 plans complete, 2/3 phase 20 plans)
+Progress: [######################........] 73% (60/60 prior+v1.3 plans complete, 3/3 phase 20 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 59 (24 v1.0 + 15 v1.1 + 18 v1.2 + 2 v1.3)
+- Total plans completed: 60 (24 v1.0 + 15 v1.1 + 18 v1.2 + 3 v1.3)
 - Average duration: 4.2 minutes
-- Total execution time: ~4.1 hours
+- Total execution time: ~4.2 hours
 
 **By Milestone:**
 
@@ -42,6 +42,8 @@ All decisions logged in PROJECT.md Key Decisions table.
 - **20-01:** Admin users bypass owner filter in stage event creation (consistent with ContactThankView pattern)
 - **20-02:** Skipped SPOImportTile.tsx size check (no file handler; ImportDialog handles file selection)
 - **20-02:** Used useRef guard pattern for toast to prevent duplicate notifications on ProtectedRoute redirect
+- **20-03:** Skipped visual indicators for unseen events (is_new has no current UI distinction; decoupling marking from GET is the core fix)
+- **20-03:** Used getattr fallback pattern so serializer works with and without prefetch
 
 ### Pending Todos
 
@@ -66,9 +68,9 @@ All decisions logged in PROJECT.md Key Decisions table.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Completed 20-02-PLAN.md
-Resume file: .planning/phases/20-security-performance-fixes/20-03-PLAN.md
+Stopped at: Completed 20-03-PLAN.md (Phase 20 complete)
+Resume file: Next phase (21)
 
 ---
 
-*Last updated: 2026-02-17 (20-02 executed)*
+*Last updated: 2026-02-17 (20-03 executed, Phase 20 complete)*
