@@ -4,7 +4,7 @@ Views for Journal management.
 from collections import defaultdict
 
 from django.db import IntegrityError, transaction
-from django.db.models import Count, OuterRef, Subquery
+from django.db.models import Count, OuterRef, Prefetch, Subquery
 from django.db.models.functions import TruncMonth
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
@@ -193,8 +193,21 @@ class JournalContactListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         user = self.request.user
 
-        # Base queryset with optimized joins
-        queryset = JournalContact.objects.select_related('journal', 'contact')
+        # Base queryset with optimized joins and prefetch for N+1 fix (QAL-05)
+        queryset = JournalContact.objects.select_related(
+            'journal', 'contact'
+        ).prefetch_related(
+            Prefetch(
+                'stage_events',
+                queryset=JournalStageEvent.objects.order_by('-created_at'),
+                to_attr='prefetched_stage_events'
+            ),
+            Prefetch(
+                'decisions',
+                queryset=Decision.objects.all(),
+                to_attr='prefetched_decisions'
+            )
+        )
 
         # Admin sees all, staff sees only their own journals
         if user.role != 'admin':
