@@ -68,7 +68,7 @@ See milestones/v1.2-ROADMAP.md for complete phase details.
 **Milestone Goal:** Enable Smartsheet file import with column mapping, add comprehensive filtering across all list pages, and fix security/quality/dark mode issues.
 
 - [x] **Phase 20: Security & Performance Fixes** - Fix permission bypasses, N+1 queries, file size limits, and data integrity bugs (completed 2026-02-17)
-- [ ] **Phase 21: Dark Mode & UI Polish** - Fix hardcoded colors, WCAG contrast, error boundaries, and CSV sanitization
+- [x] **Phase 21: Dark Mode & UI Polish** - Fix hardcoded colors, WCAG contrast, error boundaries, and CSV sanitization (completed 2026-02-17)
 - [ ] **Phase 22: Filter Infrastructure** - Build reusable filter system with URL persistence, presets, badges, CSV export, and server-side query optimization
 - [ ] **Phase 23: Per-Page Filter Implementation** - Apply filters to contacts, donations, pledges, journals, and transactions pages
 - [ ] **Phase 24: Smartsheet Import Backend** - File upload, format detection, column mapping engine, validation, and sanitization
@@ -106,9 +106,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 21-01-PLAN.md — Fix all 50 hardcoded dark mode colors across 12 files with paired dark: variants (QAL-03)
-- [ ] 21-02-PLAN.md — Fix donation edit stats bug (QAL-11) and CSV export formula sanitization (QAL-12)
-- [ ] 21-03-PLAN.md — React Error Boundary with fallback UI (QAL-10) and visual WCAG contrast verification (QAL-04)
+- [x] 21-01-PLAN.md — Fix all 50 hardcoded dark mode colors across 12 files with paired dark: variants (QAL-03)
+- [x] 21-02-PLAN.md — Fix donation edit stats bug (QAL-11) and CSV export formula sanitization (QAL-12)
+- [x] 21-03-PLAN.md — React Error Boundary with fallback UI (QAL-10) and visual WCAG contrast verification (QAL-04)
 
 ### Phase 22: Filter Infrastructure
 **Goal**: A reusable, server-side filter system exists that any list page can plug into with URL persistence, presets, and export
@@ -195,7 +195,7 @@ Phases execute in numeric order: 20 -> 21 -> 22 -> 23 -> 24 -> 25
 | 18. Interactive Visualizations & Drill-Down | v1.2 | 2/2 | Complete | 2026-02-15 |
 | 19. Advanced Features & Export | v1.2 | 4/4 | Complete | 2026-02-16 |
 | 20. Security & Performance Fixes | v1.3 | 3/3 | Complete | 2026-02-17 |
-| 21. Dark Mode & UI Polish | v1.3 | 0/3 | Not started | - |
+| 21. Dark Mode & UI Polish | v1.3 | 3/3 | Complete | 2026-02-17 |
 | 22. Filter Infrastructure | v1.3 | 0/? | Not started | - |
 | 23. Per-Page Filter Implementation | v1.3 | 0/? | Not started | - |
 | 24. Smartsheet Import Backend | v1.3 | 0/? | Not started | - |
@@ -203,4 +203,4 @@ Phases execute in numeric order: 20 -> 21 -> 22 -> 23 -> 24 -> 25
 
 ---
 
-*Last updated: 2026-02-17 (Phase 21 planned)*
+*Last updated: 2026-02-17 (Phase 21 complete)*
