@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { useMonthlyCommitments } from "@/hooks/useInsights"
+import { formatLocalDate } from "@/lib/utils"
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -132,11 +133,9 @@ export default function MonthlyCommitments() {
                             </TableCell>
                             <TableCell className="text-right">{formatCurrency(pledge.amount)}</TableCell>
                             <TableCell className="text-right">{formatCurrency(pledge.monthly_equivalent)}</TableCell>
-                            <TableCell>{new Date(pledge.start_date).toLocaleDateString()}</TableCell>
+                            <TableCell>{formatLocalDate(pledge.start_date)}</TableCell>
                             <TableCell>
-                              {pledge.last_fulfilled_date
-                                ? new Date(pledge.last_fulfilled_date).toLocaleDateString()
-                                : "—"}
+                              {formatLocalDate(pledge.last_fulfilled_date)}
                             </TableCell>
                           </TableRow>
                         ))}

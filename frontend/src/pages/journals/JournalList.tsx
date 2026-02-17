@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { useJournals } from "@/hooks/useJournals"
 import { BookOpen, ChevronRight, Plus } from "lucide-react"
 import { CreateJournalDialog } from "./components"
+import { formatLocalDate } from "@/lib/utils"
 
 export default function JournalList() {
   const { data, isLoading, error } = useJournals()
@@ -62,7 +63,7 @@ export default function JournalList() {
                   <CardContent>
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">
-                        Created {new Date(journal.created_at).toLocaleDateString()}
+                        Created {formatLocalDate(journal.created_at)}
                       </span>
                       <Link to={`/journals/${journal.id}`}>
                         <Button variant="ghost" size="sm">

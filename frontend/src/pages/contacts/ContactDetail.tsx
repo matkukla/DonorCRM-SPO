@@ -32,6 +32,7 @@ import {
   CheckSquare,
 } from "lucide-react"
 import type { ContactStatus } from "@/api/contacts"
+import { formatLocalDate } from "@/lib/utils"
 
 const statusLabels: Record<ContactStatus, string> = {
   prospect: "Prospect",
@@ -58,15 +59,6 @@ function formatCurrency(amount: string | number | null): string {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(num)
-}
-
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return "—"
-  return new Date(dateStr).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  })
 }
 
 export default function ContactDetail() {
@@ -215,7 +207,7 @@ export default function ContactDetail() {
                   {formatCurrency(contact.last_gift_amount)}
                 </CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  {formatDate(contact.last_gift_date)}
+                  {formatLocalDate(contact.last_gift_date)}
                 </p>
               </CardHeader>
             </Card>
@@ -340,7 +332,7 @@ export default function ContactDetail() {
                           <div>
                             <p className="font-medium">{formatCurrency(donation.amount)}</p>
                             <p className="text-sm text-muted-foreground">
-                              {formatDate(donation.date)} · {donation.donation_type}
+                              {formatLocalDate(donation.date)} · {donation.donation_type}
                             </p>
                           </div>
                           {donation.is_thanked && (
@@ -418,7 +410,7 @@ export default function ContactDetail() {
                           <div>
                             <p className="font-medium">{task.title}</p>
                             <p className="text-sm text-muted-foreground">
-                              Due: {formatDate(task.due_date)} · {task.priority}
+                              Due: {formatLocalDate(task.due_date)} · {task.priority}
                             </p>
                           </div>
                           <Badge variant={task.status === "completed" ? "success" : "secondary"}>
@@ -551,7 +543,7 @@ export default function ContactDetail() {
                                 {membership.current_stage.charAt(0).toUpperCase() + membership.current_stage.slice(1).replace('_', ' ')}
                               </Badge>
                               {membership.deadline && (
-                                <span>Due: {formatDate(membership.deadline)}</span>
+                                <span>Due: {formatLocalDate(membership.deadline)}</span>
                               )}
                             </div>
                           </div>

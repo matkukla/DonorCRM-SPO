@@ -23,6 +23,7 @@ import {
 } from "lucide-react"
 import type { TaskStatus, TaskPriority, TaskType } from "@/api/tasks"
 import { taskStatusLabels, taskPriorityLabels, taskTypeLabels } from "@/api/tasks"
+import { formatLocalDate } from "@/lib/utils"
 
 const statusVariants: Record<TaskStatus, "default" | "secondary" | "success" | "warning" | "info" | "destructive"> = {
   pending: "secondary",
@@ -45,15 +46,6 @@ const typeIcons: Record<TaskType, React.ReactNode> = {
   meeting: <Users className="h-5 w-5" />,
   follow_up: <MessageSquare className="h-5 w-5" />,
   other: <MoreVertical className="h-5 w-5" />,
-}
-
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return "—"
-  return new Date(dateStr).toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  })
 }
 
 function formatDateTime(dateStr: string | null): string {
@@ -241,7 +233,7 @@ export default function TaskDetail() {
                   <div>
                     <p className="text-sm text-muted-foreground">Due Date</p>
                     <p className={`font-medium ${task.is_overdue ? "text-destructive" : ""}`}>
-                      {formatDate(task.due_date)}
+                      {formatLocalDate(task.due_date, "long")}
                       {task.due_time && ` at ${formatTime(task.due_time)}`}
                     </p>
                   </div>
@@ -251,7 +243,7 @@ export default function TaskDetail() {
                     <Clock className="h-4 w-4 text-muted-foreground" />
                     <div>
                       <p className="text-sm text-muted-foreground">Reminder Date</p>
-                      <p className="font-medium">{formatDate(task.reminder_date)}</p>
+                      <p className="font-medium">{formatLocalDate(task.reminder_date, "long")}</p>
                     </div>
                   </div>
                 )}

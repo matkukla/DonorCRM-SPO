@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { useLateDonations } from "@/hooks/useInsights"
 import { AlertCircle } from "lucide-react"
+import { formatLocalDate } from "@/lib/utils"
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -115,13 +116,11 @@ export default function LateDonations() {
                             </TableCell>
                             <TableCell>
                               {item.last_gift_date
-                                ? new Date(item.last_gift_date).toLocaleDateString()
+                                ? formatLocalDate(item.last_gift_date)
                                 : "Never"}
                             </TableCell>
                             <TableCell>
-                              {item.next_expected_date
-                                ? new Date(item.next_expected_date).toLocaleDateString()
-                                : "—"}
+                              {formatLocalDate(item.next_expected_date)}
                             </TableCell>
                           </TableRow>
                         ))}

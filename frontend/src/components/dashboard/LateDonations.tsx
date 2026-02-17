@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Clock, BookOpen } from "lucide-react"
 import type { LateDonation } from "@/api/dashboard"
+import { formatLocalDate } from "@/lib/utils"
 
 interface LateDonationsProps {
   donations: LateDonation[]
@@ -24,11 +25,7 @@ function formatCurrency(amount: string | number): string {
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return "No gifts yet"
-  return new Date(dateStr).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  })
+  return formatLocalDate(dateStr)
 }
 
 export function LateDonations({ donations, totalCount, isLoading, onQuickLog }: LateDonationsProps) {

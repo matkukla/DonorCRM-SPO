@@ -31,6 +31,7 @@ import {
 import type { ColumnDef } from "@tanstack/react-table"
 import type { Task, TaskStatus, TaskPriority, TaskType } from "@/api/tasks"
 import { taskStatusLabels, taskPriorityLabels, taskTypeLabels } from "@/api/tasks"
+import { formatLocalDate } from "@/lib/utils"
 
 const PAGE_SIZE = 20
 
@@ -55,15 +56,6 @@ const typeIcons: Record<TaskType, React.ReactNode> = {
   meeting: <Users className="h-4 w-4" />,
   follow_up: <MessageSquare className="h-4 w-4" />,
   other: <MoreVertical className="h-4 w-4" />,
-}
-
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return "—"
-  return new Date(dateStr).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  })
 }
 
 export default function TaskList() {
@@ -199,7 +191,7 @@ export default function TaskList() {
       header: "Due Date",
       cell: ({ row }) => (
         <span className={row.original.is_overdue ? "text-destructive font-medium" : ""}>
-          {formatDate(row.original.due_date)}
+          {formatLocalDate(row.original.due_date)}
         </span>
       ),
     },

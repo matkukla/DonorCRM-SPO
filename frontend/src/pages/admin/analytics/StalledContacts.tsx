@@ -15,7 +15,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { useAdminStalledContacts, useExportStalledContacts } from "@/hooks/useInsights"
-import { cn } from "@/lib/utils"
+import { cn, formatLocalDate } from "@/lib/utils"
 import type { DateRange } from "@/lib/date-presets"
 import { dateRangeToParams } from "@/lib/date-presets"
 import { DateRangePicker } from "@/components/ui/date-range-picker"
@@ -25,11 +25,7 @@ const PAGE_SIZE = 50
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return "Never"
-  return new Date(dateStr).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  })
+  return formatLocalDate(dateStr)
 }
 
 export default function StalledContacts() {

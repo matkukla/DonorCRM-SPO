@@ -78,20 +78,7 @@ export interface ContactFilters {
 /**
  * List contacts with optional filters
  */
-export async function getContacts(filters: ContactFilters = {}): Promise<PaginatedResponse<ContactListItem>> {
-  const params = new URLSearchParams()
-
-  if (filters.search) params.append("search", filters.search)
-  if (filters.status) params.append("status", filters.status)
-  if (filters.needs_thank_you !== undefined) params.append("needs_thank_you", String(filters.needs_thank_you))
-  if (filters.group) params.append("group", filters.group)
-  if (filters.owner) params.append("owner", filters.owner)
-  if (filters.ordering) params.append("ordering", filters.ordering)
-  if (filters.last_gift_after) params.append("last_gift_after", filters.last_gift_after)
-  if (filters.last_gift_before) params.append("last_gift_before", filters.last_gift_before)
-  if (filters.page) params.append("page", String(filters.page))
-  if (filters.page_size) params.append("page_size", String(filters.page_size))
-
+export async function getContacts(params: Record<string, string> = {}): Promise<PaginatedResponse<ContactListItem>> {
   const response = await apiClient.get<PaginatedResponse<ContactListItem>>("/contacts/", { params })
   return response.data
 }

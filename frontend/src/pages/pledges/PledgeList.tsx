@@ -17,6 +17,7 @@ import { Plus, Filter, MoreHorizontal, AlertTriangle, Pause, Play, XCircle } fro
 import type { ColumnDef } from "@tanstack/react-table"
 import type { Pledge, PledgeStatus } from "@/api/pledges"
 import { pledgeFrequencyLabels, pledgeStatusLabels } from "@/api/pledges"
+import { formatLocalDate } from "@/lib/utils"
 
 const PAGE_SIZE = 20
 
@@ -35,15 +36,6 @@ function formatCurrency(amount: string | number): string {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(num)
-}
-
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return "—"
-  return new Date(dateStr).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  })
 }
 
 export default function PledgeList() {
@@ -154,7 +146,7 @@ export default function PledgeList() {
     {
       accessorKey: "next_expected_date",
       header: "Next Expected",
-      cell: ({ row }) => formatDate(row.original.next_expected_date),
+      cell: ({ row }) => formatLocalDate(row.original.next_expected_date),
     },
     {
       accessorKey: "fulfillment_percentage",

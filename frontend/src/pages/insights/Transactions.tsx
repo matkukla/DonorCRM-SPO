@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useTransactions } from "@/hooks/useInsights"
 import { Receipt, ChevronLeft, ChevronRight } from "lucide-react"
+import { formatLocalDate } from "@/lib/utils"
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -162,7 +163,7 @@ export default function Transactions() {
                         <TableBody>
                           {data.transactions.map((tx) => (
                             <TableRow key={tx.id}>
-                              <TableCell>{new Date(tx.date).toLocaleDateString()}</TableCell>
+                              <TableCell>{formatLocalDate(tx.date)}</TableCell>
                               <TableCell>
                                 <Link
                                   to={`/contacts/${tx.contact_id}`}

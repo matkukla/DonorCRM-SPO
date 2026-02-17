@@ -38,9 +38,9 @@ export const AddContactsDialog = React.memo(function AddContactsDialog({
   }, [searchTerm])
 
   // Fetch contacts with search filter
-  const { data: contactsData, isLoading } = useContacts({
-    search: debouncedSearch || undefined,
-  })
+  const { data: contactsData, isLoading } = useContacts(
+    debouncedSearch ? { search: debouncedSearch } : {}
+  )
 
   const addContactMutation = useAddContactToJournal(journalId)
 
