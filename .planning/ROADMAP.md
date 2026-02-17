@@ -120,11 +120,12 @@ Plans:
   3. User can select a filter preset (e.g., "This Month", "Needs Thank You") and see the corresponding filters applied
   4. Active filters are displayed as summary badges showing what is currently filtered
   5. User can export the currently filtered results to CSV (not the full unfiltered dataset)
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 22-01: TBD
-- [ ] 22-02: TBD
+- [ ] 22-01-PLAN.md — Backend FilterSets (django-filter 24.3 upgrade) + filtered CSV export endpoints for contacts, donations, pledges, tasks (FLT-13, FLT-12)
+- [ ] 22-02-PLAN.md — Frontend filter infrastructure: nuqs URL state, useFilterParams hook, FilterBar/FilterBadge/FilterPresets/ExportCSVButton components (FLT-09, FLT-10, FLT-11)
+- [ ] 22-03-PLAN.md — Wire infrastructure to ContactList (reference implementation) + fix Transactions FLT-08 bug (FLT-08)
 
 ### Phase 23: Per-Page Filter Implementation
 **Goal**: Users can filter contacts, donations, pledges, journals, and transactions by the fields relevant to each page
@@ -196,11 +197,11 @@ Phases execute in numeric order: 20 -> 21 -> 22 -> 23 -> 24 -> 25
 | 19. Advanced Features & Export | v1.2 | 4/4 | Complete | 2026-02-16 |
 | 20. Security & Performance Fixes | v1.3 | 3/3 | Complete | 2026-02-17 |
 | 21. Dark Mode & UI Polish | v1.3 | 3/3 | Complete | 2026-02-17 |
-| 22. Filter Infrastructure | v1.3 | 0/? | Not started | - |
+| 22. Filter Infrastructure | v1.3 | 0/3 | Not started | - |
 | 23. Per-Page Filter Implementation | v1.3 | 0/? | Not started | - |
 | 24. Smartsheet Import Backend | v1.3 | 0/? | Not started | - |
 | 25. Smartsheet Import Frontend | v1.3 | 0/? | Not started | - |
 
 ---
 
-*Last updated: 2026-02-17 (Phase 21 complete)*
+*Last updated: 2026-02-17 (Phase 22 planned)*
