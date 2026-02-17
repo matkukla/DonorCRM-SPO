@@ -5,22 +5,22 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems, and leadership can proactively support their teams through cross-missionary analytics.
-**Current focus:** Phase 21 complete, ready for Phase 22 (v1.3)
+**Current focus:** Phase 22 in progress (v1.3)
 
 ## Current Position
 
 Milestone: v1.3 — Smartsheet Import, Filters & Polish
-Phase: 21 of 25 (Dark Mode & UI Polish) -- COMPLETE
-Plan: 3 of 3
-Status: Phase Complete
-Last activity: 2026-02-17 — Completed 21-03 (Error Boundary & dark mode verification)
+Phase: 22 of 25 (Filter Infrastructure)
+Plan: 2 of 3
+Status: Executing
+Last activity: 2026-02-17 — Completed 22-02 (Frontend filter infrastructure)
 
-Progress: [########################......] 77% (63/82 total plans complete, 3/3 phase 21 plans)
+Progress: [########################......] 78% (64/82 total plans complete, 1/3 phase 22 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 63 (24 v1.0 + 15 v1.1 + 18 v1.2 + 6 v1.3)
+- Total plans completed: 64 (24 v1.0 + 15 v1.1 + 18 v1.2 + 7 v1.3)
 - Average duration: 4.2 minutes
 - Total execution time: ~4.2 hours
 
@@ -50,6 +50,10 @@ All decisions logged in PROJECT.md Key Decisions table.
 - **21-02:** Kept event creation, thank-you marking, and pledge fulfillment as create-only in signal
 - **21-03:** ErrorBoundary placed inside ThemeProvider but outside AuthProvider/BrowserRouter (dark mode works in fallback, auth/routing errors caught)
 - **21-03:** Used instanceof check for unknown error type in FallbackProps (react-error-boundary v6 TypeScript strict mode)
+- **22-02:** Used nuqs useQueryStates with shallow:false to trigger React Query re-renders on filter change
+- **22-02:** Generic useFilterParams<T> hook instead of per-page hooks for maximum reuse
+- **22-02:** Presets explicitly null other filter fields to prevent filter stacking between presets
+- **22-02:** Button variant="secondary" for Presets/Export (not "outline" which is the red CTA style)
 
 ### Pending Todos
 
@@ -74,9 +78,9 @@ All decisions logged in PROJECT.md Key Decisions table.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Completed 21-03-PLAN.md -- Phase 21 fully complete
-Resume file: Phase 22 (next phase)
+Stopped at: Completed 22-02-PLAN.md (frontend filter infrastructure)
+Resume file: 22-03-PLAN.md (filter wiring to pages)
 
 ---
 
-*Last updated: 2026-02-17 (21-03 SUMMARY created, Phase 21 complete)*
+*Last updated: 2026-02-17 (22-02 SUMMARY created)*
