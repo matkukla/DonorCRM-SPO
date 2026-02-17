@@ -16,6 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { formatLocalDate } from "@/lib/utils"
 import { Plus, Search, Filter, MoreHorizontal, Heart, Mail, Phone, BookOpen, Copy } from "lucide-react"
 import { toast } from "sonner"
 import { LogEventDialog } from "@/pages/journals/components/LogEventDialog"
@@ -51,15 +52,6 @@ function formatCurrency(amount: string | number): string {
   }).format(num)
 }
 
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return "\u2014"
-  return new Date(dateStr).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  })
-}
-
 export default function ContactList() {
   const navigate = useNavigate()
 
@@ -78,17 +70,8 @@ export default function ContactList() {
     setSearchInput(filters.search || "")
   }, [filters.search])
 
-  const { data, isLoading } = useContacts({
-    page: filters.page,
-    page_size: PAGE_SIZE,
-    search: filters.search || undefined,
-    status: (filters.status as ContactStatus) || undefined,
-    needs_thank_you: filters.needs_thank_you ?? undefined,
-    last_gift_after: filters.last_gift_after || undefined,
-    last_gift_before: filters.last_gift_before || undefined,
-    group: filters.group || undefined,
-    ordering: filters.ordering || undefined,
-  })
+  const queryParams = { ...toQueryParams(), page_size: String(PAGE_SIZE) }
+  const { data, isLoading } = useContacts(queryParams)
 
   const markThankedMutation = useMarkContactThanked()
   const [logEventContactId, setLogEventContactId] = useState<string | null>(null)
@@ -174,7 +157,7 @@ export default function ContactList() {
     {
       accessorKey: "last_gift_date",
       header: "Last Gift",
-      cell: ({ row }) => formatDate(row.original.last_gift_date),
+      cell: ({ row }) => formatLocalDate(row.original.last_gift_date),
     },
     {
       accessorKey: "needs_thank_you",

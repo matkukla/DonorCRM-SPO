@@ -13,12 +13,12 @@ import {
   getContactJournals,
   getContactJournalEvents,
 } from "@/api/contacts"
-import type { ContactFilters, ContactCreate, ContactUpdate } from "@/api/contacts"
+import type { ContactCreate, ContactUpdate } from "@/api/contacts"
 
-export function useContacts(filters: ContactFilters = {}) {
+export function useContacts(params: Record<string, string> = {}) {
   return useQuery({
-    queryKey: ["contacts", filters],
-    queryFn: () => getContacts(filters),
+    queryKey: ["contacts", params],
+    queryFn: () => getContacts(params),
   })
 }
 

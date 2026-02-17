@@ -25,6 +25,7 @@ import {
 } from "lucide-react"
 import type { PledgeStatus } from "@/api/pledges"
 import { pledgeFrequencyLabels, pledgeStatusLabels } from "@/api/pledges"
+import { formatLocalDate } from "@/lib/utils"
 
 const statusVariants: Record<PledgeStatus, "default" | "secondary" | "success" | "warning" | "info" | "destructive"> = {
   active: "success",
@@ -41,15 +42,6 @@ function formatCurrency(amount: string | number): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(num)
-}
-
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return "—"
-  return new Date(dateStr).toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  })
 }
 
 function formatDateTime(dateStr: string | null): string {
@@ -275,7 +267,7 @@ export default function PledgeDetail() {
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-sm text-muted-foreground">Start Date</p>
-                    <p className="font-medium">{formatDate(pledge.start_date)}</p>
+                    <p className="font-medium">{formatLocalDate(pledge.start_date, "long")}</p>
                   </div>
                 </div>
                 {pledge.end_date && (
@@ -283,7 +275,7 @@ export default function PledgeDetail() {
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                     <div>
                       <p className="text-sm text-muted-foreground">End Date</p>
-                      <p className="font-medium">{formatDate(pledge.end_date)}</p>
+                      <p className="font-medium">{formatLocalDate(pledge.end_date, "long")}</p>
                     </div>
                   </div>
                 )}
@@ -297,11 +289,11 @@ export default function PledgeDetail() {
               <CardContent className="space-y-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Last Fulfilled</p>
-                  <p className="font-medium">{formatDate(pledge.last_fulfilled_date)}</p>
+                  <p className="font-medium">{formatLocalDate(pledge.last_fulfilled_date, "long")}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Next Expected</p>
-                  <p className="font-medium">{formatDate(pledge.next_expected_date)}</p>
+                  <p className="font-medium">{formatLocalDate(pledge.next_expected_date, "long")}</p>
                 </div>
                 {pledge.is_late && (
                   <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">

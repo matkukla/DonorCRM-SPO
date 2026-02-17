@@ -18,6 +18,14 @@ function formatCurrency(amount: string | number): string {
 }
 
 function formatDate(dateStr: string): string {
+  // Parse as local date to avoid UTC timezone shift
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    const [year, month, day] = dateStr.split("-").map(Number)
+    return new Date(year, month - 1, day).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    })
+  }
   return new Date(dateStr).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",

@@ -18,6 +18,7 @@ import { Plus, Search, Filter, MoreHorizontal, Check, Calendar } from "lucide-re
 import type { ColumnDef } from "@tanstack/react-table"
 import type { Donation, DonationType } from "@/api/donations"
 import { donationTypeLabels, paymentMethodLabels } from "@/api/donations"
+import { formatLocalDate } from "@/lib/utils"
 
 const PAGE_SIZE = 20
 
@@ -29,14 +30,6 @@ function formatCurrency(amount: string | number): string {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(num)
-}
-
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  })
 }
 
 export default function DonationList() {
@@ -107,7 +100,7 @@ export default function DonationList() {
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <Calendar className="h-4 w-4 text-muted-foreground" />
-          {formatDate(row.original.date)}
+          {formatLocalDate(row.original.date)}
         </div>
       ),
     },

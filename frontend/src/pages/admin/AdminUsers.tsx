@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Plus, MoreHorizontal, UserX, Edit, ChevronDown } from "lucide-react"
 import { NavLink } from "react-router-dom"
-import { cn } from "@/lib/utils"
+import { cn, formatLocalDate } from "@/lib/utils"
 import type { User, UserRole } from "@/api/users"
 import { userRoleLabels } from "@/api/users"
 
@@ -45,11 +45,7 @@ const roleVariants: Record<UserRole, "default" | "secondary" | "success" | "warn
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return "Never"
-  return new Date(dateStr).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  })
+  return formatLocalDate(dateStr)
 }
 
 export default function AdminUsers() {

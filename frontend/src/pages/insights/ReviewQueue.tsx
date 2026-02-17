@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { useReviewQueue } from "@/hooks/useInsights"
 import { ClipboardCheck } from "lucide-react"
+import { formatLocalDate } from "@/lib/utils"
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -100,9 +101,7 @@ export default function ReviewQueue() {
                                 : "—"}
                             </TableCell>
                             <TableCell>
-                              {item.last_gift_date
-                                ? new Date(item.last_gift_date).toLocaleDateString()
-                                : "—"}
+                              {formatLocalDate(item.last_gift_date)}
                             </TableCell>
                           </TableRow>
                         ))}

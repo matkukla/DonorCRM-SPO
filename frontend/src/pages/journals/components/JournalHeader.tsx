@@ -1,6 +1,7 @@
 import * as React from "react"
 import { Progress } from "@/components/ui/progress"
 import type { JournalDetail, JournalMember, DecisionSummary } from "@/types/journals"
+import { formatLocalDate } from "@/lib/utils"
 
 export interface JournalHeaderProps {
   /** Journal details */
@@ -61,7 +62,7 @@ export function JournalHeader({ journal, members }: JournalHeaderProps) {
           <p className="text-muted-foreground">
             Goal: ${parseFloat(journal.goal_amount).toLocaleString()}
             {journal.deadline && (
-              <span> &bull; Due {new Date(journal.deadline).toLocaleDateString()}</span>
+              <span> &bull; Due {formatLocalDate(journal.deadline)}</span>
             )}
           </p>
         </div>

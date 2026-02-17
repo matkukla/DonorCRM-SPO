@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import type { ChartConfig } from "@/components/ui/chart"
 import { useAdminUserPerformance, useAdminUserTrends, useAdminUserJournals } from "@/hooks/useInsights"
-import { cn } from "@/lib/utils"
+import { cn, formatLocalDate } from "@/lib/utils"
 
 const trendConfig = {
   decisions_logged: { label: "Decisions", color: "hsl(var(--chart-1))" },
@@ -306,11 +306,7 @@ export default function UserDetail() {
                             : `${journal.active_member_count}/${journal.member_count} active`}
                         </TableCell>
                         <TableCell>
-                          {new Date(journal.created_at).toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric'
-                          })}
+                          {formatLocalDate(journal.created_at)}
                         </TableCell>
                       </TableRow>
                     ))}

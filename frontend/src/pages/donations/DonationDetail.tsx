@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowLeft, Edit, Trash2, Check, User, Calendar, CreditCard, FileText } from "lucide-react"
 import { donationTypeLabels, paymentMethodLabels } from "@/api/donations"
+import { formatLocalDate } from "@/lib/utils"
 
 function formatCurrency(amount: string | number): string {
   const num = typeof amount === "string" ? parseFloat(amount) : amount
@@ -16,15 +17,6 @@ function formatCurrency(amount: string | number): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(num)
-}
-
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return "—"
-  return new Date(dateStr).toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  })
 }
 
 function formatDateTime(dateStr: string | null): string {
@@ -117,7 +109,7 @@ export default function DonationDetail() {
                 <Link to={`/contacts/${donation.contact}`} className="text-primary hover:underline">
                   {donation.contact_name}
                 </Link>
-                {" "}on {formatDate(donation.date)}
+                {" "}on {formatLocalDate(donation.date, "long")}
               </p>
             </div>
             <div className="flex gap-2">
@@ -166,7 +158,7 @@ export default function DonationDetail() {
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-sm text-muted-foreground">Date</p>
-                    <p className="font-medium">{formatDate(donation.date)}</p>
+                    <p className="font-medium">{formatLocalDate(donation.date, "long")}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">

@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { useFollowUps } from "@/hooks/useInsights"
 import { ListTodo } from "lucide-react"
+import { formatLocalDate } from "@/lib/utils"
 
 const priorityLabels: Record<string, string> = {
   low: "Low",
@@ -126,7 +127,7 @@ export default function FollowUps() {
                             </TableCell>
                             <TableCell>
                               <span className={task.is_overdue ? "text-destructive font-medium" : ""}>
-                                {new Date(task.due_date).toLocaleDateString()}
+                                {formatLocalDate(task.due_date)}
                               </span>
                               {task.is_overdue && (
                                 <Badge variant="destructive" className="ml-2 text-xs">
