@@ -3,6 +3,7 @@ URL patterns for contacts endpoints.
 """
 from django.urls import path
 
+from apps.contacts.export_views import ContactExportCSVView
 from apps.contacts.views import (
     ContactDetailView,
     ContactDonationsView,
@@ -20,6 +21,7 @@ app_name = 'contacts'
 
 urlpatterns = [
     path('', ContactListCreateView.as_view(), name='contact-list'),
+    path('export/csv/', ContactExportCSVView.as_view(), name='contact-export-csv'),
     path('emails/', ContactEmailsView.as_view(), name='contact-emails'),
     path('search/', ContactSearchView.as_view(), name='contact-search'),
     path('<uuid:pk>/', ContactDetailView.as_view(), name='contact-detail'),
