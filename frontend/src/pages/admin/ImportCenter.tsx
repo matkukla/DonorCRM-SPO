@@ -135,7 +135,7 @@ export default function ImportCenter() {
           </div>
 
           {/* Import Order Guidance */}
-          <Card className="bg-blue-50 border-blue-200">
+          <Card className="bg-blue-50 dark:bg-blue-950/50 border-blue-200 dark:border-blue-800">
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
                 <Upload className="h-4 w-4" />

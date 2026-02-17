@@ -233,7 +233,7 @@ export function ImportDialog({ importType, open, onClose }: ImportDialogProps) {
                 >
                   {acceptedFile ? (
                     <div className="flex items-center justify-center gap-3">
-                      <FileText className="h-8 w-8 text-green-600" />
+                      <FileText className="h-8 w-8 text-green-600 dark:text-green-400" />
                       <div className="text-left">
                         <p className="font-medium">{acceptedFile.name}</p>
                         <p className="text-sm text-muted-foreground">
@@ -263,7 +263,7 @@ export function ImportDialog({ importType, open, onClose }: ImportDialogProps) {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <FileText className="h-5 w-5 text-green-600" />
+                <FileText className="h-5 w-5 text-green-600 dark:text-green-400" />
                 <span className="font-medium">{state.file?.name}</span>
                 <Badge variant="secondary">{state.rows.length} rows previewed</Badge>
               </div>
@@ -295,8 +295,8 @@ export function ImportDialog({ importType, open, onClose }: ImportDialogProps) {
             <div
               className={`p-4 rounded-lg ${
                 state.validationResult.error_count === 0
-                  ? "bg-green-50 border border-green-200"
-                  : "bg-yellow-50 border border-yellow-200"
+                  ? "bg-green-50 dark:bg-green-950/50 border border-green-200 dark:border-green-800"
+                  : "bg-yellow-50 dark:bg-yellow-950/50 border border-yellow-200 dark:border-yellow-800"
               }`}
             >
               <div className="flex items-center gap-2 mb-2">
@@ -350,7 +350,7 @@ export function ImportDialog({ importType, open, onClose }: ImportDialogProps) {
         {/* Step: Complete */}
         {state.step === "complete" && state.importResult && (
           <div className="space-y-4">
-            <div className="p-4 rounded-lg bg-green-50 border border-green-200">
+            <div className="p-4 rounded-lg bg-green-50 dark:bg-green-950/50 border border-green-200 dark:border-green-800">
               <div className="flex items-center gap-2 mb-2">
                 <Badge variant="success" className="gap-1">
                   <CheckCircle className="h-3 w-3" />
@@ -359,26 +359,26 @@ export function ImportDialog({ importType, open, onClose }: ImportDialogProps) {
               </div>
               <div className="grid grid-cols-3 gap-4 mt-4">
                 <div className="text-center">
-                  <p className="text-2xl font-semibold text-green-600">
+                  <p className="text-2xl font-semibold text-green-600 dark:text-green-400">
                     {state.importResult.created_count}
                   </p>
                   <p className="text-sm text-muted-foreground">Created</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-2xl font-semibold text-blue-600">
+                  <p className="text-2xl font-semibold text-blue-600 dark:text-blue-400">
                     {state.importResult.updated_count}
                   </p>
                   <p className="text-sm text-muted-foreground">Updated</p>
                 </div>
                 <div className="text-center">
-                  <p className={`text-2xl font-semibold ${state.importResult.error_count > 0 ? "text-red-600" : "text-muted-foreground"}`}>
+                  <p className={`text-2xl font-semibold ${state.importResult.error_count > 0 ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`}>
                     {state.importResult.error_count}
                   </p>
                   <p className="text-sm text-muted-foreground">Errors</p>
                 </div>
               </div>
               {state.importResult.error_count > 0 && (
-                <div className="mt-4 pt-4 border-t border-green-200">
+                <div className="mt-4 pt-4 border-t border-green-200 dark:border-green-800">
                   {state.importResult.errors.length > 0 && (
                     <>
                       <p className="text-sm font-medium mb-2">Sample errors:</p>
@@ -408,12 +408,12 @@ export function ImportDialog({ importType, open, onClose }: ImportDialogProps) {
 
         {/* Step: Error */}
         {state.step === "error" && (
-          <div className="p-4 rounded-lg bg-red-50 border border-red-200">
+          <div className="p-4 rounded-lg bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-red-600" />
-              <p className="font-medium text-red-800">Error</p>
+              <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+              <p className="font-medium text-red-800 dark:text-red-200">Error</p>
             </div>
-            <p className="text-sm text-red-700 mt-2">{state.errorMessage}</p>
+            <p className="text-sm text-red-700 dark:text-red-300 mt-2">{state.errorMessage}</p>
           </div>
         )}
 
