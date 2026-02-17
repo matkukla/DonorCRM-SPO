@@ -45,6 +45,8 @@ export function useUpdateDonation() {
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ["donations"] })
       queryClient.invalidateQueries({ queryKey: ["donations", id] })
+      queryClient.invalidateQueries({ queryKey: ["contacts"] })
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] })
     },
   })
 }
