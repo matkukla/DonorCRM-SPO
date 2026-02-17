@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
+import { NuqsAdapter } from "nuqs/adapters/react-router/v6"
 import { ErrorBoundary } from "react-error-boundary"
 import { QueryProvider } from "@/providers/QueryProvider"
 import { AuthProvider } from "@/providers/AuthProvider"
@@ -68,6 +69,7 @@ function App() {
         <QueryProvider>
           <AuthProvider>
             <BrowserRouter>
+              <NuqsAdapter>
               <Routes>
                 {/* Public routes */}
                 <Route path="/login" element={<Login />} />
@@ -117,6 +119,7 @@ function App() {
                 {/* Catch-all redirect */}
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
+              </NuqsAdapter>
             </BrowserRouter>
             <Toaster position="bottom-right" />
           </AuthProvider>
