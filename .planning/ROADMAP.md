@@ -67,7 +67,7 @@ See milestones/v1.2-ROADMAP.md for complete phase details.
 
 **Milestone Goal:** Enable Smartsheet file import with column mapping, add comprehensive filtering across all list pages, and fix security/quality/dark mode issues.
 
-- [ ] **Phase 20: Security & Performance Fixes** - Fix permission bypasses, N+1 queries, file size limits, and data integrity bugs
+- [x] **Phase 20: Security & Performance Fixes** - Fix permission bypasses, N+1 queries, file size limits, and data integrity bugs (completed 2026-02-17)
 - [ ] **Phase 21: Dark Mode & UI Polish** - Fix hardcoded colors, WCAG contrast, error boundaries, and CSV sanitization
 - [ ] **Phase 22: Filter Infrastructure** - Build reusable filter system with URL persistence, presets, badges, CSV export, and server-side query optimization
 - [ ] **Phase 23: Per-Page Filter Implementation** - Apply filters to contacts, donations, pledges, journals, and transactions pages
@@ -193,7 +193,7 @@ Phases execute in numeric order: 20 -> 21 -> 22 -> 23 -> 24 -> 25
 | 17. Stalled Contacts & User Detail Pages | v1.2 | 2/2 | Complete | 2026-02-14 |
 | 18. Interactive Visualizations & Drill-Down | v1.2 | 2/2 | Complete | 2026-02-15 |
 | 19. Advanced Features & Export | v1.2 | 4/4 | Complete | 2026-02-16 |
-| 20. Security & Performance Fixes | v1.3 | 0/? | Not started | - |
+| 20. Security & Performance Fixes | v1.3 | 3/3 | Complete | 2026-02-17 |
 | 21. Dark Mode & UI Polish | v1.3 | 0/? | Not started | - |
 | 22. Filter Infrastructure | v1.3 | 0/? | Not started | - |
 | 23. Per-Page Filter Implementation | v1.3 | 0/? | Not started | - |
@@ -202,4 +202,4 @@ Phases execute in numeric order: 20 -> 21 -> 22 -> 23 -> 24 -> 25
 
 ---
 
-*Last updated: 2026-02-16 (v1.3 roadmap created)*
+*Last updated: 2026-02-17 (Phase 20 complete)*
