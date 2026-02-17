@@ -101,50 +101,57 @@ class JournalContactSerializer(serializers.ModelSerializer):
     def get_stage_events(self, obj):
         """
         Get stage event summaries grouped by stage for grid display.
-        Returns a dict with stage names as keys and summary objects as values.
+        Uses prefetched data from view queryset to avoid N+1 queries (QAL-05).
         """
-        from django.db.models import Count, Max
         from apps.journals.models import PipelineStage
 
-        # Get all events for this journal contact
-        events = obj.stage_events.values('stage').annotate(
-            event_count=Count('id'),
-            last_event_date=Max('created_at')
-        )
+        events = getattr(obj, 'prefetched_stage_events', None)
+        if events is None:
+            # Fallback if prefetch not available (e.g., single object retrieval)
+            events = list(obj.stage_events.order_by('-created_at'))
 
-        # Build summary dict for all stages
+        # Group by stage in Python
+        by_stage = {}
+        for event in events:
+            if event.stage not in by_stage:
+                by_stage[event.stage] = []
+            by_stage[event.stage].append(event)
+
+        # Build summaries from in-memory data
         summaries = {}
         for stage in PipelineStage.values:
-            summaries[stage] = {
-                'has_events': False,
-                'event_count': 0,
-                'last_event_date': None,
-                'last_event_type': None,
-                'last_event_notes': None,
-            }
-
-        # Fill in summaries for stages that have events
-        for event_data in events:
-            stage = event_data['stage']
-            # Get the most recent event for this stage
-            last_event = obj.stage_events.filter(stage=stage).order_by('-created_at').first()
-            if last_event:
+            stage_events = by_stage.get(stage, [])
+            if stage_events:
+                last = stage_events[0]  # Already ordered by -created_at from prefetch
                 summaries[stage] = {
                     'has_events': True,
-                    'event_count': event_data['event_count'],
-                    'last_event_date': last_event.created_at.isoformat(),
-                    'last_event_type': last_event.event_type,
-                    'last_event_notes': last_event.notes[:100] if last_event.notes else None,
+                    'event_count': len(stage_events),
+                    'last_event_date': last.created_at.isoformat(),
+                    'last_event_type': last.event_type,
+                    'last_event_notes': last.notes[:100] if last.notes else None,
                 }
-
+            else:
+                summaries[stage] = {
+                    'has_events': False,
+                    'event_count': 0,
+                    'last_event_date': None,
+                    'last_event_type': None,
+                    'last_event_notes': None,
+                }
         return summaries
 
     def get_decision(self, obj):
         """
         Get current decision summary for grid display.
-        Returns the first (should be only) decision for this journal contact.
+        Uses prefetched data from view queryset to avoid N+1 queries (QAL-05).
         """
-        decision = obj.decisions.first()
+        decisions = getattr(obj, 'prefetched_decisions', None)
+        if decisions is None:
+            # Fallback if prefetch not available
+            decision = obj.decisions.first()
+        else:
+            decision = decisions[0] if decisions else None
+
         if decision:
             return {
                 'id': str(decision.id),
