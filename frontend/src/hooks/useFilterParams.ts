@@ -1,12 +1,7 @@
 import { useQueryStates, parseAsString, parseAsBoolean, parseAsInteger } from "nuqs"
 
-// Generic filter parsers type
-type FilterParsers = Record<
-  string,
-  | ReturnType<typeof parseAsString>
-  | ReturnType<typeof parseAsBoolean>
-  | ReturnType<typeof parseAsInteger>
->
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type FilterParsers = Record<string, any>
 
 /**
  * Shared hook for type-safe URL filter state management.

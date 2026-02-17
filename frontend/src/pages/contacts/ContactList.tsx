@@ -1,13 +1,15 @@
-import { useState } from "react"
-import { useNavigate, useSearchParams } from "react-router-dom"
+import { useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
 import { useContacts, useMarkContactThanked } from "@/hooks/useContacts"
+import { useFilterParams, contactFilterParsers } from "@/hooks/useFilterParams"
+import { contactPresets } from "@/lib/filter-presets"
+import { FilterBar } from "@/components/shared/FilterBar"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
 import { DataTable } from "@/components/shared/DataTable"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Card } from "@/components/ui/card"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,7 +52,7 @@ function formatCurrency(amount: string | number): string {
 }
 
 function formatDate(dateStr: string | null): string {
-  if (!dateStr) return "—"
+  if (!dateStr) return "\u2014"
   return new Date(dateStr).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -60,21 +62,32 @@ function formatDate(dateStr: string | null): string {
 
 export default function ContactList() {
   const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
 
-  const [searchInput, setSearchInput] = useState(searchParams.get("search") || "")
+  const {
+    filters,
+    setFilters,
+    clearAll,
+    activeFilters,
+    toQueryParams,
+  } = useFilterParams(contactFilterParsers)
 
-  const page = parseInt(searchParams.get("page") || "1", 10)
-  const search = searchParams.get("search") || ""
-  const status = searchParams.get("status") as ContactStatus | undefined
-  const needsThankYou = searchParams.get("needs_thank_you") === "true"
+  const [searchInput, setSearchInput] = useState(filters.search || "")
+
+  // Sync search input when URL changes externally (e.g., browser back/forward)
+  useEffect(() => {
+    setSearchInput(filters.search || "")
+  }, [filters.search])
 
   const { data, isLoading } = useContacts({
-    page,
+    page: filters.page,
     page_size: PAGE_SIZE,
-    search,
-    status,
-    needs_thank_you: needsThankYou || undefined,
+    search: filters.search || undefined,
+    status: (filters.status as ContactStatus) || undefined,
+    needs_thank_you: filters.needs_thank_you ?? undefined,
+    last_gift_after: filters.last_gift_after || undefined,
+    last_gift_before: filters.last_gift_before || undefined,
+    group: filters.group || undefined,
+    ordering: filters.ordering || undefined,
   })
 
   const markThankedMutation = useMarkContactThanked()
@@ -100,42 +113,11 @@ export default function ContactList() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    const params = new URLSearchParams(searchParams)
-    if (searchInput) {
-      params.set("search", searchInput)
-    } else {
-      params.delete("search")
-    }
-    params.set("page", "1")
-    setSearchParams(params)
-  }
-
-  const handleStatusFilter = (newStatus: ContactStatus | null) => {
-    const params = new URLSearchParams(searchParams)
-    if (newStatus) {
-      params.set("status", newStatus)
-    } else {
-      params.delete("status")
-    }
-    params.set("page", "1")
-    setSearchParams(params)
-  }
-
-  const handleThankYouFilter = () => {
-    const params = new URLSearchParams(searchParams)
-    if (needsThankYou) {
-      params.delete("needs_thank_you")
-    } else {
-      params.set("needs_thank_you", "true")
-    }
-    params.set("page", "1")
-    setSearchParams(params)
+    setFilters({ search: searchInput || null, page: 1 })
   }
 
   const handlePageChange = (newPage: number) => {
-    const params = new URLSearchParams(searchParams)
-    params.set("page", String(newPage + 1))
-    setSearchParams(params)
+    setFilters({ page: newPage + 1 })
   }
 
   const handleRowClick = (contact: ContactListItem) => {
@@ -168,7 +150,7 @@ export default function ContactList() {
             {row.original.phone}
           </div>
         ) : (
-          <span className="text-muted-foreground">—</span>
+          <span className="text-muted-foreground">{"\u2014"}</span>
         ),
     },
     {
@@ -275,55 +257,82 @@ export default function ContactList() {
           </div>
 
           {/* Filters */}
-          <Card className="p-4">
-            <div className="flex flex-col sm:flex-row gap-4">
-              {/* Search */}
-              <form onSubmit={handleSearch} className="flex-1 flex gap-2">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search by name or email..."
-                    value={searchInput}
-                    onChange={(e) => setSearchInput(e.target.value)}
-                    className="pl-9"
-                  />
-                </div>
-                <Button type="submit" variant="secondary">
-                  Search
-                </Button>
-              </form>
-
-              {/* Status filter */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="secondary" className="gap-2">
-                    <Filter className="h-4 w-4" />
-                    {status ? statusLabels[status] : "All Status"}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem onClick={() => handleStatusFilter(null)}>
-                    All Status
-                  </DropdownMenuItem>
-                  {(Object.keys(statusLabels) as ContactStatus[]).map((s) => (
-                    <DropdownMenuItem key={s} onClick={() => handleStatusFilter(s)}>
-                      {statusLabels[s]}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              {/* Thank you filter */}
-              <Button
-                variant={needsThankYou ? "default" : "secondary"}
-                onClick={handleThankYouFilter}
-                className="gap-2"
-              >
-                <Heart className="h-4 w-4" />
-                Needs Thank You
+          <FilterBar
+            activeFilters={activeFilters}
+            onClearAll={clearAll}
+            onRemoveFilter={(key) => setFilters({ [key]: null, page: 1 })}
+            filterLabels={{
+              status: "Status",
+              needs_thank_you: "Needs Thank You",
+              last_gift_after: "Gift From",
+              last_gift_before: "Gift To",
+              group: "Group",
+              ordering: "Sort",
+            }}
+            filterValueLabels={{
+              status: {
+                prospect: "Prospect",
+                donor: "Donor",
+                lapsed: "Lapsed",
+                major_donor: "Major Donor",
+                deceased: "Deceased",
+              },
+            }}
+            presets={contactPresets}
+            onApplyPreset={(preset) => setFilters({ ...preset.getParams(), page: 1 })}
+            exportUrl="/contacts/export/csv/"
+            exportParams={toQueryParams()}
+          >
+            {/* Search input */}
+            <form onSubmit={handleSearch} className="flex gap-2 flex-1 min-w-[200px]">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name or email..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Button type="submit" variant="secondary">
+                Search
               </Button>
-            </div>
-          </Card>
+            </form>
+
+            {/* Status dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="secondary" size="sm" className="gap-2">
+                  <Filter className="h-4 w-4" />
+                  {filters.status ? statusLabels[filters.status as ContactStatus] || filters.status : "All Status"}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => setFilters({ status: null, page: 1 })}>
+                  All Status
+                </DropdownMenuItem>
+                {(Object.keys(statusLabels) as ContactStatus[]).map((s) => (
+                  <DropdownMenuItem key={s} onClick={() => setFilters({ status: s, page: 1 })}>
+                    {statusLabels[s]}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Thank You toggle button */}
+            <Button
+              variant={filters.needs_thank_you ? "default" : "secondary"}
+              size="sm"
+              onClick={() => setFilters({
+                needs_thank_you: filters.needs_thank_you ? null : true,
+                page: 1,
+              })}
+              className="gap-2"
+            >
+              <Heart className="h-4 w-4" />
+              Needs Thank You
+            </Button>
+          </FilterBar>
 
           {/* Data Table */}
           <DataTable
@@ -331,7 +340,7 @@ export default function ContactList() {
             data={data?.results || []}
             isLoading={isLoading}
             pageCount={pageCount}
-            pageIndex={page - 1}
+            pageIndex={filters.page - 1}
             pageSize={PAGE_SIZE}
             totalCount={data?.count}
             onPageChange={handlePageChange}
