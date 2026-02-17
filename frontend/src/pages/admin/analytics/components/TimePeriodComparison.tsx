@@ -168,19 +168,19 @@ export function TimePeriodComparison({ dateParams }: TimePeriodComparisonProps) 
                   <TrendIcon
                     className={`w-3 h-3 ${
                       isPositive
-                        ? 'text-green-600'
+                        ? 'text-green-600 dark:text-green-400'
                         : isNegative
-                        ? 'text-red-600'
-                        : 'text-gray-400'
+                        ? 'text-red-600 dark:text-red-400'
+                        : 'text-muted-foreground'
                     }`}
                   />
                   <span
                     className={`font-medium ${
                       isPositive
-                        ? 'text-green-600'
+                        ? 'text-green-600 dark:text-green-400'
                         : isNegative
-                        ? 'text-red-600'
-                        : 'text-gray-400'
+                        ? 'text-red-600 dark:text-red-400'
+                        : 'text-muted-foreground'
                     }`}
                   >
                     {isPositive ? '+' : ''}{metric.change.toFixed(1)}%
