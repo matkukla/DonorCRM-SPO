@@ -5,22 +5,22 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems, and leadership can proactively support their teams through cross-missionary analytics.
-**Current focus:** Phase 20 complete, ready for Phase 21 (v1.3)
+**Current focus:** Phase 21 in progress (v1.3)
 
 ## Current Position
 
 Milestone: v1.3 — Smartsheet Import, Filters & Polish
-Phase: 20 of 25 (Security & Performance Fixes) -- COMPLETE
-Plan: 3 of 3
-Status: Phase Complete
-Last activity: 2026-02-17 — Completed 20-03 (N+1 query fix & dashboard side effect decoupling)
+Phase: 21 of 25 (Dark Mode & UI Polish)
+Plan: 2 of 3
+Status: Executing
+Last activity: 2026-02-17 — Completed 21-02 (Donation edit stats fix & CSV export sanitization)
 
-Progress: [######################........] 73% (60/60 prior+v1.3 plans complete, 3/3 phase 20 plans)
+Progress: [#######################.......] 75% (62/82 total plans complete, 2/3 phase 21 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 60 (24 v1.0 + 15 v1.1 + 18 v1.2 + 3 v1.3)
+- Total plans completed: 62 (24 v1.0 + 15 v1.1 + 18 v1.2 + 5 v1.3)
 - Average duration: 4.2 minutes
 - Total execution time: ~4.2 hours
 
@@ -44,6 +44,8 @@ All decisions logged in PROJECT.md Key Decisions table.
 - **20-02:** Used useRef guard pattern for toast to prevent duplicate notifications on ProtectedRoute redirect
 - **20-03:** Skipped visual indicators for unseen events (is_new has no current UI distinction; decoupling marking from GET is the core fix)
 - **20-03:** Used getattr fallback pattern so serializer works with and without prefetch
+- **21-02:** Used OWASP single-quote prefix for CSV sanitization (spreadsheet-native text-mode indicator)
+- **21-02:** Kept event creation, thank-you marking, and pledge fulfillment as create-only in signal
 
 ### Pending Todos
 
@@ -68,9 +70,9 @@ All decisions logged in PROJECT.md Key Decisions table.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Phase 20 verified (5/5 must-haves passed) and marked complete
-Resume file: Next phase (21)
+Stopped at: Completed 21-02-PLAN.md (donation edit stats fix & CSV export sanitization)
+Resume file: 21-03-PLAN.md
 
 ---
 
-*Last updated: 2026-02-17 (Phase 20 verified and complete)*
+*Last updated: 2026-02-17 (21-02 complete)*
