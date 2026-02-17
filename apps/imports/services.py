@@ -30,6 +30,14 @@ VALID_PLEDGE_STATUSES = [s.value for s in PledgeStatus]        # ['active', 'pau
 # Formula characters for CSV injection prevention
 FORMULA_PREFIXES = ('=', '+', '-', '@')
 
+
+def sanitize_csv_value(value):
+    """Prevent CSV formula injection by prefixing dangerous characters with single quote."""
+    if value and isinstance(value, str) and value.startswith(FORMULA_PREFIXES):
+        return "'" + value
+    return value
+
+
 # Date formats to try when parsing
 DATE_FORMATS = ['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%m-%d-%Y', '%d-%m-%Y']
 
@@ -383,20 +391,20 @@ def export_contacts_csv(queryset) -> str:
 
     for contact in queryset:
         writer.writerow({
-            'first_name': contact.first_name,
-            'last_name': contact.last_name,
-            'email': contact.email,
-            'phone': contact.phone,
-            'street_address': contact.street_address,
-            'city': contact.city,
-            'state': contact.state,
-            'postal_code': contact.postal_code,
-            'country': contact.country,
+            'first_name': sanitize_csv_value(contact.first_name),
+            'last_name': sanitize_csv_value(contact.last_name),
+            'email': sanitize_csv_value(contact.email),
+            'phone': sanitize_csv_value(contact.phone),
+            'street_address': sanitize_csv_value(contact.street_address),
+            'city': sanitize_csv_value(contact.city),
+            'state': sanitize_csv_value(contact.state),
+            'postal_code': sanitize_csv_value(contact.postal_code),
+            'country': sanitize_csv_value(contact.country),
             'status': contact.status,
             'total_given': str(contact.total_given),
             'gift_count': contact.gift_count,
             'last_gift_date': str(contact.last_gift_date) if contact.last_gift_date else '',
-            'notes': contact.notes,
+            'notes': sanitize_csv_value(contact.notes),
         })
 
     return output.getvalue()
@@ -424,16 +432,16 @@ def export_donations_csv(queryset) -> str:
 
     for donation in queryset.select_related('contact'):
         writer.writerow({
-            'contact_first_name': donation.contact.first_name,
-            'contact_last_name': donation.contact.last_name,
-            'contact_email': donation.contact.email,
+            'contact_first_name': sanitize_csv_value(donation.contact.first_name),
+            'contact_last_name': sanitize_csv_value(donation.contact.last_name),
+            'contact_email': sanitize_csv_value(donation.contact.email),
             'amount': str(donation.amount),
             'date': str(donation.date),
             'donation_type': donation.donation_type,
             'payment_method': donation.payment_method,
-            'external_id': donation.external_id,
+            'external_id': sanitize_csv_value(donation.external_id),
             'thanked': 'Yes' if donation.thanked else 'No',
-            'notes': donation.notes,
+            'notes': sanitize_csv_value(donation.notes),
         })
 
     return output.getvalue()

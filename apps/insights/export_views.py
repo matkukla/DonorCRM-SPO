@@ -11,6 +11,7 @@ from rest_framework.views import APIView
 from django.http import StreamingHttpResponse
 
 from apps.core.permissions import IsAdmin
+from apps.imports.services import sanitize_csv_value
 from apps.insights.services import get_stalled_contacts, get_team_activity
 
 
@@ -96,12 +97,12 @@ class StalledContactsCSVView(APIView):
             # Write data rows
             for contact in data['stalled_contacts']:
                 yield writer.writerow([
-                    contact['full_name'],
-                    contact['email'] or '',
-                    contact['owner_name'],
+                    sanitize_csv_value(contact['full_name']),
+                    sanitize_csv_value(contact['email'] or ''),
+                    sanitize_csv_value(contact['owner_name']),
                     contact['last_activity_date'] or '',
                     contact['days_stalled'] or '',
-                    contact['status'],
+                    sanitize_csv_value(contact['status']),
                 ])
 
         response = StreamingHttpResponse(generate_csv(), content_type='text/csv')
@@ -170,10 +171,10 @@ class TeamActivityCSVView(APIView):
             for activity in data['activities']:
                 yield writer.writerow([
                     activity['created_at'],
-                    activity['user_name'],
-                    activity['event_type'],
-                    activity['title'],
-                    activity['contact_name'] or '',
+                    sanitize_csv_value(activity['user_name']),
+                    sanitize_csv_value(activity['event_type']),
+                    sanitize_csv_value(activity['title']),
+                    sanitize_csv_value(activity['contact_name'] or ''),
                 ])
 
         response = StreamingHttpResponse(generate_csv(), content_type='text/csv')
