@@ -23,8 +23,8 @@ export function useFilterParams<T extends FilterParsers>(parsers: T) {
     setFilters(cleared)
   }
 
-  // Keys that are not user-facing filters (pagination, sort, search)
-  const excludedKeys = new Set(["page", "search", "offset", "ordering"])
+  // Keys that are not user-facing filters (pagination, sort)
+  const excludedKeys = new Set(["page", "offset", "ordering"])
 
   // Get list of active filters (non-null, excluding internal keys)
   const activeFilters = Object.entries(filters).filter(

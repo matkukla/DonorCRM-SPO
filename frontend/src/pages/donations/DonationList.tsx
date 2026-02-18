@@ -206,6 +206,7 @@ export default function DonationList() {
             onClearAll={clearAll}
             onRemoveFilter={(key) => setFilters({ [key]: null, page: 1 })}
             filterLabels={{
+              search: "Search",
               donation_type: "Type",
               payment_method: "Payment",
               thanked: "Status",

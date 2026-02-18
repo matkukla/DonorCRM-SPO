@@ -249,6 +249,7 @@ export default function PledgeList() {
             onClearAll={clearAll}
             onRemoveFilter={(key) => setFilters({ [key]: null, page: 1 })}
             filterLabels={{
+              search: "Search",
               status: "Status",
               frequency: "Frequency",
               is_late: "Late",

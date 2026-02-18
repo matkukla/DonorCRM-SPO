@@ -58,6 +58,7 @@ export default function JournalList() {
             onClearAll={clearAll}
             onRemoveFilter={(key) => setFilters({ [key]: null, page: 1 })}
             filterLabels={{
+              search: "Search",
               is_archived: "Archived",
               deadline_after: "Deadline From",
               deadline_before: "Deadline To",
