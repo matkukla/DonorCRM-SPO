@@ -65,16 +65,7 @@ export const pledgeStatusLabels: Record<PledgeStatus, string> = {
 /**
  * List pledges with optional filters
  */
-export async function getPledges(filters: PledgeFilters = {}): Promise<PaginatedResponse<Pledge>> {
-  const params = new URLSearchParams()
-
-  if (filters.contact) params.append("contact", filters.contact)
-  if (filters.status) params.append("status", filters.status)
-  if (filters.is_late !== undefined) params.append("is_late", String(filters.is_late))
-  if (filters.ordering) params.append("ordering", filters.ordering)
-  if (filters.page) params.append("page", String(filters.page))
-  if (filters.page_size) params.append("page_size", String(filters.page_size))
-
+export async function getPledges(params: Record<string, string> = {}): Promise<PaginatedResponse<Pledge>> {
   const response = await apiClient.get<PaginatedResponse<Pledge>>("/pledges/", { params })
   return response.data
 }

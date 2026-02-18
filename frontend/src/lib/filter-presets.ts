@@ -50,8 +50,13 @@ export const donationPresets: FilterPreset[] = [
     getParams: () => ({
       thanked: "false",
       donation_type: null,
+      payment_method: null,
       date_after: null,
       date_before: null,
+      amount_min: null,
+      amount_max: null,
+      fund: null,
+      owner: null,
     }),
   },
   {
@@ -63,6 +68,11 @@ export const donationPresets: FilterPreset[] = [
       date_before: fmt(endOfMonth(new Date())),
       thanked: null,
       donation_type: null,
+      payment_method: null,
+      amount_min: null,
+      amount_max: null,
+      fund: null,
+      owner: null,
     }),
   },
   {
@@ -74,6 +84,11 @@ export const donationPresets: FilterPreset[] = [
       date_before: null,
       thanked: null,
       donation_type: null,
+      payment_method: null,
+      amount_min: null,
+      amount_max: null,
+      fund: null,
+      owner: null,
     }),
   },
 ]
@@ -93,6 +108,9 @@ export const pledgePresets: FilterPreset[] = [
       frequency: null,
       start_date_after: null,
       start_date_before: null,
+      search: null,
+      amount_min: null,
+      amount_max: null,
     }),
   },
   {
@@ -105,6 +123,9 @@ export const pledgePresets: FilterPreset[] = [
       frequency: null,
       start_date_after: null,
       start_date_before: null,
+      search: null,
+      amount_min: null,
+      amount_max: null,
     }),
   },
 ]

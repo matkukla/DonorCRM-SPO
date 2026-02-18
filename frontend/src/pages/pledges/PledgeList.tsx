@@ -1,11 +1,15 @@
-import { useNavigate, useSearchParams, Link } from "react-router-dom"
+import { useState, useEffect } from "react"
+import { useNavigate, Link } from "react-router-dom"
 import { usePledges, usePausePledge, useResumePledge, useCancelPledge } from "@/hooks/usePledges"
+import { useFilterParams, pledgeFilterParsers } from "@/hooks/useFilterParams"
+import { pledgePresets } from "@/lib/filter-presets"
+import { FilterBar } from "@/components/shared/FilterBar"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
 import { DataTable } from "@/components/shared/DataTable"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Card } from "@/components/ui/card"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,9 +17,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Plus, Filter, MoreHorizontal, AlertTriangle, Pause, Play, XCircle } from "lucide-react"
+import { Plus, Search, Filter, MoreHorizontal, AlertTriangle, Pause, Play, XCircle } from "lucide-react"
 import type { ColumnDef } from "@tanstack/react-table"
-import type { Pledge, PledgeStatus } from "@/api/pledges"
+import type { Pledge, PledgeStatus, PledgeFrequency } from "@/api/pledges"
 import { pledgeFrequencyLabels, pledgeStatusLabels } from "@/api/pledges"
 import { formatLocalDate } from "@/lib/utils"
 
@@ -40,49 +44,36 @@ function formatCurrency(amount: string | number): string {
 
 export default function PledgeList() {
   const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
 
-  const page = parseInt(searchParams.get("page") || "1", 10)
-  const status = searchParams.get("status") as PledgeStatus | undefined
-  const isLate = searchParams.get("is_late") === "true"
+  const {
+    filters,
+    setFilters,
+    clearAll,
+    activeFilters,
+    toQueryParams,
+  } = useFilterParams(pledgeFilterParsers)
 
-  const { data, isLoading } = usePledges({
-    page,
-    page_size: PAGE_SIZE,
-    status,
-    is_late: isLate || undefined,
-  })
+  const [searchInput, setSearchInput] = useState(filters.search || "")
+
+  // Sync search input when URL changes externally (e.g., browser back/forward)
+  useEffect(() => {
+    setSearchInput(filters.search || "")
+  }, [filters.search])
+
+  const queryParams = { ...toQueryParams(), page_size: String(PAGE_SIZE) }
+  const { data, isLoading } = usePledges(queryParams)
 
   const pauseMutation = usePausePledge()
   const resumeMutation = useResumePledge()
   const cancelMutation = useCancelPledge()
 
-  const handleStatusFilter = (newStatus: PledgeStatus | null) => {
-    const params = new URLSearchParams(searchParams)
-    if (newStatus) {
-      params.set("status", newStatus)
-    } else {
-      params.delete("status")
-    }
-    params.set("page", "1")
-    setSearchParams(params)
-  }
-
-  const handleLateFilter = () => {
-    const params = new URLSearchParams(searchParams)
-    if (isLate) {
-      params.delete("is_late")
-    } else {
-      params.set("is_late", "true")
-    }
-    params.set("page", "1")
-    setSearchParams(params)
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    setFilters({ search: searchInput || null, page: 1 })
   }
 
   const handlePageChange = (newPage: number) => {
-    const params = new URLSearchParams(searchParams)
-    params.set("page", String(newPage + 1))
-    setSearchParams(params)
+    setFilters({ page: newPage + 1 })
   }
 
   const handleCancel = (id: string) => {
@@ -253,39 +244,130 @@ export default function PledgeList() {
           </div>
 
           {/* Filters */}
-          <Card className="p-4">
-            <div className="flex flex-wrap gap-4">
-              {/* Status filter */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="secondary" className="gap-2">
-                    <Filter className="h-4 w-4" />
-                    {status ? pledgeStatusLabels[status] : "All Status"}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem onClick={() => handleStatusFilter(null)}>
-                    All Status
-                  </DropdownMenuItem>
-                  {(Object.keys(pledgeStatusLabels) as PledgeStatus[]).map((s) => (
-                    <DropdownMenuItem key={s} onClick={() => handleStatusFilter(s)}>
-                      {pledgeStatusLabels[s]}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              {/* Late filter */}
-              <Button
-                variant={isLate ? "default" : "secondary"}
-                onClick={handleLateFilter}
-                className="gap-2"
-              >
-                <AlertTriangle className="h-4 w-4" />
-                Late Pledges Only
+          <FilterBar
+            activeFilters={activeFilters}
+            onClearAll={clearAll}
+            onRemoveFilter={(key) => setFilters({ [key]: null, page: 1 })}
+            filterLabels={{
+              status: "Status",
+              frequency: "Frequency",
+              is_late: "Late",
+              start_date_after: "Start From",
+              start_date_before: "Start To",
+              amount_min: "Min Amount",
+              amount_max: "Max Amount",
+            }}
+            filterValueLabels={{
+              status: pledgeStatusLabels,
+              frequency: pledgeFrequencyLabels,
+            }}
+            presets={pledgePresets}
+            onApplyPreset={(preset) => setFilters({ ...preset.getParams(), page: 1 })}
+            exportUrl="/pledges/export/csv/"
+            exportParams={toQueryParams()}
+          >
+            {/* Search input */}
+            <form onSubmit={handleSearch} className="flex gap-2 flex-1 min-w-[200px]">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by donor name..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Button type="submit" variant="secondary">
+                Search
               </Button>
-            </div>
-          </Card>
+            </form>
+
+            {/* Status dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="secondary" size="sm" className="gap-2">
+                  <Filter className="h-4 w-4" />
+                  {filters.status ? pledgeStatusLabels[filters.status as PledgeStatus] || filters.status : "All Status"}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => setFilters({ status: null, page: 1 })}>
+                  All Status
+                </DropdownMenuItem>
+                {(Object.keys(pledgeStatusLabels) as PledgeStatus[]).map((s) => (
+                  <DropdownMenuItem key={s} onClick={() => setFilters({ status: s, page: 1 })}>
+                    {pledgeStatusLabels[s]}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Frequency dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="secondary" size="sm" className="gap-2">
+                  <Filter className="h-4 w-4" />
+                  {filters.frequency ? pledgeFrequencyLabels[filters.frequency as PledgeFrequency] || filters.frequency : "All Frequencies"}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => setFilters({ frequency: null, page: 1 })}>
+                  All Frequencies
+                </DropdownMenuItem>
+                {(Object.keys(pledgeFrequencyLabels) as PledgeFrequency[]).map((f) => (
+                  <DropdownMenuItem key={f} onClick={() => setFilters({ frequency: f, page: 1 })}>
+                    {pledgeFrequencyLabels[f]}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Late toggle button */}
+            <Button
+              variant={filters.is_late ? "default" : "secondary"}
+              size="sm"
+              onClick={() => setFilters({
+                is_late: filters.is_late ? null : true,
+                page: 1,
+              })}
+              className="gap-2"
+            >
+              <AlertTriangle className="h-4 w-4" />
+              Late Pledges
+            </Button>
+
+            {/* Date range */}
+            <Input
+              type="date"
+              placeholder="Start from"
+              value={filters.start_date_after || ""}
+              onChange={(e) => setFilters({ start_date_after: e.target.value || null, page: 1 })}
+              className="w-[150px]"
+            />
+            <Input
+              type="date"
+              placeholder="Start to"
+              value={filters.start_date_before || ""}
+              onChange={(e) => setFilters({ start_date_before: e.target.value || null, page: 1 })}
+              className="w-[150px]"
+            />
+
+            {/* Amount range */}
+            <Input
+              type="number"
+              placeholder="Min $"
+              value={filters.amount_min || ""}
+              onChange={(e) => setFilters({ amount_min: e.target.value || null, page: 1 })}
+              className="w-[100px]"
+            />
+            <Input
+              type="number"
+              placeholder="Max $"
+              value={filters.amount_max || ""}
+              onChange={(e) => setFilters({ amount_max: e.target.value || null, page: 1 })}
+              className="w-[100px]"
+            />
+          </FilterBar>
 
           {/* Data Table */}
           <DataTable
@@ -293,7 +375,7 @@ export default function PledgeList() {
             data={data?.results || []}
             isLoading={isLoading}
             pageCount={pageCount}
-            pageIndex={page - 1}
+            pageIndex={filters.page - 1}
             pageSize={PAGE_SIZE}
             totalCount={data?.count}
             onPageChange={handlePageChange}
