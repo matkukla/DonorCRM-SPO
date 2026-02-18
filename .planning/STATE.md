@@ -63,6 +63,8 @@ All decisions logged in PROJECT.md Key Decisions table.
 - **23-01:** JournalExportCSVView replicates DonationExportCSVView pattern (Echo class, StreamingHttpResponse, 10k limit)
 - **23-01:** FundListView uses pagination_class=None for dropdown consumption
 - **23-01:** is_archived logic preserved in JournalListCreateView and replicated in JournalExportCSVView
+- **23-02:** Used useUsers hook for admin owner dropdown (avoids new API endpoint)
+- **23-02:** Presets explicitly null all new filter fields to prevent filter stacking between presets
 - **23-03:** page_size=50 for journal list (card grid layout, fewer journals than donations/pledges)
 - **23-03:** Kept JournalFilters interface for backward compatibility but getJournals now uses Record<string, string>
 
