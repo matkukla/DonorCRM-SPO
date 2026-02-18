@@ -9,12 +9,12 @@ import {
   resumePledge,
   cancelPledge,
 } from "@/api/pledges"
-import type { PledgeFilters, PledgeCreate, PledgeUpdate } from "@/api/pledges"
+import type { PledgeCreate, PledgeUpdate } from "@/api/pledges"
 
-export function usePledges(filters: PledgeFilters = {}) {
+export function usePledges(params: Record<string, string> = {}) {
   return useQuery({
-    queryKey: ["pledges", filters],
-    queryFn: () => getPledges(filters),
+    queryKey: ["pledges", params],
+    queryFn: () => getPledges(params),
   })
 }
 

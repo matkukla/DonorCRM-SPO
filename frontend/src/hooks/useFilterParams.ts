@@ -88,12 +88,15 @@ export const donationFilterParsers = {
 
 export const pledgeFilterParsers = {
   page: parseAsInteger.withDefault(1),
+  search: parseAsString,
   status: parseAsString,
   frequency: parseAsString,
   is_late: parseAsBoolean,
   start_date_after: parseAsString,
   start_date_before: parseAsString,
   ordering: parseAsString,
+  amount_min: parseAsString,
+  amount_max: parseAsString,
 }
 
 export const taskFilterParsers = {
