@@ -14,6 +14,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
 from apps.core.permissions import IsAdmin, IsOwnerOrAdmin
+from apps.journals.filters import JournalFilterSet
 from apps.journals.models import (
     Decision,
     DecisionHistory,
@@ -45,7 +46,7 @@ class JournalListCreateView(generics.ListCreateAPIView):
     search_fields = ['name']
     ordering_fields = ['name', 'created_at', 'deadline', 'goal_amount']
     ordering = ['-created_at']
-    filterset_fields = ['is_archived']
+    filterset_class = JournalFilterSet
 
     @extend_schema(
         summary='List journals',

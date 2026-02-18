@@ -7,12 +7,13 @@ import logging
 import uuid
 
 from django.http import HttpResponse
-from rest_framework import permissions, status
+from rest_framework import generics, permissions, serializers, status
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.permissions import IsAdmin, IsFinanceOrAdmin
+from apps.imports.models import Fund
 from apps.imports.services import (
     export_contacts_csv,
     export_donations_csv,
@@ -810,3 +811,22 @@ class ImportRunErrorsCSVView(APIView):
         filename = f'{import_run.type}_errors_{import_run.id}.csv'
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
+
+
+class FundListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Fund
+        fields = ['id', 'name']
+
+
+class FundListView(generics.ListAPIView):
+    """
+    GET: List all active funds for dropdown selectors.
+    Returns [{id, name}] without pagination.
+    """
+    serializer_class = FundListSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    pagination_class = None  # Return all funds without pagination
+
+    def get_queryset(self):
+        return Fund.objects.filter(status='active').order_by('name')
