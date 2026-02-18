@@ -245,6 +245,7 @@ export default function ContactList() {
             onClearAll={clearAll}
             onRemoveFilter={(key) => setFilters({ [key]: null, page: 1 })}
             filterLabels={{
+              search: "Search",
               status: "Status",
               needs_thank_you: "Needs Thank You",
               last_gift_after: "Gift From",
