@@ -74,20 +74,7 @@ export const paymentMethodLabels: Record<PaymentMethod, string> = {
 /**
  * List donations with optional filters
  */
-export async function getDonations(filters: DonationFilters = {}): Promise<PaginatedResponse<Donation>> {
-  const params = new URLSearchParams()
-
-  if (filters.search) params.append("search", filters.search)
-  if (filters.contact) params.append("contact", filters.contact)
-  if (filters.donation_type) params.append("donation_type", filters.donation_type)
-  if (filters.payment_method) params.append("payment_method", filters.payment_method)
-  if (filters.thanked !== undefined) params.append("thanked", String(filters.thanked))
-  if (filters.date_after) params.append("date_after", filters.date_after)
-  if (filters.date_before) params.append("date_before", filters.date_before)
-  if (filters.ordering) params.append("ordering", filters.ordering)
-  if (filters.page) params.append("page", String(filters.page))
-  if (filters.page_size) params.append("page_size", String(filters.page_size))
-
+export async function getDonations(params: Record<string, string> = {}): Promise<PaginatedResponse<Donation>> {
   const response = await apiClient.get<PaginatedResponse<Donation>>("/donations/", { params })
   return response.data
 }

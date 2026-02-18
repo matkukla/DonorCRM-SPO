@@ -1,13 +1,17 @@
-import { useState } from "react"
-import { useNavigate, useSearchParams, Link } from "react-router-dom"
+import { useState, useEffect } from "react"
+import { useNavigate, Link } from "react-router-dom"
 import { useDonations, useMarkDonationThanked } from "@/hooks/useDonations"
+import { useFilterParams, donationFilterParsers } from "@/hooks/useFilterParams"
+import { donationPresets } from "@/lib/filter-presets"
+import { FilterBar } from "@/components/shared/FilterBar"
+import { useAuth } from "@/providers/AuthProvider"
+import { useUsers } from "@/hooks/useUsers"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
 import { DataTable } from "@/components/shared/DataTable"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Card } from "@/components/ui/card"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,7 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Plus, Search, Filter, MoreHorizontal, Check, Calendar } from "lucide-react"
 import type { ColumnDef } from "@tanstack/react-table"
-import type { Donation, DonationType } from "@/api/donations"
+import type { Donation, DonationType, PaymentMethod } from "@/api/donations"
 import { donationTypeLabels, paymentMethodLabels } from "@/api/donations"
 import { formatLocalDate } from "@/lib/utils"
 
@@ -34,63 +38,39 @@ function formatCurrency(amount: string | number): string {
 
 export default function DonationList() {
   const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
+  const { user } = useAuth()
+  const isAdmin = user?.role === "admin"
 
-  const [searchInput, setSearchInput] = useState(searchParams.get("search") || "")
+  const {
+    filters,
+    setFilters,
+    clearAll,
+    activeFilters,
+    toQueryParams,
+  } = useFilterParams(donationFilterParsers)
 
-  const page = parseInt(searchParams.get("page") || "1", 10)
-  const search = searchParams.get("search") || ""
-  const donationType = searchParams.get("donation_type") as DonationType | undefined
-  const thanked = searchParams.get("thanked")
+  const [searchInput, setSearchInput] = useState(filters.search || "")
 
-  const { data, isLoading } = useDonations({
-    page,
-    page_size: PAGE_SIZE,
-    search,
-    donation_type: donationType,
-    thanked: thanked === "true" ? true : thanked === "false" ? false : undefined,
-  })
+  // Sync search input when URL changes externally (e.g., browser back/forward)
+  useEffect(() => {
+    setSearchInput(filters.search || "")
+  }, [filters.search])
+
+  const queryParams = { ...toQueryParams(), page_size: String(PAGE_SIZE) }
+  const { data, isLoading } = useDonations(queryParams)
 
   const markThankedMutation = useMarkDonationThanked()
 
+  // Fetch users for admin owner filter
+  const { data: usersData } = useUsers()
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    const params = new URLSearchParams(searchParams)
-    if (searchInput) {
-      params.set("search", searchInput)
-    } else {
-      params.delete("search")
-    }
-    params.set("page", "1")
-    setSearchParams(params)
-  }
-
-  const handleTypeFilter = (type: DonationType | null) => {
-    const params = new URLSearchParams(searchParams)
-    if (type) {
-      params.set("donation_type", type)
-    } else {
-      params.delete("donation_type")
-    }
-    params.set("page", "1")
-    setSearchParams(params)
-  }
-
-  const handleThankedFilter = (value: "all" | "true" | "false") => {
-    const params = new URLSearchParams(searchParams)
-    if (value === "all") {
-      params.delete("thanked")
-    } else {
-      params.set("thanked", value)
-    }
-    params.set("page", "1")
-    setSearchParams(params)
+    setFilters({ search: searchInput || null, page: 1 })
   }
 
   const handlePageChange = (newPage: number) => {
-    const params = new URLSearchParams(searchParams)
-    params.set("page", String(newPage + 1))
-    setSearchParams(params)
+    setFilters({ page: newPage + 1 })
   }
 
   const columns: ColumnDef<Donation>[] = [
@@ -219,66 +199,163 @@ export default function DonationList() {
           </div>
 
           {/* Filters */}
-          <Card className="p-4">
-            <div className="flex flex-col sm:flex-row gap-4">
-              {/* Search */}
-              <form onSubmit={handleSearch} className="flex-1 flex gap-2">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search by donor name..."
-                    value={searchInput}
-                    onChange={(e) => setSearchInput(e.target.value)}
-                    className="pl-9"
-                  />
-                </div>
-                <Button type="submit" variant="secondary">
-                  Search
-                </Button>
-              </form>
+          <FilterBar
+            activeFilters={activeFilters}
+            onClearAll={clearAll}
+            onRemoveFilter={(key) => setFilters({ [key]: null, page: 1 })}
+            filterLabels={{
+              donation_type: "Type",
+              payment_method: "Payment",
+              thanked: "Status",
+              date_after: "From",
+              date_before: "To",
+              amount_min: "Min Amount",
+              amount_max: "Max Amount",
+              fund: "Fund",
+              owner: "Owner",
+            }}
+            filterValueLabels={{
+              donation_type: donationTypeLabels,
+              payment_method: paymentMethodLabels,
+            }}
+            presets={donationPresets}
+            onApplyPreset={(preset) => setFilters({ ...preset.getParams(), page: 1 })}
+            exportUrl="/donations/export/csv/"
+            exportParams={toQueryParams()}
+          >
+            {/* Search input */}
+            <form onSubmit={handleSearch} className="flex gap-2 flex-1 min-w-[200px]">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by donor name..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Button type="submit" variant="secondary">
+                Search
+              </Button>
+            </form>
 
-              {/* Type filter */}
+            {/* Type dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="secondary" size="sm" className="gap-2">
+                  <Filter className="h-4 w-4" />
+                  {filters.donation_type ? donationTypeLabels[filters.donation_type as DonationType] || filters.donation_type : "All Types"}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => setFilters({ donation_type: null, page: 1 })}>
+                  All Types
+                </DropdownMenuItem>
+                {(Object.keys(donationTypeLabels) as DonationType[]).map((t) => (
+                  <DropdownMenuItem key={t} onClick={() => setFilters({ donation_type: t, page: 1 })}>
+                    {donationTypeLabels[t]}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Payment method dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="secondary" size="sm" className="gap-2">
+                  <Filter className="h-4 w-4" />
+                  {filters.payment_method ? paymentMethodLabels[filters.payment_method as PaymentMethod] || filters.payment_method : "All Payments"}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => setFilters({ payment_method: null, page: 1 })}>
+                  All Payments
+                </DropdownMenuItem>
+                {(Object.keys(paymentMethodLabels) as PaymentMethod[]).map((m) => (
+                  <DropdownMenuItem key={m} onClick={() => setFilters({ payment_method: m, page: 1 })}>
+                    {paymentMethodLabels[m]}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Thanked dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="secondary" size="sm" className="gap-2">
+                  <Check className="h-4 w-4" />
+                  {filters.thanked === true ? "Thanked" : filters.thanked === false ? "Pending" : "All Status"}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => setFilters({ thanked: null, page: 1 })}>
+                  All Status
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setFilters({ thanked: true, page: 1 })}>
+                  Thanked
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setFilters({ thanked: false, page: 1 })}>
+                  Pending Thank You
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Date range */}
+            <Input
+              type="date"
+              placeholder="From date"
+              value={filters.date_after || ""}
+              onChange={(e) => setFilters({ date_after: e.target.value || null, page: 1 })}
+              className="w-[150px]"
+            />
+            <Input
+              type="date"
+              placeholder="To date"
+              value={filters.date_before || ""}
+              onChange={(e) => setFilters({ date_before: e.target.value || null, page: 1 })}
+              className="w-[150px]"
+            />
+
+            {/* Amount range */}
+            <Input
+              type="number"
+              placeholder="Min $"
+              value={filters.amount_min || ""}
+              onChange={(e) => setFilters({ amount_min: e.target.value || null, page: 1 })}
+              className="w-[100px]"
+            />
+            <Input
+              type="number"
+              placeholder="Max $"
+              value={filters.amount_max || ""}
+              onChange={(e) => setFilters({ amount_max: e.target.value || null, page: 1 })}
+              className="w-[100px]"
+            />
+
+            {/* Admin owner dropdown */}
+            {isAdmin && usersData && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="secondary" className="gap-2">
+                  <Button variant="secondary" size="sm" className="gap-2">
                     <Filter className="h-4 w-4" />
-                    {donationType ? donationTypeLabels[donationType] : "All Types"}
+                    {filters.owner
+                      ? usersData.find((u) => String(u.id) === filters.owner)?.full_name || "Owner"
+                      : "All Owners"}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
-                  <DropdownMenuItem onClick={() => handleTypeFilter(null)}>
-                    All Types
+                  <DropdownMenuItem onClick={() => setFilters({ owner: null, page: 1 })}>
+                    All Owners
                   </DropdownMenuItem>
-                  {(Object.keys(donationTypeLabels) as DonationType[]).map((t) => (
-                    <DropdownMenuItem key={t} onClick={() => handleTypeFilter(t)}>
-                      {donationTypeLabels[t]}
+                  {usersData.map((u) => (
+                    <DropdownMenuItem key={u.id} onClick={() => setFilters({ owner: String(u.id), page: 1 })}>
+                      {u.full_name}
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
-
-              {/* Thanked filter */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="secondary" className="gap-2">
-                    <Check className="h-4 w-4" />
-                    {thanked === "true" ? "Thanked" : thanked === "false" ? "Pending" : "All Status"}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem onClick={() => handleThankedFilter("all")}>
-                    All Status
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleThankedFilter("true")}>
-                    Thanked
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleThankedFilter("false")}>
-                    Pending Thank You
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </Card>
+            )}
+          </FilterBar>
 
           {/* Data Table */}
           <DataTable
@@ -286,7 +363,7 @@ export default function DonationList() {
             data={data?.results || []}
             isLoading={isLoading}
             pageCount={pageCount}
-            pageIndex={page - 1}
+            pageIndex={filters.page - 1}
             pageSize={PAGE_SIZE}
             totalCount={data?.count}
             onPageChange={handlePageChange}
