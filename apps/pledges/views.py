@@ -21,7 +21,8 @@ class PledgeListCreateView(generics.ListCreateAPIView):
     GET: List pledges
     POST: Create a new pledge
     """
-    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['contact__first_name', 'contact__last_name']
     ordering_fields = ['created_at', 'amount', 'start_date']
     ordering = ['-created_at']
     filterset_class = PledgeFilterSet
