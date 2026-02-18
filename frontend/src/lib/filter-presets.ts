@@ -108,3 +108,40 @@ export const pledgePresets: FilterPreset[] = [
     }),
   },
 ]
+
+// ---------------------------------------------------------------------------
+// Journal presets
+// ---------------------------------------------------------------------------
+
+export const journalPresets: FilterPreset[] = [
+  {
+    id: "active-journals",
+    label: "Active",
+    description: "Non-archived journals",
+    getParams: () => ({
+      is_archived: null,
+      deadline_after: null,
+      deadline_before: null,
+    }),
+  },
+  {
+    id: "archived",
+    label: "Archived",
+    description: "Show archived journals",
+    getParams: () => ({
+      is_archived: "true",
+      deadline_after: null,
+      deadline_before: null,
+    }),
+  },
+  {
+    id: "has-deadline",
+    label: "Has Deadline",
+    description: "Journals with upcoming deadlines",
+    getParams: () => ({
+      deadline_after: fmt(new Date()),
+      deadline_before: null,
+      is_archived: null,
+    }),
+  },
+]

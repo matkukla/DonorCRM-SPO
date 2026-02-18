@@ -26,7 +26,7 @@ interface PaginatedResponse<T> {
   results: T[]
 }
 
-/** Filter params for journal list */
+/** Filter params for journal list (kept for backward compatibility) */
 export interface JournalFilters {
   is_archived?: boolean
   search?: string
@@ -34,17 +34,11 @@ export interface JournalFilters {
 
 /** Get paginated list of journals */
 export async function getJournals(
-  filters: JournalFilters = {}
+  params: Record<string, string> = {}
 ): Promise<PaginatedResponse<JournalListItem>> {
-  const params = new URLSearchParams()
-  if (filters.is_archived !== undefined) {
-    params.append('is_archived', String(filters.is_archived))
-  }
-  if (filters.search) {
-    params.append('search', filters.search)
-  }
   const response = await apiClient.get<PaginatedResponse<JournalListItem>>(
-    `/journals/?${params.toString()}`
+    '/journals/',
+    { params }
   )
   return response.data
 }
