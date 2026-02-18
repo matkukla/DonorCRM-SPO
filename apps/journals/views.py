@@ -72,8 +72,13 @@ class JournalListCreateView(generics.ListCreateAPIView):
             # Staff sees only their own journals
             queryset = Journal.objects.filter(owner=user)
 
-        # Exclude archived by default unless is_archived filter present
-        if 'is_archived' not in self.request.query_params:
+        # Filter by archive status:
+        # - is_archived=true  → show only archived
+        # - is_archived absent → show only non-archived (default)
+        is_archived_param = self.request.query_params.get('is_archived')
+        if is_archived_param and is_archived_param.lower() == 'true':
+            queryset = queryset.filter(is_archived=True)
+        else:
             queryset = queryset.filter(is_archived=False)
 
         return queryset.select_related('owner')
