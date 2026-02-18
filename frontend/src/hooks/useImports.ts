@@ -11,6 +11,7 @@ import {
   importEntities,
   importTransactions,
   importPledges,
+  getFunds,
   type ImportType,
 } from "@/api/imports"
 
@@ -69,6 +70,15 @@ export function useDownloadContactTemplate() {
 export function useDownloadDonationTemplate() {
   return useMutation({
     mutationFn: () => downloadDonationTemplate(),
+  })
+}
+
+// Fund list for filter dropdowns
+
+export function useFunds() {
+  return useQuery({
+    queryKey: ["funds"],
+    queryFn: getFunds,
   })
 }
 
