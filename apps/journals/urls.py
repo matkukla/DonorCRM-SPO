@@ -4,6 +4,7 @@ URL configuration for journals app.
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
+from apps.journals.export_views import JournalExportCSVView
 from apps.journals.views import (
     DecisionDetailView,
     DecisionHistoryListView,
@@ -25,6 +26,7 @@ router.register(r'analytics', JournalAnalyticsViewSet, basename='journal-analyti
 
 urlpatterns = [
     path('', JournalListCreateView.as_view(), name='journal-list'),
+    path('export/csv/', JournalExportCSVView.as_view(), name='journal-export-csv'),
     path('<uuid:pk>/', JournalDetailView.as_view(), name='journal-detail'),
     path('stage-events/', JournalStageEventListCreateView.as_view(), name='stage-event-list'),
     path('journal-members/', JournalContactListCreateView.as_view(), name='journal-member-list'),
