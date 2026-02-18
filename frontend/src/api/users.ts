@@ -52,7 +52,8 @@ export const userRoleLabels: Record<UserRole, string> = {
 // API functions
 export async function getUsers(): Promise<User[]> {
   const response = await apiClient.get("/users/")
-  return response.data
+  // Backend returns paginated { count, results, ... } — extract the array
+  return response.data.results ?? response.data
 }
 
 export async function getUser(id: string): Promise<User> {
