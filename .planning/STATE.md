@@ -5,22 +5,22 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems, and leadership can proactively support their teams through cross-missionary analytics.
-**Current focus:** Phase 22 in progress (v1.3)
+**Current focus:** Phase 23 in progress (v1.3)
 
 ## Current Position
 
 Milestone: v1.3 — Smartsheet Import, Filters & Polish
-Phase: 22 of 25 (Filter Infrastructure)
-Plan: 3 of 3 (awaiting human verification checkpoint)
-Status: Checkpoint
-Last activity: 2026-02-17 — Completed 22-03 Tasks 1-2 (filter wiring to pages)
+Phase: 23 of 25 (Per-Page Filter Implementation)
+Plan: 1 of 3 complete
+Status: In Progress
+Last activity: 2026-02-18 — Phase 23 Plan 01 complete (backend filters)
 
-Progress: [##########################....] 80% (66/82 total plans complete, 3/3 phase 22 plans pending verification)
+Progress: [############################..] 84% (69/82 total plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 65 (24 v1.0 + 15 v1.1 + 18 v1.2 + 8 v1.3)
+- Total plans completed: 69 (24 v1.0 + 15 v1.1 + 18 v1.2 + 12 v1.3)
 - Average duration: 4.2 minutes
 - Total execution time: ~4.2 hours
 
@@ -60,6 +60,9 @@ All decisions logged in PROJECT.md Key Decisions table.
 - **22-03:** Used Record<string, any> for FilterParsers type (SingleParserBuilder incompatible with ReturnType<>)
 - **22-03:** Kept local searchInput state with useEffect sync for controlled search input in ContactList
 - **22-03:** Removed Transactions separate Filters Card wrapper in favor of FilterBar-managed layout
+- **23-01:** JournalExportCSVView replicates DonationExportCSVView pattern (Echo class, StreamingHttpResponse, 10k limit)
+- **23-01:** FundListView uses pagination_class=None for dropdown consumption
+- **23-01:** is_archived logic preserved in JournalListCreateView and replicated in JournalExportCSVView
 
 ### Pending Todos
 
@@ -83,10 +86,10 @@ All decisions logged in PROJECT.md Key Decisions table.
 
 ## Session Continuity
 
-Last session: 2026-02-17
-Stopped at: Completed 22-03-PLAN.md Tasks 1-2 (filter wiring to pages)
-Resume: 22-03 Task 3 human-verify checkpoint (end-to-end filter testing)
+Last session: 2026-02-18
+Stopped at: Completed 23-01-PLAN.md
+Resume: Phase 23 Plan 02 (frontend wiring)
 
 ---
 
-*Last updated: 2026-02-17 (22-03 Tasks 1-2 complete, awaiting checkpoint verification)*
+*Last updated: 2026-02-18 (Phase 23 Plan 01 complete — backend filters)*
