@@ -7,12 +7,12 @@ import {
   deleteDonation,
   markDonationThanked,
 } from "@/api/donations"
-import type { DonationFilters, DonationCreate, DonationUpdate } from "@/api/donations"
+import type { DonationCreate, DonationUpdate } from "@/api/donations"
 
-export function useDonations(filters: DonationFilters = {}) {
+export function useDonations(params: Record<string, string> = {}) {
   return useQuery({
-    queryKey: ["donations", filters],
-    queryFn: () => getDonations(filters),
+    queryKey: ["donations", params],
+    queryFn: () => getDonations(params),
   })
 }
 
