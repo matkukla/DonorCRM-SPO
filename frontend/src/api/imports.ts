@@ -219,6 +219,18 @@ export async function downloadDonationTemplate(): Promise<void> {
   downloadFile(response.data, "donation_import_template.csv", "text/csv")
 }
 
+// Fund list for filter dropdowns
+
+export interface FundOption {
+  id: string
+  name: string
+}
+
+export async function getFunds(): Promise<FundOption[]> {
+  const response = await apiClient.get<FundOption[]>("/imports/funds/list/")
+  return response.data
+}
+
 // Helper function to trigger file download
 function downloadFile(blob: Blob, filename: string, mimeType: string): void {
   const url = window.URL.createObjectURL(new Blob([blob], { type: mimeType }))

@@ -6,6 +6,7 @@ import { donationPresets } from "@/lib/filter-presets"
 import { FilterBar } from "@/components/shared/FilterBar"
 import { useAuth } from "@/providers/AuthProvider"
 import { useUsers } from "@/hooks/useUsers"
+import { useFunds } from "@/hooks/useImports"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
 import { DataTable } from "@/components/shared/DataTable"
@@ -61,7 +62,8 @@ export default function DonationList() {
 
   const markThankedMutation = useMarkDonationThanked()
 
-  // Fetch users for admin owner filter
+  // Fetch funds for fund filter and users for admin owner filter
+  const { data: fundsData } = useFunds()
   const { data: usersData } = useUsers()
 
   const handleSearch = (e: React.FormEvent) => {
@@ -331,6 +333,30 @@ export default function DonationList() {
               onChange={(e) => setFilters({ amount_max: e.target.value || null, page: 1 })}
               className="w-[100px]"
             />
+
+            {/* Fund dropdown */}
+            {fundsData && fundsData.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="secondary" size="sm" className="gap-2">
+                    <Filter className="h-4 w-4" />
+                    {filters.fund
+                      ? fundsData.find((f) => f.id === filters.fund)?.name || "Fund"
+                      : "All Funds"}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem onClick={() => setFilters({ fund: null, page: 1 })}>
+                    All Funds
+                  </DropdownMenuItem>
+                  {fundsData.map((f) => (
+                    <DropdownMenuItem key={f.id} onClick={() => setFilters({ fund: f.id, page: 1 })}>
+                      {f.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
 
             {/* Admin owner dropdown */}
             {isAdmin && usersData && (
