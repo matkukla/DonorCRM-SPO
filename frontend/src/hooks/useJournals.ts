@@ -27,7 +27,6 @@ import {
   addContactToJournal,
 } from "@/api/journals"
 import type {
-  JournalFilters,
   JournalCreate,
   JournalUpdate,
   JournalMemberFilters,
@@ -52,10 +51,10 @@ interface PaginatedResponse<T> {
 }
 
 /** Hook for fetching paginated journal list */
-export function useJournals(filters: JournalFilters = {}) {
+export function useJournals(params: Record<string, string> = {}) {
   return useQuery({
-    queryKey: ["journals", filters],
-    queryFn: () => getJournals(filters),
+    queryKey: ["journals", params],
+    queryFn: () => getJournals(params),
   })
 }
 

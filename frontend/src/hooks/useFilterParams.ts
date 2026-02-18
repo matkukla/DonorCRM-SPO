@@ -79,6 +79,11 @@ export const donationFilterParsers = {
   date_after: parseAsString,
   date_before: parseAsString,
   ordering: parseAsString,
+  amount_min: parseAsString,
+  amount_max: parseAsString,
+  fund: parseAsString,
+  owner: parseAsString,
+  contact: parseAsString,
 }
 
 export const pledgeFilterParsers = {
@@ -107,4 +112,13 @@ export const transactionFilterParsers = {
   offset: parseAsInteger.withDefault(0),
   date_from: parseAsString,
   date_to: parseAsString,
+}
+
+export const journalFilterParsers = {
+  page: parseAsInteger.withDefault(1),
+  search: parseAsString,
+  is_archived: parseAsBoolean,
+  deadline_after: parseAsString,
+  deadline_before: parseAsString,
+  ordering: parseAsString,
 }
