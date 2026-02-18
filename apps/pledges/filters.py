@@ -13,7 +13,9 @@ class PledgeFilterSet(django_filters.FilterSet):
     start_date_after = django_filters.DateFilter(field_name='start_date', lookup_expr='gte')
     start_date_before = django_filters.DateFilter(field_name='start_date', lookup_expr='lte')
     contact = django_filters.UUIDFilter(field_name='contact_id')
+    amount_min = django_filters.NumberFilter(field_name='amount', lookup_expr='gte')
+    amount_max = django_filters.NumberFilter(field_name='amount', lookup_expr='lte')
 
     class Meta:
         model = Pledge
-        fields = ['status', 'frequency', 'is_late', 'start_date_after', 'start_date_before', 'contact']
+        fields = ['status', 'frequency', 'is_late', 'start_date_after', 'start_date_before', 'contact', 'amount_min', 'amount_max']

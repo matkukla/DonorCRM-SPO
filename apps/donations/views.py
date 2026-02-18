@@ -58,6 +58,11 @@ class DonationListCreateView(generics.ListCreateAPIView):
             # Staffs see only donations to their contacts
             queryset = Donation.objects.filter(contact__owner=user)
 
+        # Admin-only owner filter (matches ContactListCreateView pattern — NOT in FilterSet for security)
+        owner_id = self.request.query_params.get('owner')
+        if owner_id and user.role == 'admin':
+            queryset = queryset.filter(contact__owner_id=owner_id)
+
         return queryset.select_related('contact', 'pledge')
 
     def get_serializer_class(self):
