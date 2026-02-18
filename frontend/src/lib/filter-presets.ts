@@ -114,12 +114,12 @@ export const pledgePresets: FilterPreset[] = [
     }),
   },
   {
-    id: "stalled",
-    label: "Stalled",
-    description: "Active pledges overdue on payments",
+    id: "active",
+    label: "Active",
+    description: "All currently active pledges",
     getParams: () => ({
       status: "active",
-      is_late: "true",
+      is_late: null,
       frequency: null,
       start_date_after: null,
       start_date_before: null,
