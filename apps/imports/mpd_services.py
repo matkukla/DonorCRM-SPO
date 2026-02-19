@@ -453,6 +453,10 @@ def match_users(parsed_rows: list[dict]) -> tuple[list[tuple], list[dict]]:
                 'row': row_num,
                 'first_name': row_data.get('_first_name', ''),
                 'last_name': row_data.get('_last_name', ''),
+                # Financial fields for admin visibility in results dialog
+                'current_mpd_cap': str(row_data.get('current_mpd_cap', '')) if row_data.get('current_mpd_cap') is not None else None,
+                'latest_roll_forward_balance': str(row_data.get('latest_roll_forward_balance', '')) if row_data.get('latest_roll_forward_balance') is not None else None,
+                'months_remaining_rf': row_data.get('months_remaining_rf', ''),
             })
             continue
 
@@ -469,6 +473,10 @@ def match_users(parsed_rows: list[dict]) -> tuple[list[tuple], list[dict]]:
                 'row': row_num,
                 'first_name': row_data.get('_first_name', ''),
                 'last_name': row_data.get('_last_name', ''),
+                # Financial fields for admin visibility in results dialog
+                'current_mpd_cap': str(row_data.get('current_mpd_cap', '')) if row_data.get('current_mpd_cap') is not None else None,
+                'latest_roll_forward_balance': str(row_data.get('latest_roll_forward_balance', '')) if row_data.get('latest_roll_forward_balance') is not None else None,
+                'months_remaining_rf': row_data.get('months_remaining_rf', ''),
             })
 
     return matched, unmatched
