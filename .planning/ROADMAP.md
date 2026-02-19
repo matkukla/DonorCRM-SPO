@@ -153,11 +153,12 @@ Plans:
   2. System returns extracted column headers and auto-detected field mappings with confidence scores for each column
   3. All rows are validated and errors are returned as a downloadable CSV with row numbers and error descriptions
   4. Formula injection characters (=, +, -, @) in imported cell values are stripped or escaped before storage
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 24-01: TBD
-- [ ] 24-02: TBD
+- [ ] 24-01-PLAN.md — Dependencies + ImportSession model + file parsing (xlsx/csv) + format detection + sanitization + column auto-mapping engine
+- [ ] 24-02-PLAN.md — Row validation pipeline (Contact/Donation/Pledge) + commit logic with duplicate handling (skip/update/flag) + error CSV generation
+- [ ] 24-03-PLAN.md — REST API endpoints: upload, commit, session retrieval, error CSV download + URL wiring
 
 ### Phase 25: Smartsheet Import Frontend
 **Goal**: Users can import Smartsheet exports through a guided wizard with column mapping, preview, and reusable templates
