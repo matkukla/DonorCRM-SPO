@@ -3,7 +3,7 @@ Admin configuration for import infrastructure models.
 """
 from django.contrib import admin
 
-from apps.imports.models import Fund, ImportRun, ImportRowError
+from apps.imports.models import Fund, ImportRun, ImportRowError, MPDUpload, MPDSnapshot
 
 
 @admin.register(Fund)
@@ -35,3 +35,30 @@ class ImportRowErrorAdmin(admin.ModelAdmin):
     list_display = ['id', 'import_run', 'row_number', 'created_at']
     list_filter = ['import_run__type']
     readonly_fields = ['id', 'created_at', 'updated_at', 'error_messages', 'row_data']
+
+
+@admin.register(MPDUpload)
+class MPDUploadAdmin(admin.ModelAdmin):
+    """Admin configuration for MPDUpload model."""
+    list_display = [
+        'id', 'filename', 'file_format', 'status',
+        'total_rows', 'matched_count', 'unmatched_count',
+        'uploaded_by', 'created_at'
+    ]
+    list_filter = ['status', 'file_format', 'uploaded_by']
+    search_fields = ['filename']
+    readonly_fields = ['id', 'created_at', 'updated_at', 'unmatched_rows']
+    date_hierarchy = 'created_at'
+
+
+@admin.register(MPDSnapshot)
+class MPDSnapshotAdmin(admin.ModelAdmin):
+    """Admin configuration for MPDSnapshot model."""
+    list_display = [
+        'id', 'user', 'upload', 'active_recurring_gifts',
+        'mpd_standard', 'met_mpd_standard', 'current_mpd_cap',
+        'created_at'
+    ]
+    list_filter = ['met_mpd_standard', 'met_maximum', 'match_met']
+    search_fields = ['user__first_name', 'user__last_name', 'user__email']
+    readonly_fields = ['id', 'created_at', 'updated_at']

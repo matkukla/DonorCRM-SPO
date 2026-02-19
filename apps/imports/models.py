@@ -186,3 +186,99 @@ class ImportRowError(TimeStampedModel):
 
     def __str__(self):
         return f'Row {self.row_number}: {len(self.error_messages)} errors'
+
+
+class MPDUpload(TimeStampedModel):
+    """Audit trail for each Smartsheet MPD report upload."""
+    uploaded_by = models.ForeignKey(
+        'users.User',
+        on_delete=models.PROTECT,
+        related_name='mpd_uploads',
+    )
+    filename = models.CharField(max_length=255)
+    file_format = models.CharField(max_length=10)  # 'csv' or 'xlsx'
+
+    # Row counts
+    total_rows = models.IntegerField(default=0)
+    matched_count = models.IntegerField(default=0)
+    unmatched_count = models.IntegerField(default=0)
+
+    # Unmatched row details stored as JSON list of {row, first_name, last_name}
+    unmatched_rows = models.JSONField(default=list, blank=True)
+
+    # Processing status
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ('processing', 'Processing'),
+            ('completed', 'Completed'),
+            ('failed', 'Failed'),
+        ],
+        default='processing',
+    )
+    error_message = models.TextField(blank=True, default='')
+
+    class Meta:
+        db_table = 'mpd_uploads'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'MPD Upload by {self.uploaded_by} on {self.created_at.date()}'
+
+
+class MPDSnapshot(TimeStampedModel):
+    """Monthly MPD financial snapshot for a missionary (User)."""
+    user = models.ForeignKey(
+        'users.User',
+        on_delete=models.CASCADE,
+        related_name='mpd_snapshots',
+    )
+    upload = models.ForeignKey(
+        MPDUpload,
+        on_delete=models.CASCADE,
+        related_name='snapshots',
+    )
+
+    # Financial fields (all nullable for partial data)
+    active_recurring_gifts = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    annual_gifts = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    monthly_average = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    annual_mpd_estimate = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    mpd_standard = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    amount_below_mpd_standard = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    mpd_maximum = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    amount_above_below_maximum = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    latest_roll_forward_balance = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    current_mpd_cap = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    proj_monthly_deduction_rfb = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    pay_forecast_12_months = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    pay_forecast_over_fy = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    total_one_time_gifts_april = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+
+    # Percentage field (stored as integer: 104 for "104%", -16 for "-16%")
+    pct_standard_to_max = models.IntegerField(null=True, blank=True)
+
+    # Boolean fields (Yes/No columns)
+    met_mpd_standard = models.BooleanField(null=True)
+    met_maximum = models.BooleanField(null=True)
+    match_met = models.BooleanField(null=True)
+    match_met_rest_fy = models.BooleanField(null=True)
+
+    # Special field: can be numeric string or "infinite"
+    months_remaining_rf = models.CharField(max_length=20, blank=True, default='')
+
+    class Meta:
+        db_table = 'mpd_snapshots'
+        ordering = ['-upload__created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'upload'],
+                name='unique_snapshot_per_user_per_upload'
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['user', '-created_at']),
+        ]
+
+    def __str__(self):
+        return f'MPD Snapshot for {self.user} ({self.upload.created_at.date()})'
