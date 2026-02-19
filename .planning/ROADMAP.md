@@ -5,7 +5,7 @@
 - **v1.0 Journal Feature** - Phases 1-6 (shipped 2026-01-29)
 - **v1.1 CSV Import** - Phases 7-12 (shipped 2026-02-04)
 - **v1.2 Admin Analytics Dashboard** - Phases 13-19 (shipped 2026-02-16)
-- **v1.3 Smartsheet Import, Filters & Polish** - Phases 20-25 (in progress)
+- **v1.3 Smartsheet Import, Filters & Polish** - Phases 20-26 (in progress)
 
 ## Phases
 
@@ -73,6 +73,7 @@ See milestones/v1.2-ROADMAP.md for complete phase details.
 - [x] **Phase 23: Per-Page Filter Implementation** - Apply filters to contacts, donations, pledges, journals, and transactions pages (completed 2026-02-18)
 - [x] **Phase 24: Smartsheet MPD Report Import Backend** - File upload, format detection, missionary matching, MPD snapshot storage, and financial data parsing (completed 2026-02-19)
 - [x] **Phase 25: Smartsheet MPD Report Frontend** - Upload UI, import results display, MPD data on admin dashboard and missionary views (completed 2026-02-19)
+- [ ] **Phase 26: Contact Owner Filter UI** - Add admin owner dropdown to ContactList FilterBar to close FLT-04 gap
 
 ## Phase Details
 
@@ -179,10 +180,24 @@ Plans:
 - [ ] 25-04-PLAN.md — MPD inline stats on admin UserDetail and missionary personal Dashboard
 - [ ] 25-05-PLAN.md — Gap closure: fix upload history response shape mismatch
 
+### Phase 26: Contact Owner Filter UI
+**Goal**: Admin can filter contacts by owner via a UI dropdown on the ContactList page, fully closing FLT-04
+**Depends on**: Phase 22 (filter infrastructure), Phase 23 (per-page filters)
+**Requirements**: FLT-04
+**Gap Closure:** Closes gaps from v1.3 audit
+**Success Criteria** (what must be TRUE):
+  1. Admin sees an owner dropdown in the ContactList FilterBar
+  2. Selecting an owner filters the contact list to that missionary's contacts
+  3. The owner filter works with existing presets, badges, clear-all, and CSV export
+**Plans**: 1 plan
+
+Plans:
+- [ ] 26-01-PLAN.md — Add admin owner dropdown to ContactList FilterBar (mirror DonationList pattern)
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 20 -> 21 -> 22 -> 23 -> 24 -> 25
+Phases execute in numeric order: 20 -> 21 -> 22 -> 23 -> 24 -> 25 -> 26
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -206,7 +221,8 @@ Phases execute in numeric order: 20 -> 21 -> 22 -> 23 -> 24 -> 25
 | 23. Per-Page Filter Implementation | v1.3 | Complete    | 2026-02-18 | - |
 | 24. Smartsheet Import Backend | v1.3 | Complete    | 2026-02-19 | - |
 | 25. Smartsheet Import Frontend | v1.3 | Complete    | 2026-02-19 | - |
+| 26. Contact Owner Filter UI | v1.3 | 0/1 | Pending | - |
 
 ---
 
-*Last updated: 2026-02-17 (Phase 22 planned)*
+*Last updated: 2026-02-19 (gap closure phase 26 added)*
