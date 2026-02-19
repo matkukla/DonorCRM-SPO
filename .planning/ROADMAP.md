@@ -71,8 +71,8 @@ See milestones/v1.2-ROADMAP.md for complete phase details.
 - [x] **Phase 21: Dark Mode & UI Polish** - Fix hardcoded colors, WCAG contrast, error boundaries, and CSV sanitization (completed 2026-02-17)
 - [x] **Phase 22: Filter Infrastructure** - Build reusable filter system with URL persistence, presets, badges, CSV export, and server-side query optimization (completed 2026-02-17)
 - [x] **Phase 23: Per-Page Filter Implementation** - Apply filters to contacts, donations, pledges, journals, and transactions pages (completed 2026-02-18)
-- [ ] **Phase 24: Smartsheet Import Backend** - File upload, format detection, column mapping engine, validation, and sanitization
-- [ ] **Phase 25: Smartsheet Import Frontend** - Import type selection, mapping UI with confidence indicators, preview, and saved templates
+- [ ] **Phase 24: Smartsheet MPD Report Import Backend** - File upload, format detection, missionary matching, MPD snapshot storage, and financial data parsing
+- [ ] **Phase 25: Smartsheet MPD Report Frontend** - Upload UI, import results display, MPD data on admin dashboard and missionary views
 
 ## Phase Details
 
@@ -144,32 +144,32 @@ Plans:
 - [ ] 23-02-PLAN.md — Frontend DonationList + PledgeList: migrate to useFilterParams + FilterBar with all filter controls, presets, badges, export
 - [ ] 23-03-PLAN.md — Frontend JournalList: migrate to useFilterParams + FilterBar with search, archived toggle, deadline range, presets, export (card grid preserved)
 
-### Phase 24: Smartsheet Import Backend
-**Goal**: The backend can accept Excel and CSV files, detect format, extract headers, apply column mappings, validate rows, and sanitize data
+### Phase 24: Smartsheet MPD Report Import Backend
+**Goal**: Admin can upload the organization's monthly Smartsheet MPD Dashboard Report (CSV/XLSX), and the system matches each row to a DonorCRM user (missionary) by name and stores financial snapshot data
 **Depends on**: Phase 20 (file size limits must be in place)
-**Requirements**: IMP-01, IMP-02, IMP-05, IMP-08, IMP-09
+**Requirements**: IMP-01, IMP-02, IMP-03, IMP-04, IMP-05
 **Success Criteria** (what must be TRUE):
-  1. User can upload both .xlsx and .csv files and the system processes them correctly without manual format selection
-  2. System returns extracted column headers and auto-detected field mappings with confidence scores for each column
-  3. All rows are validated and errors are returned as a downloadable CSV with row numbers and error descriptions
-  4. Formula injection characters (=, +, -, @) in imported cell values are stripped or escaped before storage
-**Plans**: 3 plans
+  1. Admin can upload both .xlsx and .csv Smartsheet exports and the system auto-detects format from magic bytes
+  2. Each row is matched to an existing DonorCRM user by First Name + Last Name, with unmatched rows reported
+  3. An MPDSnapshot is created per matched user per upload, storing all financial columns (recurring gifts, MPD cap, rollover balance, etc.)
+  4. Monthly snapshots accumulate historically (uploads do not overwrite previous data)
+  5. Formula injection characters in cell values are stripped before storage
+**Plans**: 2 plans
 
 Plans:
-- [ ] 24-01-PLAN.md — Dependencies + ImportSession model + file parsing (xlsx/csv) + format detection + sanitization + column auto-mapping engine
-- [ ] 24-02-PLAN.md — Row validation pipeline (Contact/Donation/Pledge) + commit logic with duplicate handling (skip/update/flag) + error CSV generation
-- [ ] 24-03-PLAN.md — REST API endpoints: upload, commit, session retrieval, error CSV download + URL wiring
+- [ ] 24-01-PLAN.md — MPDUpload + MPDSnapshot models, migration, admin, openpyxl dependency
+- [ ] 24-02-PLAN.md — MPD import services (parsing, matching, snapshot creation) + API endpoint
 
-### Phase 25: Smartsheet Import Frontend
-**Goal**: Users can import Smartsheet exports through a guided wizard with column mapping, preview, and reusable templates
-**Depends on**: Phase 24 (backend parsing and mapping APIs must exist)
-**Requirements**: IMP-03, IMP-04, IMP-06, IMP-07, IMP-10
+### Phase 25: Smartsheet MPD Report Frontend
+**Goal**: Admin has an upload UI for the monthly Smartsheet report, and MPD data is surfaced on the admin dashboard and individual missionary views
+**Depends on**: Phase 24 (backend MPD import API must exist)
+**Requirements**: IMP-06, IMP-07, IMP-08, IMP-09, IMP-10
 **Success Criteria** (what must be TRUE):
-  1. User can select the import type (Contacts, Donations, Pledges) for their uploaded Smartsheet file
-  2. User sees dropdown selects for each source column to map it to a CRM field, with auto-detected suggestions pre-filled
-  3. Each auto-detected mapping shows a color-coded confidence indicator (green/yellow/red)
-  4. User can preview the first 10 rows of mapped data before committing the import
-  5. User can save a column mapping as a named template and reuse it for future imports of similar files
+  1. Admin can upload a Smartsheet file from a dedicated import page and see results (matched/unmatched missionaries)
+  2. Admin dashboard shows latest MPD snapshot data per missionary (MPD Cap, Rollover Balance, key financial stats)
+  3. Each missionary's detail page shows their MPD data from the latest snapshot
+  4. Each missionary sees their own MPD data in their personal view
+  5. Historical MPD snapshots enable trend display (e.g., MPD Cap over time)
 **Plans**: TBD
 
 Plans:
