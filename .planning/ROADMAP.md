@@ -72,7 +72,7 @@ See milestones/v1.2-ROADMAP.md for complete phase details.
 - [x] **Phase 22: Filter Infrastructure** - Build reusable filter system with URL persistence, presets, badges, CSV export, and server-side query optimization (completed 2026-02-17)
 - [x] **Phase 23: Per-Page Filter Implementation** - Apply filters to contacts, donations, pledges, journals, and transactions pages (completed 2026-02-18)
 - [x] **Phase 24: Smartsheet MPD Report Import Backend** - File upload, format detection, missionary matching, MPD snapshot storage, and financial data parsing (completed 2026-02-19)
-- [ ] **Phase 25: Smartsheet MPD Report Frontend** - Upload UI, import results display, MPD data on admin dashboard and missionary views
+- [x] **Phase 25: Smartsheet MPD Report Frontend** - Upload UI, import results display, MPD data on admin dashboard and missionary views (completed 2026-02-19)
 
 ## Phase Details
 
@@ -205,7 +205,7 @@ Phases execute in numeric order: 20 -> 21 -> 22 -> 23 -> 24 -> 25
 | 22. Filter Infrastructure | v1.3 | 3/3 | Complete | 2026-02-17 |
 | 23. Per-Page Filter Implementation | v1.3 | Complete    | 2026-02-18 | - |
 | 24. Smartsheet Import Backend | v1.3 | Complete    | 2026-02-19 | - |
-| 25. Smartsheet Import Frontend | v1.3 | 0/? | Not started | - |
+| 25. Smartsheet Import Frontend | v1.3 | Complete    | 2026-02-19 | - |
 
 ---
 
