@@ -68,6 +68,7 @@ export const contactFilterParsers = {
   last_gift_before: parseAsString,
   group: parseAsString,
   ordering: parseAsString,
+  owner: parseAsString,
 }
 
 export const donationFilterParsers = {
