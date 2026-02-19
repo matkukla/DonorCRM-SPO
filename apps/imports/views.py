@@ -13,7 +13,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.permissions import IsAdmin, IsFinanceOrAdmin
-from apps.imports.models import Fund
+from apps.imports.models import Fund, MPDSnapshot, MPDUpload
 from apps.imports.mpd_services import process_mpd_upload
 from apps.imports.services import (
     export_contacts_csv,
@@ -898,3 +898,104 @@ class MPDImportView(APIView):
             return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(response_data, status=status.HTTP_201_CREATED)
+
+
+class MPDOverviewView(APIView):
+    """
+    GET: Latest MPD snapshot data per active missionary (admin only).
+
+    Returns per-user financial summary: current_mpd_cap,
+    latest_roll_forward_balance, months_remaining_rf.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    def get(self, request):
+        from apps.users.models import User
+
+        # Get distinct user IDs that have at least one MPDSnapshot
+        user_ids = (
+            MPDSnapshot.objects
+            .values_list('user_id', flat=True)
+            .distinct()
+        )
+
+        # For each user, get their most recent snapshot
+        missionaries = []
+        users = User.objects.filter(id__in=user_ids, is_active=True)
+
+        for user in users:
+            snapshot = (
+                MPDSnapshot.objects
+                .filter(user=user)
+                .select_related('upload')
+                .order_by('-upload__created_at')
+                .first()
+            )
+            if snapshot:
+                missionaries.append({
+                    'user_id': str(user.id),
+                    'user_name': user.full_name,
+                    'current_mpd_cap': str(snapshot.current_mpd_cap) if snapshot.current_mpd_cap is not None else None,
+                    'latest_roll_forward_balance': str(snapshot.latest_roll_forward_balance) if snapshot.latest_roll_forward_balance is not None else None,
+                    'months_remaining_rf': snapshot.months_remaining_rf,
+                })
+
+        return Response({'missionaries': missionaries})
+
+
+class MPDMyDataView(APIView):
+    """
+    GET: Current user's latest MPD snapshot (any authenticated user).
+
+    Missionaries use this to see their own financial data.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        snapshot = (
+            MPDSnapshot.objects
+            .filter(user=request.user)
+            .select_related('upload')
+            .order_by('-upload__created_at')
+            .first()
+        )
+
+        if not snapshot:
+            return Response({'has_data': False})
+
+        return Response({
+            'has_data': True,
+            'current_mpd_cap': str(snapshot.current_mpd_cap) if snapshot.current_mpd_cap is not None else None,
+            'latest_roll_forward_balance': str(snapshot.latest_roll_forward_balance) if snapshot.latest_roll_forward_balance is not None else None,
+            'months_remaining_rf': snapshot.months_remaining_rf,
+        })
+
+
+class MPDUploadHistoryView(APIView):
+    """
+    GET: Last 10 completed MPD uploads (admin only).
+
+    Returns upload history for the admin dashboard.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    def get(self, request):
+        uploads = (
+            MPDUpload.objects
+            .filter(status='completed')
+            .order_by('-created_at')[:10]
+        )
+
+        data = [
+            {
+                'id': str(upload.id),
+                'filename': upload.filename,
+                'created_at': upload.created_at.isoformat(),
+                'total_rows': upload.total_rows,
+                'matched_count': upload.matched_count,
+                'unmatched_count': upload.unmatched_count,
+            }
+            for upload in uploads
+        ]
+
+        return Response({'uploads': data})
