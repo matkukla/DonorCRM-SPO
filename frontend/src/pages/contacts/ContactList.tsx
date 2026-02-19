@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
+import { useAuth } from "@/providers/AuthProvider"
+import { useUsers } from "@/hooks/useUsers"
 import { useContacts, useMarkContactThanked } from "@/hooks/useContacts"
 import { useFilterParams, contactFilterParsers } from "@/hooks/useFilterParams"
 import { contactPresets } from "@/lib/filter-presets"
@@ -54,6 +56,8 @@ function formatCurrency(amount: string | number): string {
 
 export default function ContactList() {
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const isAdmin = user?.role === "admin"
 
   const {
     filters,
@@ -74,6 +78,7 @@ export default function ContactList() {
   const { data, isLoading } = useContacts(queryParams)
 
   const markThankedMutation = useMarkContactThanked()
+  const { data: usersData } = useUsers()
   const [logEventContactId, setLogEventContactId] = useState<string | null>(null)
   const [isCopyingEmails, setIsCopyingEmails] = useState(false)
 
@@ -252,6 +257,7 @@ export default function ContactList() {
               last_gift_before: "Gift To",
               group: "Group",
               ordering: "Sort",
+              owner: "Owner",
             }}
             filterValueLabels={{
               status: {
@@ -316,6 +322,30 @@ export default function ContactList() {
               <Heart className="h-4 w-4" />
               Needs Thank You
             </Button>
+
+            {/* Admin owner dropdown */}
+            {isAdmin && usersData && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="secondary" size="sm" className="gap-2">
+                    <Filter className="h-4 w-4" />
+                    {filters.owner
+                      ? usersData.find((u) => String(u.id) === filters.owner)?.full_name || "Owner"
+                      : "All Owners"}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem onClick={() => setFilters({ owner: null, page: 1 })}>
+                    All Owners
+                  </DropdownMenuItem>
+                  {usersData.map((u) => (
+                    <DropdownMenuItem key={u.id} onClick={() => setFilters({ owner: String(u.id), page: 1 })}>
+                      {u.full_name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </FilterBar>
 
           {/* Data Table */}

@@ -23,6 +23,7 @@ export const contactPresets: FilterPreset[] = [
       status: null,
       last_gift_after: null,
       last_gift_before: null,
+      owner: null,
     }),
   },
   {
@@ -34,6 +35,7 @@ export const contactPresets: FilterPreset[] = [
       last_gift_before: fmt(endOfMonth(new Date())),
       status: null,
       needs_thank_you: null,
+      owner: null,
     }),
   },
 ]
