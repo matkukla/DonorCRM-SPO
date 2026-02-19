@@ -170,11 +170,13 @@ Plans:
   3. Each missionary's detail page shows their MPD data from the latest snapshot
   4. Each missionary sees their own MPD data in their personal view
   5. Historical MPD snapshots enable trend display (e.g., MPD Cap over time)
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 25-01: TBD
-- [ ] 25-02: TBD
+- [ ] 25-01-PLAN.md — Backend MPD read endpoints (overview, me, uploads) and unmatched rows financial data fix
+- [ ] 25-02-PLAN.md — Frontend API layer, MPD upload tile, and results dialog in Import Center
+- [ ] 25-03-PLAN.md — MPD Overview sortable table on admin analytics dashboard
+- [ ] 25-04-PLAN.md — MPD inline stats on admin UserDetail and missionary personal Dashboard
 
 ## Progress
 
