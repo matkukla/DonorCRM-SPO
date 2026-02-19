@@ -267,6 +267,7 @@ export default function ContactList() {
                 major_donor: "Major Donor",
                 deceased: "Deceased",
               },
+              ...(usersData ? { owner: Object.fromEntries(usersData.map((u) => [String(u.id), u.full_name])) } : {}),
             }}
             presets={contactPresets}
             onApplyPreset={(preset) => setFilters({ ...preset.getParams(), page: 1 })}
@@ -308,20 +309,6 @@ export default function ContactList() {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-
-            {/* Thank You toggle button */}
-            <Button
-              variant={filters.needs_thank_you ? "default" : "secondary"}
-              size="sm"
-              onClick={() => setFilters({
-                needs_thank_you: filters.needs_thank_you ? null : true,
-                page: 1,
-              })}
-              className="gap-2"
-            >
-              <Heart className="h-4 w-4" />
-              Needs Thank You
-            </Button>
 
             {/* Admin owner dropdown */}
             {isAdmin && usersData && (
