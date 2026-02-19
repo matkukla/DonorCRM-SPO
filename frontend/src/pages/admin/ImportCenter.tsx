@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Upload, Loader2 } from "lucide-react"
 import { useLatestImports } from "@/hooks/useImports"
 import { SPOImportTile } from "@/components/imports/SPOImportTile"
+import { MPDImportTile } from "@/components/imports/MPDImportTile"
 import { ImportDialog } from "@/components/imports/ImportDialog"
 import type { ImportType } from "@/api/imports"
 
@@ -38,10 +39,10 @@ const IMPORT_CONFIGS: Array<{
 ]
 
 /**
- * Import Center - Admin-only page for SPO CSV imports
+ * Import Center - Admin-only page for SPO CSV and Smartsheet MPD imports
  *
- * Displays 4 tiles for import types: Funds, Entities, Transactions, Pledges
- * Shows recommended import order and last import status for each type.
+ * Displays 4 tiles for SPO import types: Funds, Entities, Transactions, Pledges
+ * Plus a separate section for Smartsheet MPD report uploads.
  */
 export default function ImportCenter() {
   const { data, isLoading, isError } = useLatestImports()
@@ -130,7 +131,7 @@ export default function ImportCenter() {
           <div>
             <h1 className="text-3xl font-semibold tracking-tight">Import Center</h1>
             <p className="text-muted-foreground mt-1">
-              Import SPO CSV files for Funds, Entities, Transactions, and Pledges
+              Import SPO CSV files and Smartsheet MPD reports
             </p>
           </div>
 
@@ -168,6 +169,15 @@ export default function ImportCenter() {
                 onImportClick={() => handleImportClick(config.type)}
               />
             ))}
+          </div>
+
+          {/* Smartsheet MPD Import Section */}
+          <div className="space-y-3">
+            <h2 className="text-xl font-semibold">Smartsheet MPD Report</h2>
+            <p className="text-sm text-muted-foreground">
+              Upload the monthly MPD Dashboard Report to update missionary financial data
+            </p>
+            <MPDImportTile />
           </div>
 
           {/* Import Dialog */}
