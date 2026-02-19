@@ -5,22 +5,22 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems, and leadership can proactively support their teams through cross-missionary analytics.
-**Current focus:** Phase 24 in progress (v1.3)
+**Current focus:** Phase 25 in progress (v1.3)
 
 ## Current Position
 
 Milestone: v1.3 — Smartsheet Import, Filters & Polish
-Phase: 24 of 25 (Smartsheet Import Backend)
-Plan: 2 of 2 complete
-Status: Phase Complete
-Last activity: 2026-02-19 — Phase 24 Plan 02 complete (service layer and API endpoint)
+Phase: 25 of 25 (Smartsheet Import Frontend)
+Plan: 1 of 4 complete
+Status: In Progress
+Last activity: 2026-02-19 — Phase 25 Plan 01 complete (MPD read endpoints)
 
-Progress: [##############################] 89% (73/82 total plans complete)
+Progress: [##############################] 90% (74/82 total plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 73 (24 v1.0 + 15 v1.1 + 18 v1.2 + 16 v1.3)
+- Total plans completed: 74 (24 v1.0 + 15 v1.1 + 18 v1.2 + 17 v1.3)
 - Average duration: 4.2 minutes
 - Total execution time: ~4.2 hours
 
@@ -73,6 +73,8 @@ All decisions logged in PROJECT.md Key Decisions table.
 - **24-02:** No file extension check on MPD upload -- format auto-detected from PK magic bytes (XLSX) or fallback (CSV)
 - **24-02:** Duplicate user names treated as ambiguous and added to unmatched list (not matched to either)
 - **24-02:** Formula injection strips =, +, @, tab, CR but NOT - (negative currency is legitimate)
+- **25-01:** N+1 acceptable for MPDOverviewView (<50 missionaries, simplicity over optimization)
+- **25-01:** Decimal values serialized as str() for JSON compatibility (consistent with DRF default)
 
 ### Pending Todos
 
@@ -97,9 +99,9 @@ All decisions logged in PROJECT.md Key Decisions table.
 ## Session Continuity
 
 Last session: 2026-02-19
-Stopped at: Completed 24-02-PLAN.md (Phase 24 complete)
-Resume: Phase 25 (Smartsheet Import Frontend)
+Stopped at: Completed 25-01-PLAN.md
+Resume: Phase 25 Plan 02 (Smartsheet Import Frontend)
 
 ---
 
-*Last updated: 2026-02-19 (Phase 24 complete — Smartsheet Import Backend)*
+*Last updated: 2026-02-19 (Phase 25 Plan 01 complete — MPD read endpoints)*
