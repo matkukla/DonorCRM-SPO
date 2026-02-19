@@ -66,7 +66,7 @@ Each task was committed atomically:
 
 1. **Task 1: Add admin owner dropdown to ContactList with parser and preset nulling** - `377f7dd` (feat)
 
-**Plan metadata:** [pending] (docs: complete plan)
+**Plan metadata:** `a28ba53` (docs: complete plan)
 
 ## Files Created/Modified
 - `frontend/src/hooks/useFilterParams.ts` - Added `owner: parseAsString` to contactFilterParsers

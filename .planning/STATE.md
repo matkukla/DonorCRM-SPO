@@ -2,27 +2,25 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-16)
+See: .planning/PROJECT.md (updated 2026-02-19)
 
 **Core value:** Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems, and leadership can proactively support their teams through cross-missionary analytics.
-**Current focus:** Phase 26 complete (v1.3)
+**Current focus:** v1.3 milestone complete — planning next milestone
 
 ## Current Position
 
-Milestone: v1.3 — Smartsheet Import, Filters & Polish
-Phase: 26 of 26 (Contact Owner Filter UI)
-Plan: 1 of 1 complete
-Status: Phase Complete
-Last activity: 2026-02-19 — Phase 26 Plan 01 complete (admin owner dropdown in ContactList FilterBar)
+Milestone: v1.3 — Smartsheet Import, Filters & Polish (SHIPPED)
+Status: Milestone Complete
+Last activity: 2026-02-19 — v1.3 milestone archived
 
-Progress: [################################] 94% (79/84 total plans complete)
+Progress: [################################] 100% (77/77 total plans complete across 4 milestones)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 79 (24 v1.0 + 15 v1.1 + 18 v1.2 + 22 v1.3)
-- Average duration: 4.2 minutes
-- Total execution time: ~4.2 hours
+- Total plans completed: 77 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3)
+- Average duration: ~3.8 minutes
+- Total execution time: ~4.9 hours
 
 **By Milestone:**
 
@@ -31,6 +29,7 @@ Progress: [################################] 94% (79/84 total plans complete)
 | v1.0 (Phases 1-6) | 24 | 1.4 hours | 2.8 min |
 | v1.1 (Phases 7-12) | 15 | 76m 43s | 5.1 min |
 | v1.2 (Phases 13-19) | 18 | 108m 48s | 6.0 min |
+| v1.3 (Phases 20-26) | 20 | ~75 min | ~3.8 min |
 
 ## Accumulated Context
 
@@ -38,49 +37,7 @@ Progress: [################################] 94% (79/84 total plans complete)
 
 All decisions logged in PROJECT.md Key Decisions table.
 
-- **20-01:** No data migration needed for monthly_equivalent (computed @property, not stored field)
-- **20-01:** Admin users bypass owner filter in stage event creation (consistent with ContactThankView pattern)
-- **20-02:** Skipped SPOImportTile.tsx size check (no file handler; ImportDialog handles file selection)
-- **20-02:** Used useRef guard pattern for toast to prevent duplicate notifications on ProtectedRoute redirect
-- **20-03:** Skipped visual indicators for unseen events (is_new has no current UI distinction; decoupling marking from GET is the core fix)
-- **20-03:** Used getattr fallback pattern so serializer works with and without prefetch
-- **21-01:** Used dark:bg-*-950/50 opacity pattern for dark backgrounds (matches NeedsAttention.tsx reference)
-- **21-01:** Replaced generic grays (text-gray-400, border-gray-300) with semantic tokens (text-muted-foreground, border-border)
-- **21-02:** Used OWASP single-quote prefix for CSV sanitization (spreadsheet-native text-mode indicator)
-- **21-02:** Kept event creation, thank-you marking, and pledge fulfillment as create-only in signal
-- **21-03:** ErrorBoundary placed inside ThemeProvider but outside AuthProvider/BrowserRouter (dark mode works in fallback, auth/routing errors caught)
-- **21-03:** Used instanceof check for unknown error type in FallbackProps (react-error-boundary v6 TypeScript strict mode)
-- **22-01:** Used individual DateFilter fields instead of DateFromToRangeFilter (avoids 24.3 suffix breaking change)
-- **22-01:** Owner field excluded from all FilterSets (admin-only owner filtering stays in get_queryset for security)
-- **22-01:** Echo pseudo-buffer defined locally in each export_views.py (matching insights pattern)
-- **22-02:** Used nuqs useQueryStates with shallow:false to trigger React Query re-renders on filter change
-- **22-02:** Generic useFilterParams<T> hook instead of per-page hooks for maximum reuse
-- **22-02:** Presets explicitly null other filter fields to prevent filter stacking between presets
-- **22-02:** Button variant="secondary" for Presets/Export (not "outline" which is the red CTA style)
-- **22-03:** Used Record<string, any> for FilterParsers type (SingleParserBuilder incompatible with ReturnType<>)
-- **22-03:** Kept local searchInput state with useEffect sync for controlled search input in ContactList
-- **22-03:** Removed Transactions separate Filters Card wrapper in favor of FilterBar-managed layout
-- **23-01:** JournalExportCSVView replicates DonationExportCSVView pattern (Echo class, StreamingHttpResponse, 10k limit)
-- **23-01:** FundListView uses pagination_class=None for dropdown consumption
-- **23-01:** is_archived logic preserved in JournalListCreateView and replicated in JournalExportCSVView
-- **23-02:** Used useUsers hook for admin owner dropdown (avoids new API endpoint)
-- **23-02:** Presets explicitly null all new filter fields to prevent filter stacking between presets
-- **23-03:** page_size=50 for journal list (card grid layout, fewer journals than donations/pledges)
-- **23-03:** Kept JournalFilters interface for backward compatibility but getJournals now uses Record<string, string>
-- **24-01:** DecimalField max_digits=12 for financial fields (accommodates values like $71,352.72 and roll forward balances)
-- **24-01:** months_remaining_rf as CharField (can be numeric or "infinite")
-- **24-01:** pct_standard_to_max as IntegerField storing raw percentage (104 for "104%")
-- **24-02:** No file extension check on MPD upload -- format auto-detected from PK magic bytes (XLSX) or fallback (CSV)
-- **24-02:** Duplicate user names treated as ambiguous and added to unmatched list (not matched to either)
-- **24-02:** Formula injection strips =, +, @, tab, CR but NOT - (negative currency is legitimate)
-- **25-01:** N+1 acceptable for MPDOverviewView (<50 missionaries, simplicity over optimization)
-- **25-01:** Decimal values serialized as str() for JSON compatibility (consistent with DRF default)
-- **25-02:** Native file input instead of react-papaparse for MPD upload (backend handles all parsing)
-- **25-02:** MPD section placed below SPO grid, not in IMPORT_CONFIGS array (separate import system)
-- **25-04:** MPDStatsInline renders Fragment children so parent controls grid layout
-- **25-04:** Dashboard hides MPD section entirely when has_data is false (no empty state message)
-- **25-05:** Unwrap on frontend (Option A) rather than changing backend envelope (Option B) to preserve backend extensibility for pagination metadata
-- **26-01:** Mirrored DonationList owner dropdown pattern exactly for ContactList consistency
+v1.3 decisions archived with milestone. See milestones/v1.3-ROADMAP.md for full phase details.
 
 ### Pending Todos
 
@@ -88,11 +45,7 @@ All decisions logged in PROJECT.md Key Decisions table.
 
 ### Blockers/Concerns
 
-**Ordering constraints (from research):**
-- QAL-01, QAL-02 (security) MUST precede filter work (Phase 20 before 22-23)
-- QAL-05 (N+1 fix) MUST precede journal filters (Phase 20 before 23)
-- QAL-06 (file size limits) MUST precede Smartsheet import (Phase 20 before 24-25)
-- django-filter must be pinned to 24.3 (NOT 25.2) -- 25.2 requires Django 5.2+
+None. All v1.3 blockers resolved.
 
 ### Quick Tasks Completed
 
@@ -105,9 +58,9 @@ All decisions logged in PROJECT.md Key Decisions table.
 ## Session Continuity
 
 Last session: 2026-02-19
-Stopped at: Completed 26-01-PLAN.md
-Resume: Phase 26 complete — contact owner filter UI shipped
+Stopped at: v1.3 milestone completed and archived
+Resume: `/gsd:new-milestone` to start next milestone
 
 ---
 
-*Last updated: 2026-02-19 (Phase 26 Plan 01 complete — admin owner dropdown in ContactList FilterBar)*
+*Last updated: 2026-02-19 (v1.3 milestone completed)*
