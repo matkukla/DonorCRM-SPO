@@ -41,7 +41,7 @@ v1.3 decisions archived with milestone. See milestones/v1.3-ROADMAP.md for full 
 
 ### Pending Todos
 
-5 pending todo(s). See `.planning/todos/pending/`.
+6 pending todo(s). See `.planning/todos/pending/`.
 
 ### Blockers/Concerns
 
