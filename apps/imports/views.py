@@ -14,6 +14,7 @@ from rest_framework.views import APIView
 
 from apps.core.permissions import IsAdmin, IsFinanceOrAdmin
 from apps.imports.models import Fund
+from apps.imports.mpd_services import process_mpd_upload
 from apps.imports.services import (
     export_contacts_csv,
     export_donations_csv,
@@ -830,3 +831,70 @@ class FundListView(generics.ListAPIView):
 
     def get_queryset(self):
         return Fund.objects.filter(status='active').order_by('name')
+
+
+class MPDImportView(APIView):
+    """
+    POST: Upload Smartsheet MPD Dashboard Report (admin only).
+
+    Accepts CSV or XLSX file. Auto-detects format from file content.
+    Matches each row to a DonorCRM user by First Name + Last Name.
+    Creates MPDSnapshot records for matched users.
+
+    Response includes:
+    - upload_id: UUID of the MPDUpload record
+    - status: 'completed' or 'failed'
+    - total_rows: number of data rows in file
+    - matched_count: number of rows matched to users
+    - unmatched_count: number of rows not matched
+    - unmatched_rows: list of {row, first_name, last_name} for unmatched
+    - snapshot_count: number of MPDSnapshot records created
+    """
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+    parser_classes = [MultiPartParser]
+
+    def post(self, request):
+        if 'file' not in request.FILES:
+            return Response(
+                {'detail': 'No file provided.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        file = request.FILES['file']
+        if file.size > MAX_UPLOAD_SIZE:
+            return Response(
+                {'detail': 'File too large (max 10 MB).'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Read raw bytes for format detection (not decoding to string)
+        file_bytes = file.read()
+
+        try:
+            upload = process_mpd_upload(
+                file_bytes=file_bytes,
+                filename=file.name,
+                uploaded_by=request.user,
+            )
+        except Exception as e:
+            logger.error(f'MPD import failed: {e}')
+            return Response(
+                {'detail': f'Import failed: {str(e)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        response_data = {
+            'upload_id': str(upload.id),
+            'status': upload.status,
+            'total_rows': upload.total_rows,
+            'matched_count': upload.matched_count,
+            'unmatched_count': upload.unmatched_count,
+            'unmatched_rows': upload.unmatched_rows,
+            'snapshot_count': upload.snapshots.count(),
+        }
+
+        if upload.status == 'failed':
+            response_data['error'] = upload.error_message
+            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(response_data, status=status.HTTP_201_CREATED)
