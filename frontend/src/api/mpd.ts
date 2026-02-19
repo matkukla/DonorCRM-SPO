@@ -93,7 +93,7 @@ export async function getMPDMyData(): Promise<MPDMyDataResponse> {
  */
 export async function getMPDUploadHistory(): Promise<MPDUploadHistoryItem[]> {
   const response = await apiClient.get("/imports/mpd/uploads/")
-  return response.data
+  return response.data.uploads
 }
 
 // Helpers
