@@ -20,7 +20,7 @@ Progress: [################################] 94% (77/82 total plans complete)
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 75 (24 v1.0 + 15 v1.1 + 18 v1.2 + 18 v1.3)
+- Total plans completed: 77 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3)
 - Average duration: 4.2 minutes
 - Total execution time: ~4.2 hours
 
@@ -77,6 +77,8 @@ All decisions logged in PROJECT.md Key Decisions table.
 - **25-01:** Decimal values serialized as str() for JSON compatibility (consistent with DRF default)
 - **25-02:** Native file input instead of react-papaparse for MPD upload (backend handles all parsing)
 - **25-02:** MPD section placed below SPO grid, not in IMPORT_CONFIGS array (separate import system)
+- **25-04:** MPDStatsInline renders Fragment children so parent controls grid layout
+- **25-04:** Dashboard hides MPD section entirely when has_data is false (no empty state message)
 
 ### Pending Todos
 
@@ -101,9 +103,9 @@ All decisions logged in PROJECT.md Key Decisions table.
 ## Session Continuity
 
 Last session: 2026-02-19
-Stopped at: Completed 25-03-PLAN.md
-Resume: Phase 25 Plan 04 (Smartsheet Import Frontend)
+Stopped at: Completed 25-04-PLAN.md
+Resume: Phase 25 complete — all plans executed
 
 ---
 
-*Last updated: 2026-02-19 (Phase 25 Plan 03 complete — MPD overview dashboard table)*
+*Last updated: 2026-02-19 (Phase 25 Plan 04 complete — MPD inline stats on UserDetail and Dashboard)*
