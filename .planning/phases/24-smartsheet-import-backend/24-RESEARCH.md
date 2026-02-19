@@ -1,624 +1,628 @@
-# Phase 24: Smartsheet Import Backend - Research
+# Phase 24: Smartsheet MPD Report Import Backend - Research
 
 **Researched:** 2026-02-19
-**Domain:** File parsing (Excel/CSV), column auto-mapping, row validation, formula injection prevention
+**Domain:** Django file upload, Excel/CSV parsing, model design, financial data storage
 **Confidence:** HIGH
-
-## Summary
-
-Phase 24 adds a two-step Smartsheet import workflow to the existing `apps/imports` Django app: (1) upload a file, parse it, detect headers, auto-map columns, and return mappings with confidence tiers; (2) commit the import using confirmed mappings and a user-chosen duplicate strategy. The backend already has mature CSV import infrastructure (`services.py` with 1372 lines covering 4 import types, `ImportRun`/`ImportRowError` models, formula injection constants, date/amount parsing helpers). Phase 24 extends this by adding Excel (.xlsx) support via openpyxl, magic-bytes-based format detection, fuzzy column matching via rapidfuzz, a new `ImportSession` model for storing parsed data between steps, and a unified validation pipeline that works across all three target models (Contact, Donation, Pledge).
-
-The critical architectural decision is to build Phase 24 as NEW service functions and endpoints alongside the existing import code, not to refactor the existing SPO-specific CSV importers. The existing `parse_funds_csv`, `parse_entities_csv`, `parse_transactions_csv`, and `parse_pledges_csv` functions are tightly coupled to their specific column schemas and should remain untouched. The new Smartsheet import pipeline is fundamentally different: it supports user-defined column mappings (the old pipeline assumes fixed column names), multiple record types per file, and a two-step workflow with session persistence.
-
-**Primary recommendation:** Use openpyxl (read_only mode) for .xlsx parsing, Python csv module for .csv parsing, magic bytes (first 4 bytes = `PK` for xlsx vs text heuristic for csv) for format detection, rapidfuzz for column auto-matching, and a new `ImportSession` model with JSONField for storing parsed rows between upload and commit steps. All new code goes in the existing `apps/imports` app as new service functions -- do not modify existing import functions.
 
 <user_constraints>
 ## User Constraints (from CONTEXT.md)
 
 ### Locked Decisions
-
-**Column Mapping:**
-- Confidence scores use three tiers: Green (exact/high confidence), Yellow (partial/fuzzy match), Red (no match)
-- Green = exact alias match, Yellow = fuzzy/partial match, Red = unmapped
-- Full scope: Contact fields + Donation fields + Pledge fields
-- Contact: first_name, last_name, email, phone, address, city, state, zip, external_id, notes, tags
-- Donation: amount, date, fund, payment_method, external_id
-- Pledge: amount, frequency, start_date, end_date, status, external_id
-- A single spreadsheet can create records across all three models
-
-**Validation & Error Handling:**
-- Collect ALL errors across all rows -- no early stopping or threshold
-- Every row is validated regardless of how many errors have accumulated
-- Partial import allowed -- user can choose to import only valid rows
-- Rejected rows available as downloadable error CSV
-- Full model validation -- same rules as form entry (email format, phone format, valid state codes, amount > 0, date parsing, required fields)
-- Uses Django model-level validation to stay consistent
-- Error CSV format: Row Number, Field Name, Error Message (one row per error)
-
-**Import Workflow:**
-- Two-step: (1) Upload -> parse -> return headers + auto-detected mappings, (2) Commit -> validate -> import valid rows -> return results + error CSV
-- Parse immediately on upload, store as JSON in database (ImportSession model)
-- Original file not retained after parsing
-- 25 MB / ~50k rows maximum
-- Processing is synchronous (no background jobs)
-- ImportSession tracks: timestamp, user, filename, row counts, status (pending_mapping, pending_commit, completed, failed)
-
-**Duplicate Handling:**
-- Contact duplicate detection: email only
-- User chooses per-import: Skip, Update, or Flag for Review
-
-**Security:**
-- Strip/escape formula injection characters (=, +, -, @, \t, \r) from cell values
+- Admin uploads a monthly Smartsheet MPD Dashboard Report (CSV or XLSX export)
+- Each row is a MISSIONARY (a DonorCRM User), NOT a donor/contact
+- System matches rows to existing users by First Name + Last Name (case-insensitive)
+- Creates MPDSnapshot records storing ~20 financial columns per missionary
+- Snapshots accumulate historically (monthly uploads create NEW records, never overwrite)
+- MPDUpload model tracks each upload (audit trail: timestamp, admin, filename, row counts)
+- Single-step upload: admin uploads file, backend parses/matches/creates snapshots, returns results
+- No column mapping step needed (columns are known/fixed from the Smartsheet report)
+- File format auto-detected from magic bytes (CSV vs XLSX)
+- Formula injection characters stripped before storage
+- File size limit: 10 MB (realistic: ~10-50 rows per file)
+- Synchronous processing (no async/Celery needed)
+- Columns to SKIP: coaching columns (Will be a Coach, Coaching Contract, supervisor decisions)
+- `months_remaining_rf` stored as CharField (can be "infinite")
 
 ### Claude's Discretion
-
-- Column matching strategy (fuzzy vs alias-based vs hybrid)
-- UX for Red/unmapped columns (top-N suggestions vs leave blank)
-- Donation/Pledge duplicate detection approach
+- How to handle unmatched rows (skip and report, or let admin map manually)
+- Whether column names should be hardcoded or semi-flexible (auto-detect by known names)
 
 ### Deferred Ideas (OUT OF SCOPE)
 _(None captured during discussion)_
 </user_constraints>
+
+## Summary
+
+This phase adds a specialized import pipeline for the organization's monthly Smartsheet MPD Dashboard Report. Unlike the existing SPO CSV imports which handle donors/contacts/donations, this feature processes a financial summary report where each row represents a **missionary** (DonorCRM User). The system auto-detects file format (CSV vs XLSX), matches rows to existing users by name, and creates historical MPDSnapshot records storing ~20 financial metrics.
+
+The implementation builds on the existing `apps/imports` infrastructure (ImportRun audit trail, formula injection prevention, file upload patterns) but requires a new Django app or model additions since the data model (MPDSnapshot linked to User) is fundamentally different from the existing import types (Contacts, Donations, Pledges linked to Contact).
+
+**Primary recommendation:** Create MPDUpload and MPDSnapshot models in the existing `apps/imports` app, add a new service module (`mpd_services.py`) for parsing/matching/import logic, and a new view (`MPDImportView`) following the existing import view patterns. Use `openpyxl` (new dependency) for XLSX parsing and the existing `csv` stdlib for CSV parsing. Hardcode column names with a mapping dict for resilience against minor column name variations.
 
 ## Standard Stack
 
 ### Core
 | Library | Version | Purpose | Why Standard |
 |---------|---------|---------|--------------|
-| openpyxl | 3.1.5 | Parse .xlsx files | De facto Python Excel library; read_only mode for memory efficiency; MIT license; used internally by pandas |
-| defusedxml | >=0.7 | Protect against XML bomb attacks in xlsx | openpyxl docs explicitly recommend it; prevents billion laughs / quadratic blowup attacks |
-| rapidfuzz | >=3.0 | Fuzzy string matching for column auto-mapping | 16x faster than thefuzz; MIT license (vs GPL for thefuzz); C++ core; drop-in API compatible |
-| csv (stdlib) | builtin | Parse CSV files | Already used throughout `apps/imports/services.py`; no external dependency needed |
-| io (stdlib) | builtin | BytesIO/StringIO for in-memory file handling | Already used throughout existing import code |
+| openpyxl | 3.1.x (latest: 3.1.4) | Parse .xlsx files | Pure Python, no external deps, read_only mode for efficiency, standard for Django Excel import |
+| csv (stdlib) | Python 3.12 built-in | Parse .csv files | Already used extensively in existing import infrastructure |
+| decimal (stdlib) | Python 3.12 built-in | Parse currency strings to Decimal | Already used in existing `_parse_amount()` in services.py |
+| io (stdlib) | Python 3.12 built-in | BytesIO/StringIO for in-memory file handling | Already used in existing import views |
 
 ### Supporting
 | Library | Version | Purpose | When to Use |
 |---------|---------|---------|-------------|
-| charset-normalizer | >=3.0 | Detect CSV file encoding | When CSV file is not UTF-8; more accurate than chardet; already a dependency of `requests` |
+| Django 4.2 | 4.2.27 (installed) | Models, views, ORM | Core framework - already installed |
+| DRF | 3.16.1 (installed) | API views, MultiPartParser | Already used for all import endpoints |
+| pytest | 7.4.4 (installed) | Testing | Already configured in pyproject.toml |
+| factory_boy | 3.3.3 (installed) | Test fixtures | Already used for UserFactory |
 
 ### Alternatives Considered
 | Instead of | Could Use | Tradeoff |
 |------------|-----------|----------|
-| openpyxl | pandas + openpyxl engine | pandas adds unnecessary overhead -- we only need row iteration, not DataFrames; pandas is not in requirements |
-| rapidfuzz | thefuzz (fuzzywuzzy) | GPL license, 16x slower, no C++ acceleration; rapidfuzz is strictly better |
-| python-magic | filetype | python-magic requires libmagic system dependency; filetype is pure Python but unnecessary since xlsx detection is trivial (PK magic bytes) |
-| charset-normalizer | chardet | chardet is slower on large files and less accurate on modern datasets |
+| openpyxl | pandas | pandas is overkill (heavy NumPy dep) for simple row-by-row parsing of ~50 rows |
+| openpyxl | xlrd | xlrd only supports .xls (not .xlsx since v2.0) - wrong format |
+| Manual magic bytes check | python-magic / filetype library | Unnecessary dependency - XLSX starts with `PK\x03\x04` (ZIP header) which is a 4-byte check |
 
 ### Installation
+
 ```bash
-pip install openpyxl>=3.1.5 defusedxml>=0.7 rapidfuzz>=3.0
+pip install "openpyxl>=3.1,<4.0"
 ```
 
-Add to `requirements/base.txt`:
-```
-openpyxl>=3.1,<4.0
-defusedxml>=0.7,<1.0
-rapidfuzz>=3.0,<4.0
-```
+**Note:** openpyxl is NOT currently installed. This is the only new dependency needed.
 
 ## Architecture Patterns
 
 ### Recommended Project Structure
-All new code lives in the existing `apps/imports/` app:
 ```
 apps/imports/
-  models.py          # Add ImportSession model (alongside existing ImportRun)
-  services.py        # Existing SPO import functions (DO NOT MODIFY)
-  smartsheet.py      # NEW: All Smartsheet import logic (parsing, mapping, validation, commit)
-  views.py           # Add new endpoints for upload + commit
-  urls.py            # Add new URL patterns
-  tests/
-    test_smartsheet.py  # NEW: Tests for Smartsheet import pipeline
+├── models.py              # ADD: MPDUpload, MPDSnapshot models
+├── mpd_services.py        # NEW: MPD-specific parsing, matching, import logic
+├── views.py               # ADD: MPDImportView
+├── urls.py                # ADD: mpd-import endpoint
+├── admin.py               # ADD: MPDUpload, MPDSnapshot admin registrations
+├── migrations/
+│   └── 0002_mpd_models.py # NEW: migration for MPDUpload + MPDSnapshot
+└── tests/
+    └── test_mpd_import.py # NEW: MPD import tests
 ```
 
-### Pattern 1: Two-Step Import with ImportSession
-**What:** Upload creates an ImportSession with parsed rows stored as JSON; commit reads the session, validates, and imports.
-**When to use:** Whenever the import workflow requires user interaction between parsing and committing.
+### Pattern 1: File Format Auto-Detection via Magic Bytes
+**What:** Detect CSV vs XLSX from the first 4 bytes of file content, not from file extension.
+**When to use:** Always - file extensions can be wrong, magic bytes are reliable.
+**Confidence:** HIGH
 
 ```python
-# Step 1: Upload endpoint
-class SmartsheetUploadView(APIView):
-    parser_classes = [MultiPartParser]
-    permission_classes = [IsAuthenticated, IsAdmin]
-
-    def post(self, request):
-        file = request.FILES['file']
-        # 1. Detect format (xlsx vs csv)
-        # 2. Parse to list of dicts (rows)
-        # 3. Extract headers
-        # 4. Auto-map columns with confidence scores
-        # 5. Store parsed rows in ImportSession
-        # 6. Return headers + mappings + session_id
-
-# Step 2: Commit endpoint
-class SmartsheetCommitView(APIView):
-    permission_classes = [IsAuthenticated, IsAdmin]
-
-    def post(self, request):
-        session_id = request.data['session_id']
-        mappings = request.data['mappings']       # {source_col: target_field}
-        duplicate_strategy = request.data['duplicate_strategy']
-        # 1. Load ImportSession
-        # 2. Apply mappings to transform rows
-        # 3. Validate ALL rows (collect all errors)
-        # 4. Import valid rows based on duplicate_strategy
-        # 5. Generate error CSV for invalid rows
-        # 6. Update ImportSession status + counts
-        # 7. Return results
-```
-
-### Pattern 2: File Format Detection Without External Libraries
-**What:** Detect xlsx vs csv by reading the first few bytes of the uploaded file.
-**When to use:** Always -- avoids needing python-magic or filetype as dependencies.
-
-```python
-def detect_file_format(file_obj) -> str:
-    """Detect file format from magic bytes. Returns 'xlsx' or 'csv'."""
-    # Read first 4 bytes
-    header = file_obj.read(4)
-    file_obj.seek(0)  # Reset for subsequent reads
-
-    # XLSX files are ZIP archives: magic bytes = PK\x03\x04
-    if header[:4] == b'PK\x03\x04':
+def detect_file_format(file_bytes: bytes) -> str:
+    """Detect file format from magic bytes."""
+    # XLSX files are ZIP archives: first 4 bytes are PK\x03\x04
+    if file_bytes[:4] == b'PK\x03\x04':
         return 'xlsx'
-
-    # Everything else, try as CSV (CSV has no magic bytes)
+    # Otherwise assume CSV (text files have no reliable magic bytes)
     return 'csv'
 ```
 
-### Pattern 3: Hybrid Column Mapping (Aliases + Fuzzy Fallback)
-**What:** First try exact alias matching (high confidence), then fall back to fuzzy matching for unmatched columns.
-**When to use:** For the auto-detection step in upload response.
+**Key insight:** XLSX files are ZIP archives with a well-known 4-byte signature (`50 4B 03 04`). CSV files are plain text with no magic bytes, so CSV is the fallback. No third-party library needed for this detection.
+
+### Pattern 2: Hardcoded Column Mapping with Normalization
+**What:** Map known Smartsheet column names to model field names using a static dict, with string normalization for resilience.
+**When to use:** When the import source has a known, stable column format (as with this Smartsheet report).
+**Confidence:** HIGH (recommendation for Claude's Discretion item)
 
 ```python
-# Alias registry: each target field has a list of known aliases
-COLUMN_ALIASES = {
-    'first_name': ['first name', 'first_name', 'firstname', 'fname', 'given name', 'given_name'],
-    'last_name': ['last name', 'last_name', 'lastname', 'lname', 'surname', 'family name', 'family_name'],
-    'email': ['email', 'email address', 'e-mail', 'email_address', 'emailaddress'],
-    'phone': ['phone', 'phone number', 'telephone', 'tel', 'phone_number', 'mobile'],
-    'street_address': ['address', 'street', 'street address', 'street_address', 'address1', 'mailing address'],
-    'city': ['city', 'town'],
-    'state': ['state', 'province', 'st', 'region'],
-    'postal_code': ['zip', 'zip code', 'zipcode', 'postal code', 'postal_code', 'zip_code'],
-    'external_id': ['external id', 'external_id', 'ext_id', 'id', 'donor id', 'donor_id', 'entity_id'],
-    'notes': ['notes', 'comments', 'memo', 'description'],
-    # Donation fields
-    'amount': ['amount', 'gift amount', 'donation amount', 'gift_amount', 'donation_amount', 'total'],
-    'date': ['date', 'gift date', 'donation date', 'gift_date', 'donation_date', 'posted_date'],
-    'fund': ['fund', 'fund name', 'fund_name', 'account', 'campaign'],
-    'payment_method': ['payment method', 'payment_method', 'method', 'pay method', 'payment type'],
-    # Pledge fields
-    'frequency': ['frequency', 'cadence', 'schedule', 'recurrence', 'pledge frequency'],
-    'start_date': ['start date', 'start_date', 'begin date', 'effective date'],
-    'end_date': ['end date', 'end_date', 'expiry date', 'expiration date'],
-    'status': ['status', 'pledge status', 'state'],
+# Column name -> model field name mapping
+SMARTSHEET_COLUMN_MAP = {
+    'Full Name': None,  # Skip - derived from First + Last
+    'First Name': 'first_name',  # matching key, not stored
+    'Last Name': 'last_name',    # matching key, not stored
+    'Active Recurring Gifts': 'active_recurring_gifts',
+    'Annual Gifts': 'annual_gifts',
+    'Monthly Average': 'monthly_average',
+    'Annual MPD Estimate': 'annual_mpd_estimate',
+    'MPD Standard': 'mpd_standard',
+    '$ Amount Below MPD Standard': 'amount_below_mpd_standard',
+    '% Standard to Max': 'pct_standard_to_max',
+    'Met MPD Standard': 'met_mpd_standard',
+    'MPD Maximum': 'mpd_maximum',
+    'Met MAXIMUM': 'met_maximum',
+    'Amount Above/Below Maximum': 'amount_above_below_maximum',
+    'Match Met': 'match_met',
+    'Match Met for Rest of Fiscal Year (Based on RFB)': 'match_met_rest_fy',
+    'Latest Roll Forward Balance': 'latest_roll_forward_balance',
+    'Current MPD Cap': 'current_mpd_cap',
+    'Months Remaining in RF': 'months_remaining_rf',
+    'Proj. Monthly Deduction from RFB (Cap - Rec.Gifts)': 'proj_monthly_deduction_rfb',
+    'PAY FORECAST Over 12 Months': 'pay_forecast_12_months',
+    'Pay Forecast Over Fiscal Year': 'pay_forecast_over_fy',
+    'Total One-Time Gifts - April': 'total_one_time_gifts_april',
 }
 
-def auto_map_columns(source_headers: list[str]) -> list[dict]:
-    """
-    Auto-map source headers to target fields.
-    Returns list of {source, target, confidence} dicts.
-    """
-    mappings = []
-    used_targets = set()
+# Columns to explicitly skip (coaching - not stored)
+SKIP_COLUMNS = {
+    'Will be a Coach in 2022 MPD Season?',
+    'Do you understand the Coaching Contract?',
+    'Have you made these decisions w/ your supervisor?',
+}
 
-    for header in source_headers:
-        normalized = header.strip().lower().replace('_', ' ')
+def normalize_column_name(name: str) -> str:
+    """Normalize column name for fuzzy matching."""
+    return name.strip().lower()
 
-        # Phase 1: Exact alias match -> GREEN
-        match = _try_alias_match(normalized, used_targets)
-        if match:
-            mappings.append({'source': header, 'target': match, 'confidence': 'green'})
-            used_targets.add(match)
-            continue
+def build_column_index(headers: list) -> dict:
+    """Build column index mapping header positions to field names.
+    Uses normalized comparison for resilience against minor variations."""
+    normalized_map = {normalize_column_name(k): v for k, v in SMARTSHEET_COLUMN_MAP.items()}
+    normalized_skip = {normalize_column_name(s) for s in SKIP_COLUMNS}
 
-        # Phase 2: Fuzzy match -> YELLOW (score >= 80)
-        match, score = _try_fuzzy_match(normalized, used_targets)
-        if match and score >= 80:
-            mappings.append({'source': header, 'target': match, 'confidence': 'yellow'})
-            used_targets.add(match)
-            continue
+    index = {}
+    unrecognized = []
+    for i, header in enumerate(headers):
+        norm = normalize_column_name(header)
+        if norm in normalized_skip:
+            continue  # Skip coaching columns
+        if norm in normalized_map:
+            field = normalized_map[norm]
+            if field is not None:
+                index[i] = field
+        else:
+            unrecognized.append(header)
 
-        # Phase 3: No match -> RED (with top-3 suggestions)
-        suggestions = _get_suggestions(normalized, used_targets)
-        mappings.append({'source': header, 'target': None, 'confidence': 'red', 'suggestions': suggestions})
-
-    return mappings
+    return index, unrecognized
 ```
 
-### Pattern 4: Formula Injection Sanitization on Import
-**What:** Strip dangerous formula prefix characters from every cell value during parsing.
-**When to use:** Always, on every text value parsed from the uploaded file.
+**Why hardcode, not auto-detect:** This is a specific known report format. The column names come from a specific Smartsheet template the organization uses. Hardcoding is simpler, more predictable, and less error-prone than fuzzy matching. The normalization layer handles minor case/whitespace variations.
+
+### Pattern 3: Currency String Parsing (Reuse + Extend Existing)
+**What:** Extend the existing `_parse_amount()` pattern to handle negative currency values and empty strings gracefully.
+**When to use:** For all Smartsheet financial columns.
+**Confidence:** HIGH
 
 ```python
-# Characters that trigger formula execution in spreadsheet apps
-FORMULA_CHARS = {'=', '+', '-', '@', '\t', '\r', '\n'}
+def parse_currency(value) -> Decimal | None:
+    """Parse currency string like '$3,085.00' or '-$468.33' to Decimal.
 
-def sanitize_cell_value(value: str) -> str:
-    """Strip formula injection characters from cell values per OWASP guidelines."""
-    if not value or not isinstance(value, str):
-        return value
-    # Strip leading formula characters (may be chained: "==cmd")
-    while value and value[0] in FORMULA_CHARS:
-        value = value[1:]
-    return value.strip()
+    Returns None for empty/blank values (not an error for MPD data).
+    Handles: "$3,085.00", "-$468.33", "$0.00", empty string, None.
+
+    NOTE: Unlike existing _parse_amount(), this allows negative values
+    (e.g., "$ Amount Below MPD Standard" can be negative) and allows
+    zero (e.g., "$0.00" for roll forward balance).
+    """
+    if value is None:
+        return None
+
+    if isinstance(value, (int, float)):
+        # openpyxl may return numeric values directly from XLSX
+        return Decimal(str(value))
+
+    cleaned = str(value).strip()
+    if not cleaned:
+        return None
+
+    # Remove currency symbols and formatting
+    cleaned = cleaned.replace('$', '').replace(',', '').replace(' ', '')
+
+    # Handle negative formats: "-$468.33" -> "-468.33" (already handled by above)
+    # Handle parenthetical negatives: "($468.33)" -> "-468.33"
+    if cleaned.startswith('(') and cleaned.endswith(')'):
+        cleaned = '-' + cleaned[1:-1]
+
+    try:
+        return Decimal(cleaned)
+    except (InvalidOperation, ValueError):
+        return None  # Return None rather than error - individual cell parse failures
 ```
 
-Note: The existing codebase in `services.py` uses `FORMULA_PREFIXES = ('=', '+', '-', '@')` and the `sanitize_csv_value()` function prefixes with a single quote on EXPORT. For IMPORT, we should STRIP the characters rather than prefix, since we're ingesting data into our database, not outputting to a spreadsheet.
+**Key difference from existing `_parse_amount()`:** The existing function rejects negatives and zeros. MPD financial data has legitimate negative values (e.g., "$ Amount Below MPD Standard": "-$468.33") and zero values ("$0.00" for roll forward balance). Also handles `None` from openpyxl cells.
 
-### Pattern 5: Unified Row Validation
-**What:** Validate rows against the target model's rules, reusing existing validation helpers.
-**When to use:** During the commit step, after mappings are applied.
+### Pattern 4: User Matching by Name
+**What:** Match Smartsheet rows to DonorCRM users by case-insensitive First Name + Last Name.
+**When to use:** For every data row in the upload.
+**Confidence:** HIGH
 
 ```python
-def validate_row(row: dict, mappings: dict, row_num: int) -> list[dict]:
+def match_users(rows: list[dict]) -> tuple[list[tuple], list[dict]]:
+    """Match parsed rows to existing DonorCRM users.
+
+    Returns (matched, unmatched) where:
+    - matched: list of (user, row_data) tuples
+    - unmatched: list of {row_number, first_name, last_name} dicts
     """
-    Validate a single mapped row. Returns list of errors.
-    Each error: {'row_number': int, 'field_name': str, 'error_message': str}
-    """
-    errors = []
-    # Reuse existing helpers from services.py:
-    # - _validate_email(email) for email format
-    # - _parse_amount(amount_str) for donation/pledge amounts
-    # - _parse_date(date_str) for date fields
-    # Add: required field checks, max length checks, enum validation
-    return errors
+    from apps.users.models import User
+
+    # Pre-fetch all active users into a lookup dict
+    # Key: (lower_first, lower_last) -> User
+    users_by_name = {}
+    for user in User.objects.filter(is_active=True):
+        key = (user.first_name.lower().strip(), user.last_name.lower().strip())
+        users_by_name[key] = user
+
+    matched = []
+    unmatched = []
+
+    for row_num, row in enumerate(rows, start=2):
+        first = row.get('first_name', '').strip().lower()
+        last = row.get('last_name', '').strip().lower()
+        key = (first, last)
+
+        user = users_by_name.get(key)
+        if user:
+            matched.append((user, row))
+        else:
+            unmatched.append({
+                'row': row_num,
+                'first_name': row.get('first_name', ''),
+                'last_name': row.get('last_name', ''),
+            })
+
+    return matched, unmatched
 ```
+
+**Important notes:**
+- There is NO unique constraint on User.first_name + User.last_name. Two users could theoretically have the same name. The current pre-fetch approach takes the last one found. For a small org (~10-50 missionaries), this is extremely unlikely, but the implementation should warn if duplicate names are detected.
+- Only matches against `is_active=True` users.
+- The User model has `first_name` (CharField, max_length=150) and `last_name` (CharField, max_length=150) - matches the Smartsheet columns.
+
+### Pattern 5: openpyxl In-Memory XLSX Parsing
+**What:** Parse XLSX from Django's uploaded file bytes using BytesIO.
+**When to use:** When file format is detected as XLSX.
+**Confidence:** HIGH
+
+```python
+from openpyxl import load_workbook
+from io import BytesIO
+
+def parse_xlsx(file_bytes: bytes) -> tuple[list[str], list[list]]:
+    """Parse XLSX file bytes into headers and row data."""
+    wb = load_workbook(
+        filename=BytesIO(file_bytes),
+        read_only=True,   # Memory-efficient, lazy loading
+        data_only=True     # Read computed values, not formulas
+    )
+    ws = wb.active  # Use first/active sheet
+
+    rows = list(ws.iter_rows(values_only=True))
+    wb.close()  # Must explicitly close in read_only mode
+
+    if not rows:
+        return [], []
+
+    headers = [str(cell) if cell is not None else '' for cell in rows[0]]
+    data_rows = rows[1:]  # Skip header row
+
+    return headers, data_rows
+```
+
+**Critical notes:**
+- `read_only=True` reduces memory usage significantly (though for ~50 rows it barely matters, it's good practice).
+- `data_only=True` returns the cached computed value rather than the formula string.
+- `wb.close()` is REQUIRED in read_only mode.
+- Cell values from openpyxl may be `int`, `float`, `str`, or `None` - the currency parser must handle all types.
+- For XLSX, percentage values like "104%" may come as `1.04` (numeric) rather than the string "104%".
 
 ### Anti-Patterns to Avoid
-- **Modifying existing service functions:** The existing `parse_entities_csv`, `parse_transactions_csv`, etc. are tightly coupled to SPO column schemas. Do NOT refactor them to share code with Smartsheet import. Duplicate validation helpers if needed.
-- **Storing the original file:** The context says "Original file is not retained after parsing." Parse to JSON immediately, store in ImportSession.
-- **Loading entire xlsx into memory without read_only:** Always use `load_workbook(file, read_only=True)` to avoid memory bloat on large files.
-- **Using pandas:** The project does not have pandas in requirements. openpyxl directly is lighter and sufficient for row iteration.
-- **Relying on file extension for format detection:** Use magic bytes (PK header) for xlsx detection, not `.xlsx` extension. Fall back to csv for anything that isn't a zip archive.
+
+- **Anti-pattern: Reusing the existing ImportRun model for MPD uploads.** The existing ImportRun is typed by `ImportType` (funds, entities, transactions, pledges) and tracks created/updated counts that don't map to the MPD workflow (snapshots are always created, never updated). Use a dedicated `MPDUpload` model instead.
+
+- **Anti-pattern: Storing percentage as a string.** The `% Standard to Max` column contains values like "104%" and "-16%". Parse to integer (or Decimal) and store as `IntegerField`. This enables future comparisons/sorting. The "%" is display formatting.
+
+- **Anti-pattern: Using `read_only=False` with openpyxl.** For import-only operations, always use `read_only=True`. The full mode loads the entire workbook DOM into memory, which is unnecessary for row reading.
+
+- **Anti-pattern: Matching on Full Name string.** The Smartsheet has `Full Name`, `First Name`, and `Last Name` columns. Match on `First Name` + `Last Name` separately (as CONTEXT.md specifies), NOT on the combined `Full Name` string, because "Mary Jane Smith" could split differently.
 
 ## Don't Hand-Roll
 
 | Problem | Don't Build | Use Instead | Why |
 |---------|-------------|-------------|-----|
-| Fuzzy string matching | Custom Levenshtein implementation | `rapidfuzz.fuzz.token_sort_ratio` + `rapidfuzz.process.extractOne` | Handles word reordering ("last name" vs "name last"), C++ performance, edge cases |
-| Excel parsing | Custom XML/ZIP extraction | `openpyxl.load_workbook(read_only=True)` | Handles merged cells, date formats, number formats, shared strings |
-| XML bomb protection | Custom XML parser | `defusedxml` (installed alongside openpyxl) | Prevents billion laughs, quadratic blowup, XXE attacks |
-| CSV encoding detection | Custom charset guessing | `charset-normalizer` or try utf-8-sig then latin-1 | Handles BOM, Windows-1252, edge cases |
-| Date parsing | New date parser | Reuse existing `_parse_date()` from `services.py` | Already handles 5 date formats, tested in production |
-| Amount parsing | New amount parser | Reuse existing `_parse_amount()` from `services.py` | Already handles $, commas, negative, max value |
-| Email validation | New regex | Reuse existing `_validate_email()` from `services.py` | Already validated pattern, tested |
+| XLSX parsing | Custom ZIP/XML parser | `openpyxl` | XLSX is a complex ZIP-of-XML format with shared strings, styles, etc. |
+| Currency string parsing | Regex-based parser | Simple `str.replace()` chain + `Decimal()` | The format is consistent (`$X,XXX.XX`), regex adds complexity for no benefit |
+| File format detection | `python-magic` library | 4-byte magic bytes check | XLSX = `PK\x03\x04`, CSV = everything else. No dependency needed for a 1-line check |
+| Formula injection | Custom sanitizer | Extend existing `sanitize_csv_value()` | Already handles `=`, `+`, `-`, `@` prefix detection |
 
-**Key insight:** The existing `services.py` already has well-tested validation helpers (`_parse_date`, `_parse_amount`, `_validate_email`, `FORMULA_PREFIXES`). Import these into the new `smartsheet.py` module rather than duplicating them.
+**Key insight:** This import has a fixed, known format. The complexity is in the data model and matching, not in parsing. Keep parsing simple and invest effort in robust model design and clear error reporting.
 
 ## Common Pitfalls
 
-### Pitfall 1: openpyxl Returns None for Empty Cells
-**What goes wrong:** Iterating rows with openpyxl in read_only mode, empty cells return `None` instead of empty string. Code does `cell.value.strip()` and gets `AttributeError: 'NoneType' object has no attribute 'strip'`.
-**Why it happens:** openpyxl represents truly empty cells as None, not as empty strings like csv.DictReader does.
-**How to avoid:** Always coerce cell values: `str(cell.value).strip() if cell.value is not None else ''`
-**Warning signs:** Tests pass with dense data but fail when users upload files with empty columns.
+### Pitfall 1: openpyxl Returns Different Types for XLSX vs CSV Parsing for Same Column
+**What goes wrong:** When parsing XLSX, openpyxl returns numeric values as `int` or `float` directly. When parsing CSV, all values are strings (e.g., `"$3,085.00"`). The currency parser must handle both.
+**Why it happens:** Excel stores numbers natively; CSV stores everything as text.
+**How to avoid:** Write the currency parser to accept `int`, `float`, `str`, and `None` inputs. Test with both file formats.
+**Warning signs:** Tests pass with CSV but fail with XLSX (or vice versa).
 
-### Pitfall 2: openpyxl Date Cells Return datetime Objects, Not Strings
-**What goes wrong:** Excel stores dates as serial numbers with a date format. openpyxl returns `datetime.datetime` objects for date-formatted cells, not strings. The validation pipeline that expects string input (like `_parse_date()`) gets a datetime and fails or double-parses.
-**Why it happens:** openpyxl automatically converts Excel date serial numbers to Python datetime objects based on cell number format.
-**How to avoid:** Check cell value type during parsing: if it's already a `datetime.date` or `datetime.datetime`, convert to ISO string or pass through directly. Only call `_parse_date()` on string values.
-**Warning signs:** Dates work in CSV imports but break or produce wrong values in Excel imports.
+### Pitfall 2: "infinite" in Months Remaining Field
+**What goes wrong:** The `Months Remaining in RF` column can contain the string "infinite" (see sample row for Simon Peter). Trying to parse this as a Decimal will fail.
+**Why it happens:** When a missionary's recurring gifts equal or exceed their cap, the months remaining is mathematically infinite.
+**How to avoid:** Store as `CharField(max_length=20)` as specified in CONTEXT.md. Parse numeric values to string with consistent decimal formatting, pass "infinite" through unchanged.
+**Warning signs:** Import fails on rows with "infinite" value.
 
-### Pitfall 3: Excel Number Cells Return float/int, Not Strings
-**What goes wrong:** Amount column in Excel returns `100.0` (float) instead of `"100.00"` (string). The `_parse_amount()` function expects a string and may handle the float incorrectly, or the `$` stripping logic fails.
-**Why it happens:** Excel stores numbers as numeric types. openpyxl returns the native Python type.
-**How to avoid:** Normalize all cell values to strings during the parsing phase: `str(cell.value)` for non-None values. Or handle both types in the validation functions.
-**Warning signs:** Works with CSV (all strings) but amounts are wrong or cause errors with Excel files.
+### Pitfall 3: Percentage Column Has Different Representation in XLSX vs CSV
+**What goes wrong:** In CSV, `% Standard to Max` appears as "104%" (string). In XLSX, it may appear as `1.04` (float) or `0.104` depending on cell formatting.
+**Why it happens:** Excel stores percentages as decimals internally (104% = 1.04) and only displays the "%" sign via formatting.
+**How to avoid:** Parse percentage as integer, handling both formats: if numeric and < 10, multiply by 100. If string with "%" suffix, strip "%" and parse.
+**Warning signs:** Percentages showing as "1%" instead of "104%" when imported from XLSX.
 
-### Pitfall 4: CSV Files with BOM (Byte Order Mark)
-**What goes wrong:** User exports from Excel to CSV. The file starts with `\ufeff` (UTF-8 BOM). The first column header becomes `\ufefffirst_name` instead of `first_name`. Column mapping fails to match the first column.
-**Why it happens:** Excel on Windows adds a BOM when saving as "CSV UTF-8". The existing import code uses `utf-8-sig` encoding in FundImportView and EntityImportView but `utf-8` in ContactImportView and DonationImportView (inconsistency in existing code).
-**How to avoid:** Always decode with `utf-8-sig` which strips the BOM if present and works identically to `utf-8` if no BOM. The existing codebase already does this in some views.
-**Warning signs:** First column never matches in mapping despite appearing correct visually.
+### Pitfall 4: Negative Currency Values with Various Formats
+**What goes wrong:** The sample data shows negative values formatted as `-$468.33` and `"-$3,368.33"` (with quotes in CSV due to comma). Some spreadsheets use parenthetical notation `($468.33)`.
+**Why it happens:** Smartsheet/Excel export may use different negative formats.
+**How to avoid:** Handle both `-$X` and `($X)` formats in the currency parser.
+**Warning signs:** Negative values parsing as None or causing errors.
 
-### Pitfall 5: JSON Storage Size for Large Files
-**What goes wrong:** Storing 50,000 rows as JSON in a Django JSONField can produce a very large database row (potentially hundreds of MB if rows have many columns). PostgreSQL handles JSONB well but the serialization/deserialization in Python can be slow.
-**Why it happens:** The context specifies 25MB/50k rows max and JSON storage in the database. At 50k rows with 15 columns, the JSON could be 50-100MB.
-**How to avoid:** Store only the cell values (not metadata) in a compact format. Use a list of lists (not list of dicts) to avoid repeating header names 50k times. Store headers separately. For 50k rows x 15 cols at ~50 bytes/cell avg = ~37MB which is within PostgreSQL's tolerance.
-**Warning signs:** Commit step is very slow for large files; database response times increase.
+### Pitfall 5: Empty Cells in Optional Columns
+**What goes wrong:** The `Total One-Time Gifts - April` column is empty for most rows. openpyxl returns `None` for empty XLSX cells; CSV returns empty string `""`.
+**Why it happens:** Not all missionaries have one-time gifts in a given month.
+**How to avoid:** All financial fields should be nullable (`null=True, blank=True`) in the model. The currency parser should return `None` for empty values.
+**Warning signs:** IntegrityError on import due to NOT NULL constraint on optional fields.
 
-### Pitfall 6: Contact UniqueConstraint Complications
-**What goes wrong:** Contact model has `UniqueConstraint(fields=['owner', 'email'], condition=~Q(email=''))`. When using email-based duplicate detection with "Update" strategy, `update_or_create` may fail or create duplicates if the email is empty.
-**Why it happens:** The conditional unique constraint means empty emails are allowed to duplicate. The duplicate detection (email-only per context) must handle the case where imported rows have no email -- they should always create new contacts since there's nothing to match on.
-**How to avoid:** Only apply duplicate detection when the imported row has a non-empty email. Rows with no email always create new contacts (skip/update/flag strategies don't apply).
-**Warning signs:** Duplicate detection works for rows with emails but throws IntegrityError or creates unexpected duplicates for rows without.
+### Pitfall 6: Duplicate User Names
+**What goes wrong:** If two DonorCRM users have the same first + last name, the matching is ambiguous.
+**Why it happens:** No uniqueness constraint on User.first_name + User.last_name.
+**How to avoid:** During matching, detect if the name-lookup dict encounters a collision (two users with same name). Report it as a matching error for that row rather than silently picking one.
+**Warning signs:** Data assigned to wrong user silently.
 
-### Pitfall 7: Concurrent ImportSession Access
-**What goes wrong:** User uploads file (creates session), then opens same page in another tab and uploads again. Both sessions are "pending_mapping". User commits from Tab 1 successfully, then commits from Tab 2 -- double import of the same data.
-**Why it happens:** No guard against committing an already-committed session.
-**How to avoid:** Check session status before committing. Only allow commit if status is `pending_mapping` or `pending_commit`. Use `select_for_update()` to prevent race conditions. Transition to `completed` atomically.
-**Warning signs:** Users report duplicate records appearing after import.
+### Pitfall 7: UTF-8 BOM in CSV Files
+**What goes wrong:** Excel CSV exports include a UTF-8 BOM (`\xef\xbb\xbf`) that corrupts the first column header.
+**Why it happens:** Standard Excel behavior when saving as CSV.
+**How to avoid:** Decode CSV with `utf-8-sig` encoding (already done in existing import views for fund/entity/transaction imports).
+**Warning signs:** First column not recognized, "First Name" becomes "\ufeffFirst Name".
+
+### Pitfall 8: Snapshot Deduplication
+**What goes wrong:** Admin accidentally uploads the same file twice, creating duplicate snapshots.
+**Why it happens:** The spec says "uploads do not overwrite" so there's no natural deduplication.
+**How to avoid:** Consider a unique constraint on `(user, upload)` pair in MPDSnapshot, so the same upload cannot create two snapshots for the same user. Across uploads, duplicates are allowed (monthly accumulation).
+**Warning signs:** Same missionary has two identical snapshot records from the same upload.
 
 ## Code Examples
 
-### Example 1: Parsing Excel File with openpyxl (read_only mode)
-
+### MPDUpload Model
 ```python
-from openpyxl import load_workbook
-import io
-
-def parse_xlsx(file_bytes: bytes) -> tuple[list[str], list[list[str]]]:
-    """
-    Parse xlsx file bytes into headers and rows.
-    Returns (headers, rows) where rows is list of list of string values.
-    """
-    wb = load_workbook(io.BytesIO(file_bytes), read_only=True, data_only=True)
-    try:
-        ws = wb.active
-        rows_iter = ws.iter_rows()
-
-        # First row = headers
-        header_row = next(rows_iter, None)
-        if not header_row:
-            return [], []
-        headers = [str(cell.value).strip() if cell.value is not None else '' for cell in header_row]
-
-        # Remaining rows = data
-        rows = []
-        for row in rows_iter:
-            values = []
-            for cell in row:
-                if cell.value is None:
-                    values.append('')
-                elif isinstance(cell.value, (int, float)):
-                    # Preserve numeric precision
-                    values.append(str(cell.value))
-                elif hasattr(cell.value, 'isoformat'):
-                    # datetime/date objects -> ISO string
-                    values.append(cell.value.isoformat())
-                else:
-                    values.append(str(cell.value).strip())
-            rows.append(values)
-
-        return headers, rows
-    finally:
-        wb.close()
-```
-
-### Example 2: Parsing CSV with Encoding Detection
-
-```python
-import csv
-import io
-
-def parse_csv(file_bytes: bytes) -> tuple[list[str], list[list[str]]]:
-    """
-    Parse CSV file bytes into headers and rows.
-    Tries utf-8-sig first (handles BOM), falls back to latin-1.
-    """
-    # Try UTF-8 with BOM handling first
-    try:
-        content = file_bytes.decode('utf-8-sig')
-    except UnicodeDecodeError:
-        content = file_bytes.decode('latin-1')
-
-    reader = csv.reader(io.StringIO(content))
-    header_row = next(reader, None)
-    if not header_row:
-        return [], []
-
-    headers = [h.strip() for h in header_row]
-    rows = []
-    for row in reader:
-        # Pad short rows, trim long rows to match header count
-        padded = row + [''] * (len(headers) - len(row))
-        rows.append([v.strip() for v in padded[:len(headers)]])
-
-    return headers, rows
-```
-
-### Example 3: Fuzzy Column Matching with rapidfuzz
-
-```python
-from rapidfuzz import fuzz, process
-
-def _try_fuzzy_match(normalized_header: str, used_targets: set) -> tuple[str | None, int]:
-    """
-    Try fuzzy matching against all target field aliases.
-    Returns (target_field, score) or (None, 0).
-    """
-    # Build choices from all aliases of unused targets
-    choices = {}
-    for target, aliases in COLUMN_ALIASES.items():
-        if target not in used_targets:
-            for alias in aliases:
-                choices[alias] = target
-
-    if not choices:
-        return None, 0
-
-    result = process.extractOne(
-        normalized_header,
-        choices.keys(),
-        scorer=fuzz.token_sort_ratio,
-        score_cutoff=70  # Minimum score to consider
-    )
-
-    if result:
-        matched_alias, score, _ = result
-        return choices[matched_alias], score
-
-    return None, 0
-
-def _get_suggestions(normalized_header: str, used_targets: set, limit: int = 3) -> list[str]:
-    """Get top-N target field suggestions for an unmatched column."""
-    available = [t for t in COLUMN_ALIASES.keys() if t not in used_targets]
-    if not available:
-        return []
-
-    # Score each available target by best alias match
-    scored = []
-    for target in available:
-        best = max(
-            fuzz.token_sort_ratio(normalized_header, alias)
-            for alias in COLUMN_ALIASES[target]
-        )
-        scored.append((target, best))
-
-    scored.sort(key=lambda x: x[1], reverse=True)
-    return [t for t, _ in scored[:limit]]
-```
-
-### Example 4: ImportSession Model
-
-```python
-from django.db import models
-from apps.core.models import TimeStampedModel
-
-class ImportSessionStatus(models.TextChoices):
-    PENDING_MAPPING = 'pending_mapping', 'Pending Mapping'
-    PENDING_COMMIT = 'pending_commit', 'Pending Commit'
-    COMPLETED = 'completed', 'Completed'
-    FAILED = 'failed', 'Failed'
-
-class ImportSession(TimeStampedModel):
-    """Stores parsed spreadsheet data between upload and commit steps."""
-    user = models.ForeignKey(
-        'users.User', on_delete=models.CASCADE, related_name='import_sessions'
+class MPDUpload(TimeStampedModel):
+    """Audit trail for each Smartsheet MPD report upload."""
+    uploaded_by = models.ForeignKey(
+        'users.User',
+        on_delete=models.PROTECT,
+        related_name='mpd_uploads',
     )
     filename = models.CharField(max_length=255)
-    file_format = models.CharField(max_length=10)  # 'xlsx' or 'csv'
-    status = models.CharField(
-        max_length=20,
-        choices=ImportSessionStatus.choices,
-        default=ImportSessionStatus.PENDING_MAPPING
-    )
-
-    # Parsed data (stored as JSON to avoid re-parsing)
-    headers = models.JSONField(default=list)        # ["First Name", "Last Name", ...]
-    rows = models.JSONField(default=list)            # [[val, val, ...], [val, val, ...]]
-    auto_mappings = models.JSONField(default=list)   # [{source, target, confidence}, ...]
-
-    # Confirmed mappings (set during commit)
-    confirmed_mappings = models.JSONField(default=dict, blank=True)
-    duplicate_strategy = models.CharField(max_length=20, blank=True)
+    file_format = models.CharField(max_length=10)  # 'csv' or 'xlsx'
 
     # Row counts
     total_rows = models.IntegerField(default=0)
-    imported_count = models.IntegerField(default=0)
-    skipped_count = models.IntegerField(default=0)
-    error_count = models.IntegerField(default=0)
+    matched_count = models.IntegerField(default=0)
+    unmatched_count = models.IntegerField(default=0)
+
+    # Unmatched row details (JSON list of {row, first_name, last_name})
+    unmatched_rows = models.JSONField(default=list, blank=True)
+
+    # Processing status
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ('processing', 'Processing'),
+            ('completed', 'Completed'),
+            ('failed', 'Failed'),
+        ],
+        default='processing',
+    )
+    error_message = models.TextField(blank=True, default='')
 
     class Meta:
-        db_table = 'import_sessions'
+        db_table = 'mpd_uploads'
         ordering = ['-created_at']
 ```
 
-## Discretionary Decisions (Claude's Recommendations)
+### MPDSnapshot Model
+```python
+class MPDSnapshot(TimeStampedModel):
+    """Monthly MPD financial snapshot for a missionary."""
+    user = models.ForeignKey(
+        'users.User',
+        on_delete=models.CASCADE,
+        related_name='mpd_snapshots',
+    )
+    upload = models.ForeignKey(
+        MPDUpload,
+        on_delete=models.CASCADE,
+        related_name='snapshots',
+    )
 
-### Column Matching Strategy: Hybrid (Alias + Fuzzy)
-**Recommendation:** Use a two-phase approach -- exact alias matching first (GREEN), then rapidfuzz fuzzy matching for unmatched columns (YELLOW), then leave remaining as RED with top-3 suggestions.
+    # Financial fields (all nullable for partial data)
+    active_recurring_gifts = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    annual_gifts = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    monthly_average = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    annual_mpd_estimate = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    mpd_standard = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    amount_below_mpd_standard = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    mpd_maximum = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    amount_above_below_maximum = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    latest_roll_forward_balance = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    current_mpd_cap = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    proj_monthly_deduction_rfb = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    pay_forecast_12_months = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    pay_forecast_over_fy = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    total_one_time_gifts_april = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 
-**Rationale:** Pure fuzzy matching has false positives (e.g., "status" matching "state" at 83%). Pure alias matching misses creative column names. The hybrid approach gives high confidence for known patterns and reasonable guesses for unknown ones. The alias registry can grow over time as users encounter new column naming patterns.
+    # Percentage field (stored as integer: 104 for "104%", -16 for "-16%")
+    pct_standard_to_max = models.IntegerField(null=True, blank=True)
 
-**Fuzzy scorer:** Use `fuzz.token_sort_ratio` (not `fuzz.ratio` or `fuzz.partial_ratio`). Token sort handles word reordering: "Last Name" vs "Name, Last" both score high. Set threshold at 80 for YELLOW confidence.
+    # Boolean fields (Yes/No columns)
+    met_mpd_standard = models.BooleanField(null=True)
+    met_maximum = models.BooleanField(null=True)
+    match_met = models.BooleanField(null=True)
+    match_met_rest_fy = models.BooleanField(null=True)
 
-### UX for Red/Unmapped Columns: Top-3 Suggestions
-**Recommendation:** For unmapped columns, provide the top 3 closest target field suggestions sorted by fuzzy score. The frontend can present these as a dropdown pre-populated with suggestions, with the option to select "Skip this column" or choose any target field.
+    # Special field: can be numeric string or "infinite"
+    months_remaining_rf = models.CharField(max_length=20, blank=True, default='')
 
-**Rationale:** Leaving blank provides no guidance. Top-N suggestions are lightweight to compute and help users who have unusual column names. Three suggestions is enough to be helpful without being overwhelming.
+    class Meta:
+        db_table = 'mpd_snapshots'
+        ordering = ['-upload__created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'upload'],
+                name='unique_snapshot_per_user_per_upload'
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['user', '-created_at']),
+        ]
+```
 
-### Donation/Pledge Duplicate Detection: External ID Only
-**Recommendation:** For donations and pledges, use `external_id` as the sole duplicate detection key. If no external_id is provided in the import, treat every row as a new record (no dedup).
+### Formula Injection Sanitization (extends existing pattern)
+```python
+# Reuse from existing services.py
+FORMULA_PREFIXES = ('=', '+', '-', '@')
 
-**Rationale:** Financial records are dangerous to deduplicate on fuzzy criteria. Two $100 donations on the same date to the same contact could be legitimate separate transactions. External ID is the only safe, deterministic key. The existing codebase already uses `external_id` with conditional unique constraints on both Donation and Pledge models. This is consistent with how `import_transactions` and `import_pledges` already work.
+def sanitize_cell_value(value):
+    """Strip formula injection characters from imported cell values.
 
-For contacts: use email (per locked decision). For donations/pledges: use external_id. If neither is available, always create new.
+    Unlike sanitize_csv_value() which adds a quote prefix for export,
+    this strips dangerous prefixes entirely for import storage.
+    """
+    if value and isinstance(value, str):
+        # Strip leading formula characters
+        while value and value[0] in ('=', '+', '@', '\t', '\r'):
+            value = value[1:]
+        # Note: '-' is NOT stripped here because negative currency values
+        # like "-$468.33" are legitimate data. Formula injection with '-'
+        # requires '=' or '+' to follow. The currency parser handles '-'.
+    return value
+```
+
+**Important nuance:** The existing `sanitize_csv_value()` prefixes with a quote for CSV export safety. For import/storage, we strip dangerous characters entirely. However, `-` (minus) must NOT be stripped because negative currency values like `-$468.33` are legitimate MPD data. Only strip `=`, `+`, `@`, `\t`, `\r` from the start of string values.
+
+### View Pattern (follows existing import views)
+```python
+class MPDImportView(APIView):
+    """POST: Upload Smartsheet MPD Dashboard Report (admin only)."""
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+    parser_classes = [MultiPartParser]
+
+    def post(self, request):
+        if 'file' not in request.FILES:
+            return Response(
+                {'detail': 'No file provided.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        file = request.FILES['file']
+        if file.size > MAX_UPLOAD_SIZE:
+            return Response(
+                {'detail': 'File too large (max 10 MB)'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Read raw bytes for format detection
+        file_bytes = file.read()
+        file_format = detect_file_format(file_bytes)
+
+        # Parse file based on detected format
+        # ... (parse, match users, create snapshots, return results)
+```
+
+### Yes/No Boolean Parsing
+```python
+def parse_yes_no(value) -> bool | None:
+    """Parse Yes/No string to boolean."""
+    if value is None:
+        return None
+    s = str(value).strip().lower()
+    if s in ('yes', 'true', '1'):
+        return True
+    if s in ('no', 'false', '0'):
+        return False
+    return None
+```
+
+### Percentage Parsing
+```python
+def parse_percentage(value) -> int | None:
+    """Parse percentage value to integer.
+
+    Handles:
+    - String: "104%", "-16%"
+    - Float from XLSX: 1.04 (104%), -0.16 (-16%)
+    - Integer: 104
+    """
+    if value is None:
+        return None
+
+    if isinstance(value, (int, float)):
+        # XLSX may return 1.04 for 104% or 104 for 104%
+        # Heuristic: if abs(value) <= 10, it's a decimal ratio
+        if abs(value) <= 10:
+            return int(round(value * 100))
+        return int(round(value))
+
+    s = str(value).strip().rstrip('%').strip()
+    if not s:
+        return None
+
+    try:
+        return int(round(float(s)))
+    except (ValueError, TypeError):
+        return None
+```
 
 ## State of the Art
 
 | Old Approach | Current Approach | When Changed | Impact |
 |--------------|------------------|--------------|--------|
-| fuzzywuzzy (Python-only) | rapidfuzz (C++ backend) | 2021+ | 16x faster fuzzy matching; MIT license |
-| chardet for encoding | charset-normalizer | 2022+ | Better accuracy, actively maintained |
-| Store uploaded file on disk | Parse immediately, store as JSON | Current best practice | No file storage needed, simpler cleanup |
-| Manual engine specification | Magic bytes detection | Standard practice | Users don't need to choose file format |
+| xlrd for .xlsx | openpyxl for .xlsx | xlrd 2.0 (2020) dropped .xlsx support | Must use openpyxl for .xlsx files |
+| Full workbook load | `read_only=True` mode | openpyxl 2.4+ | Constant memory for large files |
+| File extension check | Magic bytes detection | Best practice always | More reliable format detection |
+| `FloatField` for money | `DecimalField` for money | Django best practice | Avoids floating-point precision issues |
 
 **Deprecated/outdated:**
-- `fuzzywuzzy`: Renamed to `thefuzz`, but both are superseded by `rapidfuzz`
-- `xlrd` for .xlsx: xlrd dropped xlsx support in v2.0 (2020); only reads .xls now
-- `python-magic` for simple format detection: Requires libmagic system dependency; overkill for xlsx-vs-csv
+- `xlrd` (v2.0+): Only supports `.xls` format. Do not use for `.xlsx`.
+- `pandas` for simple row parsing: Overkill dependency for reading ~50 rows.
 
 ## Open Questions
 
-1. **Session Cleanup / Expiry**
-   - What we know: ImportSession stores parsed rows as JSON. Abandoned sessions (user uploads but never commits) will accumulate.
-   - What's unclear: When to clean up abandoned sessions. The context doesn't specify.
-   - Recommendation: Add a `expires_at` field set to 24 hours after creation. A future cron job or management command can clean up expired sessions. For Phase 24, just set the field -- cleanup can be a later task.
+1. **Handling unmatched rows (Claude's Discretion)**
+   - What we know: Unmatched rows must be reported to admin (IMP-04). CONTEXT.md says Claude decides between "skip and report" or "let admin map manually".
+   - Recommendation: **Skip and report.** Return unmatched rows in the API response with row number, first name, and last name. Store them in `MPDUpload.unmatched_rows` JSON field. Manual mapping adds UI complexity for a rare edge case (new missionary not yet in system). Admin can add the user to DonorCRM and re-upload.
 
-2. **"Flag for Review" Duplicate Strategy Implementation**
-   - What we know: User can choose "Flag for Review" for contacts with matching emails.
-   - What's unclear: Where do flagged records go? Are they stored in ImportSession? A separate table? How does the user review them later?
-   - Recommendation: For Phase 24 (backend only), flagged rows should be stored as ImportRowError records with a special error type like "duplicate_flagged". They are NOT imported. The error CSV includes them with a message like "Duplicate contact (email: x@y.com) -- flagged for review." The actual review UI is a future phase concern. This keeps the backend simple and consistent with the existing error CSV pattern.
+2. **Column name flexibility (Claude's Discretion)**
+   - What we know: CONTEXT.md asks whether to hardcode or semi-flex. The report is from a specific Smartsheet template.
+   - Recommendation: **Hardcode with case-insensitive normalization.** The column names are stable across exports of the same Smartsheet. Add `strip()` and `lower()` normalization for resilience. If a required column is missing, fail with a clear error listing expected vs found columns.
 
-3. **Tags Field on Contact Import**
-   - What we know: The CONTEXT lists "tags" as a Contact target field. The Contact model has a M2M `groups` field.
-   - What's unclear: How to handle tags in import -- create Groups on the fly? Match existing Group names?
-   - Recommendation: Match existing Group names (case-insensitive). If a tag doesn't match an existing Group, report as a validation warning but still import the contact. Comma-separated tags in a single cell.
+3. **What "report_month" means for time-series**
+   - What we know: CONTEXT.md mentions `report_month` or `upload_date` for time-series queries.
+   - What's unclear: The sample data doesn't contain a month/date column. The "month" is implied by when the admin uploads.
+   - Recommendation: Use `upload.created_at` for time-series. The `MPDSnapshot` inherits `created_at` from `TimeStampedModel`, and `upload.created_at` groups all snapshots from the same upload. No separate `report_month` field is needed unless the admin should specify it during upload (adds complexity).
 
-4. **Multi-Model Import from Single Spreadsheet**
-   - What we know: "A single spreadsheet can create records across all three models."
-   - What's unclear: How the user signals which rows are contacts vs donations vs pledges. Are they inferred from the mappings? Does the user choose?
-   - Recommendation: Infer from confirmed mappings. If the user maps columns to Contact fields (first_name, last_name), the system creates Contacts. If they also map amount + date, it creates Donations linked to those Contacts. If they map frequency + start_date, it creates Pledges. The key is: Contact fields create/match contacts; Donation fields create donations linked to those contacts; Pledge fields create pledges linked to those contacts. Each row can produce up to 3 records (1 contact + 1 donation + 1 pledge).
-
-## Existing Codebase Integration Points
-
-### Reusable from `apps/imports/services.py`
-- `_validate_email()` - Email format validation
-- `_parse_amount()` - Amount string parsing with currency/comma handling
-- `_parse_date()` - Multi-format date parsing (5 formats)
-- `FORMULA_PREFIXES` - Formula injection character tuple
-- `sanitize_csv_value()` - Export sanitization (reference for import approach)
-- `VALID_DONATION_TYPES`, `VALID_PAYMENT_METHODS`, `VALID_PLEDGE_FREQUENCIES`, `VALID_PLEDGE_STATUSES` - Enum value lists
-- `DATE_FORMATS` - Accepted date format strings
-
-### Reusable Models
-- `ImportRun` - Can optionally be created during commit step for audit trail (alongside ImportSession)
-- `ImportRowError` - Can store per-row errors during commit for error CSV download
-- `Fund` - Referenced by donation/pledge imports; match by name or external_id
-
-### Settings to Update
-- `DATA_UPLOAD_MAX_MEMORY_SIZE` in `config/settings/base.py`: Currently 10MB, needs to increase to 25MB per context
-- `FILE_UPLOAD_MAX_MEMORY_SIZE` in `config/settings/base.py`: Currently 10MB, needs to increase to 25MB per context
-- `MAX_UPLOAD_SIZE` in `apps/imports/views.py`: Currently 10MB, new Smartsheet endpoints should use 25MB
-
-### URL Patterns
-New endpoints to add to `apps/imports/urls.py`:
-```python
-path('smartsheet/upload/', SmartsheetUploadView.as_view(), name='smartsheet-upload'),
-path('smartsheet/commit/', SmartsheetCommitView.as_view(), name='smartsheet-commit'),
-path('smartsheet/sessions/<uuid:session_id>/', SmartsheetSessionView.as_view(), name='smartsheet-session'),
-path('smartsheet/sessions/<uuid:session_id>/errors/csv/', SmartsheetErrorCSVView.as_view(), name='smartsheet-errors-csv'),
-```
+4. **Should we create a new Django app or add to `apps/imports`?**
+   - What we know: MPDUpload and MPDSnapshot are import-related but store different data than existing import models.
+   - Recommendation: **Add to `apps/imports`** to avoid a new app. The import app already handles file uploads, and adding 2 models + 1 service file keeps things cohesive. The alternative (new `apps/mpd` app) is over-engineering for 2 models.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- [openpyxl official docs - Optimised Modes](https://openpyxl.readthedocs.io/en/stable/optimized.html) - read_only mode, iter_rows, memory usage
-- [openpyxl official docs - Tutorial](https://openpyxl.readthedocs.io/en/3.1/tutorial.html) - load_workbook API, BytesIO support
-- [OWASP CSV Injection](https://owasp.org/www-community/attacks/CSV_Injection) - Formula injection characters (=, +, -, @, \t, \r), mitigation approaches
-- [RapidFuzz GitHub](https://github.com/rapidfuzz/RapidFuzz) - API, scorers, process.extractOne
-- [RapidFuzz PyPI](https://pypi.org/project/RapidFuzz/) - v3.14.3, MIT license, Python >=3.9
-- [openpyxl PyPI](https://pypi.org/project/openpyxl/) - v3.1.5, MIT license, Python >=3.8
+- Existing codebase: `apps/imports/services.py` - established patterns for CSV parsing, currency parsing, formula injection
+- Existing codebase: `apps/imports/views.py` - established patterns for file upload views
+- Existing codebase: `apps/imports/models.py` - ImportRun model pattern
+- Existing codebase: `apps/users/models.py` - User model with first_name, last_name fields
+- Sample data file: `test_data/Sample Smartsheet MPD Dashboard Report.xlsx - MPD Dashboard 2025-2026.csv`
+- [openpyxl documentation (v3.1.4)](https://openpyxl.readthedocs.io/en/latest/) - load_workbook API, read_only mode, data_only flag
+- [openpyxl PyPI](https://pypi.org/project/openpyxl/) - current version 3.1.4, Python >=3.8
 
 ### Secondary (MEDIUM confidence)
-- Existing codebase: `apps/imports/services.py` - 1372 lines of production-tested import logic
-- Existing codebase: `apps/imports/models.py` - ImportRun, ImportRowError, Fund models
-- Existing codebase: `apps/imports/views.py` - View patterns, MultiPartParser usage, error response format
-- [CWE-1236: Improper Neutralization of Formula Elements in CSV](https://cwe.mitre.org/data/definitions/1236.html) - Formula injection CWE reference
+- [OWASP CSV Injection](https://owasp.org/www-community/attacks/CSV_Injection) - formula characters: =, +, -, @
+- [Smartsheet Export Documentation](https://help.smartsheet.com/articles/770623-exporting-sheets-reports-from-smartsheet) - export behavior
+- [Django DecimalField best practices](https://deepintodjango.com/keeping-accurate-amounts-in-django-with-currencyfield) - max_digits=10, decimal_places=2
 
 ### Tertiary (LOW confidence)
-- [Django Forum: DATA_UPLOAD_MAX_MEMORY_SIZE vs FILE_UPLOAD_MAX_MEMORY_SIZE](https://forum.djangoproject.com/t/why-does-django-throw-a-data-upload-max-memory-size-error-even-when-uploading-files-not-setting-file-upload-max-memory-size/41194) - Setting interaction details
+- Smartsheet column name stability across exports - no official documentation found confirming this. Observed from sample data that names are descriptive and consistent with a template structure.
 
 ## Metadata
 
 **Confidence breakdown:**
-- Standard stack: HIGH - openpyxl and rapidfuzz are well-established, verified via official docs and PyPI
-- Architecture: HIGH - Two-step import pattern is well-defined by CONTEXT.md; ImportSession model follows existing codebase conventions
-- Pitfalls: HIGH - Verified against existing codebase (found real inconsistencies like BOM handling), cross-referenced with prior pitfalls research
-- Column mapping: MEDIUM - Alias + fuzzy hybrid is a sound approach but optimal thresholds (80 for YELLOW) may need tuning with real user data
+- Standard stack: HIGH - openpyxl is the clear standard for .xlsx in Python, all other dependencies already in project
+- Architecture: HIGH - follows established patterns in existing `apps/imports` with minor extensions
+- Data model: HIGH - column list verified against actual sample file, field types derived from real data
+- Pitfalls: HIGH - derived from actual sample data analysis and openpyxl documentation
+- User matching: MEDIUM - first_name + last_name matching works for small orgs but has edge cases (duplicates, name variations)
 
 **Research date:** 2026-02-19
-**Valid until:** 2026-03-19 (stable domain, no fast-moving dependencies)
+**Valid until:** 2026-03-19 (stable domain, openpyxl unlikely to change significantly)
