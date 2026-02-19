@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A donor relationship management system for missionaries. Includes contact management, donation tracking, pledge management, task system, Journal feature for fundraising campaign pipelines, SPO-compatible CSV import, and an Admin Analytics Dashboard for coaches and leadership to monitor missionary performance across the organization.
+A donor relationship management system for missionaries. Includes contact management, donation tracking, pledge management, task system, Journal feature for fundraising campaign pipelines, SPO-compatible CSV import, Smartsheet MPD report import, comprehensive list page filtering with URL-based state, and an Admin Analytics Dashboard for coaches and leadership to monitor missionary performance across the organization.
 
 ## Core Value
 
@@ -46,17 +46,29 @@ Missionaries can manage donor relationships efficiently, with accurate data impo
 - ✓ 13 API endpoints with ADMIN role-based visibility — v1.2
 - ✓ Date range filtering and CSV export — v1.2
 - ✓ Pace calculation and stalled detection business logic — v1.2
+- ✓ Permission bypass fixes (owner-scoped querysets on all ListAPIViews) — v1.3
+- ✓ N+1 query fix in journal grid (400→3 queries with prefetch) — v1.3
+- ✓ File size limits on upload endpoints (10 MB) — v1.3
+- ✓ Frontend route guards with redirect + toast for non-admin users — v1.3
+- ✓ Dark mode color audit (50+ hardcoded colors fixed across 12 files) — v1.3
+- ✓ WCAG 4.5:1 contrast compliance in dark mode — v1.3
+- ✓ React Error Boundary with fallback UI — v1.3
+- ✓ CSV formula sanitization on all export endpoints — v1.3
+- ✓ Donation edit stats refresh fix — v1.3
+- ✓ Decimal arithmetic for pledge monthly_equivalent — v1.3
+- ✓ Dashboard GET side-effect decoupling (mark-as-seen → POST) — v1.3
+- ✓ Reusable server-side filter system (django-filter 24.3 + nuqs URL state) — v1.3
+- ✓ Filter presets, badges, clear-all, filtered CSV export on all list pages — v1.3
+- ✓ Per-page filters: contacts, donations, pledges, journals, transactions — v1.3
+- ✓ Admin owner filter dropdowns on contacts and donations — v1.3
+- ✓ Smartsheet MPD report upload (Excel/CSV with magic-byte format detection) — v1.3
+- ✓ Missionary name matching with unmatched row reporting — v1.3
+- ✓ MPD financial snapshot storage with historical accumulation — v1.3
+- ✓ MPD data on admin dashboard and missionary personal views — v1.3
 
 ### Active
 
-**Current Milestone: v1.3 — Smartsheet Import, Filters & Polish**
-
-**Goal:** Enable Smartsheet file import with column mapping, add comprehensive filtering across all list pages, and conduct a quality/dark mode audit.
-
-**Target features:**
-- Smartsheet file import (Excel/CSV upload with column mapping to DonorCRM fields)
-- Comprehensive filters for contacts, journals, and transactions/donations pages
-- Full quality audit (security, dark mode consistency, code quality, performance)
+No active requirements. Use `/gsd:new-milestone` to define the next milestone.
 
 ### Out of Scope
 
@@ -65,21 +77,27 @@ Missionaries can manage donor relationships efficiently, with accurate data impo
 - Performance scoring/gamification — could demotivate missionaries
 - Configurable alert thresholds (per coach) — requires user preferences model
 - Goal setting & tracking UI — requires new Goal model
-- Saved filter views — defer to future
+- Saved filter views — URL params already bookmarkable and shareable
 - Mobile-optimized activity logging — web responsive sufficient
 - Audit log for compliance — defer to future
 - Custom stage definitions — fixed 6-stage pipeline
 - AI-generated suggestions — manual workflow only
+- Import undo/rollback — snapshots are immutable; admin can re-upload corrected files
+- Automated Smartsheet API — manual monthly upload sufficient
+- Advanced filter query builder — stacked AND covers 95% of use cases
+- Multi-select filter dropdowns — complicates serialization; marginal value
 
 ## Context
 
-### Current State (after v1.2)
-- **Backend:** Django 4.2 + DRF, ~21,900 LOC Python (excluding migrations)
-- **Frontend:** React 19 + TypeScript + Vite, ~20,900 LOC TypeScript, 127 files
+### Current State (after v1.3)
+- **Backend:** Django 4.2 + DRF, ~25,000 LOC Python (excluding migrations), 8 apps
+- **Frontend:** React 19 + TypeScript + Vite, ~23,000 LOC TypeScript, ~150 files
 - **Database:** PostgreSQL with Django ORM, UUID primary keys
-- **UI:** Tailwind CSS + Radix UI components, Recharts for charts, @uiw/react-heat-map for heatmap
-- **Total milestones shipped:** 3 (v1.0, v1.1, v1.2)
-- **Total plans executed:** 57 across 19 phases
+- **UI:** Tailwind CSS + Radix UI components, Recharts for charts, @uiw/react-heat-map for heatmap, TanStack Table for sorting
+- **Filtering:** django-filter 24.3 backend, nuqs URL state frontend, FilterBar shared component
+- **Import systems:** SPO CSV import (4 types) + Smartsheet MPD import (Excel/CSV)
+- **Total milestones shipped:** 4 (v1.0, v1.1, v1.2, v1.3)
+- **Total plans executed:** 77 across 26 phases
 
 ### Domain Context
 - Primary user: individual missionary fundraiser
@@ -89,6 +107,7 @@ Missionaries can manage donor relationships efficiently, with accurate data impo
 - Missionaries track multiple donors through the pipeline simultaneously
 - Decision tracking is critical: amount pledged, cadence, and status changes over time
 - Organization leadership and coaches (10-20 people) use analytics dashboard for cross-missionary visibility
+- Monthly Smartsheet MPD report tracks each missionary's fundraising financial health
 
 ### Data Model Decisions
 - Money stored in cents (integer) for precision
@@ -96,6 +115,8 @@ Missionaries can manage donor relationships efficiently, with accurate data impo
 - Stage events are append-only log entries, not state transitions
 - Next Steps are independent checklist items, not single boolean
 - Journal tasks link to existing Task model via journal_id foreign key
+- MPD financial fields use DecimalField (max_digits=12) for values like $71,352.72
+- MPDSnapshot accumulates per user per upload (no overwrite)
 
 ## Constraints
 
@@ -106,6 +127,8 @@ Missionaries can manage donor relationships efficiently, with accurate data impo
 - **Charts**: Recharts for standard charts, @uiw/react-heat-map for heatmap
 - **Performance**: Report queries must avoid N+1; use select_related/prefetch_related and aggregation
 - **Compatibility**: New models must work with existing Contact, Task, User models
+- **Filtering**: Use django-filter 24.3 (NOT 25.2), nuqs for URL state, FilterBar for UI
+- **Dark mode**: All new UI must include dark: variants; use semantic Tailwind tokens
 
 ## Key Decisions
 
@@ -125,6 +148,13 @@ Missionaries can manage donor relationships efficiently, with accurate data impo
 | StreamingHttpResponse for CSV export (v1.2) | Memory-efficient for large datasets | ✓ Good |
 | Client-side sort for small tables, server-side for large (v1.2) | Right tool for dataset size | ✓ Good |
 | URL param sync for date filters (v1.2) | Shareable dashboard URLs, browser back/forward works | ✓ Good |
+| django-filter 24.3 pinned (v1.3) | 25.2 requires Django 5.2+; individual DateFilters avoid suffix breaking change | ✓ Good |
+| nuqs for URL filter state (v1.3) | Type-safe parsers, shallow:false triggers React Query re-renders | ✓ Good |
+| Owner filter in get_queryset not FilterSet (v1.3) | Security: admin-only, avoids exposing filter to non-admins | ✓ Good |
+| OWASP single-quote prefix for CSV sanitization (v1.3) | Spreadsheet-native text-mode indicator, minimal disruption | ✓ Good |
+| Magic-byte format detection for MPD upload (v1.3) | No file extension check needed; handles both XLSX and CSV reliably | ✓ Good |
+| DecimalField for MPD financial data (v1.3) | Accurate representation of currency and percentage values | ✓ Good |
+| Duplicate user names → unmatched (v1.3) | Ambiguous match is worse than no match; admin resolves manually | ✓ Good |
 
 ---
-*Last updated: 2026-02-16 after v1.3 milestone start*
+*Last updated: 2026-02-19 after v1.3 milestone*

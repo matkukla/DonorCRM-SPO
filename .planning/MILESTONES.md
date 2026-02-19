@@ -90,25 +90,32 @@ Cross-missionary visibility into fundraising activity, pipeline health, and stal
 
 ---
 
-## In Progress Milestones
-
 ### v1.3 — Smartsheet Import, Filters & Polish
-**Started:** 2026-02-16
+**Completed:** 2026-02-19
+**Duration:** 3 days (2026-02-17 → 2026-02-19)
 
 Enable Smartsheet file import with column mapping, add comprehensive filtering across all list pages, and fix security/quality/dark mode issues.
 
 **Scope:**
-- 35 requirements defined
-- 6 phases planned (20-25)
-- 3 categories: Smartsheet Import (10), List Page Filters (13), Quality Audit (12)
+- 35 requirements implemented
+- 7 phases executed (20-26)
+- 20 plans completed, 37 tasks
+- 166 files changed, +17,607 / -831 lines
 
 **Key Features:**
-- Smartsheet file import (Excel/CSV) with column mapping UI and auto-detection
-- Comprehensive filters on all list pages (date range, amount, group, owner, presets)
-- Security fixes (permission bypass, cross-user access)
-- Dark mode color audit and WCAG contrast compliance
-- Performance fixes (N+1 queries, file size limits)
-- UI polish (error boundary, route guards, stat refresh)
+- Security & performance: closed permission bypasses (owner-scoped querysets), fixed N+1 queries (400→3), file size limits, route guards with redirect+toast
+- Dark mode & quality: fixed 50+ hardcoded colors across 12 files, Error Boundary, CSV formula sanitization, donation edit stats fix
+- Filter infrastructure: reusable server-side filter system (django-filter 24.3, nuqs URL persistence, presets, badges, clear-all, filtered CSV export)
+- Per-page filters: applied to all 5 list pages (contacts, donations, pledges, journals, transactions) with admin owner dropdowns
+- Smartsheet MPD import: end-to-end file upload with magic-byte format detection, name matching, financial snapshot storage, dashboard and missionary views
+- Contact owner filter: admin owner dropdown on ContactList closing FLT-04 gap
+
+**Archives:**
+- [v1.3-ROADMAP.md](milestones/v1.3-ROADMAP.md)
+- [v1.3-REQUIREMENTS.md](milestones/v1.3-REQUIREMENTS.md)
+- [v1.3-MILESTONE-AUDIT.md](milestones/v1.3-MILESTONE-AUDIT.md)
+
+**Git Tag:** v1.3
 
 ---
 
@@ -128,4 +135,4 @@ Planned requirements from v1 deferral:
 
 ---
 
-*Last updated: 2026-02-16 (v1.3 roadmap created)*
+*Last updated: 2026-02-19 (v1.3 milestone completed)*
