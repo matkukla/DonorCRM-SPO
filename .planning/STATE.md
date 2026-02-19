@@ -5,22 +5,22 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems, and leadership can proactively support their teams through cross-missionary analytics.
-**Current focus:** Phase 23 in progress (v1.3)
+**Current focus:** Phase 24 in progress (v1.3)
 
 ## Current Position
 
 Milestone: v1.3 — Smartsheet Import, Filters & Polish
-Phase: 23 of 25 (Per-Page Filter Implementation)
-Plan: 3 of 3 complete
-Status: Phase Complete
-Last activity: 2026-02-18 — Phase 23 Plan 03 complete (journal FilterBar)
+Phase: 24 of 25 (Smartsheet Import Backend)
+Plan: 1 of 2 complete
+Status: In Progress
+Last activity: 2026-02-19 — Phase 24 Plan 01 complete (MPD data models)
 
-Progress: [#############################.] 87% (71/82 total plans complete)
+Progress: [#############################.] 88% (72/82 total plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 71 (24 v1.0 + 15 v1.1 + 18 v1.2 + 14 v1.3)
+- Total plans completed: 72 (24 v1.0 + 15 v1.1 + 18 v1.2 + 15 v1.3)
 - Average duration: 4.2 minutes
 - Total execution time: ~4.2 hours
 
@@ -67,6 +67,9 @@ All decisions logged in PROJECT.md Key Decisions table.
 - **23-02:** Presets explicitly null all new filter fields to prevent filter stacking between presets
 - **23-03:** page_size=50 for journal list (card grid layout, fewer journals than donations/pledges)
 - **23-03:** Kept JournalFilters interface for backward compatibility but getJournals now uses Record<string, string>
+- **24-01:** DecimalField max_digits=12 for financial fields (accommodates values like $71,352.72 and roll forward balances)
+- **24-01:** months_remaining_rf as CharField (can be numeric or "infinite")
+- **24-01:** pct_standard_to_max as IntegerField storing raw percentage (104 for "104%")
 
 ### Pending Todos
 
@@ -90,10 +93,10 @@ All decisions logged in PROJECT.md Key Decisions table.
 
 ## Session Continuity
 
-Last session: 2026-02-18
-Stopped at: Completed 23-03-PLAN.md
-Resume: Phase 24 (next phase)
+Last session: 2026-02-19
+Stopped at: Completed 24-01-PLAN.md
+Resume: Phase 24 Plan 02 (service layer and API endpoint)
 
 ---
 
-*Last updated: 2026-02-18 (Phase 23 complete — per-page filter implementation)*
+*Last updated: 2026-02-19 (Phase 24 Plan 01 complete — MPD data models)*
