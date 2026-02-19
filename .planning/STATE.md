@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-16)
 
 Milestone: v1.3 — Smartsheet Import, Filters & Polish
 Phase: 25 of 25 (Smartsheet Import Frontend)
-Plan: 1 of 4 complete
+Plan: 2 of 4 complete
 Status: In Progress
-Last activity: 2026-02-19 — Phase 25 Plan 01 complete (MPD read endpoints)
+Last activity: 2026-02-19 — Phase 25 Plan 02 complete (MPD upload tile and results dialog)
 
-Progress: [##############################] 90% (74/82 total plans complete)
+Progress: [##############################] 91% (75/82 total plans complete)
 
 ## Performance Metrics
 
@@ -75,6 +75,8 @@ All decisions logged in PROJECT.md Key Decisions table.
 - **24-02:** Formula injection strips =, +, @, tab, CR but NOT - (negative currency is legitimate)
 - **25-01:** N+1 acceptable for MPDOverviewView (<50 missionaries, simplicity over optimization)
 - **25-01:** Decimal values serialized as str() for JSON compatibility (consistent with DRF default)
+- **25-02:** Native file input instead of react-papaparse for MPD upload (backend handles all parsing)
+- **25-02:** MPD section placed below SPO grid, not in IMPORT_CONFIGS array (separate import system)
 
 ### Pending Todos
 
@@ -99,9 +101,9 @@ All decisions logged in PROJECT.md Key Decisions table.
 ## Session Continuity
 
 Last session: 2026-02-19
-Stopped at: Completed 25-01-PLAN.md
-Resume: Phase 25 Plan 02 (Smartsheet Import Frontend)
+Stopped at: Completed 25-02-PLAN.md
+Resume: Phase 25 Plan 03 (Smartsheet Import Frontend)
 
 ---
 
-*Last updated: 2026-02-19 (Phase 25 Plan 01 complete — MPD read endpoints)*
+*Last updated: 2026-02-19 (Phase 25 Plan 02 complete — MPD upload tile and results dialog)*
