@@ -7,18 +7,18 @@
 
 Requirements for v1.3 — Smartsheet Import, Filters & Polish. Each maps to roadmap phases.
 
-### Smartsheet Import
+### Smartsheet MPD Report Import
 
-- [ ] **IMP-01**: User can upload an Excel (.xlsx) or CSV file for import
+- [ ] **IMP-01**: Admin can upload an Excel (.xlsx) or CSV Smartsheet MPD report file
 - [ ] **IMP-02**: System detects file format automatically from content (magic bytes)
-- [ ] **IMP-03**: User can select import type (Contacts, Donations, Pledges) for Smartsheet files
-- [ ] **IMP-04**: User can map source columns to CRM fields via dropdown selects
-- [ ] **IMP-05**: System auto-detects column mappings via fuzzy matching and pre-fills dropdowns
-- [ ] **IMP-06**: User sees confidence indicators (green/yellow/red) for auto-detected mappings
-- [ ] **IMP-07**: User can preview first 10 rows of mapped data before importing
-- [ ] **IMP-08**: System validates all rows and reports errors with downloadable error CSV
-- [ ] **IMP-09**: System sanitizes formula injection characters (=, +, -, @) on import
-- [ ] **IMP-10**: User can save and reuse column mapping templates for repeated imports
+- [ ] **IMP-03**: System matches each row to an existing DonorCRM user by First Name + Last Name
+- [ ] **IMP-04**: Unmatched rows are reported to admin (not silently dropped)
+- [ ] **IMP-05**: System sanitizes formula injection characters (=, +, -, @) in cell values before storage
+- [ ] **IMP-06**: Admin has a dedicated upload page for the monthly Smartsheet report
+- [ ] **IMP-07**: Admin sees import results: matched/unmatched missionaries, snapshot counts
+- [ ] **IMP-08**: Admin dashboard shows latest MPD data per missionary (MPD Cap, Rollover Balance, financial stats)
+- [ ] **IMP-09**: Each missionary sees their own MPD data in their personal view
+- [ ] **IMP-10**: Monthly snapshots accumulate historically for trend analysis
 
 ### List Page Filters
 
@@ -55,12 +55,12 @@ Requirements for v1.3 — Smartsheet Import, Filters & Polish. Each maps to road
 
 Deferred to future release. Tracked but not in current roadmap.
 
-### Smartsheet Import
+### Smartsheet MPD Report Import
 
-- **IMP-F01**: User can import from multi-sheet Excel files with tab selection
-- **IMP-F02**: User can drag-and-drop columns for mapping
-- **IMP-F03**: System shows real-time import progress bar for large files (>5000 rows)
-- **IMP-F04**: User can undo/rollback a completed import
+- **IMP-F01**: Admin can delete/undo a specific MPD upload and its snapshots
+- **IMP-F02**: MPD data comparison between two time periods
+- **IMP-F03**: Automated Smartsheet import via API integration (no manual upload)
+- **IMP-F04**: MPD goal tracking alerts when missionaries fall below MPD Standard
 
 ### List Page Filters
 
@@ -74,11 +74,9 @@ Explicitly excluded. Documented to prevent scope creep.
 
 | Feature | Reason |
 |---------|--------|
-| Multi-sheet Excel import | Most Smartsheet exports are single-sheet; tab selection UI adds complexity |
-| Drag-and-drop column mapping | HIGH cost, accessibility nightmare; dropdown mapping covers 100% of use cases |
-| Import undo/rollback | Validate-first workflow prevents mistakes; undo semantics unclear after edits |
-| Formula evaluation on import | Security risk; openpyxl data_only=True reads computed values safely |
-| Real-time import progress | Imports <2s for typical missionary data (500-2000 rows) |
+| Import undo/rollback | Snapshots are immutable records; admin can re-upload corrected files |
+| Automated Smartsheet API | Manual monthly upload is sufficient; API adds auth complexity |
+| Real-time import progress | Imports <1s for typical missionary data (10-50 rows) |
 | Advanced filter query builder | Overwhelming for 90% of users; stacked AND covers 95% of use cases |
 | Saved filters (backend) | URL params already bookmarkable and shareable; no new model needed |
 | Multi-select filter dropdowns | Complicates serialization and query logic; marginal value |
@@ -94,14 +92,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | IMP-01 | Phase 24 | Pending |
 | IMP-02 | Phase 24 | Pending |
-| IMP-03 | Phase 25 | Pending |
-| IMP-04 | Phase 25 | Pending |
+| IMP-03 | Phase 24 | Pending |
+| IMP-04 | Phase 24 | Pending |
 | IMP-05 | Phase 24 | Pending |
 | IMP-06 | Phase 25 | Pending |
 | IMP-07 | Phase 25 | Pending |
-| IMP-08 | Phase 24 | Pending |
-| IMP-09 | Phase 24 | Pending |
-| IMP-10 | Phase 25 | Pending |
+| IMP-08 | Phase 25 | Pending |
+| IMP-09 | Phase 25 | Pending |
+| IMP-10 | Phase 24 | Pending |
 | FLT-01 | Phase 23 | Pending |
 | FLT-02 | Phase 23 | Pending |
 | FLT-03 | Phase 23 | Pending |
