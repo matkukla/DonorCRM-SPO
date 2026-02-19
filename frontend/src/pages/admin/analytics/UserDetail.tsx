@@ -8,6 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import type { ChartConfig } from "@/components/ui/chart"
 import { useAdminUserPerformance, useAdminUserTrends, useAdminUserJournals } from "@/hooks/useInsights"
+import { useMPDOverview } from "@/hooks/useMPD"
+import { MPDStatsInline } from "@/components/mpd/MPDStatsInline"
 import { cn, formatLocalDate } from "@/lib/utils"
 
 const trendConfig = {
@@ -44,6 +46,8 @@ export default function UserDetail() {
   const { data: performanceData, isLoading: performanceLoading, error: performanceError } = useAdminUserPerformance()
   const { data: trendsData, isLoading: trendsLoading } = useAdminUserTrends(id)
   const { data: journalsData, isLoading: journalsLoading } = useAdminUserJournals(id)
+  const { data: mpdData, isLoading: mpdLoading } = useMPDOverview()
+  const userMPD = mpdData?.missionaries.find(m => m.user_id === id)
 
   if (performanceLoading) {
     return (
@@ -188,6 +192,28 @@ export default function UserDetail() {
                 <div className="text-2xl font-bold">{user.donation_count}</div>
               </CardContent>
             </Card>
+          </div>
+
+          {/* MPD Financial Data */}
+          <div className="space-y-2">
+            <h2 className="text-lg font-semibold">MPD Financial Data</h2>
+            {mpdLoading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="h-24 bg-muted rounded-lg animate-pulse" />
+                ))}
+              </div>
+            ) : userMPD ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <MPDStatsInline
+                  currentMpdCap={userMPD.current_mpd_cap}
+                  latestRollForwardBalance={userMPD.latest_roll_forward_balance}
+                  monthsRemainingRf={userMPD.months_remaining_rf}
+                />
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No MPD data available for this missionary.</p>
+            )}
           </div>
 
           {/* Trend Chart */}
