@@ -18,6 +18,7 @@ import { UserDrilldownPanel } from "./components/UserDrilldownPanel"
 import { ActivityHeatmap } from "./components/ActivityHeatmap"
 import { TimePeriodComparison } from "./components/TimePeriodComparison"
 import { UserComparison } from "./components/UserComparison"
+import { MPDOverviewTable } from "@/components/mpd/MPDOverviewTable"
 
 export default function AdminAnalyticsDashboard() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -248,6 +249,9 @@ export default function AdminAnalyticsDashboard() {
             <TimePeriodComparison dateParams={dateParams} />
             <UserComparison />
           </div>
+
+          {/* MPD Overview - Full Width */}
+          <MPDOverviewTable />
         </div>
 
         {/* Drill-down Panels */}
