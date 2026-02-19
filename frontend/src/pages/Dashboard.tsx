@@ -13,6 +13,8 @@ import { RecentJournalActivity } from "@/components/dashboard/RecentJournalActiv
 import { GivingSummaryCard } from "@/components/dashboard/GivingSummaryCard"
 import { MonthlyGiftsCard } from "@/components/dashboard/MonthlyGiftsCard"
 import { LogEventDialog } from "@/pages/journals/components/LogEventDialog"
+import { useMPDMyData } from "@/hooks/useMPD"
+import { MPDStatsInline } from "@/components/mpd/MPDStatsInline"
 import { Users, DollarSign, FileText, CheckSquare } from "lucide-react"
 
 function formatCurrency(amount: number): string {
@@ -27,6 +29,7 @@ function formatCurrency(amount: number): string {
 export default function Dashboard() {
   const { user } = useAuth()
   const { data, isLoading, error } = useDashboardSummary()
+  const { data: mpdData, isLoading: mpdLoading } = useMPDMyData()
   const [quickLogContactId, setQuickLogContactId] = useState<string | null>(null)
 
   // Mark events as seen once after dashboard data loads (QAL-09)
@@ -103,6 +106,26 @@ export default function Dashboard() {
               isLoading={isLoading}
             />
           </div>
+
+          {/* MPD Financial Data */}
+          {mpdLoading ? (
+            <div className="grid gap-4 md:grid-cols-3">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="h-24 bg-muted rounded-lg animate-pulse" />
+              ))}
+            </div>
+          ) : mpdData?.has_data ? (
+            <div className="space-y-2">
+              <h2 className="text-lg font-semibold">MPD Financial Overview</h2>
+              <div className="grid gap-4 md:grid-cols-3">
+                <MPDStatsInline
+                  currentMpdCap={mpdData.current_mpd_cap}
+                  latestRollForwardBalance={mpdData.latest_roll_forward_balance}
+                  monthsRemainingRf={mpdData.months_remaining_rf}
+                />
+              </div>
+            </div>
+          ) : null}
 
           {/* Main Content Grid */}
           <div className="grid gap-6 lg:grid-cols-2">
