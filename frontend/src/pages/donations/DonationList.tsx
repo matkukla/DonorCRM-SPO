@@ -220,6 +220,7 @@ export default function DonationList() {
             filterValueLabels={{
               donation_type: donationTypeLabels,
               payment_method: paymentMethodLabels,
+              ...(usersData ? { owner: Object.fromEntries(usersData.map((u) => [String(u.id), u.full_name])) } : {}),
             }}
             presets={donationPresets}
             onApplyPreset={(preset) => setFilters({ ...preset.getParams(), page: 1 })}
