@@ -24,8 +24,8 @@ Requirements for v2.0 milestone: Import Revamp, Prayer Intentions & Dashboard Po
 - [ ] **IMP-02**: RE Solicitor import creates Solicitor records with normalized name dedup and auto-link to User accounts
 - [ ] **IMP-03**: RE Gift import with multi-row grouping by Gift ID, GiftCredit creation per solicitor, and Contact linking
 - [ ] **IMP-04**: RE Recurring Gift import with same grouping pattern, installment fields, and status tracking
-- [ ] **IMP-05**: SHA256 idempotency — re-uploading same file returns cached result without reprocessing
-- [ ] **IMP-06**: Row-level error collection — errors don't stop processing, final report shows all errors with row numbers
+- [ ] **IMP-05**: SHA256 idempotency -- re-uploading same file returns cached result without reprocessing
+- [ ] **IMP-06**: Row-level error collection -- errors don't stop processing, final report shows all errors with row numbers
 - [ ] **IMP-07**: Windows-1252 encoding detection with cascading fallback (UTF-8-sig, UTF-8, Windows-1252)
 - [ ] **IMP-08**: Generic CSV import for contacts with matching and dedup options
 - [ ] **IMP-09**: Generic CSV import for donations with contact linking and stat recalculation
@@ -73,6 +73,10 @@ Requirements for v2.0 milestone: Import Revamp, Prayer Intentions & Dashboard Po
 - [ ] **DASH-01**: Dashboard tiles can be rearranged via drag-and-drop (session-only, resets on refresh)
 - [ ] **DASH-02**: Dashboard summary cards and charts updated to query Gift/RecurringGift instead of Donation/Pledge
 
+### Audit
+
+- [ ] **AUDIT-01**: Full-stack audit covering security (OWASP top 10, auth, permission scoping), performance (N+1 queries, missing indexes, bundle size), code quality (dead code, type safety, inconsistent patterns), UI/UX (accessibility, dark mode, responsive), and API consistency across all v2.0 code paths
+
 ## Future Requirements
 
 Deferred to future releases.
@@ -107,57 +111,58 @@ Deferred to future releases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MODEL-01 | TBD | Pending |
-| MODEL-02 | TBD | Pending |
-| MODEL-03 | TBD | Pending |
-| MODEL-04 | TBD | Pending |
-| MODEL-05 | TBD | Pending |
-| MODEL-06 | TBD | Pending |
-| MODEL-07 | TBD | Pending |
-| MODEL-08 | TBD | Pending |
-| IMP-01 | TBD | Pending |
-| IMP-02 | TBD | Pending |
-| IMP-03 | TBD | Pending |
-| IMP-04 | TBD | Pending |
-| IMP-05 | TBD | Pending |
-| IMP-06 | TBD | Pending |
-| IMP-07 | TBD | Pending |
-| IMP-08 | TBD | Pending |
-| IMP-09 | TBD | Pending |
-| IMP-10 | TBD | Pending |
-| MIG-01 | TBD | Pending |
-| MIG-02 | TBD | Pending |
-| MIG-03 | TBD | Pending |
-| MIG-04 | TBD | Pending |
-| MIG-05 | TBD | Pending |
-| UI-IMP-01 | TBD | Pending |
-| UI-IMP-02 | TBD | Pending |
-| UI-IMP-03 | TBD | Pending |
-| UI-IMP-04 | TBD | Pending |
-| UI-IMP-05 | TBD | Pending |
-| UI-IMP-06 | TBD | Pending |
-| UI-IMP-07 | TBD | Pending |
-| UI-IMP-08 | TBD | Pending |
-| UI-GIFT-01 | TBD | Pending |
-| UI-GIFT-02 | TBD | Pending |
-| UI-GIFT-03 | TBD | Pending |
-| UI-GIFT-04 | TBD | Pending |
-| UI-GIFT-05 | TBD | Pending |
-| UI-GIFT-06 | TBD | Pending |
-| UI-GIFT-07 | TBD | Pending |
-| PRAY-01 | TBD | Pending |
-| PRAY-02 | TBD | Pending |
-| PRAY-03 | TBD | Pending |
-| PRAY-04 | TBD | Pending |
-| PRAY-05 | TBD | Pending |
-| DASH-01 | TBD | Pending |
-| DASH-02 | TBD | Pending |
+| MODEL-01 | Phase 27 | Pending |
+| MODEL-02 | Phase 27 | Pending |
+| MODEL-03 | Phase 27 | Pending |
+| MODEL-04 | Phase 27 | Pending |
+| MODEL-05 | Phase 27 | Pending |
+| MODEL-06 | Phase 27 | Pending |
+| MODEL-07 | Phase 27 | Pending |
+| MODEL-08 | Phase 27 | Pending |
+| IMP-01 | Phase 28 | Pending |
+| IMP-02 | Phase 28 | Pending |
+| IMP-03 | Phase 29 | Pending |
+| IMP-04 | Phase 29 | Pending |
+| IMP-05 | Phase 28 | Pending |
+| IMP-06 | Phase 28 | Pending |
+| IMP-07 | Phase 28 | Pending |
+| IMP-08 | Phase 35 | Pending |
+| IMP-09 | Phase 35 | Pending |
+| IMP-10 | Phase 29 | Pending |
+| MIG-01 | Phase 30 | Pending |
+| MIG-02 | Phase 30 | Pending |
+| MIG-03 | Phase 30 | Pending |
+| MIG-04 | Phase 30 | Pending |
+| MIG-05 | Phase 30 | Pending |
+| UI-IMP-01 | Phase 32 | Pending |
+| UI-IMP-02 | Phase 32 | Pending |
+| UI-IMP-03 | Phase 32 | Pending |
+| UI-IMP-04 | Phase 32 | Pending |
+| UI-IMP-05 | Phase 32 | Pending |
+| UI-IMP-06 | Phase 32 | Pending |
+| UI-IMP-07 | Phase 32 | Pending |
+| UI-IMP-08 | Phase 32 | Pending |
+| UI-GIFT-01 | Phase 31 | Pending |
+| UI-GIFT-02 | Phase 31 | Pending |
+| UI-GIFT-03 | Phase 31 | Pending |
+| UI-GIFT-04 | Phase 31 | Pending |
+| UI-GIFT-05 | Phase 31 | Pending |
+| UI-GIFT-06 | Phase 31 | Pending |
+| UI-GIFT-07 | Phase 31 | Pending |
+| PRAY-01 | Phase 33 | Pending |
+| PRAY-02 | Phase 33 | Pending |
+| PRAY-03 | Phase 33 | Pending |
+| PRAY-04 | Phase 33 | Pending |
+| PRAY-05 | Phase 33 | Pending |
+| DASH-01 | Phase 34 | Pending |
+| DASH-02 | Phase 31 | Pending |
+| AUDIT-01 | Phase 36 | Pending |
 
 **Coverage:**
-- v2.0 requirements: 38 total
-- Mapped to phases: 0
-- Unmapped: 38
+- v2.0 requirements: 46 total
+- Mapped to phases: 46
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-20*
-*Last updated: 2026-02-20 after initial definition*
+*Last updated: 2026-02-20 after roadmap creation (all requirements mapped to phases)*
