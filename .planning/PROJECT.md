@@ -68,7 +68,22 @@ Missionaries can manage donor relationships efficiently, with accurate data impo
 
 ### Active
 
-No active requirements. Use `/gsd:new-milestone` to define the next milestone.
+## Current Milestone: v2.0 — Import Revamp, Prayer Intentions & Dashboard Polish
+
+**Goal:** Replace the existing import/donation/pledge system with a Raiser's Edge-compatible import pipeline, add prayer intentions tracking, and make dashboard tiles draggable.
+
+**Target features:**
+- Raiser's Edge CSV import (4 types: Constituent, Solicitor, Gift, Recurring Gift)
+- Generic CSV import layer (contacts, donations)
+- Gift/RecurringGift models replacing Donation/Pledge
+- Solicitor model with auto-linking to User accounts
+- SHA256-based import deduplication (ImportBatch)
+- Gift credit splitting (one gift credits multiple missionaries)
+- Data migration: existing Donations → Gifts, Pledges → RecurringGifts
+- Prayer Intentions tied to contacts (with auto-creation from RE gift prayer descriptions)
+- Draggable dashboard tiles (session-only, no persistence)
+- UI rename: "Donations" → "Gifts", "Pledges" → "Recurring Gifts"
+- Update all dependent features (dashboard, contact stats, list pages, filters, exports)
 
 ### Out of Scope
 
@@ -157,4 +172,4 @@ No active requirements. Use `/gsd:new-milestone` to define the next milestone.
 | Duplicate user names → unmatched (v1.3) | Ambiguous match is worse than no match; admin resolves manually | ✓ Good |
 
 ---
-*Last updated: 2026-02-19 after v1.3 milestone*
+*Last updated: 2026-02-20 after v2.0 milestone started*
