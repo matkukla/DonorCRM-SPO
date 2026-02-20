@@ -11,16 +11,16 @@ See: .planning/PROJECT.md (updated 2026-02-20)
 
 Milestone: v2.0 -- Import Revamp, Prayer Intentions & Dashboard Polish
 Phase: 27 of 36 (Foundation Models)
-Plan: 1 of 2 in current phase
-Status: Executing
-Last activity: 2026-02-20 -- Completed 27-01 (Gifts App Models)
+Plan: 2 of 2 in current phase (COMPLETE)
+Status: Phase Complete
+Last activity: 2026-02-20 -- Completed 27-02 (ImportBatch, PrayerIntention, Contact Updates)
 
-Progress: [████████████████░░░░░░░░░░░░░░░░] 50% (1/2 plans in phase 27)
+Progress: [████████████████████████████████] 100% (2/2 plans in phase 27)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 77 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3)
+- Total plans completed: 79 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3 + 2 v2.0)
 - Average duration: ~3.8 minutes
 - Total execution time: ~4.9 hours
 
@@ -33,6 +33,7 @@ Progress: [████████████████░░░░░░░
 | v1.2 (Phases 13-19) | 18 | 108m 48s | 6.0 min |
 | v1.3 (Phases 20-26) | 20 | ~75 min | ~3.8 min |
 | Phase 27 P01 | 2min | 2 tasks | 5 files |
+| Phase 27 P02 | 3min | 2 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -44,6 +45,9 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 - [Phase 27]: Solicitor FK uses PROTECT delete to preserve credit history
 - [Phase 27]: Money fields use PositiveBigIntegerField (cents) with Decimal amount_dollars property
 - [Phase 27]: RecurringGift uses RE-compatible statuses (Active/Held/Completed/Cancelled/Terminated) and extended frequencies
+- [Phase 27]: ImportBatch coexists with ImportRun (no replacement); SHA256 dedup per import_type
+- [Phase 27]: PrayerIntention.contact is required (not nullable) per user decision
+- [Phase 27]: Contact.external_constituent_id uses conditional UniqueConstraint (non-empty only)
 
 ### Pending Todos
 
@@ -66,9 +70,9 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 27-01-PLAN.md (Gifts App Models)
-Resume: Execute 27-02-PLAN.md (ImportBatch, PrayerIntention, Contact updates, migrations)
+Stopped at: Completed 27-02-PLAN.md (ImportBatch, PrayerIntention, Contact Updates)
+Resume: Phase 27 complete. Next: Phase 28 (RE Import)
 
 ---
 
-*Last updated: 2026-02-20 (27-01 complete)*
+*Last updated: 2026-02-20 (27-02 complete, Phase 27 complete)*
