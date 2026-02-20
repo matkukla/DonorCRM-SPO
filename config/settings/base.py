@@ -49,6 +49,7 @@ LOCAL_APPS = [
     'apps.dashboard',
     'apps.imports',
     'apps.gifts',
+    'apps.prayers',
     'apps.journals',
     'apps.insights',
 ]

@@ -3,7 +3,10 @@ Admin configuration for import infrastructure models.
 """
 from django.contrib import admin
 
-from apps.imports.models import Fund, ImportRun, ImportRowError, MPDUpload, MPDSnapshot
+from apps.imports.models import (
+    Fund, ImportRun, ImportRowError, ImportBatch, ImportBatchType, ImportBatchStatus,
+    MPDUpload, MPDSnapshot
+)
 
 
 @admin.register(Fund)
@@ -35,6 +38,20 @@ class ImportRowErrorAdmin(admin.ModelAdmin):
     list_display = ['id', 'import_run', 'row_number', 'created_at']
     list_filter = ['import_run__type']
     readonly_fields = ['id', 'created_at', 'updated_at', 'error_messages', 'row_data']
+
+
+@admin.register(ImportBatch)
+class ImportBatchAdmin(admin.ModelAdmin):
+    """Admin configuration for ImportBatch model."""
+    list_display = [
+        'id', 'import_type', 'status', 'filename',
+        'total_rows', 'created_count', 'updated_count', 'error_count',
+        'uploaded_by', 'created_at'
+    ]
+    list_filter = ['import_type', 'status', 'uploaded_by']
+    search_fields = ['filename', 'sha256_hash']
+    readonly_fields = ['id', 'created_at', 'updated_at', 'summary']
+    date_hierarchy = 'created_at'
 
 
 @admin.register(MPDUpload)
