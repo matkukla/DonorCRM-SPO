@@ -73,7 +73,7 @@ See milestones/v1.3-ROADMAP.md for complete phase details.
 
 **Milestone Goal:** Replace the existing Donation/Pledge system with Gift/RecurringGift models, build a Raiser's Edge CSV import pipeline, add prayer intentions tracking, and make dashboard tiles draggable.
 
-- [ ] **Phase 27: Foundation Models** - Create Gift, RecurringGift, Solicitor, GiftCredit, ImportBatch, and PrayerIntention models with migrations
+- [x] **Phase 27: Foundation Models** - Create Gift, RecurringGift, Solicitor, GiftCredit, ImportBatch, and PrayerIntention models with migrations (completed 2026-02-20)
 - [ ] **Phase 28: RE Import Pipeline (Constituents & Solicitors)** - Build shared RE utilities and Constituent/Solicitor importers with encoding detection and SHA256 dedup
 - [ ] **Phase 29: RE Import Pipeline (Gifts & Recurring Gifts)** - Build Gift/Recurring Gift importers with multi-row grouping and prayer auto-creation
 - [ ] **Phase 30: Data Migration & Backend Cutover** - Migrate Donation to Gift, Pledge to RecurringGift, update all backend services to use new models
@@ -222,7 +222,7 @@ Note: Phase 30 depends on Phase 27 only (not 28/29), so it could run after 27. H
 | 7-12 | v1.1 | 15/15 | Complete | 2026-02-04 |
 | 13-19 | v1.2 | 18/18 | Complete | 2026-02-16 |
 | 20-26 | v1.3 | 20/20 | Complete | 2026-02-19 |
-| 27. Foundation Models | v2.0 | 1/2 | In Progress | - |
+| 27. Foundation Models | 2/2 | Complete   | 2026-02-20 | - |
 | 28. RE Import (Const & Sol) | v2.0 | 0/? | Not started | - |
 | 29. RE Import (Gifts) | v2.0 | 0/? | Not started | - |
 | 30. Data Migration & Cutover | v2.0 | 0/? | Not started | - |
