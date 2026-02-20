@@ -188,6 +188,97 @@ class ImportRowError(TimeStampedModel):
         return f'Row {self.row_number}: {len(self.error_messages)} errors'
 
 
+class ImportBatchType(models.TextChoices):
+    """Types of import batches for RE and generic imports."""
+    RE_CONSTITUENT = 're_constituent', 'RE Constituent'
+    RE_SOLICITOR = 're_solicitor', 'RE Solicitor'
+    RE_GIFT = 're_gift', 'RE Gift'
+    RE_RECURRING_GIFT = 're_recurring_gift', 'RE Recurring Gift'
+    GENERIC_CONTACTS = 'generic_contacts', 'Generic Contacts'
+    GENERIC_DONATIONS = 'generic_donations', 'Generic Donations'
+    SMARTSHEET_MPD = 'smartsheet_mpd', 'Smartsheet MPD'
+
+
+class ImportBatchStatus(models.TextChoices):
+    """Processing status of an import batch."""
+    PENDING = 'pending', 'Pending'
+    PROCESSING = 'processing', 'Processing'
+    COMPLETED = 'completed', 'Completed'
+    FAILED = 'failed', 'Failed'
+    DUPLICATE = 'duplicate', 'Duplicate (already processed)'
+
+
+class ImportBatch(TimeStampedModel):
+    """
+    Universal import tracking model with SHA256 file dedup.
+
+    Tracks all import types (RE, generic CSV, Smartsheet) with status,
+    row counts, and a SHA256 hash unique per import type to prevent
+    duplicate file processing.
+    """
+    import_type = models.CharField(
+        'import type',
+        max_length=30,
+        choices=ImportBatchType.choices,
+        db_index=True
+    )
+    status = models.CharField(
+        'status',
+        max_length=20,
+        choices=ImportBatchStatus.choices,
+        default=ImportBatchStatus.PENDING
+    )
+    filename = models.CharField('filename', max_length=255)
+    sha256_hash = models.CharField(
+        'SHA256 hash',
+        max_length=64,
+        db_index=True,
+        help_text='SHA256 hex digest for duplicate detection'
+    )
+
+    # Row counts
+    total_rows = models.PositiveIntegerField('total rows', default=0)
+    created_count = models.PositiveIntegerField('created count', default=0)
+    updated_count = models.PositiveIntegerField('updated count', default=0)
+    skipped_count = models.PositiveIntegerField('skipped count', default=0)
+    error_count = models.PositiveIntegerField('error count', default=0)
+
+    # Type-specific metadata
+    summary = models.JSONField(
+        'summary',
+        default=dict,
+        blank=True,
+        help_text='Type-specific import metadata and results'
+    )
+
+    # User tracking
+    uploaded_by = models.ForeignKey(
+        'users.User',
+        on_delete=models.PROTECT,
+        related_name='import_batches',
+        verbose_name='uploaded by'
+    )
+
+    class Meta:
+        db_table = 'import_batches'
+        verbose_name = 'import batch'
+        verbose_name_plural = 'import batches'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['uploaded_by', '-created_at']),
+            models.Index(fields=['import_type', 'status']),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['import_type', 'sha256_hash'],
+                name='unique_import_batch_hash_per_type'
+            )
+        ]
+
+    def __str__(self):
+        return f'{self.get_import_type_display()} by {self.uploaded_by} ({self.status})'
+
+
 class MPDUpload(TimeStampedModel):
     """Audit trail for each Smartsheet MPD report upload."""
     uploaded_by = models.ForeignKey(

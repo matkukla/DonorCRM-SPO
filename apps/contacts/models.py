@@ -41,6 +41,23 @@ class Contact(TimeStampedModel):
         help_text='Entity ID from external system (e.g., SPO)'
     )
 
+    # External ID for RE constituent imports
+    external_constituent_id = models.CharField(
+        'external constituent ID',
+        max_length=100,
+        blank=True,
+        db_index=True,
+        help_text='Constituent ID from Raiser\'s Edge'
+    )
+
+    # Organization name for organization constituents
+    organization_name = models.CharField(
+        'organization name',
+        max_length=255,
+        blank=True,
+        help_text='Organization name (for organization-type constituents)'
+    )
+
     # Basic information
     first_name = models.CharField('first name', max_length=150)
     last_name = models.CharField('last name', max_length=150)
@@ -118,7 +135,12 @@ class Contact(TimeStampedModel):
                 fields=['owner', 'external_id'],
                 name='unique_contact_external_id_per_owner',
                 condition=~models.Q(external_id='')
-            )
+            ),
+            models.UniqueConstraint(
+                fields=['external_constituent_id'],
+                name='unique_external_constituent_id',
+                condition=~models.Q(external_constituent_id='')
+            ),
         ]
 
     def __str__(self):
