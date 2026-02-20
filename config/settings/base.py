@@ -48,6 +48,7 @@ LOCAL_APPS = [
     'apps.events',
     'apps.dashboard',
     'apps.imports',
+    'apps.gifts',
     'apps.journals',
     'apps.insights',
 ]
