@@ -1,393 +1,405 @@
-# Feature Research
+# Feature Landscape
 
-**Domain:** Smartsheet Import, List Page Filtering, Quality Audit
-**Researched:** 2026-02-16
-**Confidence:** HIGH
-
-## Feature Landscape
-
-### Category 1: Smartsheet File Import with Column Mapping
-
-#### Table Stakes
-
-| Feature | Why Expected | Complexity | Depends On |
-|---------|--------------|------------|------------|
-| **Excel (.xlsx) + CSV file upload** | Smartsheet exports are .xlsx by default, CSV as fallback. Users expect both formats. | LOW | Existing `MultiPartParser` in import views; add openpyxl for .xlsx |
-| **Column mapping UI with dropdown selects** | Smartsheet column names never match CRM fields. Every import tool (Salesforce, HubSpot, Airtable) shows source-to-target mapping. Users expect to see their Excel headers paired with dropdowns of CRM fields. | MEDIUM | Backend must expose field schema per import type; frontend needs new ColumnMapper component |
-| **Data preview after mapping** | Users need to verify that "Full Name" correctly mapped to `full_name` before committing. Show first 5-10 rows with mapped columns. | LOW | Reuse existing CSVPreviewTable pattern; feed it mapped data instead of raw CSV |
-| **Row-level validation with error CSV download** | When row 42 has an invalid email, user needs to know which row and what's wrong. Existing pattern already does this for SPO imports. | LOW | Reuse ImportRowError model and error CSV download; no new work |
-| **File format detection** | Detect .xlsx vs .csv automatically from file content (magic bytes), not just extension. Users rename files. | LOW | Check `PK` magic bytes for .xlsx, fall back to CSV parsing |
-| **Formula injection prevention on import** | Cells starting with `=`, `+`, `-`, `@` must be sanitized. Existing exports have this (services.py:521), but imports do NOT. Security table stakes. | LOW | Add FORMULA_PREFIXES check to Smartsheet parser, matching existing export sanitization |
-
-#### Differentiators
-
-| Feature | Value Proposition | Complexity | Depends On |
-|---------|-------------------|------------|------------|
-| **Auto-detect column mappings** | Fuzzy match "Email Address" to `email`, "First Name" to `first_name`. Saves 80% of manual mapping work for common headers. Uses difflib.SequenceMatcher with pattern dictionaries. | LOW-MEDIUM | Column mapping UI must exist first; auto-detect populates dropdowns with suggestions |
-| **Mapping confidence indicators** | GREEN checkmark for high-confidence matches (>0.8), YELLOW for medium (>0.6), RED for low/unmapped. User immediately sees what needs attention. | LOW | Auto-detect must return confidence scores |
-| **Save/reuse column mapping templates** | Users importing from same Smartsheet repeatedly save hours. Store in localStorage keyed by import type. | MEDIUM | Column mapping UI must exist; localStorage persistence layer |
-| **Import type selection in Smartsheet flow** | User picks "Contacts", "Donations", "Pledges" as the target type. Different types have different target fields. | LOW | Backend field schema endpoint must support all 4 types |
-
-#### Anti-Features
-
-| Feature | Why Requested | Why Problematic | Alternative |
-|---------|---------------|-----------------|-------------|
-| **Multi-sheet Excel import** | "My Smartsheet export has multiple tabs" | Tab selection UI adds complexity; user confusion about which tab maps to which type; error surface multiplies | **Document single-sheet export.** Most Smartsheet exports are single-sheet. Show clear error: "This file has 3 sheets. Please export a single sheet." |
-| **Drag-and-drop column mapping** | "I want to drag Excel columns onto CRM fields" | HIGH implementation cost with @dnd-kit. Accessibility nightmare (keyboard, screen reader, mobile). Dropdown mapping covers 100% of use cases with 30% of the effort. | **Dropdown selects per row.** Source column name displayed as label, target field as dropdown. Same result, fully accessible, less code. |
-| **Import undo/rollback** | "What if I import wrong data?" | Requires transaction history, unclear semantics (what if data was already edited after import?), database complexity | **Validate-first workflow** (already built). Preview mapped data, validate all rows, show errors. Only commit after user confirms. |
-| **Formula/computed column import** | "My Excel has formulas that calculate totals" | Excel formulas don't transfer -- openpyxl with `data_only=True` reads computed values. Evaluating formulas is a security risk. | **Import evaluated values only.** Use `load_workbook(data_only=True)`. Document that formulas import as their last-calculated values. |
-| **Real-time import progress bar** | "Show me 37% complete" | WebSocket/SSE infrastructure for <2 second operations. Imports for typical missionary data (500-2000 rows) complete in under 2 seconds. | **Spinner with "Importing X rows..."** Already implemented in ImportDialog. Add Celery with progress only when files exceed 5000 rows. |
+**Domain:** DonorCRM v2.0 -- RE Import, Gift Credits, Prayer Intentions, Draggable Dashboard
+**Researched:** 2026-02-20
+**Overall confidence:** HIGH (exact CSV headers, data model specs, and UX requirements confirmed via project prompts and external research)
 
 ---
 
-### Category 2: Comprehensive List Page Filters
+## 1. Raiser's Edge CSV Import Pipeline
 
-**Current state of each list page:**
+### Context
 
-| Page | Current Filters | Current Pattern | What's Missing |
-|------|----------------|-----------------|----------------|
-| **ContactList** | search, status dropdown, needs_thank_you toggle | URL params via useSearchParams, server-side via DjangoFilterBackend | Date range (created_at, last_gift_date), group filter, owner filter (admin), amount range (total_given) |
-| **DonationList** | search, donation_type dropdown, thanked dropdown | URL params via useSearchParams, server-side via DjangoFilterBackend | Date range (date), amount range (amount), payment_method dropdown, fund filter |
-| **JournalList** | NONE (just a card grid) | No filtering, no search, no URL params | Search by name, date range (created_at), is_archived toggle. NOTE: JournalList is a card grid, not a table -- filter pattern needs to work with grid layout. |
-| **PledgeList** | status dropdown, is_late toggle | URL params via useSearchParams | Search by donor name, frequency filter, amount range, date range (start_date) |
-| **Transactions (Insights)** | date_from/date_to via useState | Component state (NOT URL params -- bug). Loses state on refresh. | Convert to URL params. Add donation_type, payment_method, amount range, donor search. |
+The existing SPO import system (Funds, Entities, Transactions, Pledges) is being **replaced** with a Raiser's Edge-compatible pipeline. The new system imports 4 CSV types that RE admins export daily (5 days/week). The exact CSV headers are fixed -- they come from Raiser's Edge and cannot be modified.
 
-#### Table Stakes
+### Table Stakes
 
-| Feature | Why Expected | Complexity | Depends On |
-|---------|--------------|------------|------------|
-| **Date range filter (start + end)** | Time-based data (donations, journals, transactions) universally needs date filtering. Every financial app has this. | MEDIUM | New DateRangePicker component using existing react-day-picker; backend already supports `__gte`/`__lte` lookups |
-| **Amount range filter (min/max)** | Donations and pledges need financial filtering. "Show me all donations over $500." | LOW | Two number inputs; backend `amount__gte`/`amount__lte` via django-filter |
-| **Status/category dropdown filters** | ContactList has status, DonationList has type/thanked. Extend to all pages with consistent UX. | LOW | Existing DropdownMenu pattern in ContactList and DonationList; replicate to JournalList, PledgeList |
-| **Clear all filters button** | When 4+ filters are active, users need one-click reset. | LOW | Reset all URL params to defaults; show only when filters are active |
-| **Filter state in URL params (all pages)** | Filters must survive refresh, be bookmarkable, be shareable. Transactions page currently uses useState -- this is a bug. | LOW | Convert Transactions page from useState to useSearchParams; JournalList needs URL params added |
-| **Search on all list pages** | Text search by name/email/donor is expected on every list. JournalList has no search. | LOW | Backend `search_fields` already configured for most views; add to JournalList backend and frontend |
-| **Server-side filtering for all pages** | Client-side filtering breaks at 100+ items. All filtering must go through API. JournalList currently loads all journals client-side. | MEDIUM | JournalList backend needs `filterset_fields` extended; ensure all queries include `select_related`/`prefetch_related` |
+Features users (admins importing CSVs) absolutely expect.
 
-#### Differentiators
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| 4 CSV type support (Constituent, Solicitor, Gift, Recurring Gift) | These are the exact exports RE produces | High | Each type has different headers, validation rules, and FK relationships |
+| Exact RE header matching | Headers come from RE exports, cannot be changed | Low | Must match exactly: "Constituent ID", "Gift Date", "Fund Split Amount", etc. |
+| SHA256 file deduplication (ImportBatch) | Admins upload daily; same file must not be re-imported | Med | UNIQUE(type, sha256) constraint prevents duplicate processing |
+| Row-level error collection (continue on error) | Admin needs to see ALL errors at once, not one-at-a-time | Med | Never stop on row error -- process all rows, collect errors, return report |
+| Import order enforcement (Constituents -> Solicitors -> Gifts -> Recurring Gifts) | Gifts reference Constituents by external ID; must exist first | Low | UI displays order, Gift import skips rows where Constituent ID is missing |
+| Gift row grouping by Gift ID | RE exports multiple rows per gift (one per solicitor credit) | High | Must GROUP by Gift ID, create one Gift record + multiple GiftCredit records |
+| Idempotent upserts via external IDs | Safe to run daily without duplicating data | Med | Match by externalGiftId/externalConstituentId, update if exists |
+| Import result reporting (created/updated/skipped/errors) | Admin needs to know what happened | Low | Return totals object + row-level errors with row numbers |
+| Already-processed detection | Re-uploading same file should tell admin it was already imported | Low | SHA256 match returns cached result with alreadyProcessed flag |
 
-| Feature | Value Proposition | Complexity | Depends On |
-|---------|-------------------|------------|------------|
-| **Filter presets (quick buttons)** | "Needs Thank You", "This Month", "Late Pledges", "Stalled Contacts" -- one-click common filter combinations. Reduces cognitive load for daily workflows. | LOW | Filter infrastructure must exist; presets are just pre-configured URL params |
-| **Active filter summary badges** | "5 filters applied: Status=Donor, Date=Last 30 days..." above the table. Users forget what's active. | LOW | Read from URL params, render Badge components |
-| **Export filtered results to CSV** | Download only what you see after filtering. "Export my filtered donor list." | LOW | Reuse existing CSV export; pass current filter params to export endpoint |
-| **Group filter for contacts** | Filter contacts by group membership. "Show me all contacts in my 'Church Partners' group." | MEDIUM | Backend needs M2M filter through `groups` table; may need custom FilterSet |
-| **Owner filter (admin only)** | Admin filters contacts/donations by missionary. "Show me John's contacts." | LOW | Backend: add `owner` to admin-only FilterSet. Frontend: show owner dropdown only for admin role. SECURITY: must NOT be accessible to non-admin users (PITFALL from EDGE_CASE_AUDIT.md 2.2) |
+### Differentiators
 
-#### Anti-Features
+Features that set the import apart from basic CSV upload.
 
-| Feature | Why Requested | Why Problematic | Alternative |
-|---------|---------------|-----------------|-------------|
-| **Advanced query builder (AND/OR logic)** | "I want contacts who are donors AND gave >$500 OR are in group X" | Overwhelming UI for 90% of users. Massive implementation cost. Creates usability issues (users build broken queries). | **Stacked filters with implicit AND.** Covers 95% of use cases. Status=Donor + Amount>500 implicitly ANDs. |
-| **Saved filters to database** | "Save my filter combinations across devices" | Requires new UserPreference model, migrations, API endpoints. URL params are already shareable and bookmarkable. | **URL params are the save mechanism.** Users can bookmark filtered views. Browser sync handles cross-device. |
-| **Multi-select dropdowns for all filters** | "I want to see Donors AND Major Donors at once" | Complicates URL param serialization, backend query logic, and UI state management. Marginal value. | **Single-select dropdowns for v1.3.** If user feedback demands multi-select, add for highest-demand filters only in v1.4. |
-| **Client-side column sorting** | "Let me sort by clicking column headers" | Breaks pagination. If server returns page 1 of 500 results sorted by date, client-side re-sorting only re-sorts those 20 rows. Misleading. | **Server-side ordering** via `OrderingFilter` (already configured in most backend views). Add sort controls to frontend that pass `ordering` param. |
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| Prayer intention auto-creation from gift descriptions | RE "Gift Specific Attributes Prayer Requests Description" field creates PrayerIntention records automatically | Med | Unique to missionary CRM -- connects financial data to spiritual care |
+| Solicitor-to-User auto-linking | Match imported Solicitor names to existing User accounts (missionaries) | Med | normalizedName matching; enables gift credit attribution to actual users |
+| Merge-only updates (never overwrite with null) | Existing data preserved when RE export has empty fields | Low | Critical for maintaining manually-entered data alongside imports |
+| Generic CSV import layer (contacts, donations) | For orgs not using RE, or for manual data entry via CSV | Med | Separate from RE pipeline; user-scoped processing |
+
+### Anti-Features
+
+Features to explicitly NOT build for v2.0.
+
+| Anti-Feature | Why Avoid | What to Do Instead |
+|--------------|-----------|-------------------|
+| Import undo/rollback | Massive complexity, ImportBatch records are immutable | Admin re-uploads corrected file; SHA256 dedup prevents exact-file reprocessing |
+| Automated RE API connection | Requires Blackbaud API credentials, OAuth setup, rate limiting | Manual CSV upload is sufficient for daily workflow |
+| Column mapping UI for RE imports | RE headers are fixed and known; mapping adds unnecessary complexity | Validate exact headers, reject if missing |
+| Async/Celery import processing | Overkill for the file sizes being imported (<10MB, <5000 rows) | Synchronous processing with file size limit (10 MB) |
+| Import scheduling/cron | Admin manually exports from RE daily | Manual upload with Import Center UI |
+
+### Exact CSV Headers (from project specs -- HIGH confidence)
+
+**Constituent CSV:**
+- Constituent Date Last Changed, Constituent ID, First Name, Last Name, Organization Name, Address Line 1, Address Line 2, City, State, ZIP, Country, Phone, Email
+
+**Solicitor CSV:**
+- Name
+
+**Gift CSV:**
+- Gift ID, Gift Date Last Changed, Gift Date, Gift Type, Fund ID, Fund Split Amount, Constituent ID, Gift Is Anonymous, Solicitor Name, Solicitor Amount, Gift Payment Type, Gift Specific Attributes Prayer Requests Description
+
+**Recurring Gift CSV:**
+- Gift ID, Gift Date Last Changed, Gift Date, Gift Type, Gift First Installment Due, Last Installment/Payment Date Due, Gift Installment Frequency, Number of Installments Scheduled, Gift First Installment Due_1, Fund ID, Constituent ID, Gift Is Anonymous, Solicitor Name, Solicitor Amount, Gift Payment Type, Gift Status, Gift Status Date, Gift Specific Attributes Prayer Requests Description
 
 ---
 
-### Category 3: Quality Audit (Security, Dark Mode, Code Quality, Performance)
+## 2. Gift Credit Splitting
 
-**Current state of issues (from EDGE_CASE_AUDIT.md):**
+### Context
 
-| Issue | Severity | Category | Lines to Fix |
-|-------|----------|----------|-------------|
-| Journal grid N+1 queries (351 queries/page) | CRITICAL | Performance | ~40 lines |
-| ListAPIView permission bypass | CRITICAL | Security | ~10 lines |
-| Cross-user contact access in stage events | CRITICAL | Security | 1 line |
-| 59 hardcoded color instances across 13 files | HIGH | Dark Mode | ~59 replacements |
-| Float arithmetic in monthly_equivalent | MODERATE | Code Quality | ~5 lines |
-| Stats not updated on donation edit | MODERATE | Data Integrity | ~3 lines |
-| Dashboard GET side effect | MODERATE | UX | ~10 lines |
-| No frontend route guards for roles | HIGH | Security/UX | ~20 lines |
+In Raiser's Edge, one gift can credit multiple missionaries (solicitors). The RE CSV exports this as **multiple rows with the same Gift ID** but different Solicitor Name/Solicitor Amount values. This is the core data relationship that makes DonorCRM valuable for missionary organizations -- each missionary sees the gifts they are credited for, even when the donor gave to a shared fund.
 
-#### Table Stakes
+### Table Stakes
 
-| Feature | Why Expected | Complexity | Depends On |
-|---------|--------------|------------|------------|
-| **Fix ListAPIView permission bypass** | Any authenticated user can view other users' donations/pledges by UUID. Active security vulnerability. Must fix before adding filters (filters would widen the attack surface). | LOW | Fix `get_queryset()` in ContactDonationsView, ContactPledgesView, ContactJournalEventsView to scope by owner |
-| **Fix cross-user contact access in stage events** | Any user can link another user's contact to their journal. 1-line fix. | LOW | Change line 221 in journals/serializers.py to `Contact.objects.get(id=contact_id, owner=user)` |
-| **Dark mode color audit -- fix hardcoded colors** | 59 hardcoded color instances (bg-blue-50, text-green-700, border-red-200, etc.) across 13 files. These render invisible or unreadable in dark mode. Toggle exists, but new features break in dark mode. | MEDIUM | Scan all .tsx files; replace hardcoded colors with semantic Tailwind classes (bg-blue-50 -> bg-blue-50 dark:bg-blue-950/50) or CSS variables |
-| **WCAG contrast compliance in dark mode** | WCAG 2.1 SC 1.4.3 requires 4.5:1 contrast for normal text, 3:1 for large text/UI. Dark mode must meet same standard. Not optional -- accessibility requirement. | MEDIUM | Depends on fixing hardcoded colors first; then test contrast ratios with WebAIM Contrast Checker |
-| **Fix N+1 queries in journal grid** | 351 queries per page load with 50 contacts. Will become unusable at scale. Must fix before adding journal filters (filters increase query load). | MEDIUM | Add `prefetch_related('stage_events', 'decisions')` to JournalContactListCreateView.get_queryset(); rewrite serializer to use prefetched data |
-| **File size limits on upload endpoints** | No `DATA_UPLOAD_MAX_MEMORY_SIZE` configured. 50MB upload crashes server (512MB Render free tier). Must fix before adding Smartsheet import. | LOW | Add `DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024` to settings; add explicit size check in views |
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| GiftCredit junction model (Gift <-> Solicitor many-to-many) | One gift credits multiple missionaries | Med | Fields: giftId, solicitorId, solicitorName, solicitorAmountCents |
+| RecurringGiftCredit (same pattern for recurring gifts) | Recurring gifts also have multiple solicitor credits | Med | Identical structure to GiftCredit but FK to RecurringGift |
+| Credit amounts in cents | Each solicitor's credited amount may differ from total gift amount | Low | e.g., $200 gift with $100 to Missionary A and $100 to Missionary B |
+| Display credits on gift detail | Missionary sees who else was credited for same gift | Low | List of solicitor names + amounts on gift detail view |
+| Per-missionary gift totals | Each missionary sees total gifts credited to them | Med | SUM(GiftCredit.solicitorAmountCents) WHERE solicitorId matches User |
+| Owner-scoped gift visibility | Missionaries see gifts credited to them, admin sees all | Med | Filter gifts through GiftCredit -> Solicitor -> User relationship |
 
-#### Differentiators
+### Differentiators
 
-| Feature | Value Proposition | Complexity | Depends On |
-|---------|-------------------|------------|------------|
-| **Fix float arithmetic in monthly_equivalent** | Penny discrepancies in dashboard totals. Not a crash, but missionary sees $83.32 instead of $83.33. Trust issue. | LOW | Replace `float(self.amount) * multiplier` with `Decimal(str(self.amount)) * Decimal(str(multiplier))` in pledges/models.py |
-| **Frontend route guards for roles** | read_only user navigates to /contacts/new, fills out form, submits, gets 403. Wasted time. | LOW | Check `user.role` in router config; redirect or show "not authorized" before rendering forms |
-| **Fix dashboard GET side effect** | Events marked as "seen" on every GET request, before user actually reads them. | LOW | Move `mark_events_as_not_new()` to separate POST endpoint |
-| **React Error Boundary** | Unhandled error = white screen, no recovery. Users must refresh. | LOW | Add Error Boundary at app root with fallback UI |
-| **Fix donation edit stat refresh** | Finance user corrects $500 to $50, contact stats stay stale until next donation. | LOW | Remove `if not created: return` guard in donations/signals.py |
-| **CSV export formula sanitization** | Exported CSVs with unsanitized data are a CSV injection vector. Import sanitizes, export doesn't. | LOW | Prefix `=`, `+`, `-`, `@` in export functions (5 lines) |
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| Visual credit breakdown on gift card | Show "You: $100 / Total: $200" with proportional bar | Low | Makes split nature immediately clear |
+| Dashboard summary using credited amounts | Dashboard shows missionary's credited total, not raw gift total | Med | Must aggregate through GiftCredit, not Gift directly |
+| Solicitor-to-User auto-linking | Solicitor records auto-link to User accounts by normalized name matching | Med | Enables "my gifts" view without manual assignment |
 
-#### Anti-Features
+### Anti-Features
 
-| Feature | Why Requested | Why Problematic | Alternative |
-|---------|---------------|-----------------|-------------|
-| **Automated visual regression testing** | "Catch dark mode regressions in CI" | Significant setup cost (Playwright screenshots, baseline management, flaky tests). Overkill for 13 files with hardcoded colors. | **Manual dark mode checklist per PR.** Toggle dark mode, screenshot each affected page. Add to PR template: "Tested in dark mode? Y/N" |
-| **Full OWASP penetration test** | "We should do a security audit" | Professional pentest costs $5-20k, overkill for a missionary CRM with <200 users. | **Targeted audit of known issues** from EDGE_CASE_AUDIT.md. Fix the 3 security vulnerabilities identified. Add `ruff` for code quality. Run `bandit` for Python security linting. |
-| **Performance profiling infrastructure** | "Set up APM monitoring" | New Relic/Datadog costs money, adds complexity. Most performance issues are known N+1 patterns. | **Django Debug Toolbar in dev.** Profile specific endpoints before and after filter changes. Measure query count, not response time. |
+| Anti-Feature | Why Avoid | What to Do Instead |
+|--------------|-----------|-------------------|
+| Manual credit splitting UI | Credits come from RE imports, not manual entry | Import-only creation; manual gifts use existing Donation model |
+| Percentage-based splits | RE provides absolute amounts per solicitor | Store cents, not percentages |
+| Credit editing | Would desync from RE data on next import | Credits are immutable once imported; re-import to update |
+
+### UI Display Pattern
+
+Based on nonprofit CRM research (Beacon CRM, Neon CRM, Salesforce NPSP), the standard pattern for displaying gift credits is:
+
+**Gift Detail View:**
+```
+Gift #G003 -- $200.00 -- 01/17/2024
+  Donor: John Smith
+  Fund: FUND002
+
+  Credit Split:
+  +---------------------+----------+
+  | Missionary          | Amount   |
+  +---------------------+----------+
+  | John Missionary     | $100.00  |
+  | Jane Evangelist     | $100.00  |
+  +---------------------+----------+
+```
+
+**Gift List View (per missionary):**
+- Show only gifts where the current user has a GiftCredit record
+- Display the solicitor amount (credited amount), not the total gift amount
+- Badge or indicator when gift is split across multiple missionaries
+
+---
+
+## 3. Prayer Intentions
+
+### Context
+
+Missionaries are called to pray for their financial partners, not just ask them for money. The "Gift Specific Attributes Prayer Requests Description" field from RE imports contains prayer requests that donors submit with their gifts. This feature surfaces those requests and lets missionaries track their prayer life around donor relationships.
+
+### Table Stakes
+
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| PrayerIntention model tied to Contact | Each prayer intention belongs to a specific donor/contact | Low | Fields: contactId, text, source (manual/import), status |
+| Status tracking (active/prayed/answered) | Missionaries need to know what they have and have not prayed for | Low | Simple status field with transitions |
+| Auto-creation from RE gift descriptions | Import pipeline creates PrayerIntention from non-empty "Prayer Requests Description" | Med | During Gift/RecurringGift import, if description field is non-empty, create PrayerIntention |
+| Manual intention creation | Missionaries add prayer requests from conversations, not just imports | Low | Simple form: contact selector + text input |
+| Today's Focus view | Daily curated list of intentions to pray through | Med | Algorithm: prioritize un-prayed, oldest, round-robin across contacts |
+| "Mark as prayed" action | Track that missionary prayed for this intention today | Low | Updates lastPrayedAt timestamp, optimistic UI update |
+| Contact detail integration (Prayer tab) | See all prayer intentions for a specific contact | Low | New tab on contact detail page, list of intentions with status |
+
+### Differentiators
+
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| Focus Mode (guided prayer experience) | Immersive, one-at-a-time prayer walkthrough with keyboard shortcuts | Med | Full-screen card, arrow keys to navigate, spacebar to mark prayed |
+| Warm/calming visual design | Page should feel like a chapel, not a dashboard | Low | Amber palette, serif headings, generous spacing, minimal cognitive load |
+| Completion screen | After praying through Today's Focus, show count of prayers completed | Low | Motivational, not gamified -- "You prayed for 12 people today" |
+| Prayer history per contact | Timeline of when missionary prayed for each contact | Low | Uses lastPrayedAt timestamps to show prayer frequency |
+
+### Anti-Features
+
+| Anti-Feature | Why Avoid | What to Do Instead |
+|--------------|-----------|-------------------|
+| Prayer reminders/notifications | No email infrastructure; push notifications add complexity | Today's Focus page is the reminder -- open daily |
+| Prayer group sharing | Multi-user prayer lists add permission complexity | Each missionary manages their own prayer life |
+| Prayer request submission by donors | Would require donor-facing portal | Prayer data comes from RE imports or manual missionary entry |
+| Answered prayer analytics | Could feel like gamification of spiritual practice | Simple "answered" status is sufficient |
+| Expiration/archival automation | Prayer intentions should not expire automatically | Manual status changes only |
+
+### Common Patterns from Church CRM Research
+
+Based on research of Planning Center, Echo Prayer, ChurchCMS, Breeze, and iPrayerworks:
+
+1. **Status model**: Active -> Prayed -> Answered (with "Prayed" being repeatable, not terminal)
+2. **Source tracking**: Distinguish between imported requests and manually entered ones
+3. **Daily focus**: Curate a manageable subset of prayer intentions for daily use (not the full list)
+4. **Warm UI**: Every successful church prayer tool emphasizes calm, inviting design over data density
+5. **Contact linkage**: Prayer requests always tie to a person, enabling relational context
+
+### Data Flow: Import-to-Prayer Pipeline
+
+```
+RE Gift CSV -> Gift Import Service
+  -> If "Gift Specific Attributes Prayer Requests Description" is non-empty:
+    -> Find Contact by externalConstituentId
+    -> Create PrayerIntention(contact=contact, text=description, source='import')
+    -> Deduplicate by (contact, text) to avoid duplicates on re-import
+```
+
+---
+
+## 4. Draggable Dashboard Tiles
+
+### Context
+
+The existing Dashboard has a fixed layout with hardcoded grid positions. v2.0 adds the ability for users to drag and reorder dashboard tiles to customize their view. Per PROJECT.md, this is **session-only with no persistence** -- tile order resets on page refresh.
+
+### Table Stakes
+
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| Drag-and-drop reorder of dashboard tiles | Users can arrange tiles to prioritize what matters to them | Med | Use dnd-kit with rectSortingStrategy for grid-based sorting |
+| Visual drag feedback (ghost/overlay) | User needs to see what they are dragging and where it will land | Low | DragOverlay component from dnd-kit |
+| Smooth animations on reorder | Tiles should animate to new positions, not jump | Low | Built into dnd-kit's transform/transition system |
+| Session-only state (no persistence) | Tile order resets on page refresh | Low | useState only -- no localStorage, no API call, no URL params |
+| Touch and pointer support | Works on both desktop mouse and mobile touch | Low | dnd-kit's PointerSensor and TouchSensor handle this |
+| Keyboard accessibility | Drag-and-drop should work with keyboard only | Low | dnd-kit has built-in KeyboardSensor with ARIA announcements |
+
+### Differentiators
+
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| Drag handle indicator | Small grip icon on tile header to indicate draggability | Low | Prevents accidental drags when clicking tile content |
+| Tile span awareness | Tiles that span 2 columns (e.g., GivingSummaryCard) should maintain their width during drag | Med | May need custom collision detection for mixed-size tiles |
+
+### Anti-Features
+
+| Anti-Feature | Why Avoid | What to Do Instead |
+|--------------|-----------|-------------------|
+| Persistent tile order (localStorage or API) | Adds complexity; PROJECT.md explicitly says session-only | Reset to default order on page refresh |
+| Tile resizing | react-grid-layout supports this but adds significant complexity | Fixed tile sizes, drag to reorder only |
+| Tile add/remove | Would require tile visibility preferences and persistence | All tiles always visible |
+| Multi-column drag (changing tile width) | Complex collision detection for variable-width items | Fixed column spans per tile |
+| Responsive breakpoint layouts | Would need separate layout configs per breakpoint | Keep existing responsive grid; drag only changes order within current breakpoint |
+
+### Library Choice: dnd-kit
+
+**Use `@dnd-kit/core` + `@dnd-kit/sortable` because:**
+
+1. Modern, lightweight, actively maintained (unlike react-beautiful-dnd which is deprecated)
+2. Built-in sortable preset with `rectSortingStrategy` for grids
+3. Keyboard + screen reader accessibility out of the box
+4. No jQuery or legacy dependencies
+5. Already the React ecosystem standard for drag-and-drop in 2025-2026
+
+**NOT react-grid-layout because:**
+- Includes resizing which we do not need and cannot easily disable
+- Heavier bundle size for features we will not use
+- Designed for persistent layout management, not session-only reorder
+
+### Implementation Pattern
+
+```tsx
+// Dashboard.tsx -- conceptual pattern
+const [tileOrder, setTileOrder] = useState([
+  'giving-summary', 'monthly-gifts', 'thank-you-queue',
+  'recent-donations', 'active-pledges', 'needs-attention',
+  'support-progress', 'journal-activity', 'late-donations',
+  'mpd-overview'
+]);
+
+// DndContext + SortableContext with rectSortingStrategy
+// Each tile wrapped in useSortable hook
+// onDragEnd -> arrayMove(tileOrder, oldIndex, newIndex)
+// State resets on page refresh (no persistence)
+```
+
+### Existing Dashboard Tiles to Make Draggable
+
+Based on the current Dashboard.tsx:
+
+| Tile | Current Grid Position | Spans |
+|------|----------------------|-------|
+| GivingSummaryCard | lg:grid-cols-2 (left) | Full width of column |
+| MonthlyGiftsCard | lg:grid-cols-2 (right) | Full width of column |
+| StatCard x4 | md:grid-cols-2 lg:grid-cols-4 | 1 column each |
+| MPDStatsInline | md:grid-cols-3 | 1 column each (3 cards) |
+| NeedsAttention | lg:grid-cols-2 (left) | Full width of column |
+| SupportProgress | lg:grid-cols-2 (left) | Full width of column |
+| RecentDonations | lg:grid-cols-2 (right) | Full width of column |
+| RecentJournalActivity | lg:grid-cols-2 (right) | Full width of column |
+| LateDonations | lg:grid-cols-2 (right) | Full width of column |
+
+**Simplification for v2.0:** Treat all tiles as equal-width items in a single sortable list. The existing CSS grid layout with `lg:grid-cols-2` naturally places items in two columns. Reordering changes which tiles appear in which column based on DOM order.
+
+---
+
+## 5. Supporting Features (Data Migration and UI Rename)
+
+### Data Migration: Donations -> Gifts, Pledges -> RecurringGifts
+
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| Migrate existing Donation records to Gift model | Preserve all historical data | High | Map fields: amount, date, contact, external_id, fund, etc. |
+| Migrate existing Pledge records to RecurringGift model | Preserve pledge histories | High | Map fields: amount, frequency, status, contact, etc. |
+| Preserve denormalized Contact stats | total_given, gift_count, etc. must remain accurate | Med | Recalculate from new Gift model after migration |
+| Update all dashboard queries to use Gift model | Dashboard aggregations reference donations table | Med | Services.py functions must query Gift + GiftCredit instead of Donation |
+
+### UI Rename: "Donations" -> "Gifts", "Pledges" -> "Recurring Gifts"
+
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| Navigation label changes | Consistency with RE terminology | Low | Sidebar, breadcrumbs, page titles |
+| List page headers | "Gifts" instead of "Donations" | Low | Find-replace across page components |
+| Filter labels | Update all filter option labels | Low | FilterBar configurations |
+| CSV export headers | Export column names match new terminology | Low | Serializer field labels |
 
 ---
 
 ## Feature Dependencies
 
 ```
-SMARTSHEET IMPORT CHAIN:
-File size limits (audit) ──must precede──> File Upload (new)
-    └──requires──> File format detection (.xlsx/.csv)
-        └──requires──> Backend field schema endpoint (new)
-            └──requires──> Column Mapping UI (new)
-                └──requires──> Data preview with mapped columns
-                    └──requires──> Validation (reuse existing)
-                        └──requires──> Import execution (reuse existing)
-                            └──enhances──> Auto-detect mapping (optional)
+                    +-------------------+
+                    |  Contact Model    |
+                    |  (existing, add   |
+                    |  externalConstID) |
+                    +-------------------+
+                         |          |
+              +----------+          +----------+
+              |                                |
+     +--------v--------+             +--------v--------+
+     | Solicitor Model |             | PrayerIntention |
+     | (new)           |             | Model (new)     |
+     +---------+-------+             +-----------------+
+               |                              ^
+     +---------v-------+                      |
+     | Gift Model      |---------------------+
+     | (new)           |  auto-creates from
+     +---------+-------+  description field
+               |
+     +---------v-------+
+     | GiftCredit      |
+     | (new, junction) |
+     +-----------------+
 
-FILTER CHAIN:
-Permission bypass fix (audit) ──must precede──> Backend filter expansion
-    └──requires──> Extended filterset_fields per view
-        └──requires──> FilterBar component (new, reusable)
-            └──requires──> DateRangePicker component (new)
-            └──requires──> URL param sync on all pages
-                └──enhances──> Filter presets (optional)
-                └──enhances──> Active filter badges (optional)
-                └──enhances──> Export filtered results (optional)
+     RecurringGift + RecurringGiftCredit follow same pattern as Gift + GiftCredit
 
-QUALITY AUDIT CHAIN:
-Security fixes (permission bypass, cross-user access) ──must precede──> Filter expansion
-N+1 query fixes ──must precede──> Journal filters (filters increase query load)
-File size limits ──must precede──> Smartsheet import
-Dark mode hardcoded colors fix ──must precede──> New UI components
-    (otherwise new components inherit broken dark mode pattern)
-
-CROSS-CHAIN DEPENDENCIES:
-Hardcoded color fixes (audit) ──must precede──> Column Mapping UI + FilterBar
-    (new components must use correct semantic classes from the start)
-Permission bypass fix (audit) ──must precede──> Owner filter for admin
-    (adding owner filter before fixing permissions widens attack surface)
+     Draggable Dashboard Tiles: No model dependencies. Frontend-only feature.
 ```
 
-### Dependency Notes
-
-- **Security fixes MUST precede filter expansion:** Adding an `owner` field to FilterSet before fixing the ListAPIView permission bypass would create a new privilege escalation vector. Fix permissions first, then add filters.
-- **N+1 fixes MUST precede journal filters:** Journal grid already runs 351 queries. Adding filters without `prefetch_related` would make performance worse. Fix queries first.
-- **File size limits MUST precede Smartsheet import:** Importing a 50MB Excel file without limits crashes the server. Set limits before the upload endpoint exists.
-- **Dark mode fixes MUST precede new UI components:** New components (ColumnMapper, FilterBar, DateRangePicker) must use semantic color classes. If existing code has hardcoded colors, developers copy the broken pattern. Fix the codebase first, then build new components using the correct pattern.
-- **Auto-detect enhances Column Mapping:** Optional feature that pre-fills dropdown selections. Mapping UI works without it (just empty dropdowns), but auto-detect makes it much faster.
-- **Filter presets enhance FilterBar:** Quick buttons are just pre-built URL param sets. FilterBar must exist first.
+**Build order constraints:**
+1. **Contact model updates** (add externalConstituentId) must come first
+2. **Solicitor model** before Gift import (solicitors referenced in gift rows)
+3. **Gift + GiftCredit models** before Gift import service
+4. **RecurringGift + RecurringGiftCredit** before Recurring Gift import service
+5. **Import services** (Constituent -> Solicitor -> Gift -> Recurring Gift) in dependency order
+6. **Data migration** (Donation -> Gift, Pledge -> RecurringGift) after new models exist
+7. **PrayerIntention model** can be built in parallel with or after Gift import
+8. **Prayer auto-creation** requires Gift import service to be functional
+9. **Draggable dashboard** is fully independent -- can be built at any point
+10. **UI rename** should happen after data migration so old pages still work during transition
 
 ---
 
-## MVP Definition
+## MVP Recommendation
 
-### Launch With (v1.3)
+### Must Have (v2.0 Launch):
 
-**Smartsheet Import (P1):**
-- [ ] **Excel/CSV file upload with format detection** -- Users export from Smartsheet as .xlsx or .csv; both must work
-- [ ] **Column mapping UI with dropdown selects** -- Show source column name, dropdown of target CRM fields, per row
-- [ ] **Auto-detect common mappings** -- Fuzzy match "Email" to email, "First Name" to first_name; pre-fill dropdowns
-- [ ] **Preview mapped data (first 10 rows)** -- Show what the import will look like before committing
-- [ ] **Formula injection prevention on import** -- Sanitize cells starting with `=`, `+`, `-`, `@`
+1. **New data models** (Solicitor, Gift, GiftCredit, RecurringGift, RecurringGiftCredit, ImportBatch, PrayerIntention) -- Foundation for everything else.
+2. **RE Import Pipeline** (all 4 types with row grouping and SHA256 dedup) -- Core value. Without it, no RE data enters the system.
+3. **Gift credit splitting** (display + per-missionary visibility) -- Meaningless to import gifts without proper credit attribution.
+4. **Data migration** (existing Donations -> Gifts, Pledges -> RecurringGifts) -- Existing data must be preserved.
+5. **UI updates** (rename Donations -> Gifts, Pledges -> Recurring Gifts, update all dependent features) -- Consistency with new model names.
+6. **Prayer Intentions** (model + auto-creation from imports + Today's Focus view + Contact tab) -- Unique differentiator.
+7. **Draggable dashboard tiles** (session-only with dnd-kit) -- Low complexity, high perceived polish.
 
-**Comprehensive Filters (P1):**
-- [ ] **Date range filter component** -- Reusable start/end date picker using existing react-day-picker
-- [ ] **Amount range filter (min/max)** -- Two number inputs for financial filtering
-- [ ] **Extended status/category filters per page** -- ContactList: group, owner (admin). DonationList: payment_method, fund. PledgeList: frequency, donor search
-- [ ] **Fix Transactions page to use URL params** -- Convert from useState to useSearchParams (currently a bug)
-- [ ] **Add filters to JournalList** -- Search, date range, is_archived. Convert card grid to support filters.
-- [ ] **Clear all filters button** -- Show when any filter is active; reset all params
+### Defer to v2.1:
 
-**Quality Audit (P1):**
-- [ ] **Fix ListAPIView permission bypass** -- Scope get_queryset() by owner for non-admin users
-- [ ] **Fix cross-user contact access** -- Add owner check in stage event creation
-- [ ] **Fix 59 hardcoded dark mode colors** -- Replace with semantic Tailwind classes across 13 files
-- [ ] **Fix N+1 queries in journal grid** -- Add prefetch_related, rewrite serializer
-- [ ] **Add file size limits to upload endpoints** -- DATA_UPLOAD_MAX_MEMORY_SIZE setting + view-level check
-- [ ] **WCAG contrast verification for dark mode** -- Test all pages with contrast checker
-
-### Add After Validation (v1.x)
-
-- [ ] **Save/reuse column mapping templates** -- Trigger: users report repetitive mapping work for same Smartsheet format
-- [ ] **Filter presets ("Needs Thank You", "This Month", "Stalled")** -- Trigger: user feedback on common filter combinations
-- [ ] **Export filtered results to CSV** -- Trigger: users request "download what I'm seeing"
-- [ ] **Active filter summary badges** -- Trigger: user confusion about which filters are active
-- [ ] **Frontend route guards for roles** -- Trigger: read_only users hitting 403 errors
-- [ ] **Fix float arithmetic in monthly_equivalent** -- Trigger: users report penny discrepancies
-
-### Future Consideration (v2+)
-
-- [ ] **Multi-sheet Excel import** -- Why defer: Most Smartsheet exports are single-sheet; complexity outweighs value
-- [ ] **Drag-drop column mapping** -- Why defer: HIGH cost, accessibility challenges; dropdown mapping sufficient
-- [ ] **Advanced filter query builder (AND/OR)** -- Why defer: Overwhelming for most users; stacked AND covers 95%
-- [ ] **Saved filters (backend persistence)** -- Why defer: URL params already bookmarkable; new model not justified
-- [ ] **Real-time import progress** -- Why defer: Imports <2s for typical data; add only when Celery needed for >5k rows
-- [ ] **Import undo/rollback** -- Why defer: Validate-first prevents mistakes; undo semantics unclear
-
----
-
-## Feature Prioritization Matrix
-
-| Feature | User Value | Implementation Cost | Priority | Phase |
-|---------|------------|---------------------|----------|-------|
-| Fix permission bypass | CRITICAL | LOW | P0 | Audit (first) |
-| Fix cross-user contact access | CRITICAL | LOW | P0 | Audit (first) |
-| File size limits | HIGH | LOW | P0 | Audit (first) |
-| Fix N+1 journal queries | HIGH | MEDIUM | P0 | Audit (first) |
-| Dark mode hardcoded colors | HIGH | MEDIUM | P1 | Audit |
-| WCAG contrast verification | HIGH | MEDIUM | P1 | Audit |
-| Column mapping UI | HIGH | MEDIUM | P1 | Import |
-| Excel/CSV file upload | HIGH | LOW | P1 | Import |
-| Auto-detect mappings | HIGH | LOW-MEDIUM | P1 | Import |
-| Date range filters | HIGH | MEDIUM | P1 | Filters |
-| Amount range filters | MEDIUM | LOW | P1 | Filters |
-| Extended status filters | HIGH | LOW | P1 | Filters |
-| Fix Transactions URL params | MEDIUM | LOW | P1 | Filters |
-| JournalList filters | MEDIUM | MEDIUM | P1 | Filters |
-| Clear all filters | MEDIUM | LOW | P1 | Filters |
-| Save column mappings | MEDIUM | MEDIUM | P2 | Post-v1.3 |
-| Filter presets | MEDIUM | LOW | P2 | Post-v1.3 |
-| Export filtered results | MEDIUM | LOW | P2 | Post-v1.3 |
-| Active filter badges | LOW | LOW | P2 | Post-v1.3 |
-| Route guards for roles | MEDIUM | LOW | P2 | Post-v1.3 |
-| Float arithmetic fix | LOW | LOW | P2 | Post-v1.3 |
-| Drag-drop mapping | MEDIUM | HIGH | P3 | v2+ |
-| Advanced query builder | LOW | HIGH | P3 | v2+ |
-| Multi-sheet import | LOW | HIGH | P3 | v2+ |
-
-**Priority key:**
-- **P0:** Fix before building new features -- security/performance prerequisites
-- **P1:** Must have for v1.3 launch -- core functionality defining the milestone
-- **P2:** Should have, add when possible -- enhances core, low cost
-- **P3:** Nice to have, future consideration -- high cost or low ROI
-
----
-
-## User Workflows
-
-### Smartsheet Import Workflow
-
-```
-1. Admin navigates to Import Center (/admin/imports)
-2. Clicks "Smartsheet Import" tile (new, alongside existing SPO tiles)
-3. Selects import type: Contacts, Donations, or Pledges
-4. Uploads .xlsx or .csv file (drag-drop or click-to-browse)
-5. System parses headers, auto-detects column mappings
-6. User reviews mapping UI:
-   - Left column: Excel header names with sample data
-   - Right column: Dropdown of CRM fields (auto-filled with suggestions)
-   - Confidence indicators: green/yellow/red per row
-   - User adjusts any incorrect mappings
-7. Clicks "Preview" -- sees first 10 rows with mapped column names
-8. Clicks "Validate" -- system checks all rows, reports errors
-9. If errors: downloads error CSV, fixes source file, re-uploads
-10. If clean: clicks "Import" -- data committed to database
-11. Sees import summary: X created, Y updated, Z errors
-```
-
-### Filter Workflow (Contacts Example)
-
-```
-1. User navigates to Contacts (/contacts)
-2. Sees filter bar: Search | Status | Group | Date Range | Needs Thank You
-3. Selects Status = "Donor" -- URL updates to /contacts?status=donor
-4. Sets Date Range = "Last 30 days" -- URL: /contacts?status=donor&last_gift_date__gte=2026-01-17
-5. Active filter badges appear: "Status: Donor" "Last Gift: Last 30 days"
-6. Table updates with server-side filtered results
-7. User bookmarks URL -- filter state persists
-8. User clicks "Clear Filters" -- URL resets to /contacts
-9. User shares URL with admin -- admin sees same filtered view
-```
-
-### Quality Audit Workflow
-
-```
-Phase 1: Automated scan
-  - Run ruff check on Python code
-  - Grep for hardcoded color classes in .tsx files
-  - Profile query counts on list endpoints with Django Debug Toolbar
-
-Phase 2: Fix security issues
-  - Fix permission bypass in 3 views (get_queryset owner scoping)
-  - Fix cross-user access in stage events (1 line)
-  - Add file size limits to settings and views
-
-Phase 3: Fix dark mode
-  - Replace 59 hardcoded colors across 13 files
-  - Test each page in dark mode, screenshot for verification
-  - Check contrast ratios with WebAIM Contrast Checker
-
-Phase 4: Fix performance
-  - Add prefetch_related to journal grid queries
-  - Profile before/after to verify improvement (351 queries -> <10)
-```
-
----
-
-## Competitor Feature Analysis
-
-| Feature | Smartsheet Native Export | Salesforce Data Import | Flatfile/CSVBox | Our Approach |
-|---------|------------------------|----------------------|-----------------|--------------|
-| **Column mapping** | No mapping (exports to raw format) | Auto-detect + manual override | AI-powered mapping + manual | Auto-detect with dropdown override (best of both, no AI cost) |
-| **File formats** | .xlsx, .csv | CSV only | CSV, XLSX, TSV, JSON | .xlsx + .csv (matches Smartsheet exports) |
-| **Preview** | N/A (export only) | First 10 rows | First 100 rows with statistics | First 10 rows with mapped columns (sufficient for validation) |
-| **Error handling** | N/A | Error CSV download | Inline errors + downloadable report | Row-level errors with downloadable CSV (already built, reuse) |
-| **Validation** | N/A | Real-time during mapping | Streaming validation | Two-step: Validate all -> Import (prevents partial imports) |
-| **Date filters** | Built-in calendar + presets | Calendar widget + "Last 7/30/90 days" | N/A (not a list tool) | Date range picker + future: preset buttons |
-| **Amount filters** | Number range slider | Min/max inputs | N/A | Min/max number inputs (simple, explicit) |
-| **Filter persistence** | Saved views (backend) | Saved views (backend) | N/A | URL params (bookmarkable, shareable, zero backend cost) |
-| **Dark mode** | OS-level sync | Manual toggle | N/A | Manual toggle with WCAG compliance (fixing 59 hardcoded colors) |
-
----
-
-## Existing Code Reuse Map
-
-Features that can be built by extending existing patterns vs. features requiring new code.
-
-| Feature | Reuse | New Code | Effort |
-|---------|-------|----------|--------|
-| Excel file upload | Existing MultiPartParser, file validation pattern | openpyxl parsing, format detection | 30% reuse |
-| Column mapping UI | Existing Dialog, Select, Card components from Radix | ColumnMapper, FieldMappingRow components | 20% reuse |
-| Import execution | Existing parse_contacts_csv, import_contacts, ImportRun, ImportRowError | Transform layer (mapped data -> CSV format) | 80% reuse |
-| Date range filter | Existing react-day-picker, Popover components | DateRangePicker wrapper, URL param integration | 60% reuse |
-| Contact filters | Existing DjangoFilterBackend, search_fields, URL param pattern | Extend filterset_fields, add FilterBar UI | 70% reuse |
-| Donation filters | Existing DjangoFilterBackend, search_fields, URL param pattern | Extend filterset_fields, add date/amount inputs | 70% reuse |
-| Journal filters | Existing DjangoFilterBackend (backend), Card grid (frontend) | Add FilterBar to card grid layout, URL param sync | 40% reuse |
-| Dark mode fixes | Existing Tailwind dark: prefix, CSS variables | Replace 59 hardcoded classes, no new architecture | 90% reuse (find-replace) |
-| Permission fixes | Existing get_queryset() pattern in ContactListCreateView | Add owner scoping to 3 views | 95% reuse (copy pattern) |
-| N+1 query fixes | Existing prefetch_related pattern (used elsewhere) | Add prefetches, rewrite serializer methods | 50% reuse |
+- **Generic CSV import layer** (contacts, donations): Most users will use RE imports. Separate generic layer is lower priority.
+- **Focus Mode for prayer**: The Today's Focus list view is sufficient for launch. Full immersive Focus Mode with keyboard shortcuts is polish.
+- **Persistent tile order**: Explicitly out of scope per PROJECT.md. Session-only is the decision.
+- **Prayer completion statistics**: "You prayed for 12 people this week" -- nice but not launch-critical.
 
 ---
 
 ## Sources
 
-### Smartsheet Import & Column Mapping
-- [Inside CSVBox: How Column Mapping Really Works](https://blog.csvbox.io/inside-csvbox-column-mapping/) -- Column mapping UI patterns
-- [Designing An Attractive Data Importer -- Smashing Magazine](https://www.smashingmagazine.com/2020/12/designing-attractive-usable-data-importer-app/) -- Import UX best practices
-- [CSV Import Best Practices -- Benedict Roeser](https://benedictroeser.de/2021/03/csv-import-best-practices/) -- Error handling, validation flow
-- [Best UI Patterns for File Uploads -- CSVBox](https://blog.csvbox.io/file-upload-patterns/) -- Drag-drop upload widget patterns
-- [Data Prep UI Guide -- Adobe Experience Platform](https://experienceleague.adobe.com/en/docs/experience-platform/data-prep/ui/mapping) -- Enterprise mapping UI reference
+### Raiser's Edge CSV Format
+- [Exporting Raiser's Edge for CiviCRM (Megaphone)](https://hq.megaphonetech.com/projects/commons/wiki/Exporting_Raisers_Edge_for_CiviCRM) -- RE export structure, table relationships, CONSTIT_SOLICITORS table
+- [Split Gift Import (Blackbaud KB)](https://blackbaud.my.salesforce-sites.com/bbknowledge/articles/Article/38556) -- GSplitFund, GSplitAmt, GSplitCamp headers
+- [RE NXT Gift Export (GiveCampus)](https://support.givecampus.com/hc/en-us/articles/29093884332311-Raiser-s-Edge-NXT-Integration-Gift-Export-Setup-Management) -- Gift export field list
+- [Importing Recurring Gift Schedules (Omatic)](https://omaticsoftware.com/blog/importing-recurring-gift-schedules-to-the-raisers-edge/) -- Recurring gift field structure
+- [RE NXT Split Gift Export Ideas (Blackbaud)](https://renxt.ideas.aha.io/ideas/RENXT-I-8179) -- Split gift export to multiple rows behavior
+- [Split Gift Mapping (Zeidman/Importacular)](https://www.zeidman.info/docs/importacular-user-guide-3/import-to-gift/split-gift-mapping/) -- Split gift data model
+- [Fundraising Report Card RE Setup](https://fundraisingreportcard.com/help/raisers-edge/) -- Constituent ID, Gift Date, Gift Amount field names
+- [Recurring Gift Schedules (RE-Decoded)](https://www.re-decoded.com/2009/08/recurring-gift-schedules/) -- GIFT_fld_Installment_Frequency, GIFT_fld_Date_1st_Pay
+- Project prompts: `/prompts/CSV_import_system_1.md`, `/prompts/CSV_import_system_2.md` -- Exact CSV headers and data model specs (HIGH confidence)
 
-### List Filtering Patterns
-- [Using React Router searchParams to manage filter state](https://cgarethc.medium.com/using-react-router-searchparams-to-manage-filter-state-for-a-list-e515e8e50166) -- URL param filter pattern
-- [Managing Filters In the URL in React -- Trustica](https://trustica.cz/en/blog/2025/11/20/url-params-functions/) -- Practical React filter guide (Nov 2025)
-- [Complete guide for query parameter filtering in React](https://gist.github.com/tapinambur0508/71a9b7c34a4117a1a5d96eb2761278b6) -- Implementation reference
-- [Why URL state matters -- LogRocket](https://blog.logrocket.com/url-state-usesearchparams/) -- URL as single source of truth
-- [Filter Reference -- django-filter 25.2](https://django-filter.readthedocs.io/en/stable/ref/filters.html) -- DateFromToRangeFilter, NumberFilter
-- [Filtering -- Django REST framework](https://www.django-rest-framework.org/api-guide/filtering/) -- DjangoFilterBackend integration
+### Gift Credit Splitting
+- [Nonprofit Gift Coding: Solicitor Credit vs. Soft Credit (LinkedIn)](https://www.linkedin.com/pulse/nonprofit-gift-coding-solicitor-credit-vs-soft-rebel-saffold-iii) -- Hard/soft credit patterns in nonprofit CRMs
+- [Recording Soft Credits (Beacon CRM)](https://guide.beaconcrm.org/en/articles/6817580-recording-soft-credits) -- Split payment UI pattern
+- [Why You Should Use Soft Credits (Neon One)](https://neonone.com/resources/blog/soft-credits/) -- Soft credit reporting patterns
+- [RE NXT Solicitor Ideas (Blackbaud)](https://renxt.ideas.aha.io/ideas/NXT-I-42) -- Solicitor/Fundraiser type in RE
+- [Hard or Soft Credit (FreeLikeAPuppy)](https://www.freelikeapuppy.tech/post/hard-or-soft-credit-where-credit-is-due-part-1) -- Credit types explained
+- [Salesforce NPSP Soft Credits (Mirketa)](https://mirketa.com/unleashing-soft-credit-and-marketing-gift-in-nonprofit-cloud-a-revolutionary-approach-to-fundraising/) -- Salesforce soft credit model
 
-### Dark Mode & Accessibility
-- [Offering a Dark Mode Doesn't Satisfy WCAG Contrast](https://www.boia.org/blog/offering-a-dark-mode-doesnt-satisfy-wcag-color-contrast-requirements) -- Both modes must meet WCAG
-- [WCAG Issue #2889: Dark mode and contrast criterion](https://github.com/w3c/wcag/issues/2889) -- If auto-applied, both themes must pass
-- [Tailwind Contrast Checker -- TWColors](https://tailwindcolor.tools/tailwind-contrast-checker) -- Tailwind-specific contrast tool
-- [InclusiveColors: WCAG accessible palette for Tailwind](https://www.inclusivecolors.com/) -- Systematic color pairing
+### Prayer Intentions
+- [Echo Prayer App](https://www.echoprayer.com/) -- Prayer status tracking, reminders, "mark as answered"
+- [iPrayerworks](https://iprayerworks.com/requests.cfm) -- Prayer request management for prayer teams
+- [ChurchSpring Prayer Tool](https://churchspring.com/prayer/) -- Prayer status updates, member profile integration
+- [Planning Center People](https://www.planningcenter.com/people) -- Prayer request via forms, workflow automation, note notifications
+- [Breeze ChMS Prayer Requests](https://support.breezechms.com/hc/en-us/articles/360019590934-Storing-Prayer-Requests) -- Prayer request storage patterns
+- [DonorElf](https://www.donorelf.com/) -- Missionary CRM with prayer partner tracking
+- [ChurchCMS E-Prayers](https://churchcms.app/features) -- Prayer request broadcast and community prayer
+- Project prompt: `/prompts/prayer_intentions.md` -- UX design philosophy and visual specs (HIGH confidence)
 
-### Security Audit
-- [Django REST Framework -- OWASP Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Django_REST_Framework_Cheat_Sheet.html) -- DRF security patterns
-- [Django Security -- OWASP Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Django_Security_Cheat_Sheet.html) -- Django security checklist
-- [CSV Injection -- OWASP](https://owasp.org/www-community/attacks/CSV_Injection) -- Formula injection prevention
+### Draggable Dashboard Tiles
+- [dnd-kit Official Docs - Sortable](https://dndkit.com/presets/sortable) -- rectSortingStrategy, useSortable hook, closestCenter collision detection
+- [Top 5 Drag-and-Drop Libraries for React (2026)](https://puckeditor.com/blog/top-5-drag-and-drop-libraries-for-react) -- Library comparison, dnd-kit recommended
+- [Interactive Dashboards with React-Grid-Layout (ilert)](https://www.ilert.com/blog/building-interactive-dashboards-why-react-grid-layout-was-our-best-choice) -- Dashboard tile UX patterns, library evaluation criteria
+- [dnd-kit GitHub](https://github.com/clauderic/dnd-kit) -- Library features, accessibility, grid support
+- [Building Customizable Dashboard Widgets (AntStack)](https://medium.com/@antstack/building-customizable-dashboard-widgets-using-react-grid-layout-234f7857c124) -- Dashboard widget UX patterns
+- [Drag and Drop Dashboards with React DnD (Ensolvers)](https://www.ensolvers.com/post/drag-and-drop-dashboards-with-react-dnd) -- Dashboard drag-and-drop architecture
+- [The Ultimate Drag-and-Drop Toolkit: dnd-kit (BrightCoding)](http://www.blog.brightcoding.dev/2025/08/21/the-ultimate-drag-and-drop-toolkit-for-react-a-deep-dive-into-dnd-kit) -- Deep dive into dnd-kit API
 
 ---
-*Feature research for: DonorCRM v1.3 -- Smartsheet Import, Filters & Polish*
-*Researched: 2026-02-16*
+*Feature landscape research for: DonorCRM v2.0*
+*Researched: 2026-02-20*
+*Confidence: HIGH (project prompts provide exact specs; external research validates patterns)*
