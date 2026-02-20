@@ -5,13 +5,15 @@
 See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core value:** Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems, and leadership can proactively support their teams through cross-missionary analytics.
-**Current focus:** v2.0 — Import Revamp, Prayer Intentions & Dashboard Polish
+**Current focus:** Phase 27 - Foundation Models (v2.0)
 
 ## Current Position
 
-Milestone: v2.0 — Import Revamp, Prayer Intentions & Dashboard Polish
-Status: Defining requirements
-Last activity: 2026-02-20 — Milestone v2.0 started
+Milestone: v2.0 -- Import Revamp, Prayer Intentions & Dashboard Polish
+Phase: 27 of 36 (Foundation Models)
+Plan: 0 of ? in current phase
+Status: Ready to plan
+Last activity: 2026-02-20 -- v2.0 roadmap created
 
 Progress: [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 0%
 
@@ -37,7 +39,7 @@ Progress: [░░░░░░░░░░░░░░░░░░░░░░░
 
 All decisions logged in PROJECT.md Key Decisions table.
 
-v1.3 decisions archived with milestone. See milestones/v1.3-ROADMAP.md for full phase details.
+v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data migration + 77+ file updates). This is NOT the dual-model additive approach from research -- it is a complete replacement requiring MIG-01 through MIG-05.
 
 ### Pending Todos
 
@@ -45,7 +47,9 @@ v1.3 decisions archived with milestone. See milestones/v1.3-ROADMAP.md for full 
 
 ### Blockers/Concerns
 
-None.
+- RE CSV real-world encoding behavior should be validated with production-exported files during Phase 28
+- Solicitor name format ("Last, First" vs "First Last") is installation-specific -- confirm before Phase 28 ships
+- Prayer intention deduplication boundary (same text across multiple gifts from same donor) -- confirm intended behavior before Phase 33
 
 ### Quick Tasks Completed
 
@@ -58,9 +62,9 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Defining v2.0 requirements
-Resume: Continue requirements definition and roadmap creation
+Stopped at: v2.0 roadmap created with 9 phases (27-35)
+Resume: Run `/gsd:plan-phase 27` to begin Foundation Models
 
 ---
 
-*Last updated: 2026-02-20 (v2.0 milestone started)*
+*Last updated: 2026-02-20 (v2.0 roadmap created)*

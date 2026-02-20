@@ -2,9 +2,9 @@
 
 ## Completed Milestones
 
-### v1.0 — Journal Feature
+### v1.0 -- Journal Feature
 **Completed:** 2026-01-29
-**Duration:** 5 days (2026-01-24 → 2026-01-29)
+**Duration:** 5 days (2026-01-24 -> 2026-01-29)
 
 A fundraising campaign pipeline tracker enabling missionaries to manage donor relationships through a 6-stage pipeline.
 
@@ -17,7 +17,7 @@ A fundraising campaign pipeline tracker enabling missionaries to manage donor re
 **Key Features:**
 - Journal CRUD with owner-scoped visibility
 - Contact membership management (many-to-many)
-- 6-stage pipeline: Contact → Meet → Close → Decision → Thank → Next Steps
+- 6-stage pipeline: Contact -> Meet -> Close -> Decision -> Thank -> Next Steps
 - Decision tracking with history (dual-table pattern)
 - Interactive grid UI with stage cell indicators
 - Event timeline drawer with infinite scroll
@@ -35,9 +35,9 @@ A fundraising campaign pipeline tracker enabling missionaries to manage donor re
 
 ---
 
-### v1.1 — CSV Import
+### v1.1 -- CSV Import
 **Completed:** 2026-02-04
-**Duration:** 5 days (2026-01-30 → 2026-02-04)
+**Duration:** 5 days (2026-01-30 -> 2026-02-04)
 
 Enable admins to import SPO-exported CSV files (Funds, Entities, Transactions, Pledges) into DonorCRM with validation, preview, and idempotent upserts.
 
@@ -61,9 +61,9 @@ Enable admins to import SPO-exported CSV files (Funds, Entities, Transactions, P
 
 ---
 
-### v1.2 — Admin Analytics Dashboard
+### v1.2 -- Admin Analytics Dashboard
 **Completed:** 2026-02-16
-**Duration:** 4 days (2026-02-12 → 2026-02-16)
+**Duration:** 4 days (2026-02-12 -> 2026-02-16)
 
 Cross-missionary visibility into fundraising activity, pipeline health, and stalled contacts for coaches and leadership.
 
@@ -90,9 +90,9 @@ Cross-missionary visibility into fundraising activity, pipeline health, and stal
 
 ---
 
-### v1.3 — Smartsheet Import, Filters & Polish
+### v1.3 -- Smartsheet Import, Filters & Polish
 **Completed:** 2026-02-19
-**Duration:** 3 days (2026-02-17 → 2026-02-19)
+**Duration:** 3 days (2026-02-17 -> 2026-02-19)
 
 Enable Smartsheet file import with column mapping, add comprehensive filtering across all list pages, and fix security/quality/dark mode issues.
 
@@ -103,7 +103,7 @@ Enable Smartsheet file import with column mapping, add comprehensive filtering a
 - 166 files changed, +17,607 / -831 lines
 
 **Key Features:**
-- Security & performance: closed permission bypasses (owner-scoped querysets), fixed N+1 queries (400→3), file size limits, route guards with redirect+toast
+- Security & performance: closed permission bypasses (owner-scoped querysets), fixed N+1 queries (400->3), file size limits, route guards with redirect+toast
 - Dark mode & quality: fixed 50+ hardcoded colors across 12 files, Error Boundary, CSV formula sanitization, donation edit stats fix
 - Filter infrastructure: reusable server-side filter system (django-filter 24.3, nuqs URL persistence, presets, badges, clear-all, filtered CSV export)
 - Per-page filters: applied to all 5 list pages (contacts, donations, pledges, journals, transactions) with admin owner dropdowns
@@ -119,20 +119,41 @@ Enable Smartsheet file import with column mapping, add comprehensive filtering a
 
 ---
 
-## Planned Milestones
+## Active Milestones
 
-### v2.0 — Future Enhancements (Not Started)
+### v2.0 -- Import Revamp, Prayer Intentions & Dashboard Polish (In Progress)
+**Started:** 2026-02-20
 
-Planned requirements from v1 deferral:
-- JRN-V2-02: Real-Time Collaboration
-- JRN-V2-03: Communication Integration
-- JRN-V2-04: Mobile Native App
-- JRN-V2-05: Bulk Journal Operations
-- JRN-V2-06: Custom Stage Definitions
-- JRN-V2-07: AI Suggestions
-- Configurable alert thresholds (per coach)
-- Email digest reports for coaches
+Replace the existing Donation/Pledge system with Gift/RecurringGift models, build a Raiser's Edge CSV import pipeline, add prayer intentions tracking, and make dashboard tiles draggable.
+
+**Scope:**
+- 46 requirements defined
+- 10 phases planned (27-36)
+- Plans: TBD (pending phase planning)
+
+**Key Features:**
+- Gift/RecurringGift models replacing Donation/Pledge (full data migration)
+- Raiser's Edge CSV import (4 types: Constituent, Solicitor, Gift, Recurring Gift)
+- Solicitor model with auto-linking to User accounts
+- SHA256-based import deduplication (ImportBatch)
+- Gift credit splitting (one gift credits multiple missionaries)
+- Prayer Intentions tied to contacts (with auto-creation from RE gift descriptions)
+- Draggable dashboard tiles (session-only)
+- Generic CSV import for contacts and donations
+- UI rename: "Donations" -> "Gifts", "Pledges" -> "Recurring Gifts"
+
+**Phases:**
+- Phase 27: Foundation Models
+- Phase 28: RE Import Pipeline (Constituents & Solicitors)
+- Phase 29: RE Import Pipeline (Gifts & Recurring Gifts)
+- Phase 30: Data Migration & Backend Cutover
+- Phase 31: Gift & Recurring Gift UI
+- Phase 32: Import UI
+- Phase 33: Prayer Intentions
+- Phase 34: Dashboard Polish
+- Phase 35: Generic CSV Import
+- Phase 36: Full-Stack Audit
 
 ---
 
-*Last updated: 2026-02-19 (v1.3 milestone completed)*
+*Last updated: 2026-02-20 (v2.0 milestone roadmap created)*
