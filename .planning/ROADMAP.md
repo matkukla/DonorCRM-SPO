@@ -100,7 +100,7 @@ See milestones/v1.3-ROADMAP.md for complete phase details.
   7. Contact model has new fields: external_constituent_id, organization_name, and address fields
 **Plans**: 2 plans
 Plans:
-- [ ] 27-01-PLAN.md — Create gifts app with Solicitor, Gift, GiftCredit, RecurringGift, RecurringGiftCredit models and admin
+- [x] 27-01-PLAN.md — Create gifts app with Solicitor, Gift, GiftCredit, RecurringGift, RecurringGiftCredit models and admin
 - [ ] 27-02-PLAN.md — Create prayers app, ImportBatch model, Contact field updates, and run all migrations
 
 ### Phase 28: RE Import Pipeline (Constituents & Solicitors)
@@ -222,7 +222,7 @@ Note: Phase 30 depends on Phase 27 only (not 28/29), so it could run after 27. H
 | 7-12 | v1.1 | 15/15 | Complete | 2026-02-04 |
 | 13-19 | v1.2 | 18/18 | Complete | 2026-02-16 |
 | 20-26 | v1.3 | 20/20 | Complete | 2026-02-19 |
-| 27. Foundation Models | v2.0 | 0/2 | Planned | - |
+| 27. Foundation Models | v2.0 | 1/2 | In Progress | - |
 | 28. RE Import (Const & Sol) | v2.0 | 0/? | Not started | - |
 | 29. RE Import (Gifts) | v2.0 | 0/? | Not started | - |
 | 30. Data Migration & Cutover | v2.0 | 0/? | Not started | - |

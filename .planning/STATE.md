@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-20)
 
 Milestone: v2.0 -- Import Revamp, Prayer Intentions & Dashboard Polish
 Phase: 27 of 36 (Foundation Models)
-Plan: 0 of ? in current phase
-Status: Ready to plan
-Last activity: 2026-02-20 -- v2.0 roadmap created
+Plan: 1 of 2 in current phase
+Status: Executing
+Last activity: 2026-02-20 -- Completed 27-01 (Gifts App Models)
 
-Progress: [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 0%
+Progress: [████████████████░░░░░░░░░░░░░░░░] 50% (1/2 plans in phase 27)
 
 ## Performance Metrics
 
@@ -32,6 +32,7 @@ Progress: [░░░░░░░░░░░░░░░░░░░░░░░
 | v1.1 (Phases 7-12) | 15 | 76m 43s | 5.1 min |
 | v1.2 (Phases 13-19) | 18 | 108m 48s | 6.0 min |
 | v1.3 (Phases 20-26) | 20 | ~75 min | ~3.8 min |
+| Phase 27 P01 | 2min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -40,6 +41,9 @@ Progress: [░░░░░░░░░░░░░░░░░░░░░░░
 All decisions logged in PROJECT.md Key Decisions table.
 
 v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data migration + 77+ file updates). This is NOT the dual-model additive approach from research -- it is a complete replacement requiring MIG-01 through MIG-05.
+- [Phase 27]: Solicitor FK uses PROTECT delete to preserve credit history
+- [Phase 27]: Money fields use PositiveBigIntegerField (cents) with Decimal amount_dollars property
+- [Phase 27]: RecurringGift uses RE-compatible statuses (Active/Held/Completed/Cancelled/Terminated) and extended frequencies
 
 ### Pending Todos
 
@@ -62,9 +66,9 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: v2.0 roadmap created with 9 phases (27-35)
-Resume: Run `/gsd:plan-phase 27` to begin Foundation Models
+Stopped at: Completed 27-01-PLAN.md (Gifts App Models)
+Resume: Execute 27-02-PLAN.md (ImportBatch, PrayerIntention, Contact updates, migrations)
 
 ---
 
-*Last updated: 2026-02-20 (v2.0 roadmap created)*
+*Last updated: 2026-02-20 (27-01 complete)*
