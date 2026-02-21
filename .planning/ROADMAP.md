@@ -127,7 +127,10 @@ Plans:
   2. Uploading an RE Recurring Gift CSV creates RecurringGift records with installment fields and status tracking, using the same grouping pattern
   3. Gift descriptions that contain prayer-relevant text automatically create PrayerIntention records linked to the donor contact
   4. All gift/recurring gift imports respect the same SHA256 dedup, row-level error collection, and encoding detection from Phase 28
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 29-01-PLAN.md — PrayerIntention M2M migration, RE Gift import service with multi-row grouping, prayer auto-creation, CLI + API
+- [ ] 29-02-PLAN.md — RE Recurring Gift import service with frequency/status mapping, CLI + API
 
 ### Phase 30: Data Migration & Backend Cutover
 **Goal**: All existing Donation and Pledge data is migrated to Gift and RecurringGift models, and all backend services query exclusively from the new models
@@ -227,7 +230,7 @@ Note: Phase 30 depends on Phase 27 only (not 28/29), so it could run after 27. H
 | 20-26 | v1.3 | 20/20 | Complete | 2026-02-19 |
 | 27. Foundation Models | 2/2 | Complete    | 2026-02-20 | - |
 | 28. RE Import (Const & Sol) | 2/2 | Complete    | 2026-02-21 | - |
-| 29. RE Import (Gifts) | v2.0 | 0/? | Not started | - |
+| 29. RE Import (Gifts) | v2.0 | 0/2 | Not started | - |
 | 30. Data Migration & Cutover | v2.0 | 0/? | Not started | - |
 | 31. Gift & Recurring Gift UI | v2.0 | 0/? | Not started | - |
 | 32. Import UI | v2.0 | 0/? | Not started | - |
@@ -240,4 +243,4 @@ Note: Phase 30 depends on Phase 27 only (not 28/29), so it could run after 27. H
 
 ---
 
-*Last updated: 2026-02-20 (v2.0 roadmap created)*
+*Last updated: 2026-02-20 (Phase 29 planned: 2 plans)*
