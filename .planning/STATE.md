@@ -11,16 +11,16 @@ See: .planning/PROJECT.md (updated 2026-02-20)
 
 Milestone: v2.0 -- Import Revamp, Prayer Intentions & Dashboard Polish
 Phase: 28 of 36 (RE Import Pipeline - Constituents & Solicitors)
-Plan: 1 of 2 in current phase
-Status: In Progress
-Last activity: 2026-02-20 -- Completed 28-01 (RE Solicitor Import Pipeline)
+Plan: 2 of 2 in current phase
+Status: Phase Complete
+Last activity: 2026-02-20 -- Completed 28-02 (RE Constituent Import)
 
-Progress: [████████████████                ] 50% (1/2 plans in phase 28)
+Progress: [████████████████████████████████] 100% (2/2 plans in phase 28)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 80 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3 + 3 v2.0)
+- Total plans completed: 81 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3 + 4 v2.0)
 - Average duration: ~3.8 minutes
 - Total execution time: ~4.9 hours
 
@@ -35,6 +35,7 @@ Progress: [████████████████                ] 50%
 | Phase 27 P01 | 2min | 2 tasks | 5 files |
 | Phase 27 P02 | 3min | 2 tasks | 14 files |
 | Phase 28 P01 | 3min | 2 tasks | 8 files |
+| Phase 28 P02 | 3min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -52,6 +53,9 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 - [Phase 28]: Solicitor.user changed from OneToOneField to ForeignKey (many-to-one)
 - [Phase 28]: RE CSV header matching uses alias mapping dict for flexible column name support
 - [Phase 28]: Ambiguous user name matches excluded from solicitor auto-linking
+- [Phase 28]: Three-tier contact matching: constituent_id (global) > email (owner-scoped) > phone (owner-scoped)
+- [Phase 28]: Merge-only contact updates: fill blank fields, never overwrite existing non-blank values
+- [Phase 28]: Minimum data for new Contacts: require (first_name + last_name) or organization_name
 
 ### Pending Todos
 
@@ -74,9 +78,9 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 28-01-PLAN.md (RE Solicitor Import Pipeline)
-Resume: Continue Phase 28 with Plan 02 (RE Constituent Import)
+Stopped at: Completed 28-02-PLAN.md (RE Constituent Import)
+Resume: Phase 28 complete. Continue to Phase 29.
 
 ---
 
-*Last updated: 2026-02-20 (28-01 complete)*
+*Last updated: 2026-02-20 (28-02 complete, phase 28 done)*
