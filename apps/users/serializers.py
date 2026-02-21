@@ -151,13 +151,13 @@ class CurrentUserSerializer(serializers.ModelSerializer):
         return 0
 
     def get_active_pledge_count(self, obj):
-        """Get count of active pledges for contacts owned by this user."""
+        """Get count of active recurring gifts for contacts owned by this user."""
         # Use annotated value if available (from view), otherwise single query
         if hasattr(obj, '_active_pledge_count'):
             return obj._active_pledge_count
 
-        from apps.pledges.models import Pledge, PledgeStatus
-        return Pledge.objects.filter(
-            contact__owner=obj,
-            status=PledgeStatus.ACTIVE
+        from apps.gifts.models import RecurringGift, RecurringGiftStatus
+        return RecurringGift.objects.filter(
+            donor_contact__owner=obj,
+            status=RecurringGiftStatus.ACTIVE
         ).count()
