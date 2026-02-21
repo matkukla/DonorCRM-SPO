@@ -5,22 +5,22 @@
 See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core value:** Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems, and leadership can proactively support their teams through cross-missionary analytics.
-**Current focus:** Phase 28 - RE Import Pipeline (Constituents & Solicitors) (v2.0)
+**Current focus:** Phase 29 - RE Import Pipeline (Gifts & Recurring Gifts) (v2.0)
 
 ## Current Position
 
 Milestone: v2.0 -- Import Revamp, Prayer Intentions & Dashboard Polish
-Phase: 28 of 36 (RE Import Pipeline - Constituents & Solicitors)
-Plan: 2 of 2 in current phase
-Status: Phase Complete
-Last activity: 2026-02-20 -- Completed 28-02 (RE Constituent Import)
+Phase: 29 of 36 (RE Import Pipeline - Gifts & Recurring Gifts)
+Plan: 1 of 2 in current phase
+Status: In Progress
+Last activity: 2026-02-20 -- Completed 29-01 (RE Gift Import)
 
-Progress: [████████████████████████████████] 100% (2/2 plans in phase 28)
+Progress: [████████████████                ] 50% (1/2 plans in phase 29)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 81 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3 + 4 v2.0)
+- Total plans completed: 82 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3 + 5 v2.0)
 - Average duration: ~3.8 minutes
 - Total execution time: ~4.9 hours
 
@@ -36,6 +36,7 @@ Progress: [███████████████████████
 | Phase 27 P02 | 3min | 2 tasks | 14 files |
 | Phase 28 P01 | 3min | 2 tasks | 8 files |
 | Phase 28 P02 | 3min | 2 tasks | 4 files |
+| Phase 29 P01 | 4min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -56,6 +57,10 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 - [Phase 28]: Three-tier contact matching: constituent_id (global) > email (owner-scoped) > phone (owner-scoped)
 - [Phase 28]: Merge-only contact updates: fill blank fields, never overwrite existing non-blank values
 - [Phase 28]: Minimum data for new Contacts: require (first_name + last_name) or organization_name
+- [Phase 29]: PrayerIntention.gift FK migrated to PrayerIntention.gifts M2M for multi-gift prayer dedup
+- [Phase 29]: Gift amount from dedicated column (first row), NOT summed from credits
+- [Phase 29]: Missing contacts skip entire gift group; unknown solicitors skip credit only
+- [Phase 29]: Prayer dedup by (contact.id, normalized_text_lowercase) with 20-entry conservative stoplist
 
 ### Pending Todos
 
@@ -65,7 +70,7 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 
 - RE CSV real-world encoding behavior should be validated with production-exported files during Phase 28
 - Solicitor name format ("Last, First" vs "First Last") is installation-specific -- confirm before Phase 28 ships
-- Prayer intention deduplication boundary (same text across multiple gifts from same donor) -- confirm intended behavior before Phase 33
+- Prayer intention deduplication boundary -- RESOLVED in Phase 29: dedup by (contact, normalized text) with M2M gift linking
 
 ### Quick Tasks Completed
 
@@ -78,9 +83,9 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 28-02-PLAN.md (RE Constituent Import)
-Resume: Phase 28 complete. Continue to Phase 29.
+Stopped at: Completed 29-01-PLAN.md (RE Gift Import)
+Resume: Continue to 29-02 (RE Recurring Gift Import).
 
 ---
 
-*Last updated: 2026-02-20 (28-02 complete, phase 28 done)*
+*Last updated: 2026-02-20 (29-01 complete)*
