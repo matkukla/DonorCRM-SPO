@@ -54,7 +54,7 @@ class Solicitor(TimeStampedModel):
         db_index=True,
         help_text='Normalized "Last, First" for matching'
     )
-    user = models.OneToOneField(
+    user = models.ForeignKey(
         'users.User',
         on_delete=models.SET_NULL,
         null=True,
