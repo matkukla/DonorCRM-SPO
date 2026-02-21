@@ -11,16 +11,16 @@ See: .planning/PROJECT.md (updated 2026-02-20)
 
 Milestone: v2.0 -- Import Revamp, Prayer Intentions & Dashboard Polish
 Phase: 29 of 36 (RE Import Pipeline - Gifts & Recurring Gifts)
-Plan: 1 of 2 in current phase
-Status: In Progress
-Last activity: 2026-02-20 -- Completed 29-01 (RE Gift Import)
+Plan: 2 of 2 in current phase
+Status: Phase Complete
+Last activity: 2026-02-20 -- Completed 29-02 (RE Recurring Gift Import)
 
-Progress: [████████████████                ] 50% (1/2 plans in phase 29)
+Progress: [████████████████████████████████] 100% (2/2 plans in phase 29)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 82 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3 + 5 v2.0)
+- Total plans completed: 83 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3 + 6 v2.0)
 - Average duration: ~3.8 minutes
 - Total execution time: ~4.9 hours
 
@@ -37,6 +37,7 @@ Progress: [████████████████                ] 50%
 | Phase 28 P01 | 3min | 2 tasks | 8 files |
 | Phase 28 P02 | 3min | 2 tasks | 4 files |
 | Phase 29 P01 | 4min | 2 tasks | 7 files |
+| Phase 29 P02 | 3min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -61,6 +62,8 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 - [Phase 29]: Gift amount from dedicated column (first row), NOT summed from credits
 - [Phase 29]: Missing contacts skip entire gift group; unknown solicitors skip credit only
 - [Phase 29]: Prayer dedup by (contact.id, normalized_text_lowercase) with 20-entry conservative stoplist
+- [Phase 29]: Empty frequency defaults to Monthly; empty status defaults to Active; unknown values skip group
+- [Phase 29]: RecurringGift import does NOT create prayer intentions (prayer text only on one-time gifts)
 
 ### Pending Todos
 
@@ -83,9 +86,9 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 29-01-PLAN.md (RE Gift Import)
-Resume: Continue to 29-02 (RE Recurring Gift Import).
+Stopped at: Completed 29-02-PLAN.md (RE Recurring Gift Import) -- Phase 29 complete
+Resume: Begin Phase 30.
 
 ---
 
-*Last updated: 2026-02-20 (29-01 complete)*
+*Last updated: 2026-02-20 (29-02 complete, phase 29 done)*
