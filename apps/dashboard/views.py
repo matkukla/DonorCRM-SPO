@@ -77,11 +77,10 @@ class NeedsAttentionView(APIView):
         data = get_needs_attention(user)
 
         # Serialize related objects
-        from apps.pledges.serializers import PledgeSerializer
         from apps.tasks.serializers import TaskSerializer
         from apps.contacts.serializers import ContactListSerializer
 
-        data['late_pledges'] = PledgeSerializer(data['late_pledges'], many=True).data
+        # late_pledges is already an empty list (no serialization needed)
         data['overdue_tasks'] = TaskSerializer(data['overdue_tasks'], many=True).data
         data['tasks_due_today'] = TaskSerializer(data['tasks_due_today'], many=True).data
         data['thank_you_needed'] = ContactListSerializer(data['thank_you_needed'], many=True).data
@@ -166,8 +165,8 @@ class RecentGiftsView(APIView):
 
         gifts = get_recent_gifts(user, days=days, limit=limit)
 
-        from apps.donations.serializers import DonationSerializer
-        serializer = DonationSerializer(gifts, many=True)
+        from apps.gifts.serializers import GiftSerializer
+        serializer = GiftSerializer(gifts, many=True)
 
         return Response({
             'recent_gifts': serializer.data,

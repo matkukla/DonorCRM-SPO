@@ -10,10 +10,9 @@ from django.db.models import Count, Q, Sum
 from django.db.models.functions import TruncMonth
 
 from apps.contacts.models import Contact
-from apps.donations.models import Donation
 from apps.events.models import Event
+from apps.gifts.models import Gift, RecurringGift, RecurringGiftStatus
 from apps.journals.models import JournalStageEvent
-from apps.pledges.models import Pledge, PledgeStatus
 from apps.tasks.models import Task, TaskStatus
 
 logger = logging.getLogger(__name__)
@@ -50,16 +49,11 @@ def get_needs_attention(user):
     if user.role == 'admin':
         contacts = Contact.objects.all()
         tasks = Task.objects.all()
-        pledges = Pledge.objects.all()
     else:
         contacts = Contact.objects.filter(owner=user)
         tasks = Task.objects.filter(owner=user)
-        pledges = Pledge.objects.filter(contact__owner=user)
 
     today = date.today()
-
-    # Late pledges
-    late_pledges = pledges.filter(is_late=True, status=PledgeStatus.ACTIVE)
 
     # Overdue tasks
     overdue_tasks = tasks.filter(
@@ -77,8 +71,8 @@ def get_needs_attention(user):
     thank_you_needed = contacts.filter(needs_thank_you=True)
 
     return {
-        'late_pledges': late_pledges[:5],
-        'late_pledge_count': late_pledges.count(),
+        'late_pledges': [],
+        'late_pledge_count': 0,
         'overdue_tasks': overdue_tasks[:5],
         'overdue_task_count': overdue_tasks.count(),
         'tasks_due_today': tasks_due_today[:5],
@@ -90,31 +84,10 @@ def get_needs_attention(user):
 
 def get_late_donations(user, limit=10):
     """
-    Get active pledges that are late (DonorElf-style).
-    Returns contacts with active recurring commitments whose expected
-    gift hasn't arrived after the grace period.
+    Get late donations. RecurringGift has no is_late field, so this returns
+    an empty list. Kept for API compatibility.
     """
-    if user.role == 'admin':
-        pledges = Pledge.objects.all()
-    else:
-        pledges = Pledge.objects.filter(contact__owner=user)
-
-    late_pledges = pledges.filter(
-        status=PledgeStatus.ACTIVE,
-        is_late=True,
-    ).select_related('contact').order_by('-days_late')[:limit]
-
-    return [{
-        'id': str(p.id),
-        'contact_id': str(p.contact.id),
-        'contact_name': p.contact.full_name,
-        'amount': str(p.amount),
-        'frequency': p.frequency,
-        'monthly_equivalent': round(p.monthly_equivalent, 2),
-        'last_gift_date': p.last_fulfilled_date.isoformat() if p.last_fulfilled_date else None,
-        'days_late': p.days_late,
-        'next_expected_date': p.next_expected_date.isoformat() if p.next_expected_date else None,
-    } for p in late_pledges]
+    return []
 
 
 def get_thank_you_queue(user):
@@ -132,20 +105,20 @@ def get_thank_you_queue(user):
 def get_support_progress(user):
     """
     Calculate support progress toward monthly goal.
-    Uses database aggregation instead of Python loops to avoid N+1 queries.
+    Uses RecurringGift.monthly_equivalent property.
     """
     if user.role == 'admin':
-        pledges = Pledge.objects.all()
+        recurring_gifts = RecurringGift.objects.all()
     else:
-        pledges = Pledge.objects.filter(contact__owner=user)
+        recurring_gifts = RecurringGift.objects.filter(donor_contact__owner=user)
 
-    # Get active pledges with monthly equivalent calculated in DB
-    active_pledges = pledges.filter(status=PledgeStatus.ACTIVE)
+    # Get active recurring gifts
+    active_recurring = recurring_gifts.filter(status=RecurringGiftStatus.ACTIVE)
 
     # Calculate monthly equivalent using Python (simpler and more maintainable)
     # The monthly_equivalent property handles the calculation correctly
-    total_monthly = float(sum(p.monthly_equivalent for p in active_pledges))
-    pledge_count = active_pledges.count()
+    total_monthly = float(sum(rg.monthly_equivalent for rg in active_recurring))
+    rg_count = active_recurring.count()
 
     # Get user's goal
     goal = float(user.monthly_goal) if user.monthly_goal else 0
@@ -155,22 +128,22 @@ def get_support_progress(user):
         'monthly_goal': goal,
         'percentage': (total_monthly / goal * 100) if goal > 0 else 0,
         'gap': max(0, goal - total_monthly),
-        'active_pledge_count': pledge_count
+        'active_pledge_count': rg_count
     }
 
 
 def get_recent_gifts(user, days=30, limit=10):
     """
-    Get recent donations.
+    Get recent gifts.
     """
     start_date = date.today() - timedelta(days=days)
 
     if user.role == 'admin':
-        donations = Donation.objects.all()
+        gifts = Gift.objects.all()
     else:
-        donations = Donation.objects.filter(contact__owner=user)
+        gifts = Gift.objects.filter(donor_contact__owner=user)
 
-    return donations.filter(date__gte=start_date).select_related('contact')[:limit]
+    return gifts.filter(gift_date__gte=start_date).select_related('donor_contact')[:limit]
 
 
 def get_recent_journal_activity(user, limit=8):
@@ -210,20 +183,21 @@ def get_giving_summary(user, year=None):
     year_end = date(year, 12, 31)
 
     if user.role in ['admin', 'finance', 'read_only']:
-        donations = Donation.objects.all()
-        pledges = Pledge.objects.all()
+        gifts = Gift.objects.all()
+        recurring_gifts = RecurringGift.objects.all()
     else:
-        donations = Donation.objects.filter(contact__owner=user)
-        pledges = Pledge.objects.filter(contact__owner=user)
+        gifts = Gift.objects.filter(donor_contact__owner=user)
+        recurring_gifts = RecurringGift.objects.filter(donor_contact__owner=user)
 
-    # Given: sum of donations this year
-    given = donations.filter(
-        date__gte=year_start, date__lte=year_end
-    ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
+    # Given: sum of gifts this year (cents -> dollars)
+    total_cents = gifts.filter(
+        gift_date__gte=year_start, gift_date__lte=year_end
+    ).aggregate(total=Sum('amount_cents'))['total'] or 0
+    given = Decimal(total_cents) / Decimal(100)
 
-    # Active recurring pledges annualized
-    active_pledges = pledges.filter(status=PledgeStatus.ACTIVE)
-    annualized_recurring = sum(p.monthly_equivalent * 12 for p in active_pledges)
+    # Active recurring gifts annualized
+    active_recurring = recurring_gifts.filter(status=RecurringGiftStatus.ACTIVE)
+    annualized_recurring = sum(rg.monthly_equivalent * 12 for rg in active_recurring)
 
     # Expecting: annualized recurring minus what's already given this year
     expecting = max(0, float(annualized_recurring) - float(given))
@@ -244,33 +218,33 @@ def get_giving_summary(user, year=None):
         'monthly_goal': monthly_goal,
         'percentage': ((given_float + expecting) / annual_goal * 100) if annual_goal > 0 else 0,
         'year': year,
-        'active_pledge_count': active_pledges.count(),
+        'active_pledge_count': active_recurring.count(),
     }
 
 
 def get_monthly_gifts(user, months=12):
     """
-    Get donation totals grouped by month for bar chart.
+    Get gift totals grouped by month for bar chart.
     Returns last N months including current month.
     """
     today = date.today()
     start_date = (today.replace(day=1) - relativedelta(months=months - 1))
 
     if user.role in ['admin', 'finance', 'read_only']:
-        donations = Donation.objects.all()
+        gifts = Gift.objects.all()
     else:
-        donations = Donation.objects.filter(contact__owner=user)
+        gifts = Gift.objects.filter(donor_contact__owner=user)
 
     monthly_data = (
-        donations.filter(date__gte=start_date)
-        .annotate(month=TruncMonth('date'))
+        gifts.filter(gift_date__gte=start_date)
+        .annotate(month=TruncMonth('gift_date'))
         .values('month')
-        .annotate(total=Sum('amount'))
+        .annotate(total=Sum('amount_cents'))
         .order_by('month')
     )
 
-    # Build map of month -> total
-    monthly_map = {item['month']: float(item['total']) for item in monthly_data}
+    # Build map of month -> total (cents to dollars)
+    monthly_map = {item['month']: float(item['total']) / 100 for item in monthly_data}
 
     # Build complete month list (fill gaps with 0)
     result = []
@@ -305,10 +279,7 @@ def get_dashboard_summary(user):
     ))
 
     needs_attention = get_needs_attention(user)
-    # Convert querysets to lists of dicts
-    needs_attention['late_pledges'] = list(needs_attention['late_pledges'].values(
-        'id', 'amount', 'frequency', 'days_late'
-    ))
+    # late_pledges is already an empty list from get_needs_attention
     needs_attention['overdue_tasks'] = list(needs_attention['overdue_tasks'].values(
         'id', 'title', 'due_date', 'priority'
     ))
@@ -319,16 +290,9 @@ def get_dashboard_summary(user):
         'id', 'first_name', 'last_name', 'last_gift_amount'
     ))
 
-    # Late donations (DonorElf-style)
+    # Late donations - static empty (RecurringGift has no is_late field)
     late_donations = get_late_donations(user)
-    if user.role == 'admin':
-        late_donations_count = Pledge.objects.filter(
-            status=PledgeStatus.ACTIVE, is_late=True
-        ).count()
-    else:
-        late_donations_count = Pledge.objects.filter(
-            contact__owner=user, status=PledgeStatus.ACTIVE, is_late=True
-        ).count()
+    late_donations_count = 0
 
     thank_you_qs = get_thank_you_queue(user)
     thank_you_list = list(thank_you_qs[:5].values(
@@ -347,7 +311,8 @@ def get_dashboard_summary(user):
         'thank_you_count': thank_you_count,
         'support_progress': get_support_progress(user),
         'recent_gifts': list(get_recent_gifts(user).values(
-            'id', 'amount', 'date', 'contact_id', 'contact__first_name', 'contact__last_name'
+            'id', 'amount_cents', 'gift_date', 'donor_contact_id',
+            'donor_contact__first_name', 'donor_contact__last_name'
         )),
         'journal_activity': get_recent_journal_activity(user),
     }

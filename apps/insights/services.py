@@ -10,10 +10,9 @@ from django.db.models.functions import TruncMonth, TruncYear, TruncDate, TruncWe
 from django.utils import timezone
 
 from apps.contacts.models import Contact, ContactStatus
-from apps.donations.models import Donation
 from apps.events.models import Event
+from apps.gifts.models import Gift, RecurringGift, RecurringGiftStatus
 from apps.journals.models import Journal, JournalContact, JournalStageEvent, PipelineStage, Decision
-from apps.pledges.models import Pledge, PledgeStatus
 from apps.tasks.models import Task, TaskStatus
 from apps.users.models import User
 
@@ -35,18 +34,18 @@ def _parse_date_range(date_from=None, date_to=None):
     return dt_from_val, dt_to_val
 
 
-def _scope_donations(user):
-    """Return donation queryset scoped by user role."""
+def _scope_gifts(user):
+    """Return gift queryset scoped by user role."""
     if user.role in ['admin', 'finance', 'read_only']:
-        return Donation.objects.all()
-    return Donation.objects.filter(contact__owner=user)
+        return Gift.objects.all()
+    return Gift.objects.filter(donor_contact__owner=user)
 
 
-def _scope_pledges(user):
-    """Return pledge queryset scoped by user role."""
+def _scope_recurring_gifts(user):
+    """Return recurring gift queryset scoped by user role."""
     if user.role in ['admin', 'finance', 'read_only']:
-        return Pledge.objects.all()
-    return Pledge.objects.filter(contact__owner=user)
+        return RecurringGift.objects.all()
+    return RecurringGift.objects.filter(donor_contact__owner=user)
 
 
 def _scope_tasks(user):
@@ -58,20 +57,20 @@ def _scope_tasks(user):
 
 def get_donations_by_month(user, year=None):
     """
-    Get donation totals grouped by month for a given year.
+    Get gift totals grouped by month for a given year.
     Defaults to current year.
     """
     if year is None:
         year = date.today().year
 
-    donations = _scope_donations(user)
+    gifts = _scope_gifts(user)
 
     monthly_data = (
-        donations.filter(date__year=year)
-        .annotate(month=TruncMonth('date'))
+        gifts.filter(gift_date__year=year)
+        .annotate(month=TruncMonth('gift_date'))
         .values('month')
         .annotate(
-            total=Sum('amount'),
+            total=Sum('amount_cents'),
             count=Count('id')
         )
         .order_by('month')
@@ -83,12 +82,12 @@ def get_donations_by_month(user, year=None):
     result = []
     for month_num in range(1, 13):
         month_date = date(year, month_num, 1)
-        month_data = monthly_map.get(month_num, {'total': Decimal('0'), 'count': 0})
+        month_data = monthly_map.get(month_num, {'total': 0, 'count': 0})
         result.append({
             'month': month_date.strftime('%Y-%m'),
             'label': month_date.strftime('%B %Y'),
             'short_label': month_date.strftime('%b'),
-            'total': float(month_data['total'] or 0),
+            'total': float(month_data['total'] or 0) / 100,
             'count': month_data['count'],
         })
 
@@ -105,19 +104,19 @@ def get_donations_by_month(user, year=None):
 
 def get_donations_by_year(user, years=5):
     """
-    Get donation totals grouped by year for the last N years.
+    Get gift totals grouped by year for the last N years.
     """
     current_year = date.today().year
     start_year = current_year - years + 1
 
-    donations = _scope_donations(user)
+    gifts = _scope_gifts(user)
 
     yearly_data = (
-        donations.filter(date__year__gte=start_year)
-        .annotate(year=TruncYear('date'))
+        gifts.filter(gift_date__year__gte=start_year)
+        .annotate(year=TruncYear('gift_date'))
         .values('year')
         .annotate(
-            total=Sum('amount'),
+            total=Sum('amount_cents'),
             count=Count('id')
         )
         .order_by('year')
@@ -128,10 +127,10 @@ def get_donations_by_year(user, years=5):
 
     result = []
     for year in range(start_year, current_year + 1):
-        year_data = yearly_map.get(year, {'total': Decimal('0'), 'count': 0})
+        year_data = yearly_map.get(year, {'total': 0, 'count': 0})
         result.append({
             'year': year,
-            'total': float(year_data['total'] or 0),
+            'total': float(year_data['total'] or 0) / 100,
             'count': year_data['count'],
         })
 
@@ -144,42 +143,41 @@ def get_donations_by_year(user, years=5):
 
 def get_monthly_commitments(user):
     """
-    Get summary of active recurring pledges with monthly equivalents.
+    Get summary of active recurring gifts with monthly equivalents.
     """
-    pledges = _scope_pledges(user)
-    active_pledges = pledges.filter(status=PledgeStatus.ACTIVE).select_related('contact')
+    recurring_gifts = _scope_recurring_gifts(user)
+    active_recurring = recurring_gifts.filter(status=RecurringGiftStatus.ACTIVE).select_related('donor_contact')
 
     # Group by frequency
     by_frequency = {}
     total_monthly = 0
 
-    pledge_list = []
-    for pledge in active_pledges:
-        monthly_equiv = pledge.monthly_equivalent
+    rg_list = []
+    for rg in active_recurring:
+        monthly_equiv = rg.monthly_equivalent
         total_monthly += monthly_equiv
 
-        freq = pledge.frequency
+        freq = rg.frequency
         if freq not in by_frequency:
             by_frequency[freq] = {'count': 0, 'monthly_total': 0}
         by_frequency[freq]['count'] += 1
         by_frequency[freq]['monthly_total'] += monthly_equiv
 
-        pledge_list.append({
-            'id': str(pledge.id),
-            'contact_id': str(pledge.contact.id),
-            'contact_name': pledge.contact.full_name,
-            'amount': float(pledge.amount),
-            'frequency': pledge.frequency,
+        rg_list.append({
+            'id': str(rg.id),
+            'contact_id': str(rg.donor_contact.id),
+            'contact_name': rg.donor_contact.full_name,
+            'amount': float(rg.amount_dollars),
+            'frequency': rg.frequency,
             'monthly_equivalent': round(monthly_equiv, 2),
-            'start_date': pledge.start_date.isoformat(),
-            'last_fulfilled_date': pledge.last_fulfilled_date.isoformat() if pledge.last_fulfilled_date else None,
+            'start_date': rg.start_date.isoformat(),
         })
 
     return {
-        'pledges': pledge_list,
+        'pledges': rg_list,
         'total_monthly': round(total_monthly, 2),
         'total_annual': round(total_monthly * 12, 2),
-        'active_count': len(pledge_list),
+        'active_count': len(rg_list),
         'by_frequency': [
             {
                 'frequency': freq,
@@ -193,29 +191,10 @@ def get_monthly_commitments(user):
 
 def get_late_donations(user, limit=50):
     """
-    Get active pledges that are late (expected gift hasn't arrived).
+    Get late donations. RecurringGift has no is_late field, so this returns
+    an empty structure. Kept for API compatibility.
     """
-    pledges = _scope_pledges(user)
-
-    late_pledges = pledges.filter(
-        status=PledgeStatus.ACTIVE,
-        is_late=True,
-    ).select_related('contact').order_by('-days_late')[:limit]
-
-    return {
-        'late_donations': [{
-            'id': str(p.id),
-            'contact_id': str(p.contact.id),
-            'contact_name': p.contact.full_name,
-            'amount': float(p.amount),
-            'frequency': p.frequency,
-            'monthly_equivalent': round(p.monthly_equivalent, 2),
-            'last_gift_date': p.last_fulfilled_date.isoformat() if p.last_fulfilled_date else None,
-            'days_late': p.days_late,
-            'next_expected_date': p.next_expected_date.isoformat() if p.next_expected_date else None,
-        } for p in late_pledges],
-        'total_count': pledges.filter(status=PledgeStatus.ACTIVE, is_late=True).count(),
-    }
+    return {'late_donations': [], 'total_count': 0}
 
 
 def get_follow_ups(user, limit=50):
@@ -281,34 +260,30 @@ def get_review_queue(user):
 
 def get_transactions(user, limit=100, offset=0, contact_id=None, date_from=None, date_to=None):
     """
-    Get full transaction ledger (donations).
+    Get full transaction ledger (gifts).
     Admin/finance-only endpoint.
     """
-    donations = Donation.objects.all().select_related('contact', 'pledge')
+    gifts = Gift.objects.all().select_related('donor_contact')
 
     # Apply filters
     if contact_id:
-        donations = donations.filter(contact_id=contact_id)
+        gifts = gifts.filter(donor_contact_id=contact_id)
     if date_from:
-        donations = donations.filter(date__gte=date_from)
+        gifts = gifts.filter(gift_date__gte=date_from)
     if date_to:
-        donations = donations.filter(date__lte=date_to)
+        gifts = gifts.filter(gift_date__lte=date_to)
 
-    total_count = donations.count()
-    transactions = donations.order_by('-date', '-created_at')[offset:offset + limit]
+    total_count = gifts.count()
+    transactions = gifts.order_by('-gift_date', '-created_at')[offset:offset + limit]
 
     return {
         'transactions': [{
             'id': str(d.id),
-            'contact_id': str(d.contact.id),
-            'contact_name': d.contact.full_name,
-            'amount': float(d.amount),
-            'date': d.date.isoformat(),
-            'donation_type': d.donation_type,
-            'payment_method': d.payment_method,
-            'pledge_id': str(d.pledge.id) if d.pledge else None,
-            'thanked': d.thanked,
-            'notes': d.notes,
+            'contact_id': str(d.donor_contact.id),
+            'contact_name': d.donor_contact.full_name,
+            'amount': float(d.amount_dollars),
+            'date': d.gift_date.isoformat(),
+            'notes': d.description,
         } for d in transactions],
         'total_count': total_count,
         'limit': limit,
@@ -371,19 +346,19 @@ def get_dashboard_overview(date_from=None, date_to=None):
         1
     )
 
-    # Donation summary - filter by date range if provided, else default to last 12 months
+    # Gift summary - filter by date range if provided, else default to last 12 months
     if dt_from or dt_to:
-        donation_qs = Donation.objects.all()
+        gift_qs = Gift.objects.all()
         if dt_from:
-            donation_qs = donation_qs.filter(date__gte=dt_from.date())
+            gift_qs = gift_qs.filter(gift_date__gte=dt_from.date())
         if dt_to:
-            donation_qs = donation_qs.filter(date__lt=dt_to.date())
+            gift_qs = gift_qs.filter(gift_date__lt=dt_to.date())
     else:
         twelve_months_ago = date.today() - relativedelta(months=12)
-        donation_qs = Donation.objects.filter(date__gte=twelve_months_ago)
+        gift_qs = Gift.objects.filter(gift_date__gte=twelve_months_ago)
 
-    donation_stats = donation_qs.aggregate(
-        total_amount=Sum('amount'),
+    gift_stats = gift_qs.aggregate(
+        total_amount=Sum('amount_cents'),
         total_count=Count('id')
     )
 
@@ -393,8 +368,8 @@ def get_dashboard_overview(date_from=None, date_to=None):
         'stalled_contacts': stalled_count,
         'conversion_rate': conversion_rate,
         'donations_12m': {
-            'total_amount': float(donation_stats['total_amount'] or 0),
-            'total_count': donation_stats['total_count'] or 0,
+            'total_amount': float((gift_stats['total_amount'] or 0)) / 100,
+            'total_count': gift_stats['total_count'] or 0,
         },
     }
 
@@ -510,17 +485,17 @@ def get_user_performance():
     Per-missionary performance metrics aggregated at database level.
     Target: <10 queries.
     """
-    # Subquery for donation totals per user
-    donation_totals = Donation.objects.filter(
-        contact__owner=OuterRef('pk')
-    ).values('contact__owner').annotate(
-        total=Sum('amount')
+    # Subquery for gift totals per user (cents)
+    gift_totals = Gift.objects.filter(
+        donor_contact__owner=OuterRef('pk')
+    ).values('donor_contact__owner').annotate(
+        total=Sum('amount_cents')
     ).values('total')
 
-    # Subquery for donation counts per user
-    donation_counts = Donation.objects.filter(
-        contact__owner=OuterRef('pk')
-    ).values('contact__owner').annotate(
+    # Subquery for gift counts per user
+    gift_counts = Gift.objects.filter(
+        donor_contact__owner=OuterRef('pk')
+    ).values('donor_contact__owner').annotate(
         count=Count('id')
     ).values('count')
 
@@ -546,12 +521,12 @@ def get_user_performance():
             filter=Q(journals__is_archived=False),
             distinct=True
         ),
-        total_donation_amount=Coalesce(
-            Subquery(donation_totals, output_field=DecimalField()),
-            Decimal('0')
+        total_gift_amount_cents=Coalesce(
+            Subquery(gift_totals, output_field=IntegerField()),
+            0
         ),
-        donation_count=Coalesce(
-            Subquery(donation_counts, output_field=IntegerField()),
+        gift_count=Coalesce(
+            Subquery(gift_counts, output_field=IntegerField()),
             0
         ),
         decisions_logged=Coalesce(
@@ -580,8 +555,8 @@ def get_user_performance():
             'active_journals': user.active_journals,
             'decisions_logged': user.decisions_logged,
             'conversion_rate': conversion_rate,
-            'total_donations': float(user.total_donation_amount),
-            'donation_count': user.donation_count,
+            'total_donations': float(user.total_gift_amount_cents or 0) / 100,
+            'donation_count': user.gift_count,
         })
 
     return {'users': result}
@@ -740,11 +715,11 @@ def get_team_trends(weeks=12, date_from=None, date_to=None):
         count=Count('id')
     ).order_by('week')
 
-    # Query donations by week
-    donations_by_week = Donation.objects.filter(
-        date__gte=start_date
+    # Query gifts by week
+    gifts_by_week = Gift.objects.filter(
+        gift_date__gte=start_date
     ).annotate(
-        week=TruncWeek('date')
+        week=TruncWeek('gift_date')
     ).values('week').annotate(
         count=Count('id')
     ).order_by('week')
@@ -765,7 +740,7 @@ def get_team_trends(weeks=12, date_from=None, date_to=None):
         return dt.date() if hasattr(dt, 'date') and callable(dt.date) else dt
 
     decisions_map = {normalize_to_date(item['week']): item['count'] for item in decisions_by_week}
-    donations_map = {normalize_to_date(item['week']): item['count'] for item in donations_by_week}
+    gifts_map = {normalize_to_date(item['week']): item['count'] for item in gifts_by_week}
     stage_events_map = {normalize_to_date(item['week']): item['count'] for item in stage_events_by_week}
 
     # Build complete week list (fill gaps with 0)
@@ -779,7 +754,7 @@ def get_team_trends(weeks=12, date_from=None, date_to=None):
             'week_start': week_start.isoformat(),
             'week_label': week_label,
             'decisions_logged': decisions_map.get(week_start, 0),
-            'donations_received': donations_map.get(week_start, 0),
+            'donations_received': gifts_map.get(week_start, 0),
             'stage_progressions': stage_events_map.get(week_start, 0),
         })
 
@@ -792,7 +767,7 @@ def get_team_trends(weeks=12, date_from=None, date_to=None):
 def get_user_trends(user_id, weeks=12):
     """
     Get user activity trends over past N weeks for a specific user.
-    Returns weekly aggregated metrics: decisions logged, donations received, stage progressions.
+    Returns weekly aggregated metrics: decisions logged, gifts received, stage progressions.
     User-scoped aggregation (filters by user_id) — admin sees data for one missionary.
     Target: <10 queries.
 
@@ -820,12 +795,12 @@ def get_user_trends(user_id, weeks=12):
         count=Count('id')
     ).order_by('week')
 
-    # Query donations by week for this user
-    donations_by_week = Donation.objects.filter(
-        contact__owner_id=user_id,
-        date__gte=start_date
+    # Query gifts by week for this user
+    gifts_by_week = Gift.objects.filter(
+        donor_contact__owner_id=user_id,
+        gift_date__gte=start_date
     ).annotate(
-        week=TruncWeek('date')
+        week=TruncWeek('gift_date')
     ).values('week').annotate(
         count=Count('id')
     ).order_by('week')
@@ -847,7 +822,7 @@ def get_user_trends(user_id, weeks=12):
         return dt.date() if hasattr(dt, 'date') and callable(dt.date) else dt
 
     decisions_map = {normalize_to_date(item['week']): item['count'] for item in decisions_by_week}
-    donations_map = {normalize_to_date(item['week']): item['count'] for item in donations_by_week}
+    gifts_map = {normalize_to_date(item['week']): item['count'] for item in gifts_by_week}
     stage_events_map = {normalize_to_date(item['week']): item['count'] for item in stage_events_by_week}
 
     # Build complete week list (fill gaps with 0)
@@ -861,7 +836,7 @@ def get_user_trends(user_id, weeks=12):
             'week_start': week_start.isoformat(),
             'week_label': week_label,
             'decisions_logged': decisions_map.get(week_start, 0),
-            'donations_received': donations_map.get(week_start, 0),
+            'donations_received': gifts_map.get(week_start, 0),
             'stage_progressions': stage_events_map.get(week_start, 0),
         })
 
@@ -1011,12 +986,12 @@ def get_user_drilldown(user_id):
         1
     )
 
-    # Donation stats
-    donation_stats = Donation.objects.filter(
-        contact__owner_id=user_id
+    # Gift stats
+    gift_stats = Gift.objects.filter(
+        donor_contact__owner_id=user_id
     ).aggregate(
-        total_amount=Sum('amount'),
-        donation_count=Count('id')
+        total_amount_cents=Sum('amount_cents'),
+        gift_count=Count('id')
     )
 
     # Stalled contact count for this user (last journal activity >14 days ago)
@@ -1060,8 +1035,8 @@ def get_user_drilldown(user_id):
             'active_journals': active_journals,
             'decisions_logged': decisions_logged,
             'conversion_rate': conversion_rate,
-            'total_donations': float(donation_stats['total_amount'] or 0),
-            'donation_count': donation_stats['donation_count'] or 0,
+            'total_donations': float((gift_stats['total_amount_cents'] or 0)) / 100,
+            'donation_count': gift_stats['gift_count'] or 0,
             'stalled_contacts': stalled_count,
         },
         'journals': [
