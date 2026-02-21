@@ -1,6 +1,8 @@
 """
 Contact model for donor and prospect management.
 """
+from decimal import Decimal
+
 from django.conf import settings
 from django.db import models
 
@@ -158,23 +160,33 @@ class Contact(TimeStampedModel):
         return ', '.join(p for p in parts if p)
 
     @property
+    def has_active_recurring_gift(self):
+        """Check if contact has an active recurring gift."""
+        return self.recurring_gifts.filter(status='active').exists()
+
+    @property
     def has_active_pledge(self):
-        """Check if contact has an active pledge."""
-        return self.pledges.filter(status='active').exists()
+        """Alias for has_active_recurring_gift (backward compatibility during transition)."""
+        return self.has_active_recurring_gift
+
+    @property
+    def monthly_recurring_gift_amount(self):
+        """Get total monthly equivalent of active recurring gifts."""
+        active_recurring = self.recurring_gifts.filter(status='active')
+        total = 0
+        for rg in active_recurring:
+            total += rg.monthly_equivalent
+        return total
 
     @property
     def monthly_pledge_amount(self):
-        """Get total monthly equivalent of active pledges."""
-        active_pledges = self.pledges.filter(status='active')
-        total = 0
-        for pledge in active_pledges:
-            total += pledge.monthly_equivalent
-        return total
+        """Alias for monthly_recurring_gift_amount (backward compatibility during transition)."""
+        return self.monthly_recurring_gift_amount
 
     def update_giving_stats(self):
         """
-        Recalculate giving statistics from donations.
-        Called when donations are added/modified.
+        Recalculate giving statistics from gifts.
+        Called when gifts are added/modified.
         Uses select_for_update() to prevent race conditions during concurrent updates.
         """
         from django.db import transaction
@@ -183,22 +195,22 @@ class Contact(TimeStampedModel):
             # Lock this contact row to prevent concurrent recalculation
             Contact.objects.select_for_update().filter(pk=self.pk).first()
 
-            donations = self.donations.all()
-            agg = donations.aggregate(
-                total=models.Sum('amount'),
+            gifts = self.gifts.all()
+            agg = gifts.aggregate(
+                total_cents=models.Sum('amount_cents'),
                 count=models.Count('id'),
-                first=models.Min('date'),
-                last=models.Max('date')
+                first=models.Min('gift_date'),
+                last=models.Max('gift_date')
             )
 
-            self.total_given = agg['total'] or 0
+            self.total_given = Decimal(agg['total_cents'] or 0) / Decimal(100)
             self.gift_count = agg['count'] or 0
             self.first_gift_date = agg['first']
             self.last_gift_date = agg['last']
 
             if agg['last']:
-                last_donation = donations.order_by('-date').first()
-                self.last_gift_amount = last_donation.amount if last_donation else None
+                last_gift = gifts.order_by('-gift_date').first()
+                self.last_gift_amount = last_gift.amount_dollars if last_gift else None
 
             # Update status based on giving history
             if self.gift_count > 0 and self.status == ContactStatus.PROSPECT:

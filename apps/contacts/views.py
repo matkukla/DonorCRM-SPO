@@ -131,50 +131,50 @@ class ContactThankView(APIView):
         return Response({'detail': 'Contact marked as thanked.'})
 
 
-@extend_schema(tags=['contacts'], summary='List contact donations')
-class ContactDonationsView(generics.ListAPIView):
+@extend_schema(tags=['contacts'], summary='List contact gifts')
+class ContactGiftsView(generics.ListAPIView):
     """
-    GET: List donations for a specific contact
-    """
-    permission_classes = [permissions.IsAuthenticated, IsContactOwnerOrReadAccess]
-
-    def get_queryset(self):
-        from apps.donations.models import Donation
-
-        contact_id = self.kwargs.get('pk')
-        user = self.request.user
-        if user.role in ['admin', 'finance', 'read_only']:
-            return Donation.objects.filter(contact_id=contact_id).order_by('-date')
-        return Donation.objects.filter(
-            contact_id=contact_id, contact__owner=user
-        ).order_by('-date')
-
-    def get_serializer_class(self):
-        from apps.donations.serializers import DonationSerializer
-        return DonationSerializer
-
-
-@extend_schema(tags=['contacts'], summary='List contact pledges')
-class ContactPledgesView(generics.ListAPIView):
-    """
-    GET: List pledges for a specific contact
+    GET: List gifts for a specific contact
     """
     permission_classes = [permissions.IsAuthenticated, IsContactOwnerOrReadAccess]
 
     def get_queryset(self):
-        from apps.pledges.models import Pledge
+        from apps.gifts.models import Gift
 
         contact_id = self.kwargs.get('pk')
         user = self.request.user
         if user.role in ['admin', 'finance', 'read_only']:
-            return Pledge.objects.filter(contact_id=contact_id).order_by('-created_at')
-        return Pledge.objects.filter(
-            contact_id=contact_id, contact__owner=user
-        ).order_by('-created_at')
+            return Gift.objects.filter(donor_contact_id=contact_id).order_by('-gift_date')
+        return Gift.objects.filter(
+            donor_contact_id=contact_id, donor_contact__owner=user
+        ).order_by('-gift_date')
 
     def get_serializer_class(self):
-        from apps.pledges.serializers import PledgeSerializer
-        return PledgeSerializer
+        from apps.gifts.serializers import GiftSerializer
+        return GiftSerializer
+
+
+@extend_schema(tags=['contacts'], summary='List contact recurring gifts')
+class ContactRecurringGiftsView(generics.ListAPIView):
+    """
+    GET: List recurring gifts for a specific contact
+    """
+    permission_classes = [permissions.IsAuthenticated, IsContactOwnerOrReadAccess]
+
+    def get_queryset(self):
+        from apps.gifts.models import RecurringGift
+
+        contact_id = self.kwargs.get('pk')
+        user = self.request.user
+        if user.role in ['admin', 'finance', 'read_only']:
+            return RecurringGift.objects.filter(donor_contact_id=contact_id).order_by('-start_date')
+        return RecurringGift.objects.filter(
+            donor_contact_id=contact_id, donor_contact__owner=user
+        ).order_by('-start_date')
+
+    def get_serializer_class(self):
+        from apps.gifts.serializers import RecurringGiftSerializer
+        return RecurringGiftSerializer
 
 
 @extend_schema(tags=['contacts'], summary='List contact tasks')
