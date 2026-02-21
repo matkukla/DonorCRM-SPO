@@ -39,6 +39,10 @@ class ContactAdmin(admin.ModelAdmin):
         ('Thank You', {
             'fields': ('needs_thank_you', 'last_thanked_at')
         }),
+        ('Organization', {
+            'fields': ('organization_name', 'external_constituent_id'),
+            'classes': ('collapse',),
+        }),
         ('Notes', {
             'fields': ('notes',)
         }),
