@@ -17,7 +17,15 @@ from django.db import IntegrityError, transaction
 from django.core.exceptions import ValidationError
 
 from apps.contacts.models import Contact
-from apps.gifts.models import Gift, GiftCredit, Solicitor
+from apps.gifts.models import (
+    Gift,
+    GiftCredit,
+    RecurringGift,
+    RecurringGiftCredit,
+    RecurringGiftFrequency,
+    RecurringGiftStatus,
+    Solicitor,
+)
 from apps.imports.models import Fund, ImportBatch, ImportBatchStatus, ImportBatchType
 from apps.prayers.models import PrayerIntention, PrayerIntentionStatus
 from apps.users.models import User
@@ -1333,6 +1341,445 @@ def import_re_gifts(
         skipped_count,
         len(errors),
         prayer_count,
+    )
+
+    return batch
+
+
+# ---------------------------------------------------------------------------
+# Recurring Gift header aliases
+# ---------------------------------------------------------------------------
+
+RECURRING_GIFT_HEADER_ALIASES: dict[str, str] = {
+    # Recurring Gift ID
+    'recurring_gift_id': 'gift_id',
+    'rg_id': 'gift_id',
+    'recurring gift id': 'gift_id',
+    'gift_id': 'gift_id',
+    'gf_id': 'gift_id',
+    # Constituent ID
+    'gf_cnbio_id': 'constituent_id',
+    'constituent_id': 'constituent_id',
+    'constituent id': 'constituent_id',
+    'cnbio_id': 'constituent_id',
+    'consid': 'constituent_id',
+    # Amount (per-installment)
+    'gf_amount': 'amount',
+    'amount': 'amount',
+    'installment_amount': 'amount',
+    'installment amount': 'amount',
+    # Frequency
+    'gf_installment_frequency': 'frequency',
+    'installment_frequency': 'frequency',
+    'frequency': 'frequency',
+    'installment frequency': 'frequency',
+    # Start date
+    'gf_date': 'start_date',
+    'start_date': 'start_date',
+    'start date': 'start_date',
+    'date_1st_pay': 'start_date',
+    # End date
+    'gf_end_date': 'end_date',
+    'end_date': 'end_date',
+    'end date': 'end_date',
+    # Status
+    'gf_status': 'status',
+    'status': 'status',
+    'gift status': 'status',
+    # Fund
+    'gf_fund': 'fund',
+    'fund': 'fund',
+    'fund_id': 'fund',
+    # Solicitor
+    'solicitor_name': 'solicitor_name',
+    'solicitor name': 'solicitor_name',
+    'cnsol_1_01_name': 'solicitor_name',
+    # Credit amount
+    'credit_amount': 'credit_amount',
+    'gf_cnsol_1_01_amount': 'credit_amount',
+    # Description
+    'description': 'description',
+    'gf_description': 'description',
+}
+
+RECURRING_GIFT_REQUIRED_CANONICAL = {'gift_id', 'constituent_id', 'amount'}
+
+
+# ---------------------------------------------------------------------------
+# Frequency and status mapping
+# ---------------------------------------------------------------------------
+
+FREQUENCY_MAP: dict[str, str] = {
+    'monthly': RecurringGiftFrequency.MONTHLY,
+    'quarterly': RecurringGiftFrequency.QUARTERLY,
+    'semi-annually': RecurringGiftFrequency.SEMI_ANNUALLY,
+    'semi-annual': RecurringGiftFrequency.SEMI_ANNUALLY,
+    'semiannually': RecurringGiftFrequency.SEMI_ANNUALLY,
+    'semi annually': RecurringGiftFrequency.SEMI_ANNUALLY,
+    'annually': RecurringGiftFrequency.ANNUALLY,
+    'annual': RecurringGiftFrequency.ANNUALLY,
+    'yearly': RecurringGiftFrequency.ANNUALLY,
+    'bimonthly': RecurringGiftFrequency.BIMONTHLY,
+    'bi-monthly': RecurringGiftFrequency.BIMONTHLY,
+    'bi monthly': RecurringGiftFrequency.BIMONTHLY,
+    'biweekly': RecurringGiftFrequency.BIWEEKLY,
+    'bi-weekly': RecurringGiftFrequency.BIWEEKLY,
+    'bi weekly': RecurringGiftFrequency.BIWEEKLY,
+    'weekly': RecurringGiftFrequency.WEEKLY,
+    'irregular': RecurringGiftFrequency.IRREGULAR,
+}
+
+STATUS_MAP: dict[str, str] = {
+    'active': RecurringGiftStatus.ACTIVE,
+    'held': RecurringGiftStatus.HELD,
+    'completed': RecurringGiftStatus.COMPLETED,
+    'cancelled': RecurringGiftStatus.CANCELLED,
+    'canceled': RecurringGiftStatus.CANCELLED,
+    'terminated': RecurringGiftStatus.TERMINATED,
+}
+
+
+# ---------------------------------------------------------------------------
+# Recurring Gift import orchestrator
+# ---------------------------------------------------------------------------
+
+def import_re_recurring_gifts(
+    file_bytes: bytes,
+    filename: str,
+    uploaded_by: User,
+    owner: User,
+) -> ImportBatch:
+    """Import RE Recurring Gift CSV end-to-end.
+
+    Steps:
+    1. SHA256 dedup check
+    2. Decode with cascading encoding
+    3. Parse CSV and validate headers via alias mapping
+    4. Group rows by Recurring Gift ID (two-pass)
+    5. Build solicitor + fund lookups
+    6. Process each recurring gift group with savepoint isolation:
+       a. Find Contact by constituent_id (skip group if not found)
+       b. Check external_gift_id dedup against DB (skip if exists)
+       c. Map frequency and status from RE string values
+       d. Create RecurringGift with amount from first row
+       e. Create RecurringGiftCredit for each solicitor row
+    7. Create ImportBatch record with results
+
+    Returns ImportBatch (may be existing if duplicate).
+    """
+    sha256_hash = hashlib.sha256(file_bytes).hexdigest()
+
+    # Step 1: Check for duplicate
+    existing = check_duplicate_import(file_bytes, ImportBatchType.RE_RECURRING_GIFT)
+    if existing:
+        logger.info('Duplicate recurring gift import detected for %s', filename)
+        existing.status = ImportBatchStatus.DUPLICATE
+        return existing
+
+    # Step 2: Decode
+    try:
+        content = decode_csv_bytes(file_bytes)
+    except ValueError as e:
+        batch = ImportBatch.objects.create(
+            import_type=ImportBatchType.RE_RECURRING_GIFT,
+            status=ImportBatchStatus.FAILED,
+            filename=filename,
+            sha256_hash=sha256_hash,
+            uploaded_by=uploaded_by,
+            summary={'errors': [{'row': 0, 'error': str(e)}]},
+        )
+        return batch
+
+    # Step 3: Parse CSV and validate headers
+    try:
+        reader = csv.DictReader(io.StringIO(content))
+        fieldnames = reader.fieldnames or []
+    except Exception as e:
+        batch = ImportBatch.objects.create(
+            import_type=ImportBatchType.RE_RECURRING_GIFT,
+            status=ImportBatchStatus.FAILED,
+            filename=filename,
+            sha256_hash=sha256_hash,
+            uploaded_by=uploaded_by,
+            summary={'errors': [{'row': 0, 'error': f'CSV parse error: {e}'}]},
+        )
+        return batch
+
+    col_map = _build_header_mapping(fieldnames, RECURRING_GIFT_HEADER_ALIASES)
+
+    # Check required canonical fields
+    missing_canonical = {
+        name for name in RECURRING_GIFT_REQUIRED_CANONICAL
+        if col_map.get(name) is None
+    }
+    if missing_canonical:
+        expected_aliases = []
+        for alias, canonical in RECURRING_GIFT_HEADER_ALIASES.items():
+            if canonical in missing_canonical:
+                expected_aliases.append(alias)
+        batch = ImportBatch.objects.create(
+            import_type=ImportBatchType.RE_RECURRING_GIFT,
+            status=ImportBatchStatus.FAILED,
+            filename=filename,
+            sha256_hash=sha256_hash,
+            uploaded_by=uploaded_by,
+            summary={
+                'errors': [{
+                    'row': 0,
+                    'error': (
+                        f'Missing required recurring gift headers. '
+                        f'Expected one of each: {", ".join(sorted(expected_aliases))}'
+                    ),
+                }],
+            },
+        )
+        return batch
+
+    # Step 4: Group rows by gift_id
+    groups, grouping_errors, total_rows = _group_rows_by_id(
+        reader, col_map, 'gift_id',
+    )
+
+    # Step 5: Build lookups
+    solicitor_lookup = _build_solicitor_lookup()
+    fund_lookup = _build_fund_lookup()
+
+    # Step 6: Process each recurring gift group
+    errors: list[dict] = list(grouping_errors)
+    warnings: list[dict] = []
+    created_count = 0
+    skipped_count = 0
+    unmatched_solicitors: list[str] = []
+
+    try:
+        with transaction.atomic():
+            for gift_id, rows in groups.items():
+                sp = transaction.savepoint()
+                try:
+                    first_row = rows[0]
+
+                    # Look up Contact by constituent_id
+                    constituent_id = first_row.get('constituent_id', '')
+                    contact = None
+                    if constituent_id:
+                        contact = Contact.objects.filter(
+                            external_constituent_id=constituent_id,
+                        ).first()
+
+                    if not contact:
+                        row_nums = ', '.join(r['_row_number'] for r in rows)
+                        errors.append({
+                            'row': int(first_row['_row_number']),
+                            'error': (
+                                f'Constituent ID "{constituent_id}" not found '
+                                f'-- skipping recurring gift group {gift_id} '
+                                f'(rows {row_nums})'
+                            ),
+                        })
+                        transaction.savepoint_rollback(sp)
+                        continue
+
+                    # Check for duplicate external_gift_id in database
+                    if RecurringGift.objects.filter(
+                        external_gift_id=gift_id,
+                    ).exists():
+                        skipped_count += 1
+                        transaction.savepoint_rollback(sp)
+                        continue
+
+                    # Parse amount from first row
+                    amount_cents = _parse_amount_to_cents(
+                        first_row.get('amount', ''),
+                    )
+                    if amount_cents == 0:
+                        errors.append({
+                            'row': int(first_row['_row_number']),
+                            'error': (
+                                f'Row {first_row["_row_number"]}: Invalid amount '
+                                f'"{first_row.get("amount", "")}" for recurring '
+                                f'gift {gift_id}'
+                            ),
+                        })
+                        transaction.savepoint_rollback(sp)
+                        continue
+
+                    # Parse start_date from first row (required)
+                    start_date = _parse_date(first_row.get('start_date', ''))
+                    if start_date is None:
+                        errors.append({
+                            'row': int(first_row['_row_number']),
+                            'error': (
+                                f'Row {first_row["_row_number"]}: Invalid or '
+                                f'missing start date '
+                                f'"{first_row.get("start_date", "")}" for '
+                                f'recurring gift {gift_id}'
+                            ),
+                        })
+                        transaction.savepoint_rollback(sp)
+                        continue
+
+                    # Parse end_date (optional -- None is acceptable)
+                    end_date = _parse_date(first_row.get('end_date', ''))
+
+                    # Map frequency
+                    raw_frequency = first_row.get('frequency', '').strip()
+                    if raw_frequency:
+                        mapped_frequency = FREQUENCY_MAP.get(
+                            raw_frequency.lower(),
+                        )
+                        if not mapped_frequency:
+                            errors.append({
+                                'row': int(first_row['_row_number']),
+                                'error': (
+                                    f'Row {first_row["_row_number"]}: Unknown '
+                                    f'frequency "{raw_frequency}" for recurring '
+                                    f'gift {gift_id}'
+                                ),
+                            })
+                            transaction.savepoint_rollback(sp)
+                            continue
+                    else:
+                        mapped_frequency = RecurringGiftFrequency.MONTHLY
+                        warnings.append({
+                            'row': int(first_row['_row_number']),
+                            'warning': (
+                                f'Row {first_row["_row_number"]}: Empty '
+                                f'frequency for recurring gift {gift_id} '
+                                f'-- defaulting to Monthly'
+                            ),
+                        })
+
+                    # Map status
+                    raw_status = first_row.get('status', '').strip()
+                    if raw_status:
+                        mapped_status = STATUS_MAP.get(raw_status.lower())
+                        if not mapped_status:
+                            errors.append({
+                                'row': int(first_row['_row_number']),
+                                'error': (
+                                    f'Row {first_row["_row_number"]}: Unknown '
+                                    f'status "{raw_status}" for recurring '
+                                    f'gift {gift_id}'
+                                ),
+                            })
+                            transaction.savepoint_rollback(sp)
+                            continue
+                    else:
+                        mapped_status = RecurringGiftStatus.ACTIVE
+
+                    # Match fund
+                    fund_value = first_row.get('fund', '').lower()
+                    matched_fund = None
+                    if fund_value:
+                        matched_fund = fund_lookup.get(fund_value)
+                        if not matched_fund:
+                            warnings.append({
+                                'row': int(first_row['_row_number']),
+                                'warning': (
+                                    f'Fund "{first_row.get("fund", "")}" not '
+                                    f'found for recurring gift {gift_id}'
+                                ),
+                            })
+
+                    # Create RecurringGift
+                    rg = RecurringGift.objects.create(
+                        external_gift_id=gift_id,
+                        donor_contact=contact,
+                        amount_cents=amount_cents,
+                        frequency=mapped_frequency,
+                        start_date=start_date,
+                        end_date=end_date,
+                        status=mapped_status,
+                        fund=matched_fund,
+                        description=first_row.get('description', ''),
+                    )
+
+                    # Create RecurringGiftCredits -- one per row with a solicitor
+                    for row in rows:
+                        solicitor_name = row.get('solicitor_name', '')
+                        if not solicitor_name:
+                            continue
+                        norm_name = normalize_solicitor_name(solicitor_name)
+                        solicitor = solicitor_lookup.get(norm_name)
+                        if not solicitor:
+                            errors.append({
+                                'row': int(row['_row_number']),
+                                'error': (
+                                    f'Row {row["_row_number"]}: Solicitor '
+                                    f'"{solicitor_name}" not found -- credit '
+                                    f'skipped for recurring gift {gift_id}'
+                                ),
+                            })
+                            if norm_name not in unmatched_solicitors:
+                                unmatched_solicitors.append(norm_name)
+                            continue
+                        credit_amount = _parse_amount_to_cents(
+                            row.get('credit_amount', ''),
+                        )
+                        if credit_amount == 0:
+                            credit_amount = amount_cents
+                        RecurringGiftCredit.objects.create(
+                            recurring_gift=rg,
+                            solicitor=solicitor,
+                            amount_cents=credit_amount,
+                        )
+
+                    transaction.savepoint_commit(sp)
+                    created_count += 1
+
+                except Exception as e:
+                    transaction.savepoint_rollback(sp)
+                    row_nums = ', '.join(
+                        r.get('_row_number', '?') for r in rows
+                    )
+                    errors.append({
+                        'row': int(rows[0].get('_row_number', 0)),
+                        'error': (
+                            f'Recurring gift group {gift_id} (rows {row_nums}): '
+                            f'Unexpected error: {str(e)}'
+                        ),
+                    })
+
+    except Exception as e:
+        logger.error(
+            'Recurring gift import failed for %s: %s', filename, e,
+        )
+        batch = ImportBatch.objects.create(
+            import_type=ImportBatchType.RE_RECURRING_GIFT,
+            status=ImportBatchStatus.FAILED,
+            filename=filename,
+            sha256_hash=sha256_hash,
+            uploaded_by=uploaded_by,
+            summary={'errors': [{'row': 0, 'error': f'Import error: {e}'}]},
+        )
+        return batch
+
+    # Step 7: Create ImportBatch record
+    batch = ImportBatch.objects.create(
+        import_type=ImportBatchType.RE_RECURRING_GIFT,
+        status=ImportBatchStatus.COMPLETED,
+        filename=filename,
+        sha256_hash=sha256_hash,
+        uploaded_by=uploaded_by,
+        total_rows=total_rows,
+        created_count=created_count,
+        updated_count=0,
+        skipped_count=skipped_count,
+        error_count=len(errors),
+        summary={
+            'errors': errors,
+            'warnings': warnings,
+            'unmatched_solicitors': unmatched_solicitors,
+        },
+    )
+
+    logger.info(
+        'Recurring gift import complete for %s: %d created, %d skipped, '
+        '%d errors',
+        filename,
+        created_count,
+        skipped_count,
+        len(errors),
     )
 
     return batch
