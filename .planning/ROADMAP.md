@@ -142,7 +142,11 @@ Plans:
   3. Contact stats (total_given, last_gift_date, last_gift_amount, gift_count) are calculated from the Gift model and match previous values
   4. Dashboard services, insights services, and analytics endpoints all query Gift/RecurringGift instead of Donation/Pledge
   5. Old Donation and Pledge models are removed from the codebase after migration verification
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 30-01-PLAN.md — Data migration (Donation->Gift, Pledge->RecurringGift) with signal handlers and monthly_equivalent property
+- [ ] 30-02-PLAN.md — Backend cutover: all services, views, and Contact model switch to Gift/RecurringGift
+- [ ] 30-03-PLAN.md — Remove old Donation/Pledge apps and clean up configuration
 
 ### Phase 31: Gift & Recurring Gift UI
 **Goal**: Users see "Gifts" and "Recurring Gifts" everywhere that previously said "Donations" and "Pledges", with all list pages, filters, detail views, and exports working against the new models
