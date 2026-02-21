@@ -10,8 +10,10 @@ import hashlib
 import io
 import logging
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
+from django.core.exceptions import ValidationError
 
+from apps.contacts.models import Contact
 from apps.gifts.models import Solicitor
 from apps.imports.models import ImportBatch, ImportBatchStatus, ImportBatchType
 from apps.users.models import User
@@ -388,6 +390,424 @@ def import_re_solicitors(
         'Solicitor import complete for %s: %d created, %d skipped, %d errors',
         filename,
         created_count,
+        skipped_count,
+        len(errors),
+    )
+
+    return batch
+
+
+# ---------------------------------------------------------------------------
+# Constituent header aliases
+# ---------------------------------------------------------------------------
+
+# Maps lowercase alias -> canonical field name
+CONSTITUENT_HEADER_ALIASES: dict[str, str] = {
+    # Constituent ID aliases
+    'cnbio_id': 'constituent_id',
+    'consid': 'constituent_id',
+    'constituent_id': 'constituent_id',
+    'cons_id': 'constituent_id',
+    'id': 'constituent_id',
+    # First name aliases
+    'cnbio_first_name': 'first_name',
+    'firstname': 'first_name',
+    'first_name': 'first_name',
+    'first name': 'first_name',
+    'fname': 'first_name',
+    # Last name aliases
+    'cnbio_last_name': 'last_name',
+    'lastname': 'last_name',
+    'last_name': 'last_name',
+    'last name': 'last_name',
+    'lname': 'last_name',
+    # Organization name aliases
+    'cnbio_org_name': 'organization_name',
+    'orgname': 'organization_name',
+    'org_name': 'organization_name',
+    'organization': 'organization_name',
+    'organization_name': 'organization_name',
+    'org name': 'organization_name',
+    # Email aliases
+    'cnadrprf_email': 'email',
+    'email': 'email',
+    'email_address': 'email',
+    'email address': 'email',
+    'emailaddress': 'email',
+    # Phone aliases
+    'cnph_1_01_phone_number': 'phone',
+    'phone': 'phone',
+    'phone_number': 'phone',
+    'phone number': 'phone',
+    'phonenumber': 'phone',
+    # Street address aliases
+    'cnadrprf_addrline1': 'street_address',
+    'address': 'street_address',
+    'address_line_1': 'street_address',
+    'address line 1': 'street_address',
+    'street': 'street_address',
+    'street_address': 'street_address',
+    # City aliases
+    'cnadrprf_city': 'city',
+    'city': 'city',
+    # State aliases
+    'cnadrprf_state': 'state',
+    'state': 'state',
+    # Postal code aliases
+    'cnadrprf_zip': 'postal_code',
+    'zip': 'postal_code',
+    'postal_code': 'postal_code',
+    'postal code': 'postal_code',
+    'zipcode': 'postal_code',
+    'zip_code': 'postal_code',
+    # Country aliases
+    'cnadrprf_contrylongdsc': 'country',
+    'country': 'country',
+}
+
+
+# ---------------------------------------------------------------------------
+# Constituent import helpers
+# ---------------------------------------------------------------------------
+
+def merge_contact_fields(contact: Contact, new_data: dict) -> list[str]:
+    """Merge new data into contact, only filling blank fields.
+
+    Only fills BLANK fields (empty string or None). Never overwrites existing
+    non-blank values. For email, first_name, last_name: also skip if new_data
+    value is empty (never blank out names or email).
+
+    Returns list of field names that were actually updated.
+    Does NOT call contact.save() -- caller saves with update_fields.
+    """
+    updated_fields: list[str] = []
+    merge_fields = [
+        'first_name', 'last_name', 'email', 'phone', 'phone_secondary',
+        'street_address', 'city', 'state', 'postal_code', 'country',
+        'organization_name',
+    ]
+    # Fields where we should never set an empty value
+    skip_empty_fields = {'first_name', 'last_name', 'email'}
+
+    for field in merge_fields:
+        current_value = getattr(contact, field, '') or ''
+        new_value = new_data.get(field, '') or ''
+
+        # Skip if current value is non-blank (merge-only: never overwrite)
+        if current_value:
+            continue
+
+        # Skip if new value is empty
+        if not new_value:
+            continue
+
+        # For protected fields, double-check new value is non-empty
+        if field in skip_empty_fields and not new_value.strip():
+            continue
+
+        setattr(contact, field, new_value)
+        updated_fields.append(field)
+
+    return updated_fields
+
+
+def _match_contact(row_data: dict, owner: User, row_number: int) -> tuple[Contact | None, str]:
+    """Match a CSV row to an existing Contact using three-tier hierarchy.
+
+    Match hierarchy:
+    1. external_constituent_id (global, not owner-scoped)
+    2. email (owner-scoped)
+    3. phone (owner-scoped)
+
+    Returns (contact, match_type) where match_type is one of:
+    'constituent_id', 'email', 'phone', or 'none'.
+
+    Logs warnings when ID matches but email/phone differs from existing.
+    """
+    ext_id = row_data.get('constituent_id', '').strip()
+    email = row_data.get('email', '').strip()
+    phone = row_data.get('phone', '').strip()
+
+    # Tier 1: Match by external_constituent_id (global)
+    if ext_id:
+        contact = Contact.objects.filter(external_constituent_id=ext_id).first()
+        if contact:
+            # Log warnings for mismatched email/phone
+            if email and contact.email and contact.email != email:
+                logger.warning(
+                    'Row %d: Constituent ID %s matched contact %s, but email '
+                    'differs (existing: %s, CSV: %s)',
+                    row_number, ext_id, contact.id, contact.email, email,
+                )
+            if phone and contact.phone and contact.phone != phone:
+                logger.warning(
+                    'Row %d: Constituent ID %s matched contact %s, but phone '
+                    'differs (existing: %s, CSV: %s)',
+                    row_number, ext_id, contact.id, contact.phone, phone,
+                )
+            return contact, 'constituent_id'
+
+    # Tier 2: Match by email (owner-scoped)
+    if email:
+        contact = Contact.objects.filter(owner=owner, email=email).first()
+        if contact:
+            return contact, 'email'
+
+    # Tier 3: Match by phone (owner-scoped)
+    if phone:
+        contact = Contact.objects.filter(owner=owner, phone=phone).first()
+        if contact:
+            return contact, 'phone'
+
+    return None, 'none'
+
+
+# ---------------------------------------------------------------------------
+# Constituent import orchestrator
+# ---------------------------------------------------------------------------
+
+def import_re_constituents(
+    file_bytes: bytes,
+    filename: str,
+    uploaded_by: User,
+    owner: User,
+) -> ImportBatch:
+    """Import RE Constituent CSV end-to-end.
+
+    Steps:
+    1. SHA256 dedup check
+    2. Decode with cascading encoding
+    3. Parse CSV and validate headers
+    4. Iterate rows with error collection
+    5. Create ImportBatch record with results
+
+    Returns ImportBatch (may be existing if duplicate).
+    """
+    sha256_hash = hashlib.sha256(file_bytes).hexdigest()
+
+    # Step 1: Check for duplicate
+    existing = check_duplicate_import(file_bytes, ImportBatchType.RE_CONSTITUENT)
+    if existing:
+        logger.info('Duplicate constituent import detected for %s', filename)
+        return existing
+
+    # Step 2: Decode
+    try:
+        content = decode_csv_bytes(file_bytes)
+    except ValueError as e:
+        batch = ImportBatch.objects.create(
+            import_type=ImportBatchType.RE_CONSTITUENT,
+            status=ImportBatchStatus.FAILED,
+            filename=filename,
+            sha256_hash=sha256_hash,
+            uploaded_by=uploaded_by,
+            summary={'errors': [{'row': 0, 'error': str(e)}]},
+        )
+        return batch
+
+    # Step 3: Parse CSV and validate headers
+    try:
+        reader = csv.DictReader(io.StringIO(content))
+        fieldnames = reader.fieldnames or []
+    except Exception as e:
+        batch = ImportBatch.objects.create(
+            import_type=ImportBatchType.RE_CONSTITUENT,
+            status=ImportBatchStatus.FAILED,
+            filename=filename,
+            sha256_hash=sha256_hash,
+            uploaded_by=uploaded_by,
+            summary={'errors': [{'row': 0, 'error': f'CSV parse error: {e}'}]},
+        )
+        return batch
+
+    # Build header mapping from aliases
+    col_map = _build_header_mapping(fieldnames, CONSTITUENT_HEADER_ALIASES)
+
+    # Validate: at least one of first_name, last_name, or organization_name
+    has_name_header = (
+        col_map.get('first_name') is not None
+        or col_map.get('last_name') is not None
+        or col_map.get('organization_name') is not None
+    )
+    if not has_name_header:
+        batch = ImportBatch.objects.create(
+            import_type=ImportBatchType.RE_CONSTITUENT,
+            status=ImportBatchStatus.FAILED,
+            filename=filename,
+            sha256_hash=sha256_hash,
+            uploaded_by=uploaded_by,
+            summary={
+                'errors': [{
+                    'row': 0,
+                    'error': (
+                        'Missing required name headers. '
+                        'CSV must contain at least one of: first_name/last_name '
+                        'or organization_name (or RE equivalents).'
+                    ),
+                }],
+                'file_error': (
+                    'Missing required name headers. '
+                    'CSV must contain at least one of: first_name/last_name '
+                    'or organization_name (or RE equivalents).'
+                ),
+            },
+        )
+        return batch
+
+    # Step 4: Iterate rows with error collection
+    errors: list[dict] = []
+    warnings: list[dict] = []
+    created_count = 0
+    updated_count = 0
+    skipped_count = 0
+    total_rows = 0
+
+    try:
+        with transaction.atomic():
+            for row_number, row in enumerate(reader, start=2):
+                total_rows += 1
+
+                try:
+                    # Build row_data dict from mapped columns
+                    row_data: dict[str, str] = {}
+                    for canonical_name, actual_col in col_map.items():
+                        if actual_col is not None:
+                            row_data[canonical_name] = (row.get(actual_col) or '').strip()
+
+                    # Minimum data validation: require (first_name + last_name) or organization_name
+                    first_name = row_data.get('first_name', '')
+                    last_name = row_data.get('last_name', '')
+                    org_name = row_data.get('organization_name', '')
+
+                    has_name = first_name and last_name
+                    has_org = bool(org_name)
+
+                    if not has_name and not has_org:
+                        errors.append({
+                            'row': row_number,
+                            'error': (
+                                f'Row {row_number}: Missing name or organization '
+                                '-- cannot create contact'
+                            ),
+                        })
+                        continue
+
+                    # Extract external_constituent_id
+                    ext_id = row_data.get('constituent_id', '')
+
+                    # Match contact using three-tier hierarchy
+                    contact, match_type = _match_contact(row_data, owner, row_number)
+
+                    if contact:
+                        # Existing contact found -- merge-only update
+                        updated_fields = merge_contact_fields(contact, row_data)
+
+                        # If contact doesn't have external_constituent_id but CSV row does
+                        if ext_id and not contact.external_constituent_id:
+                            contact.external_constituent_id = ext_id
+                            updated_fields.append('external_constituent_id')
+
+                        if updated_fields:
+                            contact.save(update_fields=updated_fields)
+                            updated_count += 1
+                        else:
+                            skipped_count += 1
+
+                        # Record warnings for ID match conflicts
+                        if match_type == 'constituent_id':
+                            csv_email = row_data.get('email', '')
+                            csv_phone = row_data.get('phone', '')
+                            if csv_email and contact.email and contact.email != csv_email:
+                                warnings.append({
+                                    'row': row_number,
+                                    'warning': (
+                                        f'Constituent ID {ext_id} matched but email '
+                                        f'differs (existing: {contact.email}, '
+                                        f'CSV: {csv_email})'
+                                    ),
+                                })
+                            if csv_phone and contact.phone and contact.phone != csv_phone:
+                                warnings.append({
+                                    'row': row_number,
+                                    'warning': (
+                                        f'Constituent ID {ext_id} matched but phone '
+                                        f'differs (existing: {contact.phone}, '
+                                        f'CSV: {csv_phone})'
+                                    ),
+                                })
+                    else:
+                        # No match -- create new Contact
+                        new_contact_data = {
+                            'owner': owner,
+                            'first_name': first_name,
+                            'last_name': last_name,
+                        }
+                        if ext_id:
+                            new_contact_data['external_constituent_id'] = ext_id
+                        if org_name:
+                            new_contact_data['organization_name'] = org_name
+
+                        # Add optional fields from row_data
+                        optional_fields = [
+                            'email', 'phone', 'phone_secondary',
+                            'street_address', 'city', 'state',
+                            'postal_code', 'country',
+                        ]
+                        for field in optional_fields:
+                            value = row_data.get(field, '')
+                            if value:
+                                new_contact_data[field] = value
+
+                        Contact.objects.create(**new_contact_data)
+                        created_count += 1
+
+                except (IntegrityError, ValidationError) as e:
+                    errors.append({
+                        'row': row_number,
+                        'error': f'Row {row_number}: {str(e)}',
+                    })
+                except Exception as e:
+                    errors.append({
+                        'row': row_number,
+                        'error': f'Row {row_number}: Unexpected error: {str(e)}',
+                    })
+
+    except Exception as e:
+        logger.error('Constituent import failed for %s: %s', filename, e)
+        batch = ImportBatch.objects.create(
+            import_type=ImportBatchType.RE_CONSTITUENT,
+            status=ImportBatchStatus.FAILED,
+            filename=filename,
+            sha256_hash=sha256_hash,
+            uploaded_by=uploaded_by,
+            summary={'errors': [{'row': 0, 'error': f'Import error: {e}'}]},
+        )
+        return batch
+
+    # Step 5: Create ImportBatch record
+    batch = ImportBatch.objects.create(
+        import_type=ImportBatchType.RE_CONSTITUENT,
+        status=ImportBatchStatus.COMPLETED,
+        filename=filename,
+        sha256_hash=sha256_hash,
+        uploaded_by=uploaded_by,
+        total_rows=total_rows,
+        created_count=created_count,
+        updated_count=updated_count,
+        skipped_count=skipped_count,
+        error_count=len(errors),
+        summary={
+            'errors': errors,
+            'warnings': warnings,
+        },
+    )
+
+    logger.info(
+        'Constituent import complete for %s: %d created, %d updated, '
+        '%d skipped, %d errors',
+        filename,
+        created_count,
+        updated_count,
         skipped_count,
         len(errors),
     )
