@@ -2,7 +2,7 @@
 Models for prayer intention tracking.
 
 Provides PrayerIntention model to track prayer requests per contact,
-with optional gift linkage for auto-creation from RE gift descriptions.
+with M2M gift linkage for auto-creation from RE gift descriptions.
 """
 from django.db import models
 
@@ -21,7 +21,9 @@ class PrayerIntention(TimeStampedModel):
     A prayer intention linked to a donor contact.
 
     Every prayer intention must be tied to a contact (not nullable).
-    Optionally links to a Gift for auto-creation from RE descriptions.
+    Links to one or more Gifts via M2M for auto-creation from RE descriptions.
+    Multiple gifts from the same donor with the same prayer text share one
+    PrayerIntention record.
     """
     contact = models.ForeignKey(
         'contacts.Contact',
@@ -30,13 +32,11 @@ class PrayerIntention(TimeStampedModel):
         db_index=True,
         help_text='Contact this prayer intention is for'
     )
-    gift = models.ForeignKey(
+    gifts = models.ManyToManyField(
         'gifts.Gift',
-        on_delete=models.SET_NULL,
-        null=True,
         blank=True,
         related_name='prayer_intentions',
-        help_text='Gift that triggered this prayer intention (if auto-created)'
+        help_text='Gifts that triggered this prayer intention (if auto-created)'
     )
     title = models.CharField('title', max_length=255)
     description = models.TextField('description', blank=True)

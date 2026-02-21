@@ -9,13 +9,17 @@ import csv
 import hashlib
 import io
 import logging
+from collections import defaultdict
+from datetime import datetime
+from decimal import Decimal, InvalidOperation
 
 from django.db import IntegrityError, transaction
 from django.core.exceptions import ValidationError
 
 from apps.contacts.models import Contact
-from apps.gifts.models import Solicitor
-from apps.imports.models import ImportBatch, ImportBatchStatus, ImportBatchType
+from apps.gifts.models import Gift, GiftCredit, Solicitor
+from apps.imports.models import Fund, ImportBatch, ImportBatchStatus, ImportBatchType
+from apps.prayers.models import PrayerIntention, PrayerIntentionStatus
 from apps.users.models import User
 
 logger = logging.getLogger(__name__)
@@ -812,6 +816,523 @@ def import_re_constituents(
         updated_count,
         skipped_count,
         len(errors),
+    )
+
+    return batch
+
+
+# ---------------------------------------------------------------------------
+# Gift import helpers
+# ---------------------------------------------------------------------------
+
+def _parse_amount_to_cents(amount_str: str) -> int:
+    """Parse dollar amount string to cents integer.
+
+    Handles: "$1,234.56", "1234.56", "1,234", "$100"
+    Returns 0 for empty/unparseable values.
+    """
+    if not amount_str:
+        return 0
+    cleaned = amount_str.replace('$', '').replace(',', '').strip()
+    if not cleaned:
+        return 0
+    try:
+        dollars = Decimal(cleaned)
+        return int(dollars * 100)
+    except (InvalidOperation, ValueError):
+        return 0
+
+
+def _parse_date(date_str: str):
+    """Parse date string with multiple format support.
+
+    Tries: YYYY-MM-DD, MM/DD/YYYY, M/D/YYYY, M/D/YY.
+    Returns date object or None if all fail.
+    """
+    if not date_str:
+        return None
+    date_str = date_str.strip()
+    for fmt in ('%Y-%m-%d', '%m/%d/%Y', '%m/%d/%y'):
+        try:
+            return datetime.strptime(date_str, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+def _build_fund_lookup() -> dict:
+    """Build dict mapping lowercased external_id and name to Fund objects."""
+    lookup: dict[str, Fund] = {}
+    for fund in Fund.objects.all():
+        if fund.external_id:
+            lookup[fund.external_id.lower()] = fund
+        lookup[fund.name.lower()] = fund
+    return lookup
+
+
+def _build_solicitor_lookup() -> dict:
+    """Build dict mapping normalized_name to Solicitor objects."""
+    lookup: dict[str, Solicitor] = {}
+    for solicitor in Solicitor.objects.all():
+        lookup[solicitor.normalized_name] = solicitor
+    return lookup
+
+
+def _group_rows_by_id(
+    reader,
+    col_map: dict,
+    id_field: str,
+) -> tuple:
+    """Group CSV rows by a given ID field.
+
+    Returns:
+        groups: {id_value: [row_data_dicts]}
+        errors: [{row, error}] for rows with missing ID
+        total_rows: total CSV data rows processed
+    """
+    groups: dict[str, list[dict]] = defaultdict(list)
+    errors: list[dict] = []
+    total_rows = 0
+
+    for row_number, row in enumerate(reader, start=2):
+        total_rows += 1
+        # Build row_data from col_map
+        row_data: dict[str, str] = {}
+        for canonical, actual_col in col_map.items():
+            if actual_col is not None:
+                row_data[canonical] = (row.get(actual_col) or '').strip()
+
+        id_value = row_data.get(id_field, '')
+        if not id_value:
+            errors.append({
+                'row': row_number,
+                'error': f'Row {row_number}: Missing {id_field}',
+            })
+            continue
+
+        row_data['_row_number'] = str(row_number)
+        groups[id_value].append(row_data)
+
+    return dict(groups), errors, total_rows
+
+
+# Prayer auto-creation helpers
+PRAYER_STOPLIST = {
+    'n/a', 'na', 'none', 'no', 'yes', '-', '--', '---', '...', 'test',
+    'x', 'xx', 'xxx', 'general', 'same', 'same as above',
+    'see above', 'ditto', 'tbd', 'unknown',
+}
+
+
+def _maybe_create_prayer_intention(
+    gift: Gift,
+    prayer_text: str,
+    contact: Contact,
+    seen_prayers: dict,
+) -> PrayerIntention | None:
+    """Create or link PrayerIntention from gift prayer description.
+
+    Dedup key: (contact.id, normalized_text).
+    If same prayer already created for this contact in this import,
+    add the gift to the existing M2M relationship.
+    """
+    text = prayer_text.strip()
+    if not text:
+        return None
+
+    # Stoplist check (case-insensitive)
+    if text.lower() in PRAYER_STOPLIST:
+        return None
+
+    # Sanity: skip if no alphanumeric characters
+    if not any(c.isalnum() for c in text):
+        return None
+
+    # Normalize for dedup
+    normalized = text.lower().strip()
+    dedup_key = (contact.id, normalized)
+
+    if dedup_key in seen_prayers:
+        existing = seen_prayers[dedup_key]
+        existing.gifts.add(gift)
+        return existing
+
+    # Check database for existing prayer with same text
+    existing_db = PrayerIntention.objects.filter(
+        contact=contact,
+        description__iexact=text,
+    ).first()
+
+    if existing_db:
+        existing_db.gifts.add(gift)
+        seen_prayers[dedup_key] = existing_db
+        return existing_db
+
+    # Create new PrayerIntention with clean title truncation
+    if len(text) > 80:
+        truncated = text[:80].rsplit(' ', 1)
+        title = truncated[0] if len(truncated) > 1 and truncated[0] != text[:80] else text[:80]
+    else:
+        title = text
+
+    prayer = PrayerIntention.objects.create(
+        contact=contact,
+        title=title,
+        description=text,
+        status=PrayerIntentionStatus.ACTIVE,
+    )
+    prayer.gifts.add(gift)
+    seen_prayers[dedup_key] = prayer
+    return prayer
+
+
+# ---------------------------------------------------------------------------
+# Gift header aliases
+# ---------------------------------------------------------------------------
+
+GIFT_HEADER_ALIASES: dict[str, str] = {
+    # Gift ID
+    'gift_id': 'gift_id',
+    'gf_id': 'gift_id',
+    'gift id': 'gift_id',
+    'gf_system_id': 'gift_id',
+    'gift system record id': 'gift_id',
+    # Constituent ID
+    'gf_cnbio_id': 'constituent_id',
+    'constituent_id': 'constituent_id',
+    'constituent id': 'constituent_id',
+    'cnbio_id': 'constituent_id',
+    'consid': 'constituent_id',
+    # Amount (gift-level)
+    'gf_amount': 'amount',
+    'gift_amount': 'amount',
+    'gift amount': 'amount',
+    'amount': 'amount',
+    # Date
+    'gf_date': 'gift_date',
+    'gift_date': 'gift_date',
+    'gift date': 'gift_date',
+    'date': 'gift_date',
+    # Fund
+    'gf_fund': 'fund',
+    'fund': 'fund',
+    'fund_id': 'fund',
+    'fund id': 'fund',
+    'fund_description': 'fund',
+    # Description
+    'gf_description': 'description',
+    'description': 'description',
+    'gift description': 'description',
+    # Solicitor name
+    'solicitor_name': 'solicitor_name',
+    'solicitor name': 'solicitor_name',
+    'cnsol_1_01_name': 'solicitor_name',
+    'gf_cnsol_1_01_name': 'solicitor_name',
+    # Credit amount (per-solicitor)
+    'credit_amount': 'credit_amount',
+    'gf_cnsol_1_01_amount': 'credit_amount',
+    # Prayer description
+    'gift specific attributes prayer requests description': 'prayer_description',
+    'prayer_requests_description': 'prayer_description',
+    'prayer requests description': 'prayer_description',
+    'prayer description': 'prayer_description',
+}
+
+GIFT_REQUIRED_CANONICAL = {'gift_id', 'constituent_id', 'amount'}
+
+
+# ---------------------------------------------------------------------------
+# Gift import orchestrator
+# ---------------------------------------------------------------------------
+
+def import_re_gifts(
+    file_bytes: bytes,
+    filename: str,
+    uploaded_by: User,
+    owner: User,
+) -> ImportBatch:
+    """Import RE Gift CSV end-to-end.
+
+    Steps:
+    1. SHA256 dedup check
+    2. Decode with cascading encoding
+    3. Parse CSV and validate headers via alias mapping
+    4. Group rows by Gift ID (two-pass)
+    5. Build solicitor + fund lookups
+    6. Process each gift group with savepoint isolation:
+       a. Find Contact by constituent_id (skip group if not found)
+       b. Check external_gift_id dedup against DB (skip if exists)
+       c. Create Gift with amount from first row
+       d. Create GiftCredit for each solicitor row
+       e. Auto-create PrayerIntention from prayer description column
+    7. Create ImportBatch record with results
+
+    Returns ImportBatch (may be existing if duplicate).
+    """
+    sha256_hash = hashlib.sha256(file_bytes).hexdigest()
+
+    # Step 1: Check for duplicate
+    existing = check_duplicate_import(file_bytes, ImportBatchType.RE_GIFT)
+    if existing:
+        logger.info('Duplicate gift import detected for %s', filename)
+        existing.status = ImportBatchStatus.DUPLICATE
+        return existing
+
+    # Step 2: Decode
+    try:
+        content = decode_csv_bytes(file_bytes)
+    except ValueError as e:
+        batch = ImportBatch.objects.create(
+            import_type=ImportBatchType.RE_GIFT,
+            status=ImportBatchStatus.FAILED,
+            filename=filename,
+            sha256_hash=sha256_hash,
+            uploaded_by=uploaded_by,
+            summary={'errors': [{'row': 0, 'error': str(e)}]},
+        )
+        return batch
+
+    # Step 3: Parse CSV and validate headers
+    try:
+        reader = csv.DictReader(io.StringIO(content))
+        fieldnames = reader.fieldnames or []
+    except Exception as e:
+        batch = ImportBatch.objects.create(
+            import_type=ImportBatchType.RE_GIFT,
+            status=ImportBatchStatus.FAILED,
+            filename=filename,
+            sha256_hash=sha256_hash,
+            uploaded_by=uploaded_by,
+            summary={'errors': [{'row': 0, 'error': f'CSV parse error: {e}'}]},
+        )
+        return batch
+
+    col_map = _build_header_mapping(fieldnames, GIFT_HEADER_ALIASES)
+
+    # Check required canonical fields
+    missing_canonical = {
+        name for name in GIFT_REQUIRED_CANONICAL
+        if col_map.get(name) is None
+    }
+    if missing_canonical:
+        expected_aliases = []
+        for alias, canonical in GIFT_HEADER_ALIASES.items():
+            if canonical in missing_canonical:
+                expected_aliases.append(alias)
+        batch = ImportBatch.objects.create(
+            import_type=ImportBatchType.RE_GIFT,
+            status=ImportBatchStatus.FAILED,
+            filename=filename,
+            sha256_hash=sha256_hash,
+            uploaded_by=uploaded_by,
+            summary={
+                'errors': [{
+                    'row': 0,
+                    'error': (
+                        f'Missing required gift headers. '
+                        f'Expected one of each: {", ".join(sorted(expected_aliases))}'
+                    ),
+                }],
+            },
+        )
+        return batch
+
+    # Step 4: Group rows by gift_id
+    groups, grouping_errors, total_rows = _group_rows_by_id(
+        reader, col_map, 'gift_id',
+    )
+
+    # Step 5: Build lookups
+    solicitor_lookup = _build_solicitor_lookup()
+    fund_lookup = _build_fund_lookup()
+
+    # Step 6: Process each gift group
+    errors: list[dict] = list(grouping_errors)
+    warnings: list[dict] = []
+    created_count = 0
+    skipped_count = 0
+    prayer_count = 0
+    unmatched_solicitors: list[str] = []
+    seen_prayers: dict = {}
+
+    try:
+        with transaction.atomic():
+            for gift_id, rows in groups.items():
+                sp = transaction.savepoint()
+                try:
+                    first_row = rows[0]
+
+                    # Look up Contact by constituent_id
+                    constituent_id = first_row.get('constituent_id', '')
+                    contact = None
+                    if constituent_id:
+                        contact = Contact.objects.filter(
+                            external_constituent_id=constituent_id,
+                        ).first()
+
+                    if not contact:
+                        row_nums = ', '.join(r['_row_number'] for r in rows)
+                        errors.append({
+                            'row': int(first_row['_row_number']),
+                            'error': (
+                                f'Constituent ID "{constituent_id}" not found '
+                                f'-- skipping gift group {gift_id} (rows {row_nums})'
+                            ),
+                        })
+                        transaction.savepoint_rollback(sp)
+                        continue
+
+                    # Check for duplicate external_gift_id in database
+                    if Gift.objects.filter(external_gift_id=gift_id).exists():
+                        skipped_count += 1
+                        transaction.savepoint_rollback(sp)
+                        continue
+
+                    # Parse amount from first row
+                    amount_cents = _parse_amount_to_cents(
+                        first_row.get('amount', ''),
+                    )
+                    if amount_cents == 0:
+                        errors.append({
+                            'row': int(first_row['_row_number']),
+                            'error': (
+                                f'Row {first_row["_row_number"]}: Invalid amount '
+                                f'"{first_row.get("amount", "")}" for gift {gift_id}'
+                            ),
+                        })
+                        transaction.savepoint_rollback(sp)
+                        continue
+
+                    # Parse date from first row
+                    parsed_date = _parse_date(first_row.get('gift_date', ''))
+                    if parsed_date is None:
+                        errors.append({
+                            'row': int(first_row['_row_number']),
+                            'error': (
+                                f'Row {first_row["_row_number"]}: Invalid date '
+                                f'"{first_row.get("gift_date", "")}" for gift {gift_id}'
+                            ),
+                        })
+                        transaction.savepoint_rollback(sp)
+                        continue
+
+                    # Match fund
+                    fund_value = first_row.get('fund', '').lower()
+                    matched_fund = None
+                    if fund_value:
+                        matched_fund = fund_lookup.get(fund_value)
+                        if not matched_fund:
+                            warnings.append({
+                                'row': int(first_row['_row_number']),
+                                'warning': (
+                                    f'Fund "{first_row.get("fund", "")}" not found '
+                                    f'for gift {gift_id}'
+                                ),
+                            })
+
+                    # Create Gift
+                    gift = Gift.objects.create(
+                        external_gift_id=gift_id,
+                        donor_contact=contact,
+                        amount_cents=amount_cents,
+                        gift_date=parsed_date,
+                        fund=matched_fund,
+                        description=first_row.get('description', ''),
+                    )
+
+                    # Create GiftCredits -- one per row with a solicitor
+                    for row in rows:
+                        solicitor_name = row.get('solicitor_name', '')
+                        if not solicitor_name:
+                            continue
+                        norm_name = normalize_solicitor_name(solicitor_name)
+                        solicitor = solicitor_lookup.get(norm_name)
+                        if not solicitor:
+                            errors.append({
+                                'row': int(row['_row_number']),
+                                'error': (
+                                    f'Row {row["_row_number"]}: Solicitor '
+                                    f'"{solicitor_name}" not found -- credit '
+                                    f'skipped for gift {gift_id}'
+                                ),
+                            })
+                            if norm_name not in unmatched_solicitors:
+                                unmatched_solicitors.append(norm_name)
+                            continue
+                        credit_amount = _parse_amount_to_cents(
+                            row.get('credit_amount', ''),
+                        )
+                        if credit_amount == 0:
+                            credit_amount = amount_cents
+                        GiftCredit.objects.create(
+                            gift=gift,
+                            solicitor=solicitor,
+                            amount_cents=credit_amount,
+                        )
+
+                    # Check for prayer description
+                    prayer_text = first_row.get('prayer_description', '')
+                    if prayer_text:
+                        prayer = _maybe_create_prayer_intention(
+                            gift, prayer_text, contact, seen_prayers,
+                        )
+                        if prayer:
+                            prayer_count += 1
+
+                    transaction.savepoint_commit(sp)
+                    created_count += 1
+
+                except Exception as e:
+                    transaction.savepoint_rollback(sp)
+                    row_nums = ', '.join(r.get('_row_number', '?') for r in rows)
+                    errors.append({
+                        'row': int(rows[0].get('_row_number', 0)),
+                        'error': (
+                            f'Gift group {gift_id} (rows {row_nums}): '
+                            f'Unexpected error: {str(e)}'
+                        ),
+                    })
+
+    except Exception as e:
+        logger.error('Gift import failed for %s: %s', filename, e)
+        batch = ImportBatch.objects.create(
+            import_type=ImportBatchType.RE_GIFT,
+            status=ImportBatchStatus.FAILED,
+            filename=filename,
+            sha256_hash=sha256_hash,
+            uploaded_by=uploaded_by,
+            summary={'errors': [{'row': 0, 'error': f'Import error: {e}'}]},
+        )
+        return batch
+
+    # Step 7: Create ImportBatch record
+    batch = ImportBatch.objects.create(
+        import_type=ImportBatchType.RE_GIFT,
+        status=ImportBatchStatus.COMPLETED,
+        filename=filename,
+        sha256_hash=sha256_hash,
+        uploaded_by=uploaded_by,
+        total_rows=total_rows,
+        created_count=created_count,
+        updated_count=0,
+        skipped_count=skipped_count,
+        error_count=len(errors),
+        summary={
+            'errors': errors,
+            'warnings': warnings,
+            'prayer_count': prayer_count,
+            'unmatched_solicitors': unmatched_solicitors,
+        },
+    )
+
+    logger.info(
+        'Gift import complete for %s: %d created, %d skipped, %d errors, '
+        '%d prayers',
+        filename,
+        created_count,
+        skipped_count,
+        len(errors),
+        prayer_count,
     )
 
     return batch
