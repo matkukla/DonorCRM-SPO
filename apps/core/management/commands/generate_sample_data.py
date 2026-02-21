@@ -10,10 +10,9 @@ from django.utils import timezone
 from faker import Faker
 
 from apps.contacts.models import Contact, ContactStatus
-from apps.donations.models import Donation, DonationType, PaymentMethod
 from apps.events.models import Event, EventSeverity, EventType
+from apps.gifts.models import Gift, RecurringGift, RecurringGiftFrequency, RecurringGiftStatus
 from apps.groups.models import Group
-from apps.pledges.models import Pledge, PledgeFrequency, PledgeStatus
 from apps.tasks.models import Task, TaskPriority, TaskStatus, TaskType
 from apps.users.models import User, UserRole
 
@@ -70,8 +69,8 @@ class Command(BaseCommand):
         self.stdout.write(f'  - 3 users (staff, admin, finance)')
         self.stdout.write(f'  - {len(groups)} groups')
         self.stdout.write(f'  - {len(contacts)} contacts')
-        self.stdout.write(f'  - {Donation.objects.count()} donations')
-        self.stdout.write(f'  - {Pledge.objects.count()} pledges')
+        self.stdout.write(f'  - {Gift.objects.count()} gifts')
+        self.stdout.write(f'  - {RecurringGift.objects.count()} recurring gifts')
         self.stdout.write(f'  - {Task.objects.count()} tasks')
         self.stdout.write(f'  - {Event.objects.count()} events')
 
@@ -79,8 +78,8 @@ class Command(BaseCommand):
         """Clear all existing data."""
         Event.objects.all().delete()
         Task.objects.all().delete()
-        Donation.objects.all().delete()
-        Pledge.objects.all().delete()
+        Gift.objects.all().delete()
+        RecurringGift.objects.all().delete()
         Contact.objects.all().delete()
         Group.objects.all().delete()
         User.objects.filter(is_superuser=False).delete()
@@ -207,69 +206,61 @@ class Command(BaseCommand):
         return contacts
 
     def _create_donations_and_pledges(self, contacts):
-        """Create donations and pledges for donor contacts."""
+        """Create gifts and recurring gifts for donor contacts."""
+        from apps.gifts.signals import disable_gift_signals, enable_gift_signals
+
         today = timezone.now().date()
-        donation_count = 0
-        pledge_count = 0
+        gift_count = 0
+        rg_count = 0
 
-        for contact in contacts:
-            if contact.status not in [ContactStatus.DONOR, ContactStatus.LAPSED]:
-                continue
+        # Disable signals during bulk creation for performance
+        disable_gift_signals()
 
-            # Create historical donations (1-8 per donor)
-            num_donations = random.randint(1, 8)
-            for j in range(num_donations):
-                days_ago = random.randint(1, 365)
-                donation_date = today - timedelta(days=days_ago)
-                amount = Decimal(random.choice([25, 50, 75, 100, 150, 200, 250, 500, 1000]))
+        try:
+            for contact in contacts:
+                if contact.status not in [ContactStatus.DONOR, ContactStatus.LAPSED]:
+                    continue
 
-                Donation.objects.create(
-                    contact=contact,
-                    amount=amount,
-                    date=donation_date,
-                    donation_type=random.choice([
-                        DonationType.ONE_TIME,
-                        DonationType.RECURRING,
-                        DonationType.SPECIAL,
-                    ]),
-                    payment_method=random.choice([
-                        PaymentMethod.CHECK,
-                        PaymentMethod.CREDIT_CARD,
-                        PaymentMethod.BANK_TRANSFER,
-                    ]),
-                    thanked=random.random() > 0.3,
-                )
-                donation_count += 1
+                # Create historical gifts (1-8 per donor)
+                num_gifts = random.randint(1, 8)
+                for j in range(num_gifts):
+                    days_ago = random.randint(1, 365)
+                    gift_date = today - timedelta(days=days_ago)
+                    amount = random.choice([25, 50, 75, 100, 150, 200, 250, 500, 1000])
 
-            # Update contact stats after creating donations
-            contact.update_giving_stats()
+                    Gift.objects.create(
+                        donor_contact=contact,
+                        amount_cents=amount * 100,
+                        gift_date=gift_date,
+                    )
+                    gift_count += 1
 
-            # Create pledge for some donors (40% chance)
-            if random.random() > 0.6:
-                frequency = random.choice([
-                    PledgeFrequency.MONTHLY,
-                    PledgeFrequency.QUARTERLY,
-                    PledgeFrequency.ANNUAL,
-                ])
-                amount = Decimal(random.choice([50, 100, 150, 200, 250]))
-                start_date = today - timedelta(days=random.randint(30, 180))
+                # Update contact stats after creating gifts
+                contact.update_giving_stats()
 
-                pledge = Pledge.objects.create(
-                    contact=contact,
-                    amount=amount,
-                    frequency=frequency,
-                    status=PledgeStatus.ACTIVE,
-                    start_date=start_date,
-                )
-                pledge_count += 1
+                # Create recurring gift for some donors (40% chance)
+                if random.random() > 0.6:
+                    frequency = random.choice([
+                        RecurringGiftFrequency.MONTHLY,
+                        RecurringGiftFrequency.QUARTERLY,
+                        RecurringGiftFrequency.ANNUALLY,
+                    ])
+                    amount = random.choice([50, 100, 150, 200, 250])
+                    start_date = today - timedelta(days=random.randint(30, 180))
 
-                # Check late status for some pledges
-                if random.random() > 0.7:
-                    pledge.check_late_status()
-                    pledge.save()
+                    RecurringGift.objects.create(
+                        donor_contact=contact,
+                        amount_cents=amount * 100,
+                        frequency=frequency,
+                        status=RecurringGiftStatus.ACTIVE,
+                        start_date=start_date,
+                    )
+                    rg_count += 1
+        finally:
+            enable_gift_signals()
 
-        self.stdout.write(f'  Created {donation_count} donations')
-        self.stdout.write(f'  Created {pledge_count} pledges')
+        self.stdout.write(f'  Created {gift_count} gifts')
+        self.stdout.write(f'  Created {rg_count} recurring gifts')
 
     def _create_tasks(self, owner, contacts):
         """Create sample tasks."""

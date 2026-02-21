@@ -62,14 +62,14 @@ class CurrentUserView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        from apps.pledges.models import PledgeStatus
+        from apps.gifts.models import RecurringGiftStatus
 
         # Annotate user with counts to avoid N+1 queries
         user = User.objects.filter(pk=request.user.pk).annotate(
             _contact_count=Count('contacts', distinct=True),
             _active_pledge_count=Count(
-                'contacts__pledges',
-                filter=Q(contacts__pledges__status=PledgeStatus.ACTIVE),
+                'contacts__recurring_gifts',
+                filter=Q(contacts__recurring_gifts__status=RecurringGiftStatus.ACTIVE),
                 distinct=True
             )
         ).first()

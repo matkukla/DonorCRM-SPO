@@ -23,31 +23,20 @@ from apps.imports.re_services import (
 )
 from apps.imports.services import (
     export_contacts_csv,
-    export_donations_csv,
+    export_gifts_csv,
     get_contacts_template,
-    get_donations_template,
     get_entities_template,
     get_funds_template,
-    get_pledges_template,
-    get_transactions_template,
     import_contacts,
-    import_donations,
     import_entities,
     import_funds,
-    import_pledges,
-    import_transactions,
     parse_contacts_csv,
-    parse_donations_csv,
     parse_entities_csv,
     parse_funds_csv,
-    parse_pledges_csv,
-    parse_transactions_csv,
-    update_contact_stats_for_import,
 )
 from apps.imports.tasks import (
     get_import_progress,
     import_contacts_async,
-    import_donations_async,
 )
 
 logger = logging.getLogger(__name__)
@@ -146,87 +135,17 @@ class ContactImportView(APIView):
 
 class DonationImportView(APIView):
     """
-    POST: Import donations from CSV file (admin/finance only)
-
-    Query params:
-        validate_only: If 'true', only validate without importing
-        async: If 'true', process import asynchronously (recommended for large files)
+    POST: Legacy donation import endpoint.
+    Superseded by RE Gift import (REGiftImportView).
+    Returns 410 Gone to direct users to the new import endpoint.
     """
     permission_classes = [permissions.IsAuthenticated, IsFinanceOrAdmin]
-    parser_classes = [MultiPartParser]
 
     def post(self, request):
-        if 'file' not in request.FILES:
-            return Response(
-                {'detail': 'No file provided.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        file = request.FILES['file']
-        if file.size > MAX_UPLOAD_SIZE:
-            return Response(
-                {'detail': 'File too large (max 10 MB)'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        if not file.name.endswith('.csv'):
-            return Response(
-                {'detail': 'File must be a CSV.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Read and decode file content
-        try:
-            content = file.read().decode('utf-8')
-        except UnicodeDecodeError:
-            return Response(
-                {'detail': 'File encoding error. Please use UTF-8.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        logger.info(f'Donation import started by user {request.user.email}')
-
-        # Parse CSV
-        valid_records, errors = parse_donations_csv(content, request.user)
-
-        # Option to just validate (dry run)
-        if request.query_params.get('validate_only') == 'true':
-            return Response({
-                'valid_count': len(valid_records),
-                'error_count': len(errors),
-                'errors': errors[:20]
-            })
-
-        # Use async import for large files
-        use_async = (
-            request.query_params.get('async') == 'true' or
-            len(valid_records) > ASYNC_THRESHOLD
+        return Response(
+            {'detail': 'Legacy donation import has been removed. Use the RE Gift import endpoint instead.'},
+            status=status.HTTP_410_GONE
         )
-
-        if use_async and valid_records:
-            import_id = uuid.uuid4().hex[:12]
-            import_donations_async.delay(content, request.user.id, import_id)
-            logger.info(f'Donation import {import_id} queued for async processing')
-            return Response({
-                'status': 'processing',
-                'import_id': import_id,
-                'message': f'{len(valid_records)} donations queued for import',
-                'error_count': len(errors),
-                'errors': errors[:20]
-            }, status=status.HTTP_202_ACCEPTED)
-
-        # Sync import for small files
-        if valid_records:
-            count, donations = import_donations(valid_records)
-        else:
-            count = 0
-
-        logger.info(f'Donation import completed: {count} donations imported')
-
-        return Response({
-            'imported_count': count,
-            'error_count': len(errors),
-            'errors': errors[:20]
-        })
 
 
 class ContactExportView(APIView):
@@ -253,31 +172,31 @@ class ContactExportView(APIView):
 
 class DonationExportView(APIView):
     """
-    GET: Export donations to CSV
+    GET: Export gifts to CSV
     """
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        from apps.donations.models import Donation
+        from apps.gifts.models import Gift
 
         user = request.user
         if user.role in ['admin', 'finance']:
-            queryset = Donation.objects.all()
+            queryset = Gift.objects.all()
         else:
-            queryset = Donation.objects.filter(contact__owner=user)
+            queryset = Gift.objects.filter(donor_contact__owner=user)
 
         # Date range filter
         start_date = request.query_params.get('start_date')
         end_date = request.query_params.get('end_date')
         if start_date:
-            queryset = queryset.filter(date__gte=start_date)
+            queryset = queryset.filter(gift_date__gte=start_date)
         if end_date:
-            queryset = queryset.filter(date__lte=end_date)
+            queryset = queryset.filter(gift_date__lte=end_date)
 
-        csv_content = export_donations_csv(queryset)
+        csv_content = export_gifts_csv(queryset)
 
         response = HttpResponse(csv_content, content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename="donations.csv"'
+        response['Content-Disposition'] = 'attachment; filename="gifts.csv"'
         return response
 
 
@@ -296,15 +215,16 @@ class ContactTemplateView(APIView):
 
 class DonationTemplateView(APIView):
     """
-    GET: Download donations CSV template
+    GET: Legacy donation template endpoint.
+    Superseded by RE Gift import. Returns 410 Gone.
     """
     permission_classes = [permissions.IsAuthenticated, IsFinanceOrAdmin]
 
     def get(self, request):
-        content = get_donations_template()
-        response = HttpResponse(content, content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename="donations_template.csv"'
-        return response
+        return Response(
+            {'detail': 'Legacy donation template has been removed. Use the RE Gift import instead.'},
+            status=status.HTTP_410_GONE
+        )
 
 
 class FundImportView(APIView):
@@ -499,112 +419,31 @@ class EntityTemplateView(APIView):
 
 class TransactionImportView(APIView):
     """
-    POST: Import transactions from CSV file (admin only)
-
-    Expects columns: transaction_id, entity_id, fund_id, amount, posted_date
-
-    Query params:
-        validate_only: If 'true', only validate without importing
-
-    STRICT MODE: Rejects entire import if any entity_id or fund_id not found.
+    POST: Legacy transaction import endpoint.
+    Superseded by RE Gift import (REGiftImportView).
+    Returns 410 Gone.
     """
     permission_classes = [permissions.IsAuthenticated, IsAdmin]
-    parser_classes = [MultiPartParser]
 
     def post(self, request):
-        if 'file' not in request.FILES:
-            return Response(
-                {'detail': 'No file provided.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        file = request.FILES['file']
-        if file.size > MAX_UPLOAD_SIZE:
-            return Response(
-                {'detail': 'File too large (max 10 MB)'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        if not file.name.endswith('.csv'):
-            return Response(
-                {'detail': 'File must be a CSV.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Read and decode file content (utf-8-sig handles Excel BOM)
-        try:
-            content = file.read().decode('utf-8-sig')
-        except UnicodeDecodeError:
-            return Response(
-                {'detail': 'File encoding error. Please use UTF-8.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        logger.info(f'Transaction import started by user {request.user.email}')
-
-        # Parse CSV with FK validation
-        valid_records, errors = parse_transactions_csv(content, request.user)
-
-        # Option to just validate (dry run)
-        if request.query_params.get('validate_only') == 'true':
-            return Response({
-                'valid_count': len(valid_records),
-                'error_count': len(errors),
-                'errors': errors[:20]  # Limit errors in response
-            })
-
-        # Check for errors (strict mode - don't import if any errors)
-        if errors:
-            return Response({
-                'created_count': 0,
-                'updated_count': 0,
-                'error_count': len(errors),
-                'errors': errors[:20],
-                'import_run_id': None
-            })
-
-        # Create ImportRun audit record
-        from apps.imports.models import ImportRun, ImportType, ImportStatus
-        import_run = ImportRun.objects.create(
-            type=ImportType.TRANSACTIONS,
-            status=ImportStatus.IMPORTING,
-            filename=file.name,
-            uploaded_by=request.user
+        return Response(
+            {'detail': 'Legacy transaction import has been removed. Use the RE Gift import endpoint instead.'},
+            status=status.HTTP_410_GONE
         )
-
-        # Sync import (MVP - no async)
-        if valid_records:
-            created_count, updated_count = import_transactions(
-                valid_records, request.user, import_run
-            )
-
-            # Update Contact denormalized stats
-            update_contact_stats_for_import(valid_records, request.user)
-        else:
-            created_count = 0
-            updated_count = 0
-
-        logger.info(f'Transaction import completed: {created_count} created, {updated_count} updated')
-
-        return Response({
-            'created_count': created_count,
-            'updated_count': updated_count,
-            'error_count': len(errors),
-            'errors': errors[:20],
-            'import_run_id': import_run.id
-        })
 
 
 class TransactionTemplateView(APIView):
     """
-    GET: Download CSV template for transaction imports (admin only)
+    GET: Legacy transaction template endpoint.
+    Superseded by RE Gift import. Returns 410 Gone.
     """
     permission_classes = [permissions.IsAuthenticated, IsAdmin]
 
     def get(self, request):
-        content = get_transactions_template()
-        response = HttpResponse(content, content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename="transactions_template.csv"'
-        return response
+        return Response(
+            {'detail': 'Legacy transaction template has been removed. Use the RE Gift import instead.'},
+            status=status.HTTP_410_GONE
+        )
 
 
 class ImportStatusView(APIView):
@@ -620,105 +459,31 @@ class ImportStatusView(APIView):
 
 class PledgeImportView(APIView):
     """
-    POST: Import pledges from CSV file (admin only)
-
-    Expects columns: pledge_id, entity_id, fund_id (optional), amount, cadence, status, start_date
-
-    Query params:
-        validate_only: If 'true', only validate without importing
-
-    STRICT MODE: Rejects entire import if any entity_id not found or
-    fund_id provided but not found.
-
-    Key differences from TransactionImportView:
-    - fund_id is OPTIONAL
-    - cadence and status require enum validation (handled in parse_pledges_csv)
-    - NO update_contact_stats call (pledges use computed properties)
+    POST: Legacy pledge import endpoint.
+    Superseded by RE Recurring Gift import (RERecurringGiftImportView).
+    Returns 410 Gone.
     """
     permission_classes = [permissions.IsAuthenticated, IsAdmin]
-    parser_classes = [MultiPartParser]
 
     def post(self, request):
-        # File validation (same as TransactionImportView)
-        if 'file' not in request.FILES:
-            return Response({'detail': 'No file provided.'}, status=400)
-
-        file = request.FILES['file']
-        if file.size > MAX_UPLOAD_SIZE:
-            return Response(
-                {'detail': 'File too large (max 10 MB)'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        if not file.name.endswith('.csv'):
-            return Response({'detail': 'File must be a CSV.'}, status=400)
-
-        # UTF-8-sig handles Excel BOM
-        try:
-            content = file.read().decode('utf-8-sig')
-        except UnicodeDecodeError:
-            return Response({'detail': 'File encoding error. Please use UTF-8.'}, status=400)
-
-        # Parse CSV with FK and enum validation
-        valid_records, errors = parse_pledges_csv(content, request.user)
-
-        # Validate-only mode (dry run)
-        if request.query_params.get('validate_only') == 'true':
-            return Response({
-                'valid_count': len(valid_records),
-                'error_count': len(errors),
-                'errors': errors[:20]  # Limit to first 20
-            })
-
-        # Check for errors (strict mode - don't import if any errors)
-        if errors:
-            return Response({
-                'created_count': 0,
-                'updated_count': 0,
-                'error_count': len(errors),
-                'errors': errors[:20],
-                'import_run_id': None
-            })
-
-        # Create ImportRun audit record
-        from apps.imports.models import ImportRun, ImportType, ImportStatus
-        import_run = ImportRun.objects.create(
-            type=ImportType.PLEDGES,
-            status=ImportStatus.IMPORTING,
-            filename=file.name,
-            uploaded_by=request.user
+        return Response(
+            {'detail': 'Legacy pledge import has been removed. Use the RE Recurring Gift import endpoint instead.'},
+            status=status.HTTP_410_GONE
         )
-
-        # Synchronous import (MVP - no Celery)
-        if valid_records:
-            created_count, updated_count = import_pledges(
-                valid_records, request.user, import_run
-            )
-            # NOTE: NO update_contact_stats_for_import call
-            # Pledge data is accessed via computed properties (has_active_pledge, monthly_pledge_amount)
-        else:
-            created_count = 0
-            updated_count = 0
-
-        return Response({
-            'created_count': created_count,
-            'updated_count': updated_count,
-            'error_count': len(errors),
-            'errors': errors[:20],
-            'import_run_id': import_run.id
-        })
 
 
 class PledgeTemplateView(APIView):
     """
-    GET: Download CSV template for pledge imports (admin only)
+    GET: Legacy pledge template endpoint.
+    Superseded by RE Recurring Gift import. Returns 410 Gone.
     """
     permission_classes = [permissions.IsAuthenticated, IsAdmin]
 
     def get(self, request):
-        content = get_pledges_template()
-        response = HttpResponse(content, content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename="pledges_template.csv"'
-        return response
+        return Response(
+            {'detail': 'Legacy pledge template has been removed. Use the RE Recurring Gift import instead.'},
+            status=status.HTTP_410_GONE
+        )
 
 
 class LatestImportRunsView(APIView):
