@@ -24,6 +24,7 @@ from apps.imports.views import (
     MPDUploadHistoryView,
     PledgeImportView,
     PledgeTemplateView,
+    RESolicitorImportView,
     TransactionImportView,
     TransactionTemplateView,
 )
@@ -40,6 +41,7 @@ urlpatterns = [
     path('mpd/overview/', MPDOverviewView.as_view(), name='mpd-overview'),
     path('mpd/me/', MPDMyDataView.as_view(), name='mpd-my-data'),
     path('mpd/uploads/', MPDUploadHistoryView.as_view(), name='mpd-upload-history'),
+    path('re/solicitors/', RESolicitorImportView.as_view(), name='import-re-solicitors'),
     path('pledges/', PledgeImportView.as_view(), name='import-pledges'),
     path('transactions/', TransactionImportView.as_view(), name='import-transactions'),
     path('export/contacts/', ContactExportView.as_view(), name='export-contacts'),
