@@ -5,22 +5,22 @@
 See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core value:** Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems, and leadership can proactively support their teams through cross-missionary analytics.
-**Current focus:** Phase 29 - RE Import Pipeline (Gifts & Recurring Gifts) (v2.0)
+**Current focus:** Phase 30 - Data Migration Backend Cutover (v2.0)
 
 ## Current Position
 
 Milestone: v2.0 -- Import Revamp, Prayer Intentions & Dashboard Polish
-Phase: 29 of 36 (RE Import Pipeline - Gifts & Recurring Gifts)
-Plan: 2 of 2 in current phase
-Status: Phase Complete
-Last activity: 2026-02-20 -- Completed 29-02 (RE Recurring Gift Import)
+Phase: 30 of 36 (Data Migration Backend Cutover)
+Plan: 1 of 3 in current phase
+Status: In Progress
+Last activity: 2026-02-20 -- Completed 30-01 (Data Migration & Gift Signals)
 
-Progress: [████████████████████████████████] 100% (2/2 plans in phase 29)
+Progress: [███████████░░░░░░░░░░░░░░░░░░░░░] 33% (1/3 plans in phase 30)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 83 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3 + 6 v2.0)
+- Total plans completed: 84 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3 + 7 v2.0)
 - Average duration: ~3.8 minutes
 - Total execution time: ~4.9 hours
 
@@ -38,6 +38,7 @@ Progress: [███████████████████████
 | Phase 28 P02 | 3min | 2 tasks | 4 files |
 | Phase 29 P01 | 4min | 2 tasks | 7 files |
 | Phase 29 P02 | 3min | 2 tasks | 4 files |
+| Phase 30 P01 | 2min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -64,6 +65,8 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 - [Phase 29]: Prayer dedup by (contact.id, normalized_text_lowercase) with 20-entry conservative stoplist
 - [Phase 29]: Empty frequency defaults to Monthly; empty status defaults to Active; unknown values skip group
 - [Phase 29]: RecurringGift import does NOT create prayer intentions (prayer text only on one-time gifts)
+- [Phase 30]: Reuse DONATION_RECEIVED event type for Gift signals to avoid orphaning existing events
+- [Phase 30]: Gift signal unconditionally sets needs_thank_you=True on create (no thanked field check)
 
 ### Pending Todos
 
@@ -86,9 +89,9 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 29-02-PLAN.md (RE Recurring Gift Import) -- Phase 29 complete
-Resume: Begin Phase 30.
+Stopped at: Completed 30-01-PLAN.md (Data Migration & Gift Signals)
+Resume: Continue with 30-02-PLAN.md.
 
 ---
 
-*Last updated: 2026-02-20 (29-02 complete, phase 29 done)*
+*Last updated: 2026-02-20 (30-01 complete)*
