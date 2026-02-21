@@ -15,7 +15,7 @@ from rest_framework.views import APIView
 from apps.core.permissions import IsAdmin, IsFinanceOrAdmin
 from apps.imports.models import Fund, ImportBatchStatus, MPDSnapshot, MPDUpload
 from apps.imports.mpd_services import process_mpd_upload
-from apps.imports.re_services import import_re_constituents, import_re_solicitors
+from apps.imports.re_services import import_re_constituents, import_re_gifts, import_re_solicitors
 from apps.imports.services import (
     export_contacts_csv,
     export_donations_csv,
@@ -1076,6 +1076,53 @@ class REConstituentImportView(APIView):
         file_bytes = file.read()
 
         batch = import_re_constituents(
+            file_bytes=file_bytes,
+            filename=file.name,
+            uploaded_by=request.user,
+            owner=request.user,
+        )
+
+        return Response({
+            'batch_id': str(batch.id),
+            'status': batch.status,
+            'is_duplicate': batch.status == ImportBatchStatus.DUPLICATE,
+            'created_count': batch.created_count,
+            'updated_count': batch.updated_count,
+            'skipped_count': batch.skipped_count,
+            'error_count': batch.error_count,
+            'total_rows': batch.total_rows,
+            'summary': batch.summary,
+        })
+
+
+class REGiftImportView(APIView):
+    """
+    POST: Import RE Gift CSV file (admin only).
+
+    Accepts CSV file upload. Groups rows by Gift ID, creates Gift + GiftCredit
+    records with solicitor credit splitting, and auto-creates PrayerIntention
+    records from prayer description column. Returns ImportBatch result as JSON.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+    parser_classes = [MultiPartParser]
+
+    def post(self, request):
+        if 'file' not in request.FILES:
+            return Response(
+                {'detail': 'No file provided.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        file = request.FILES['file']
+        if file.size > MAX_UPLOAD_SIZE:
+            return Response(
+                {'detail': 'File too large (max 10 MB).'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        file_bytes = file.read()
+
+        batch = import_re_gifts(
             file_bytes=file_bytes,
             filename=file.name,
             uploaded_by=request.user,
