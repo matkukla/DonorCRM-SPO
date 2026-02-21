@@ -113,7 +113,10 @@ Plans:
   3. Re-uploading the same file returns the cached ImportBatch result without reprocessing (SHA256 dedup works)
   4. Errors on individual rows do not stop processing -- the final result shows all errors with row numbers
   5. Files with Windows-1252 encoding (smart quotes, accented names) are handled transparently via cascading decode
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 28-01-PLAN.md — Solicitor FK fix, shared RE utilities (encoding, dedup, errors), and Solicitor import pipeline
+- [ ] 28-02-PLAN.md — Constituent import pipeline with match hierarchy, merge-only updates, and management command
 
 ### Phase 29: RE Import Pipeline (Gifts & Recurring Gifts)
 **Goal**: Admins can import RE Gift and Recurring Gift CSV files with correct multi-row grouping, credit splitting, and prayer intention auto-creation
@@ -223,7 +226,7 @@ Note: Phase 30 depends on Phase 27 only (not 28/29), so it could run after 27. H
 | 13-19 | v1.2 | 18/18 | Complete | 2026-02-16 |
 | 20-26 | v1.3 | 20/20 | Complete | 2026-02-19 |
 | 27. Foundation Models | 2/2 | Complete    | 2026-02-20 | - |
-| 28. RE Import (Const & Sol) | v2.0 | 0/? | Not started | - |
+| 28. RE Import (Const & Sol) | v2.0 | 0/2 | Planned | - |
 | 29. RE Import (Gifts) | v2.0 | 0/? | Not started | - |
 | 30. Data Migration & Cutover | v2.0 | 0/? | Not started | - |
 | 31. Gift & Recurring Gift UI | v2.0 | 0/? | Not started | - |
