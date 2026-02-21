@@ -32,8 +32,9 @@ urlpatterns = [
     path('users/', include('apps.users.urls')),
     path('contacts/', include('apps.contacts.urls')),
     path('groups/', include('apps.groups.urls')),
-    path('donations/', include('apps.donations.urls')),
-    path('pledges/', include('apps.pledges.urls')),
+    path('gifts/', include('apps.gifts.urls')),
+    path('donations/', include('apps.gifts.urls', namespace='gifts_donations_alias')),  # backward-compatible alias
+    path('pledges/', include('apps.gifts.urls', namespace='gifts_pledges_alias')),  # backward-compatible alias
     path('tasks/', include('apps.tasks.urls')),
     path('events/', include('apps.events.urls')),
 

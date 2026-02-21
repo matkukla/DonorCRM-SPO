@@ -20,11 +20,6 @@ app.autodiscover_tasks()
 
 # Periodic tasks schedule
 app.conf.beat_schedule = {
-    'check-late-pledges-daily': {
-        'task': 'apps.pledges.tasks.check_late_pledges',
-        'schedule': crontab(hour=6, minute=0),  # Daily at 6 AM UTC
-        'options': {'expires': 3600},  # Expire after 1 hour
-    },
     'detect-at-risk-donors-daily': {
         'task': 'apps.contacts.tasks.detect_at_risk_donors',
         'schedule': crontab(hour=7, minute=0),  # Daily at 7 AM UTC
