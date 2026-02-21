@@ -5,22 +5,22 @@
 See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core value:** Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems, and leadership can proactively support their teams through cross-missionary analytics.
-**Current focus:** Phase 27 - Foundation Models (v2.0)
+**Current focus:** Phase 28 - RE Import Pipeline (Constituents & Solicitors) (v2.0)
 
 ## Current Position
 
 Milestone: v2.0 -- Import Revamp, Prayer Intentions & Dashboard Polish
-Phase: 27 of 36 (Foundation Models)
-Plan: 2 of 2 in current phase (COMPLETE)
-Status: Phase Complete
-Last activity: 2026-02-20 -- Completed 27-02 (ImportBatch, PrayerIntention, Contact Updates)
+Phase: 28 of 36 (RE Import Pipeline - Constituents & Solicitors)
+Plan: 1 of 2 in current phase
+Status: In Progress
+Last activity: 2026-02-20 -- Completed 28-01 (RE Solicitor Import Pipeline)
 
-Progress: [████████████████████████████████] 100% (2/2 plans in phase 27)
+Progress: [████████████████                ] 50% (1/2 plans in phase 28)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 79 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3 + 2 v2.0)
+- Total plans completed: 80 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3 + 3 v2.0)
 - Average duration: ~3.8 minutes
 - Total execution time: ~4.9 hours
 
@@ -34,6 +34,7 @@ Progress: [███████████████████████
 | v1.3 (Phases 20-26) | 20 | ~75 min | ~3.8 min |
 | Phase 27 P01 | 2min | 2 tasks | 5 files |
 | Phase 27 P02 | 3min | 2 tasks | 14 files |
+| Phase 28 P01 | 3min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -48,6 +49,9 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 - [Phase 27]: ImportBatch coexists with ImportRun (no replacement); SHA256 dedup per import_type
 - [Phase 27]: PrayerIntention.contact is required (not nullable) per user decision
 - [Phase 27]: Contact.external_constituent_id uses conditional UniqueConstraint (non-empty only)
+- [Phase 28]: Solicitor.user changed from OneToOneField to ForeignKey (many-to-one)
+- [Phase 28]: RE CSV header matching uses alias mapping dict for flexible column name support
+- [Phase 28]: Ambiguous user name matches excluded from solicitor auto-linking
 
 ### Pending Todos
 
@@ -70,9 +74,9 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 27-02-PLAN.md (ImportBatch, PrayerIntention, Contact Updates)
-Resume: Phase 27 complete. Next: Phase 28 (RE Import)
+Stopped at: Completed 28-01-PLAN.md (RE Solicitor Import Pipeline)
+Resume: Continue Phase 28 with Plan 02 (RE Constituent Import)
 
 ---
 
-*Last updated: 2026-02-20 (27-02 complete, Phase 27 complete)*
+*Last updated: 2026-02-20 (28-01 complete)*

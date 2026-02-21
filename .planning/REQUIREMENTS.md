@@ -21,12 +21,12 @@ Requirements for v2.0 milestone: Import Revamp, Prayer Intentions & Dashboard Po
 ### Import Pipeline
 
 - [ ] **IMP-01**: RE Constituent import creates/updates Contacts with externalConstituentId matching, email/phone fallback, merge-only updates
-- [ ] **IMP-02**: RE Solicitor import creates Solicitor records with normalized name dedup and auto-link to User accounts
+- [x] **IMP-02**: RE Solicitor import creates Solicitor records with normalized name dedup and auto-link to User accounts
 - [ ] **IMP-03**: RE Gift import with multi-row grouping by Gift ID, GiftCredit creation per solicitor, and Contact linking
 - [ ] **IMP-04**: RE Recurring Gift import with same grouping pattern, installment fields, and status tracking
-- [ ] **IMP-05**: SHA256 idempotency -- re-uploading same file returns cached result without reprocessing
-- [ ] **IMP-06**: Row-level error collection -- errors don't stop processing, final report shows all errors with row numbers
-- [ ] **IMP-07**: Windows-1252 encoding detection with cascading fallback (UTF-8-sig, UTF-8, Windows-1252)
+- [x] **IMP-05**: SHA256 idempotency -- re-uploading same file returns cached result without reprocessing
+- [x] **IMP-06**: Row-level error collection -- errors don't stop processing, final report shows all errors with row numbers
+- [x] **IMP-07**: Windows-1252 encoding detection with cascading fallback (UTF-8-sig, UTF-8, Windows-1252)
 - [ ] **IMP-08**: Generic CSV import for contacts with matching and dedup options
 - [ ] **IMP-09**: Generic CSV import for donations with contact linking and stat recalculation
 - [ ] **IMP-10**: Prayer intention auto-creation from RE gift description field during gift import
@@ -120,12 +120,12 @@ Deferred to future releases.
 | MODEL-07 | Phase 27 | Pending |
 | MODEL-08 | Phase 27 | Pending |
 | IMP-01 | Phase 28 | Pending |
-| IMP-02 | Phase 28 | Pending |
+| IMP-02 | Phase 28 | Complete |
 | IMP-03 | Phase 29 | Pending |
 | IMP-04 | Phase 29 | Pending |
-| IMP-05 | Phase 28 | Pending |
-| IMP-06 | Phase 28 | Pending |
-| IMP-07 | Phase 28 | Pending |
+| IMP-05 | Phase 28 | Complete |
+| IMP-06 | Phase 28 | Complete |
+| IMP-07 | Phase 28 | Complete |
 | IMP-08 | Phase 35 | Pending |
 | IMP-09 | Phase 35 | Pending |
 | IMP-10 | Phase 29 | Pending |
