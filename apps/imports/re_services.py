@@ -208,6 +208,7 @@ def import_re_solicitors(
     existing = check_duplicate_import(file_bytes, ImportBatchType.RE_SOLICITOR)
     if existing:
         logger.info('Duplicate solicitor import detected for %s', filename)
+        existing.status = ImportBatchStatus.DUPLICATE
         return existing
 
     # Step 2: Decode
@@ -589,6 +590,7 @@ def import_re_constituents(
     existing = check_duplicate_import(file_bytes, ImportBatchType.RE_CONSTITUENT)
     if existing:
         logger.info('Duplicate constituent import detected for %s', filename)
+        existing.status = ImportBatchStatus.DUPLICATE
         return existing
 
     # Step 2: Decode
