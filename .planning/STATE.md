@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-02-20)
 
 Milestone: v2.0 -- Import Revamp, Prayer Intentions & Dashboard Polish
 Phase: 30 of 36 (Data Migration Backend Cutover)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In Progress
-Last activity: 2026-02-20 -- Completed 30-01 (Data Migration & Gift Signals)
+Last activity: 2026-02-20 -- Completed 30-02 (Backend Service Cutover)
 
-Progress: [███████████░░░░░░░░░░░░░░░░░░░░░] 33% (1/3 plans in phase 30)
+Progress: [██████████████████████░░░░░░░░░░] 67% (2/3 plans in phase 30)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 84 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3 + 7 v2.0)
-- Average duration: ~3.8 minutes
-- Total execution time: ~4.9 hours
+- Total plans completed: 85 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3 + 8 v2.0)
+- Average duration: ~3.9 minutes
+- Total execution time: ~5.1 hours
 
 **By Milestone:**
 
@@ -39,6 +39,7 @@ Progress: [███████████░░░░░░░░░░░░
 | Phase 29 P01 | 4min | 2 tasks | 7 files |
 | Phase 29 P02 | 3min | 2 tasks | 4 files |
 | Phase 30 P01 | 2min | 2 tasks | 4 files |
+| Phase 30 P02 | 13min | 4 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -67,6 +68,9 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 - [Phase 29]: RecurringGift import does NOT create prayer intentions (prayer text only on one-time gifts)
 - [Phase 30]: Reuse DONATION_RECEIVED event type for Gift signals to avoid orphaning existing events
 - [Phase 30]: Gift signal unconditionally sets needs_thank_you=True on create (no thanked field check)
+- [Phase 30]: Old SPO import functions removed (returning 410 Gone) rather than ported to Gift model since RE import pipeline supersedes them
+- [Phase 30]: Late pledge features return empty data gracefully rather than raising errors since RecurringGift has no is_late field
+- [Phase 30]: Old property names (has_active_pledge, monthly_pledge_amount) kept as aliases during transition for backward compatibility
 
 ### Pending Todos
 
@@ -89,9 +93,9 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 30-01-PLAN.md (Data Migration & Gift Signals)
-Resume: Continue with 30-02-PLAN.md.
+Stopped at: Completed 30-02-PLAN.md (Backend Service Cutover)
+Resume: Continue with 30-03-PLAN.md.
 
 ---
 
-*Last updated: 2026-02-20 (30-01 complete)*
+*Last updated: 2026-02-20 (30-02 complete)*
