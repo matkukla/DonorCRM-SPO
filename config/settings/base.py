@@ -42,8 +42,6 @@ LOCAL_APPS = [
     'apps.users',
     'apps.contacts',
     'apps.groups',
-    'apps.donations',
-    'apps.pledges',
     'apps.tasks',
     'apps.events',
     'apps.dashboard',
@@ -161,7 +159,7 @@ REST_FRAMEWORK = {
 # API Documentation (drf-spectacular)
 SPECTACULAR_SETTINGS = {
     'TITLE': 'DonorCRM API',
-    'DESCRIPTION': 'A missionary support management CRM API for tracking donors, donations, pledges, and tasks.',
+    'DESCRIPTION': 'A missionary support management CRM API for tracking donors, gifts, recurring gifts, and tasks.',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
     'COMPONENT_SPLIT_REQUEST': True,
@@ -170,8 +168,7 @@ SPECTACULAR_SETTINGS = {
         {'name': 'auth', 'description': 'Authentication endpoints'},
         {'name': 'users', 'description': 'User management'},
         {'name': 'contacts', 'description': 'Donor and prospect management'},
-        {'name': 'donations', 'description': 'Gift tracking'},
-        {'name': 'pledges', 'description': 'Recurring commitment tracking'},
+        {'name': 'gifts', 'description': 'Gift and recurring gift tracking'},
         {'name': 'tasks', 'description': 'Reminders and action items'},
         {'name': 'events', 'description': 'Notifications and audit trail'},
         {'name': 'groups', 'description': 'Contact tags and segments'},
