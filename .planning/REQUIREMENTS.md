@@ -20,7 +20,7 @@ Requirements for v2.0 milestone: Import Revamp, Prayer Intentions & Dashboard Po
 
 ### Import Pipeline
 
-- [ ] **IMP-01**: RE Constituent import creates/updates Contacts with externalConstituentId matching, email/phone fallback, merge-only updates
+- [x] **IMP-01**: RE Constituent import creates/updates Contacts with externalConstituentId matching, email/phone fallback, merge-only updates
 - [x] **IMP-02**: RE Solicitor import creates Solicitor records with normalized name dedup and auto-link to User accounts
 - [ ] **IMP-03**: RE Gift import with multi-row grouping by Gift ID, GiftCredit creation per solicitor, and Contact linking
 - [ ] **IMP-04**: RE Recurring Gift import with same grouping pattern, installment fields, and status tracking
@@ -119,7 +119,7 @@ Deferred to future releases.
 | MODEL-06 | Phase 27 | Pending |
 | MODEL-07 | Phase 27 | Pending |
 | MODEL-08 | Phase 27 | Pending |
-| IMP-01 | Phase 28 | Pending |
+| IMP-01 | Phase 28 | Complete |
 | IMP-02 | Phase 28 | Complete |
 | IMP-03 | Phase 29 | Pending |
 | IMP-04 | Phase 29 | Pending |
