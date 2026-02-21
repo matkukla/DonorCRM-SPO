@@ -299,6 +299,22 @@ class RecurringGift(TimeStampedModel):
         """Return amount as Decimal dollars for display."""
         return Decimal(self.amount_cents) / Decimal(100)
 
+    @property
+    def monthly_equivalent(self):
+        """Calculate monthly equivalent amount for support progress calculations."""
+        multipliers = {
+            RecurringGiftFrequency.MONTHLY: Decimal('1'),
+            RecurringGiftFrequency.QUARTERLY: Decimal('1') / Decimal('3'),
+            RecurringGiftFrequency.SEMI_ANNUALLY: Decimal('1') / Decimal('6'),
+            RecurringGiftFrequency.ANNUALLY: Decimal('1') / Decimal('12'),
+            RecurringGiftFrequency.BIMONTHLY: Decimal('1') / Decimal('2'),
+            RecurringGiftFrequency.BIWEEKLY: Decimal('26') / Decimal('12'),
+            RecurringGiftFrequency.WEEKLY: Decimal('52') / Decimal('12'),
+            RecurringGiftFrequency.IRREGULAR: Decimal('1'),
+        }
+        multiplier = multipliers.get(self.frequency, Decimal('1'))
+        return round(self.amount_dollars * multiplier, 2)
+
 
 # ---------------------------------------------------------------------------
 # RecurringGiftCredit
