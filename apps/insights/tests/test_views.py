@@ -11,7 +11,7 @@ from rest_framework.test import APIClient
 
 from apps.users.tests.factories import UserFactory
 from apps.contacts.tests.factories import ContactFactory
-from apps.donations.tests.factories import DonationFactory
+from apps.gifts.tests.factories import GiftFactory
 from apps.journals.models import Journal, JournalContact, Decision
 
 

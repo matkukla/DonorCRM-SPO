@@ -1,1 +1,0 @@
-# Donations app - gift records

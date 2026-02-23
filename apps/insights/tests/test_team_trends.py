@@ -11,7 +11,7 @@ from rest_framework.test import APIClient
 
 from apps.users.tests.factories import UserFactory
 from apps.contacts.tests.factories import ContactFactory
-from apps.donations.tests.factories import DonationFactory
+from apps.gifts.tests.factories import GiftFactory
 from apps.journals.models import Journal, JournalContact, Decision, JournalStageEvent, PipelineStage
 
 
@@ -147,15 +147,15 @@ class TestTeamTrendsView:
         assert last_week['decisions_logged'] == 2
 
     def test_counts_donations_by_week(self, admin_client):
-        """Donations are counted in the correct week."""
+        """Gifts are counted in the correct week."""
         client, admin_user = admin_client
         staff = UserFactory(role='staff')
         contact = ContactFactory(owner=staff)
 
-        # Create donations in current week
+        # Create gifts in current week
         today = timezone.now().date()
-        DonationFactory(contact=contact, date=today, amount=Decimal('100.00'))
-        DonationFactory(contact=contact, date=today - timedelta(days=2), amount=Decimal('50.00'))
+        GiftFactory(donor_contact=contact, gift_date=today, amount_cents=10000)
+        GiftFactory(donor_contact=contact, gift_date=today - timedelta(days=2), amount_cents=5000)
 
         response = client.get('/api/v1/insights/admin/team-trends/')
         assert response.status_code == status.HTTP_200_OK
