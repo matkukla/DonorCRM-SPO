@@ -4,11 +4,13 @@ Views for Gift and RecurringGift CRUD API endpoints.
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import generics, permissions
+from rest_framework.filters import OrderingFilter, SearchFilter
 
 from apps.gifts.filters import GiftFilterSet, RecurringGiftFilterSet
 from apps.gifts.models import Gift, RecurringGift
 from apps.gifts.serializers import (
     GiftCreateSerializer,
+    GiftDetailSerializer,
     GiftSerializer,
     RecurringGiftCreateSerializer,
     RecurringGiftSerializer,
@@ -25,8 +27,10 @@ class GiftListCreateView(generics.ListCreateAPIView):
     POST: Create a new gift
     """
     permission_classes = [permissions.IsAuthenticated]
-    filter_backends = [DjangoFilterBackend]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = GiftFilterSet
+    search_fields = ['donor_contact__first_name', 'donor_contact__last_name', 'description']
+    ordering_fields = ['gift_date', 'amount_cents', 'created_at']
     ordering = ['-gift_date']
 
     def get_queryset(self):
@@ -50,19 +54,25 @@ class GiftListCreateView(generics.ListCreateAPIView):
 )
 class GiftDetailView(generics.RetrieveUpdateDestroyAPIView):
     """
-    GET: Retrieve gift details
+    GET: Retrieve gift details with solicitor credits
     PUT/PATCH: Update gift
     DELETE: Delete gift
     """
-    serializer_class = GiftSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         user = self.request.user
-        qs = Gift.objects.select_related('donor_contact', 'fund').all()
+        qs = Gift.objects.select_related('donor_contact', 'fund').prefetch_related(
+            'credits__solicitor'
+        ).all()
         if user.role not in ['admin', 'finance', 'read_only']:
             qs = qs.filter(donor_contact__owner=user)
         return qs
+
+    def get_serializer_class(self):
+        if self.request.method == 'GET':
+            return GiftDetailSerializer
+        return GiftSerializer
 
 
 @extend_schema_view(
@@ -75,8 +85,10 @@ class RecurringGiftListCreateView(generics.ListCreateAPIView):
     POST: Create a new recurring gift
     """
     permission_classes = [permissions.IsAuthenticated]
-    filter_backends = [DjangoFilterBackend]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = RecurringGiftFilterSet
+    search_fields = ['donor_contact__first_name', 'donor_contact__last_name', 'description']
+    ordering_fields = ['start_date', 'amount_cents', 'status', 'frequency']
     ordering = ['-start_date']
 
     def get_queryset(self):

@@ -3,7 +3,7 @@ Serializers for Gift and RecurringGift models.
 """
 from rest_framework import serializers
 
-from apps.gifts.models import Gift, RecurringGift
+from apps.gifts.models import Gift, GiftCredit, RecurringGift
 
 
 class GiftSerializer(serializers.ModelSerializer):
@@ -14,11 +14,14 @@ class GiftSerializer(serializers.ModelSerializer):
         source='amount_dollars', read_only=True, max_digits=12, decimal_places=2
     )
     donor_contact_name = serializers.SerializerMethodField()
+    fund_name = serializers.CharField(
+        source='fund.name', read_only=True, default=None
+    )
 
     class Meta:
         model = Gift
         fields = [
-            'id', 'donor_contact', 'donor_contact_name', 'fund',
+            'id', 'donor_contact', 'donor_contact_name', 'fund', 'fund_name',
             'external_gift_id', 'amount_cents', 'amount_dollars',
             'gift_date', 'description',
             'created_at', 'updated_at',
@@ -27,6 +30,34 @@ class GiftSerializer(serializers.ModelSerializer):
 
     def get_donor_contact_name(self, obj):
         return obj.donor_contact.full_name if obj.donor_contact else None
+
+
+class GiftCreditReadSerializer(serializers.ModelSerializer):
+    """
+    Read-only serializer for GiftCredit with solicitor name.
+    """
+    solicitor_name = serializers.CharField(
+        source='solicitor.normalized_name', read_only=True
+    )
+    amount_dollars = serializers.DecimalField(
+        source='amount_dollars', read_only=True, max_digits=12, decimal_places=2
+    )
+
+    class Meta:
+        model = GiftCredit
+        fields = ['id', 'solicitor', 'solicitor_name', 'amount_cents', 'amount_dollars']
+        read_only_fields = ['id', 'solicitor', 'solicitor_name', 'amount_cents', 'amount_dollars']
+
+
+class GiftDetailSerializer(GiftSerializer):
+    """
+    Extended Gift serializer with nested solicitor credit breakdown.
+    Used for retrieve (detail) views.
+    """
+    credits = GiftCreditReadSerializer(many=True, read_only=True)
+
+    class Meta(GiftSerializer.Meta):
+        fields = GiftSerializer.Meta.fields + ['credits']
 
 
 class GiftCreateSerializer(serializers.ModelSerializer):
@@ -66,11 +97,14 @@ class RecurringGiftSerializer(serializers.ModelSerializer):
         source='monthly_equivalent', read_only=True, max_digits=12, decimal_places=2
     )
     donor_contact_name = serializers.SerializerMethodField()
+    fund_name = serializers.CharField(
+        source='fund.name', read_only=True, default=None
+    )
 
     class Meta:
         model = RecurringGift
         fields = [
-            'id', 'donor_contact', 'donor_contact_name', 'fund',
+            'id', 'donor_contact', 'donor_contact_name', 'fund', 'fund_name',
             'external_gift_id', 'amount_cents', 'amount_dollars',
             'frequency', 'start_date', 'end_date', 'status',
             'monthly_equivalent', 'description',
