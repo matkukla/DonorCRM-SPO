@@ -79,7 +79,7 @@ See milestones/v1.3-ROADMAP.md for complete phase details.
 - [x] **Phase 30: Data Migration & Backend Cutover** - Migrate Donation to Gift, Pledge to RecurringGift, update all backend services to use new models (completed 2026-02-23)
 - [x] **Phase 31: Gift & Recurring Gift UI** - Rewire frontend to query Gift/RecurringGift API endpoints while keeping Donations/Pledges terminology, add solicitor credit slide-in panel, update filters and exports (completed 2026-02-23)
 - [x] **Phase 32: Import UI** - Build Import/Export page with RE import tabs, generic CSV import, drag-and-drop upload, and import history (completed 2026-02-23)
-- [ ] **Phase 33: Prayer Intentions** - Build Prayer Intentions page, CRUD API, contact detail tab, and status tracking
+- [x] **Phase 33: Prayer Intentions** - Build Prayer Intentions page, CRUD API, contact detail tab, and status tracking (completed 2026-02-23)
 - [ ] **Phase 34: Dashboard Polish** - Draggable dashboard tiles and dashboard queries updated to Gift/RecurringGift
 - [ ] **Phase 35: Generic CSV Import** - Generic CSV import for contacts and donations with matching and dedup
 - [ ] **Phase 36: Full-Stack Audit** - Comprehensive security, performance, code quality, UI/UX, and API audit across all v2.0 code paths
@@ -250,7 +250,7 @@ Note: Phase 30 depends on Phase 27 only (not 28/29), so it could run after 27. H
 | 30. Data Migration & Cutover | 3/3 | Complete    | 2026-02-23 | - |
 | 31. Gift & Recurring Gift UI | 3/3 | Complete    | 2026-02-23 | - |
 | 32. Import UI | 3/3 | Complete    | 2026-02-23 | - |
-| 33. Prayer Intentions | 2/3 | In Progress|  | - |
+| 33. Prayer Intentions | 3/3 | Complete   | 2026-02-23 | - |
 | 34. Dashboard Polish | v2.0 | 0/? | Not started | - |
 | 35. Generic CSV Import | v2.0 | 0/? | Not started | - |
 | 36. Full-Stack Audit | v2.0 | 0/? | Not started | - |
