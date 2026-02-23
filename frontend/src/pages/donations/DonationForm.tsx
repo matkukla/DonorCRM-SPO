@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { useNavigate, useParams, useSearchParams } from "react-router-dom"
-import { useDonation, useCreateDonation, useUpdateDonation } from "@/hooks/useDonations"
+import { useGift, useCreateGift, useUpdateGift } from "@/hooks/useGifts"
 import { useSearchContacts } from "@/hooks/useContacts"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
@@ -8,15 +8,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { ArrowLeft, ChevronDown, Search } from "lucide-react"
-import type { DonationType, PaymentMethod, DonationCreate } from "@/api/donations"
-import { donationTypeLabels, paymentMethodLabels } from "@/api/donations"
+import { ArrowLeft, Search } from "lucide-react"
+
+interface FormData {
+  donor_contact: string
+  amount: string  // Dollar string the user types
+  gift_date: string
+  description: string
+}
 
 export default function DonationForm() {
   const { id } = useParams<{ id: string }>()
@@ -26,9 +25,9 @@ export default function DonationForm() {
 
   const preselectedContactId = searchParams.get("contact")
 
-  const { data: existingDonation, isLoading: isLoadingDonation } = useDonation(id || "")
-  const createMutation = useCreateDonation()
-  const updateMutation = useUpdateDonation()
+  const { data: existingGift, isLoading: isLoadingGift } = useGift(id || null)
+  const createMutation = useCreateGift()
+  const updateMutation = useUpdateGift()
 
   const [contactSearch, setContactSearch] = useState("")
   const [selectedContact, setSelectedContact] = useState<{ id: string; name: string } | null>(null)
@@ -36,40 +35,36 @@ export default function DonationForm() {
 
   const { data: contactResults } = useSearchContacts(contactSearch)
 
-  const [formData, setFormData] = useState<DonationCreate>({
-    contact: preselectedContactId || "",
+  const [formData, setFormData] = useState<FormData>({
+    donor_contact: preselectedContactId || "",
     amount: "",
-    date: new Date().toISOString().split("T")[0],
-    donation_type: "one_time",
-    payment_method: "check",
-    notes: "",
+    gift_date: new Date().toISOString().split("T")[0],
+    description: "",
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
-    if (existingDonation) {
+    if (existingGift) {
       setFormData({
-        contact: existingDonation.contact,
-        amount: existingDonation.amount,
-        date: existingDonation.date,
-        donation_type: existingDonation.donation_type,
-        payment_method: existingDonation.payment_method,
-        notes: existingDonation.notes || "",
+        donor_contact: existingGift.donor_contact,
+        amount: existingGift.amount_dollars,
+        gift_date: existingGift.gift_date,
+        description: existingGift.description || "",
       })
       setSelectedContact({
-        id: existingDonation.contact,
-        name: existingDonation.contact_name,
+        id: existingGift.donor_contact,
+        name: existingGift.donor_contact_name,
       })
     }
-  }, [existingDonation])
+  }, [existingGift])
 
   useEffect(() => {
     if (preselectedContactId && contactResults) {
       const contact = contactResults.find((c) => c.id === preselectedContactId)
       if (contact) {
         setSelectedContact({ id: contact.id, name: contact.full_name })
-        setFormData((prev) => ({ ...prev, contact: contact.id }))
+        setFormData((prev) => ({ ...prev, donor_contact: contact.id }))
       }
     }
   }, [preselectedContactId, contactResults])
@@ -84,25 +79,25 @@ export default function DonationForm() {
 
   const handleContactSelect = (contact: { id: string; full_name: string }) => {
     setSelectedContact({ id: contact.id, name: contact.full_name })
-    setFormData((prev) => ({ ...prev, contact: contact.id }))
+    setFormData((prev) => ({ ...prev, donor_contact: contact.id }))
     setContactSearch("")
     setShowContactDropdown(false)
-    if (errors.contact) {
-      setErrors((prev) => ({ ...prev, contact: "" }))
+    if (errors.donor_contact) {
+      setErrors((prev) => ({ ...prev, donor_contact: "" }))
     }
   }
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {}
 
-    if (!formData.contact) {
-      newErrors.contact = "Contact is required"
+    if (!formData.donor_contact) {
+      newErrors.donor_contact = "Contact is required"
     }
-    if (!formData.amount || parseFloat(String(formData.amount)) <= 0) {
+    if (!formData.amount || parseFloat(formData.amount) <= 0) {
       newErrors.amount = "Amount must be greater than 0"
     }
-    if (!formData.date) {
-      newErrors.date = "Date is required"
+    if (!formData.gift_date) {
+      newErrors.gift_date = "Date is required"
     }
 
     setErrors(newErrors)
@@ -114,14 +109,21 @@ export default function DonationForm() {
 
     if (!validate()) return
 
+    const amount_cents = Math.round(parseFloat(formData.amount) * 100)
+    const submitData = {
+      donor_contact: formData.donor_contact,
+      amount_cents,
+      gift_date: formData.gift_date,
+      description: formData.description,
+    }
+
     try {
       if (isEditing) {
-        await updateMutation.mutateAsync({ id: id!, data: formData })
-        navigate(`/donations/${id}`)
+        await updateMutation.mutateAsync({ id: id!, data: submitData })
       } else {
-        const newDonation = await createMutation.mutateAsync(formData)
-        navigate(`/donations/${newDonation.id}`)
+        await createMutation.mutateAsync(submitData)
       }
+      navigate("/donations")
     } catch {
       // Error is handled by the mutation
     }
@@ -129,7 +131,7 @@ export default function DonationForm() {
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending
 
-  if (isEditing && isLoadingDonation) {
+  if (isEditing && isLoadingGift) {
     return (
       <Section>
         <Container>
@@ -181,7 +183,7 @@ export default function DonationForm() {
                           size="sm"
                           onClick={() => {
                             setSelectedContact(null)
-                            setFormData((prev) => ({ ...prev, contact: "" }))
+                            setFormData((prev) => ({ ...prev, donor_contact: "" }))
                           }}
                         >
                           Change
@@ -198,7 +200,7 @@ export default function DonationForm() {
                             setShowContactDropdown(true)
                           }}
                           onFocus={() => setShowContactDropdown(true)}
-                          className={`pl-9 ${errors.contact ? "border-destructive" : ""}`}
+                          className={`pl-9 ${errors.donor_contact ? "border-destructive" : ""}`}
                         />
                         {showContactDropdown && contactResults && contactResults.length > 0 && (
                           <div className="absolute z-10 w-full mt-1 bg-background border rounded-lg shadow-lg max-h-60 overflow-y-auto">
@@ -219,8 +221,8 @@ export default function DonationForm() {
                         )}
                       </div>
                     )}
-                    {errors.contact && (
-                      <p className="text-sm text-destructive">{errors.contact}</p>
+                    {errors.donor_contact && (
+                      <p className="text-sm text-destructive">{errors.donor_contact}</p>
                     )}
                   </div>
                 </CardContent>
@@ -255,83 +257,38 @@ export default function DonationForm() {
                       )}
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="date">Date *</Label>
+                      <Label htmlFor="gift_date">Date *</Label>
                       <Input
-                        id="date"
-                        name="date"
+                        id="gift_date"
+                        name="gift_date"
                         type="date"
-                        value={formData.date}
+                        value={formData.gift_date}
                         onChange={handleChange}
-                        className={errors.date ? "border-destructive" : ""}
+                        className={errors.gift_date ? "border-destructive" : ""}
                       />
-                      {errors.date && (
-                        <p className="text-sm text-destructive">{errors.date}</p>
+                      {errors.gift_date && (
+                        <p className="text-sm text-destructive">{errors.gift_date}</p>
                       )}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Donation Type</Label>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="secondary" className="w-full justify-between">
-                            {donationTypeLabels[formData.donation_type || "one_time"]}
-                            <ChevronDown className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="w-full">
-                          {(Object.keys(donationTypeLabels) as DonationType[]).map((t) => (
-                            <DropdownMenuItem
-                              key={t}
-                              onClick={() => setFormData((prev) => ({ ...prev, donation_type: t }))}
-                            >
-                              {donationTypeLabels[t]}
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Payment Method</Label>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="secondary" className="w-full justify-between">
-                            {paymentMethodLabels[formData.payment_method || "check"]}
-                            <ChevronDown className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="w-full">
-                          {(Object.keys(paymentMethodLabels) as PaymentMethod[]).map((p) => (
-                            <DropdownMenuItem
-                              key={p}
-                              onClick={() => setFormData((prev) => ({ ...prev, payment_method: p }))}
-                            >
-                              {paymentMethodLabels[p]}
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Notes */}
+              {/* Description */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Notes</CardTitle>
+                  <CardTitle>Description</CardTitle>
                   <CardDescription>Additional information about this donation</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <textarea
-                    id="notes"
-                    name="notes"
-                    value={formData.notes}
+                    id="description"
+                    name="description"
+                    value={formData.description}
                     onChange={handleChange}
                     rows={4}
                     className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                    placeholder="Add any notes about this donation..."
+                    placeholder="Add a description for this donation..."
                   />
                 </CardContent>
               </Card>
