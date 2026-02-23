@@ -20,7 +20,7 @@ Progress: [███████████████████████
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 89 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3 + 12 v2.0)
+- Total plans completed: 90 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3 + 13 v2.0)
 - Average duration: ~3.9 minutes
 - Total execution time: ~5.1 hours
 
@@ -42,6 +42,7 @@ Progress: [███████████████████████
 | Phase 30 P02 | 13min | 4 tasks | 16 files |
 | Phase 30 P03 | 7min | 2 tasks | 51 files |
 | Phase 31 P01 | 4min | 2 tasks | 9 files |
+| Phase 31 P02 | 5min | 2 tasks | 5 files |
 | Phase 31 P03 | 4min | 2 tasks | 7 files |
 
 ## Accumulated Context
@@ -78,6 +79,8 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 - [Phase 30]: Legacy import test files replaced with 410 Gone verification tests to maintain endpoint behavior coverage
 - [Phase 31]: GiftDetailView returns GiftDetailSerializer for GET and GiftSerializer for PUT/PATCH
 - [Phase 31]: Export CSV filenames keep legacy names: donations_{date}.csv and pledges_{date}.csv
+- [Phase 31]: DonationDetailPanel uses named export plus default export wrapper for /donations/:id backward compatibility
+- [Phase 31]: api/donations.ts and hooks/useDonations.ts kept as re-export compatibility shims
 - [Phase 31]: api/pledges.ts and hooks/usePledges.ts kept as re-export compatibility layers
 - [Phase 31]: NeedsAttention late pledges placeholder always shown (not conditional on count)
 
