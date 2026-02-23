@@ -772,6 +772,40 @@ class MPDUploadHistoryView(APIView):
         return Response({'uploads': data})
 
 
+class ImportBatchListView(APIView):
+    """GET: List recent ImportBatch records for import history display."""
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    def get(self, request):
+        from apps.imports.models import ImportBatch
+
+        qs = ImportBatch.objects.select_related('uploaded_by').order_by('-created_at')
+
+        import_type = request.query_params.get('import_type')
+        if import_type:
+            qs = qs.filter(import_type=import_type)
+
+        # Cap at 50 recent records (no pagination needed)
+        batches = qs[:50]
+
+        data = [{
+            'id': str(b.id),
+            'import_type': b.import_type,
+            'import_type_display': b.get_import_type_display(),
+            'status': b.status,
+            'filename': b.filename,
+            'total_rows': b.total_rows,
+            'created_count': b.created_count,
+            'updated_count': b.updated_count,
+            'skipped_count': b.skipped_count,
+            'error_count': b.error_count,
+            'created_at': b.created_at.isoformat(),
+            'uploaded_by': b.uploaded_by.full_name,
+        } for b in batches]
+
+        return Response(data)
+
+
 class RESolicitorImportView(APIView):
     """
     POST: Import RE Solicitor CSV file (admin only).
