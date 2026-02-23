@@ -100,6 +100,30 @@ export const pledgeFilterParsers = {
   amount_max: parseAsString,
 }
 
+export const giftFilterParsers = {
+  page: parseAsInteger.withDefault(1),
+  search: parseAsString,
+  donor_contact: parseAsString,
+  fund: parseAsString,
+  gift_date_after: parseAsString,
+  gift_date_before: parseAsString,
+  min_amount: parseAsString,
+  max_amount: parseAsString,
+  owner: parseAsString,
+  ordering: parseAsString,
+}
+
+export const recurringGiftFilterParsers = {
+  page: parseAsInteger.withDefault(1),
+  search: parseAsString,
+  donor_contact: parseAsString,
+  fund: parseAsString,
+  status: parseAsString,
+  frequency: parseAsString,
+  owner: parseAsString,
+  ordering: parseAsString,
+}
+
 export const taskFilterParsers = {
   page: parseAsInteger.withDefault(1),
   search: parseAsString,

@@ -133,6 +133,60 @@ export const pledgePresets: FilterPreset[] = [
 ]
 
 // ---------------------------------------------------------------------------
+// Gift presets
+// ---------------------------------------------------------------------------
+
+export const giftPresets: FilterPreset[] = [
+  {
+    id: "this-month",
+    label: "This Month",
+    description: "Gifts received this month",
+    getParams: () => ({
+      gift_date_after: fmt(startOfMonth(new Date())),
+      gift_date_before: fmt(endOfMonth(new Date())),
+      min_amount: null,
+      max_amount: null,
+      fund: null,
+      owner: null,
+      donor_contact: null,
+    }),
+  },
+  {
+    id: "last-30-days",
+    label: "Last 30 Days",
+    description: "Gifts in the past 30 days",
+    getParams: () => ({
+      gift_date_after: fmt(subDays(new Date(), 30)),
+      gift_date_before: null,
+      min_amount: null,
+      max_amount: null,
+      fund: null,
+      owner: null,
+      donor_contact: null,
+    }),
+  },
+]
+
+// ---------------------------------------------------------------------------
+// Recurring gift presets
+// ---------------------------------------------------------------------------
+
+export const recurringGiftPresets: FilterPreset[] = [
+  {
+    id: "active",
+    label: "Active",
+    description: "All currently active recurring gifts",
+    getParams: () => ({
+      status: "active",
+      frequency: null,
+      fund: null,
+      owner: null,
+      donor_contact: null,
+    }),
+  },
+]
+
+// ---------------------------------------------------------------------------
 // Journal presets
 // ---------------------------------------------------------------------------
 
