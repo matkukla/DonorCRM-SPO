@@ -178,7 +178,11 @@ Plans:
   5. Import history section lists past ImportBatch records with status icons and summary counts
   6. Generic CSV import section exists for contacts and donations (backend wired in Phase 35)
   7. Old import functionality is removed from the admin analytics page
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 32-01-PLAN.md — Backend ImportBatch list endpoint + frontend API/hooks/types layer
+- [ ] 32-02-PLAN.md — Page rewrite with RE import tabs, Smartsheet, Generic, Export, and History sections
+- [ ] 32-03-PLAN.md — Remove admin Import Center, SPO components, dead code, and react-papaparse
 
 ### Phase 33: Prayer Intentions
 **Goal**: Users can track prayer intentions for their contacts, with a dedicated page and contact-level visibility
