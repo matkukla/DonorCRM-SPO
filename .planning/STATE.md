@@ -96,9 +96,10 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 ## Session Continuity
 
 Last session: 2026-02-23
-Stopped at: Completed 30-03-PLAN.md (Old App Cleanup) -- Phase 30 complete
-Resume: Continue with Phase 31.
+Stopped at: Phase 31 context gathered
+Resume file: .planning/phases/31-gift-recurring-gift-ui/31-CONTEXT.md
+Resume: Plan Phase 31 (/gsd:plan-phase 31)
 
 ---
 
-*Last updated: 2026-02-23 (30-03 complete, Phase 30 done)*
+*Last updated: 2026-02-23 (Phase 31 context gathered)*
