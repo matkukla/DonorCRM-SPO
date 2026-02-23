@@ -13,36 +13,37 @@ The key complexity is the data shape mismatch between old Donation/Pledge models
 **Primary recommendation:** Create new `api/gifts.ts` and `hooks/useGifts.ts` modules from scratch matching the actual Gift/RecurringGift serializer shapes, then rewrite pages to use them. Do NOT try to adapt old donation/pledge modules -- the data shapes are too different.
 
 <user_constraints>
-## User Constraints (from CONTEXT.md)
+## User Constraints (from CONTEXT.md — REVISED 2026-02-23)
+
+**CRITICAL: NO RENAME.** All user-facing text stays as "Donations" and "Pledges". The frontend rewires to Gift/RecurringGift API endpoints but keeps all visible labels, URL paths, and CSV headers as-is.
 
 ### Locked Decisions
-- Credits shown on gift detail view only (not in list page columns)
+- **NO RENAME** -- All user-facing text stays as "Donations" and "Pledges" (sidebar, page titles, breadcrumbs, buttons, empty states)
+- **NO URL RENAME** -- Frontend URL paths stay as /donations and /pledges
+- **NO CSV RENAME** -- CSV export filenames and column headers stay as-is (donations.csv, "Date", etc.)
+- **NO DASHBOARD LABEL CHANGES** -- Keep "Recent Donations", "Total Donated", "Pledged Monthly Support", etc.
+- Credits shown on donation detail view only (not in list page columns)
 - Simple table layout: Solicitor Name | Amount | Percentage
-- Gift detail opens as a slide-in panel (matching existing User Drilldown pattern)
-- Hide credits section entirely when a gift has no solicitor credits (migrated donations won't have them)
-- Sidebar items: "Gifts" and "Recurring Gifts"
-- Contact detail page: single "Gifts" tab with two sections inside (one-time gifts table + recurring gifts table)
-- Frontend URL paths rename: /donations -> /gifts, /pledges -> /recurring-gifts
-- CSV export filenames and column headers fully renamed (gifts.csv, "Gift Date", etc.)
-- Gifts list: Donor Name | Amount | Gift Date | Fund | Description
-- Recurring Gifts list: Donor Name | Amount | Frequency | Status | Start Date | Fund
-- Same filter set as old pages, labels renamed ("Gift Date" instead of "Date")
+- Donation detail opens as a slide-in panel (matching existing User Drilldown pattern)
+- Hide credits section entirely when a donation has no solicitor credits
+- Donations list: Donor Name | Amount | Date | Fund | Description
+- Pledges list: Donor Name | Amount | Frequency | Status | Start Date | Fund
+- Same filter set as old pages, same labels
 - No fund filter added (keep existing filter set)
-- Clicking a gift row opens the slide-in detail panel; donor name is a link to contact page
-- Dashboard label rename only -- no layout or data changes
-- "Recent Donations" -> "Recent Gifts", "Total Donated" -> "Total Given", etc.
+- Clicking a donation row opens the slide-in detail panel; donor name is a link to contact page
 - Late Pledges section kept as placeholder with "Late detection coming soon" text
-- Support progress card title: "Monthly Support" (not "Pledged Monthly Support" or "Monthly Recurring Gift Support")
 
 ### Claude's Discretion
 - Exact slide-in panel layout and styling (should match existing drilldown patterns)
-- Loading states and error handling for gift detail fetch
-- Recurring Gifts filter set (status, frequency filters -- follow existing patterns)
+- Loading states and error handling for donation detail fetch
+- Pledges filter set (status, frequency filters -- follow existing patterns)
 - Empty state messages on list pages
+- Whether to use a single "Donations" contact tab with two sections or keep two separate tabs
 
 ### Deferred Ideas (OUT OF SCOPE)
 - Late recurring gift detection (requires fulfillment tracking or date-based heuristic) -- future phase
-- Fund filter on Gifts list page -- potential future enhancement
+- Fund filter on Donations list page -- potential future enhancement
+- Actual rename of UI terminology from Donations/Pledges to Gifts/Recurring Gifts -- future decision
 </user_constraints>
 
 <phase_requirements>

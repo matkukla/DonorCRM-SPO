@@ -52,8 +52,8 @@ Requirements for v2.0 milestone: Import Revamp, Prayer Intentions & Dashboard Po
 
 ### Gift/Recurring Gift UI
 
-- [ ] **UI-GIFT-01**: Rename "Donations" to "Gifts" across sidebar, page titles, and components
-- [ ] **UI-GIFT-02**: Rename "Pledges" to "Recurring Gifts" across sidebar, page titles, and components
+- [ ] **UI-GIFT-01**: Rewire Donations pages to query Gift API endpoints while keeping all visible "Donations" labels
+- [ ] **UI-GIFT-02**: Rewire Pledges pages to query RecurringGift API endpoints while keeping all visible "Pledges" labels
 - [ ] **UI-GIFT-03**: Gifts list page with existing filters updated for Gift model fields
 - [ ] **UI-GIFT-04**: Recurring Gifts list page with existing filters updated for RecurringGift model fields
 - [ ] **UI-GIFT-05**: Gift detail view showing solicitor credit breakdown (which missionaries are credited)
