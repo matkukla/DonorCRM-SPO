@@ -253,7 +253,7 @@ Note: Phase 30 depends on Phase 27 only (not 28/29), so it could run after 27. H
 | 31. Gift & Recurring Gift UI | 3/3 | Complete    | 2026-02-23 | - |
 | 32. Import UI | 3/3 | Complete    | 2026-02-23 | - |
 | 33. Prayer Intentions | 3/3 | Complete    | 2026-02-23 | - |
-| 34. Dashboard Polish | v2.0 | 1/1 | Complete | 2026-02-23 |
+| 34. Dashboard Polish | v2.0 | Complete    | 2026-02-23 | 2026-02-23 |
 | 35. Generic CSV Import | v2.0 | 0/? | Not started | - |
 | 36. Full-Stack Audit | v2.0 | 0/? | Not started | - |
 
