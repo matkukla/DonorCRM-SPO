@@ -208,7 +208,9 @@ Plans:
   1. User can drag and drop dashboard tiles to rearrange their layout
   2. Tile order persists for the duration of the browser session but resets on page refresh
   3. Drag interaction provides visual feedback (ghost overlay, drop indicators)
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 34-01-PLAN.md — Install dnd-kit, create SortableDashboardTile component, integrate per-section drag-and-drop into Dashboard
 
 ### Phase 35: Generic CSV Import
 **Goal**: Users can import contacts and donations via generic CSV files (not just RE format) with matching and dedup
