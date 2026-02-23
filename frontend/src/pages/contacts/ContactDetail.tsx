@@ -324,19 +324,19 @@ export default function ContactDetail() {
                 <CardContent>
                   {donations?.length ? (
                     <div className="space-y-2">
-                      {donations.map((donation: { id: string; amount: string; date: string; donation_type: string; is_thanked: boolean }) => (
+                      {donations.map((donation: { id: string; amount_dollars: string; gift_date: string; description: string; fund_name: string | null }) => (
                         <div
                           key={donation.id}
                           className="flex items-center justify-between py-2 border-b last:border-0"
                         >
                           <div>
-                            <p className="font-medium">{formatCurrency(donation.amount)}</p>
+                            <p className="font-medium">{formatCurrency(donation.amount_dollars)}</p>
                             <p className="text-sm text-muted-foreground">
-                              {formatLocalDate(donation.date)} · {donation.donation_type}
+                              {formatLocalDate(donation.gift_date)}{donation.description ? ` · ${donation.description}` : ""}
                             </p>
                           </div>
-                          {donation.is_thanked && (
-                            <Badge variant="success">Thanked</Badge>
+                          {donation.fund_name && (
+                            <span className="text-sm text-muted-foreground">{donation.fund_name}</span>
                           )}
                         </div>
                       ))}
@@ -362,22 +362,19 @@ export default function ContactDetail() {
                 <CardContent>
                   {pledges?.length ? (
                     <div className="space-y-2">
-                      {pledges.map((pledge: { id: string; amount: string; frequency: string; status: string; is_late: boolean }) => (
+                      {pledges.map((pledge: { id: string; amount_dollars: string; frequency: string; status: string }) => (
                         <div
                           key={pledge.id}
                           className="flex items-center justify-between py-2 border-b last:border-0"
                         >
                           <div>
                             <p className="font-medium">
-                              {formatCurrency(pledge.amount)} / {pledge.frequency}
+                              {formatCurrency(pledge.amount_dollars)} / {pledge.frequency}
                             </p>
                             <p className="text-sm text-muted-foreground capitalize">
                               {pledge.status}
                             </p>
                           </div>
-                          {pledge.is_late && (
-                            <Badge variant="warning">Late</Badge>
-                          )}
                         </div>
                       ))}
                     </div>
