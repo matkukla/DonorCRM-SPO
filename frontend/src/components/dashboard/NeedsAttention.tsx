@@ -33,7 +33,7 @@ export function NeedsAttention({
   thankYouCount,
   isLoading,
 }: NeedsAttentionProps) {
-  const hasItems = overdueTaskCount > 0 || latePledgeCount > 0 || thankYouCount > 0
+  const hasItems = overdueTaskCount > 0 || thankYouCount > 0 || true /* always show late pledges placeholder */
 
   return (
     <Card>
@@ -83,29 +83,18 @@ export function NeedsAttention({
               </div>
             )}
 
-            {/* Late Pledges */}
-            {latePledgeCount > 0 && (
-              <div className="p-4 bg-amber-50 dark:bg-amber-950/50 border border-amber-100 dark:border-amber-900/50 rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                    <span className="font-medium text-amber-900 dark:text-amber-200">
-                      {latePledgeCount} Late Pledge{latePledgeCount !== 1 ? "s" : ""}
-                    </span>
-                  </div>
-                  <Button variant="link" size="sm" asChild className="text-amber-600 dark:text-amber-400 p-0 h-auto">
-                    <Link to="/pledges?filter=late">View all</Link>
-                  </Button>
-                </div>
-                <ul className="space-y-1 text-sm text-amber-800 dark:text-amber-300">
-                  {latePledges.slice(0, 3).map((pledge) => (
-                    <li key={pledge.id}>
-                      {formatCurrency(pledge.amount)} ({pledge.days_late} days late)
-                    </li>
-                  ))}
-                </ul>
+            {/* Late Pledges -- placeholder until detection is implemented */}
+            <div className="p-4 bg-amber-50 dark:bg-amber-950/50 border border-amber-100 dark:border-amber-900/50 rounded-lg">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                <span className="font-medium text-amber-900 dark:text-amber-200">
+                  Late detection coming soon
+                </span>
               </div>
-            )}
+              <p className="text-sm text-amber-800 dark:text-amber-300 mt-1">
+                Late pledge detection will be available in a future update.
+              </p>
+            </div>
 
             {/* Thank You Queue */}
             {thankYouCount > 0 && (
