@@ -11,7 +11,7 @@ class GiftSerializer(serializers.ModelSerializer):
     Serializer for Gift model (read operations).
     """
     amount_dollars = serializers.DecimalField(
-        source='amount_dollars', read_only=True, max_digits=12, decimal_places=2
+        read_only=True, max_digits=12, decimal_places=2
     )
     donor_contact_name = serializers.SerializerMethodField()
     fund_name = serializers.CharField(
@@ -40,7 +40,7 @@ class GiftCreditReadSerializer(serializers.ModelSerializer):
         source='solicitor.normalized_name', read_only=True
     )
     amount_dollars = serializers.DecimalField(
-        source='amount_dollars', read_only=True, max_digits=12, decimal_places=2
+        read_only=True, max_digits=12, decimal_places=2
     )
 
     class Meta:
@@ -91,10 +91,10 @@ class RecurringGiftSerializer(serializers.ModelSerializer):
     Serializer for RecurringGift model (read operations).
     """
     amount_dollars = serializers.DecimalField(
-        source='amount_dollars', read_only=True, max_digits=12, decimal_places=2
+        read_only=True, max_digits=12, decimal_places=2
     )
     monthly_equivalent = serializers.DecimalField(
-        source='monthly_equivalent', read_only=True, max_digits=12, decimal_places=2
+        read_only=True, max_digits=12, decimal_places=2
     )
     donor_contact_name = serializers.SerializerMethodField()
     fund_name = serializers.CharField(
