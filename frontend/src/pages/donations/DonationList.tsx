@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react"
 import { useNavigate, Link } from "react-router-dom"
-import { useDonations, useMarkDonationThanked } from "@/hooks/useDonations"
-import { useFilterParams, donationFilterParsers } from "@/hooks/useFilterParams"
-import { donationPresets } from "@/lib/filter-presets"
+import { useGifts } from "@/hooks/useGifts"
+import { useFilterParams, giftFilterParsers } from "@/hooks/useFilterParams"
+import { giftPresets } from "@/lib/filter-presets"
 import { FilterBar } from "@/components/shared/FilterBar"
 import { useAuth } from "@/providers/AuthProvider"
 import { useUsers } from "@/hooks/useUsers"
@@ -12,18 +12,17 @@ import { Section } from "@/components/layout/Section"
 import { DataTable } from "@/components/shared/DataTable"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Plus, Search, Filter, MoreHorizontal, Check, Calendar } from "lucide-react"
+import { Plus, Search, Filter } from "lucide-react"
 import type { ColumnDef } from "@tanstack/react-table"
-import type { Donation, DonationType, PaymentMethod } from "@/api/donations"
-import { donationTypeLabels, paymentMethodLabels } from "@/api/donations"
+import type { Gift } from "@/api/gifts"
 import { formatLocalDate } from "@/lib/utils"
+import { DonationDetailPanel } from "./DonationDetail"
 
 const PAGE_SIZE = 20
 
@@ -48,9 +47,10 @@ export default function DonationList() {
     clearAll,
     activeFilters,
     toQueryParams,
-  } = useFilterParams(donationFilterParsers)
+  } = useFilterParams(giftFilterParsers)
 
   const [searchInput, setSearchInput] = useState(filters.search || "")
+  const [selectedGiftId, setSelectedGiftId] = useState<string | null>(null)
 
   // Sync search input when URL changes externally (e.g., browser back/forward)
   useEffect(() => {
@@ -58,9 +58,7 @@ export default function DonationList() {
   }, [filters.search])
 
   const queryParams = { ...toQueryParams(), page_size: String(PAGE_SIZE) }
-  const { data, isLoading } = useDonations(queryParams)
-
-  const markThankedMutation = useMarkDonationThanked()
+  const { data, isLoading } = useGifts(queryParams)
 
   // Fetch funds for fund filter and users for admin owner filter
   const { data: fundsData } = useFunds()
@@ -75,108 +73,52 @@ export default function DonationList() {
     setFilters({ page: newPage + 1 })
   }
 
-  const columns: ColumnDef<Donation>[] = [
+  const columns: ColumnDef<Gift>[] = [
     {
-      accessorKey: "date",
-      header: "Date",
-      cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-muted-foreground" />
-          {formatLocalDate(row.original.date)}
-        </div>
-      ),
-    },
-    {
-      accessorKey: "contact_name",
-      header: "Donor",
+      accessorKey: "donor_contact_name",
+      header: "Donor Name",
       cell: ({ row }) => (
         <Link
-          to={`/contacts/${row.original.contact}`}
+          to={`/contacts/${row.original.donor_contact}`}
           className="font-medium text-primary hover:underline"
           onClick={(e) => e.stopPropagation()}
         >
-          {row.original.contact_name}
+          {row.original.donor_contact_name}
         </Link>
       ),
     },
     {
-      accessorKey: "amount",
+      accessorKey: "amount_dollars",
       header: "Amount",
       cell: ({ row }) => (
-        <span className="font-semibold">{formatCurrency(row.original.amount)}</span>
+        <span className="font-semibold">{formatCurrency(row.original.amount_dollars)}</span>
       ),
     },
     {
-      accessorKey: "donation_type",
-      header: "Type",
-      cell: ({ row }) => (
-        <Badge variant="secondary">
-          {donationTypeLabels[row.original.donation_type]}
-        </Badge>
-      ),
+      accessorKey: "gift_date",
+      header: "Date",
+      cell: ({ row }) => formatLocalDate(row.original.gift_date),
     },
     {
-      accessorKey: "payment_method",
-      header: "Payment",
+      accessorKey: "fund_name",
+      header: "Fund",
       cell: ({ row }) => (
         <span className="text-muted-foreground">
-          {paymentMethodLabels[row.original.payment_method]}
+          {row.original.fund_name || "\u2014"}
         </span>
       ),
     },
     {
-      accessorKey: "thanked",
-      header: "Status",
-      cell: ({ row }) => (
-        row.original.thanked ? (
-          <Badge variant="success" className="gap-1">
-            <Check className="h-3 w-3" />
-            Thanked
-          </Badge>
-        ) : (
-          <Badge variant="warning">Pending</Badge>
+      accessorKey: "description",
+      header: "Description",
+      cell: ({ row }) => {
+        const desc = row.original.description || ""
+        return (
+          <span className="text-muted-foreground" title={desc}>
+            {desc.length > 40 ? desc.slice(0, 40) + "\u2026" : desc || "\u2014"}
+          </span>
         )
-      ),
-    },
-    {
-      id: "actions",
-      cell: ({ row }) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation()
-                navigate(`/donations/${row.original.id}`)
-              }}
-            >
-              View details
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation()
-                navigate(`/donations/${row.original.id}/edit`)
-              }}
-            >
-              Edit
-            </DropdownMenuItem>
-            {!row.original.thanked && (
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation()
-                  markThankedMutation.mutate(row.original.id)
-                }}
-              >
-                Mark as thanked
-              </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ),
+      },
     },
   ]
 
@@ -207,22 +149,18 @@ export default function DonationList() {
             onRemoveFilter={(key) => setFilters({ [key]: null, page: 1 })}
             filterLabels={{
               search: "Search",
-              donation_type: "Type",
-              payment_method: "Payment",
-              thanked: "Status",
-              date_after: "From",
-              date_before: "To",
-              amount_min: "Min Amount",
-              amount_max: "Max Amount",
+              gift_date_after: "From",
+              gift_date_before: "To",
+              min_amount: "Min Amount",
+              max_amount: "Max Amount",
               fund: "Fund",
               owner: "Owner",
+              donor_contact: "Donor",
             }}
             filterValueLabels={{
-              donation_type: donationTypeLabels,
-              payment_method: paymentMethodLabels,
               ...(usersData ? { owner: Object.fromEntries(usersData.map((u) => [String(u.id), u.full_name])) } : {}),
             }}
-            presets={donationPresets}
+            presets={giftPresets}
             onApplyPreset={(preset) => setFilters({ ...preset.getParams(), page: 1 })}
             exportUrl="/donations/export/csv/"
             exportParams={toQueryParams()}
@@ -243,80 +181,19 @@ export default function DonationList() {
               </Button>
             </form>
 
-            {/* Type dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="secondary" size="sm" className="gap-2">
-                  <Filter className="h-4 w-4" />
-                  {filters.donation_type ? donationTypeLabels[filters.donation_type as DonationType] || filters.donation_type : "All Types"}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => setFilters({ donation_type: null, page: 1 })}>
-                  All Types
-                </DropdownMenuItem>
-                {(Object.keys(donationTypeLabels) as DonationType[]).map((t) => (
-                  <DropdownMenuItem key={t} onClick={() => setFilters({ donation_type: t, page: 1 })}>
-                    {donationTypeLabels[t]}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {/* Payment method dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="secondary" size="sm" className="gap-2">
-                  <Filter className="h-4 w-4" />
-                  {filters.payment_method ? paymentMethodLabels[filters.payment_method as PaymentMethod] || filters.payment_method : "All Payments"}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => setFilters({ payment_method: null, page: 1 })}>
-                  All Payments
-                </DropdownMenuItem>
-                {(Object.keys(paymentMethodLabels) as PaymentMethod[]).map((m) => (
-                  <DropdownMenuItem key={m} onClick={() => setFilters({ payment_method: m, page: 1 })}>
-                    {paymentMethodLabels[m]}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {/* Thanked dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="secondary" size="sm" className="gap-2">
-                  <Check className="h-4 w-4" />
-                  {filters.thanked === true ? "Thanked" : filters.thanked === false ? "Pending" : "All Status"}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => setFilters({ thanked: null, page: 1 })}>
-                  All Status
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setFilters({ thanked: true, page: 1 })}>
-                  Thanked
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setFilters({ thanked: false, page: 1 })}>
-                  Pending Thank You
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
             {/* Date range */}
             <Input
               type="date"
               placeholder="From date"
-              value={filters.date_after || ""}
-              onChange={(e) => setFilters({ date_after: e.target.value || null, page: 1 })}
+              value={filters.gift_date_after || ""}
+              onChange={(e) => setFilters({ gift_date_after: e.target.value || null, page: 1 })}
               className="w-[150px]"
             />
             <Input
               type="date"
               placeholder="To date"
-              value={filters.date_before || ""}
-              onChange={(e) => setFilters({ date_before: e.target.value || null, page: 1 })}
+              value={filters.gift_date_before || ""}
+              onChange={(e) => setFilters({ gift_date_before: e.target.value || null, page: 1 })}
               className="w-[150px]"
             />
 
@@ -324,15 +201,15 @@ export default function DonationList() {
             <Input
               type="number"
               placeholder="Min $"
-              value={filters.amount_min || ""}
-              onChange={(e) => setFilters({ amount_min: e.target.value || null, page: 1 })}
+              value={filters.min_amount || ""}
+              onChange={(e) => setFilters({ min_amount: e.target.value || null, page: 1 })}
               className="w-[100px]"
             />
             <Input
               type="number"
               placeholder="Max $"
-              value={filters.amount_max || ""}
-              onChange={(e) => setFilters({ amount_max: e.target.value || null, page: 1 })}
+              value={filters.max_amount || ""}
+              onChange={(e) => setFilters({ max_amount: e.target.value || null, page: 1 })}
               className="w-[100px]"
             />
 
@@ -395,7 +272,14 @@ export default function DonationList() {
             pageSize={PAGE_SIZE}
             totalCount={data?.count}
             onPageChange={handlePageChange}
-            onRowClick={(donation) => navigate(`/donations/${donation.id}`)}
+            onRowClick={(gift) => setSelectedGiftId(gift.id)}
+          />
+
+          {/* Slide-in detail panel */}
+          <DonationDetailPanel
+            open={!!selectedGiftId}
+            giftId={selectedGiftId}
+            onClose={() => setSelectedGiftId(null)}
           />
         </div>
       </Container>
