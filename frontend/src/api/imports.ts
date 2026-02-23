@@ -219,6 +219,61 @@ export async function downloadDonationTemplate(): Promise<void> {
   downloadFile(response.data, "donation_import_template.csv", "text/csv")
 }
 
+// RE Import types
+export type REImportType = 'constituent' | 'solicitor' | 'gift' | 'recurring_gift'
+
+export interface REImportResponse {
+  batch_id: string
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'duplicate'
+  is_duplicate: boolean
+  created_count: number
+  updated_count: number
+  skipped_count: number
+  error_count: number
+  total_rows: number
+  summary: {
+    errors?: Array<{ row: number; error: string }>
+    [key: string]: unknown
+  }
+}
+
+export interface ImportBatchRecord {
+  id: string
+  import_type: string
+  import_type_display: string
+  status: string
+  filename: string
+  total_rows: number
+  created_count: number
+  updated_count: number
+  skipped_count: number
+  error_count: number
+  created_at: string
+  uploaded_by: string
+}
+
+const RE_IMPORT_ENDPOINTS: Record<REImportType, string> = {
+  constituent: '/imports/re/constituents/',
+  solicitor: '/imports/re/solicitors/',
+  gift: '/imports/re/gifts/',
+  recurring_gift: '/imports/re/recurring-gifts/',
+}
+
+export async function importRE(importType: REImportType, file: File): Promise<REImportResponse> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const response = await apiClient.post(RE_IMPORT_ENDPOINTS[importType], formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return response.data
+}
+
+export async function getImportBatches(importType?: string): Promise<ImportBatchRecord[]> {
+  const params = importType ? { import_type: importType } : {}
+  const response = await apiClient.get<ImportBatchRecord[]>('/imports/batches/', { params })
+  return response.data
+}
+
 // Fund list for filter dropdowns
 
 export interface FundOption {

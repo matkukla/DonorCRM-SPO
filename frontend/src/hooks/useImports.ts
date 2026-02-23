@@ -12,7 +12,10 @@ import {
   importTransactions,
   importPledges,
   getFunds,
+  importRE,
+  getImportBatches,
   type ImportType,
+  type REImportType,
 } from "@/api/imports"
 
 export function useImportContacts() {
@@ -116,5 +119,30 @@ export function useSPOImport(importType: ImportType) {
       // Invalidate latest imports to refresh tile status
       queryClient.invalidateQueries({ queryKey: ["latestImports"] })
     },
+  })
+}
+
+// RE Import Hooks
+
+export function useREImport(importType: REImportType) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (file: File) => importRE(importType, file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['importBatches'] })
+      // Invalidate related data queries
+      queryClient.invalidateQueries({ queryKey: ['contacts'] })
+      queryClient.invalidateQueries({ queryKey: ['gifts'] })
+      queryClient.invalidateQueries({ queryKey: ['recurringGifts'] })
+    },
+  })
+}
+
+export function useImportBatches(importType?: string) {
+  return useQuery({
+    queryKey: ['importBatches', importType].filter(Boolean),
+    queryFn: () => getImportBatches(importType),
+    staleTime: 30 * 1000, // 30 seconds
   })
 }
