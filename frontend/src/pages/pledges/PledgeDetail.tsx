@@ -1,11 +1,5 @@
 import { useParams, useNavigate, Link } from "react-router-dom"
-import {
-  usePledge,
-  usePausePledge,
-  useResumePledge,
-  useCancelPledge,
-  useDeletePledge,
-} from "@/hooks/usePledges"
+import { useRecurringGift, useDeleteRecurringGift } from "@/hooks/useGifts"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
 import { Button } from "@/components/ui/button"
@@ -15,23 +9,20 @@ import {
   ArrowLeft,
   Edit,
   Trash2,
-  Pause,
-  Play,
-  XCircle,
-  AlertTriangle,
   User,
   Calendar,
   DollarSign,
 } from "lucide-react"
-import type { PledgeStatus } from "@/api/pledges"
-import { pledgeFrequencyLabels, pledgeStatusLabels } from "@/api/pledges"
+import type { RecurringGiftStatus } from "@/api/gifts"
+import { recurringGiftFrequencyLabels, recurringGiftStatusLabels } from "@/api/gifts"
 import { formatLocalDate } from "@/lib/utils"
 
-const statusVariants: Record<PledgeStatus, "default" | "secondary" | "success" | "warning" | "info" | "destructive"> = {
+const statusVariants: Record<RecurringGiftStatus, "default" | "secondary" | "success" | "warning" | "info" | "destructive"> = {
   active: "success",
-  paused: "warning",
+  held: "warning",
   completed: "secondary",
   cancelled: "destructive",
+  terminated: "destructive",
 }
 
 function formatCurrency(amount: string | number): string {
@@ -45,7 +36,7 @@ function formatCurrency(amount: string | number): string {
 }
 
 function formatDateTime(dateStr: string | null): string {
-  if (!dateStr) return "—"
+  if (!dateStr) return "\u2014"
   return new Date(dateStr).toLocaleString("en-US", {
     month: "short",
     day: "numeric",
@@ -59,23 +50,14 @@ export default function PledgeDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
 
-  const { data: pledge, isLoading, error } = usePledge(id!)
-  const pauseMutation = usePausePledge()
-  const resumeMutation = useResumePledge()
-  const cancelMutation = useCancelPledge()
-  const deleteMutation = useDeletePledge()
+  const { data: rg, isLoading, error } = useRecurringGift(id!)
+  const deleteMutation = useDeleteRecurringGift()
 
   const handleDelete = () => {
     if (window.confirm("Are you sure you want to delete this pledge? This action cannot be undone.")) {
       deleteMutation.mutate(id!, {
         onSuccess: () => navigate("/pledges"),
       })
-    }
-  }
-
-  const handleCancel = () => {
-    if (window.confirm("Are you sure you want to cancel this pledge?")) {
-      cancelMutation.mutate(id!)
     }
   }
 
@@ -92,7 +74,7 @@ export default function PledgeDetail() {
     )
   }
 
-  if (error || !pledge) {
+  if (error || !rg) {
     return (
       <Section>
         <Container>
@@ -110,10 +92,6 @@ export default function PledgeDetail() {
     )
   }
 
-  const isActive = pledge.status === "active"
-  const isPaused = pledge.status === "paused"
-  const canModifyStatus = isActive || isPaused
-
   return (
     <Section>
       <Container>
@@ -130,61 +108,25 @@ export default function PledgeDetail() {
               </Link>
               <div className="flex items-center gap-3">
                 <h1 className="text-3xl font-semibold tracking-tight">
-                  {formatCurrency(pledge.amount)} / {pledgeFrequencyLabels[pledge.frequency]}
+                  {formatCurrency(rg.amount_dollars)} / {recurringGiftFrequencyLabels[rg.frequency]}
                 </h1>
-                <Badge variant={statusVariants[pledge.status]}>
-                  {pledgeStatusLabels[pledge.status]}
+                <Badge variant={statusVariants[rg.status]}>
+                  {recurringGiftStatusLabels[rg.status]}
                 </Badge>
-                {pledge.is_late && (
-                  <Badge variant="destructive" className="gap-1">
-                    <AlertTriangle className="h-3 w-3" />
-                    {pledge.days_late} days late
-                  </Badge>
-                )}
               </div>
               <p className="text-muted-foreground">
                 from{" "}
-                <Link to={`/contacts/${pledge.contact}`} className="text-primary hover:underline">
-                  {pledge.contact_name}
+                <Link to={`/contacts/${rg.donor_contact}`} className="text-primary hover:underline">
+                  {rg.donor_contact_name}
                 </Link>
+                , {recurringGiftFrequencyLabels[rg.frequency].toLowerCase()} since {formatLocalDate(rg.start_date)}
               </p>
             </div>
             <div className="flex gap-2">
-              {isActive && (
-                <Button
-                  variant="secondary"
-                  onClick={() => pauseMutation.mutate(id!)}
-                  disabled={pauseMutation.isPending}
-                >
-                  <Pause className="h-4 w-4 mr-2" />
-                  Pause
-                </Button>
-              )}
-              {isPaused && (
-                <Button
-                  variant="secondary"
-                  onClick={() => resumeMutation.mutate(id!)}
-                  disabled={resumeMutation.isPending}
-                >
-                  <Play className="h-4 w-4 mr-2" />
-                  Resume
-                </Button>
-              )}
               <Button variant="secondary" onClick={() => navigate(`/pledges/${id}/edit`)}>
                 <Edit className="h-4 w-4 mr-2" />
                 Edit
               </Button>
-              {canModifyStatus && (
-                <Button
-                  variant="secondary"
-                  onClick={handleCancel}
-                  disabled={cancelMutation.isPending}
-                  className="text-destructive hover:text-destructive"
-                >
-                  <XCircle className="h-4 w-4 mr-2" />
-                  Cancel
-                </Button>
-              )}
               <Button
                 variant="secondary"
                 onClick={handleDelete}
@@ -194,48 +136,6 @@ export default function PledgeDetail() {
                 <Trash2 className="h-4 w-4" />
               </Button>
             </div>
-          </div>
-
-          {/* Summary Cards */}
-          <div className="grid gap-6 md:grid-cols-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <p className="text-sm text-muted-foreground">Monthly Equivalent</p>
-                <p className="text-2xl font-semibold">
-                  {formatCurrency(pledge.monthly_equivalent)}
-                </p>
-              </CardHeader>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <p className="text-sm text-muted-foreground">Total Expected</p>
-                <p className="text-2xl font-semibold">
-                  {formatCurrency(pledge.total_expected)}
-                </p>
-              </CardHeader>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <p className="text-sm text-muted-foreground">Total Received</p>
-                <p className="text-2xl font-semibold">
-                  {formatCurrency(pledge.total_received)}
-                </p>
-              </CardHeader>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <p className="text-sm text-muted-foreground">Fulfillment</p>
-                <p className="text-2xl font-semibold">
-                  {Math.round(pledge.fulfillment_percentage)}%
-                </p>
-                <div className="h-2 bg-muted rounded-full overflow-hidden mt-2">
-                  <div
-                    className="h-full bg-primary rounded-full"
-                    style={{ width: `${Math.min(100, pledge.fulfillment_percentage)}%` }}
-                  />
-                </div>
-              </CardHeader>
-            </Card>
           </div>
 
           {/* Details */}
@@ -249,8 +149,8 @@ export default function PledgeDetail() {
                   <User className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-sm text-muted-foreground">Donor</p>
-                    <Link to={`/contacts/${pledge.contact}`} className="font-medium text-primary hover:underline">
-                      {pledge.contact_name}
+                    <Link to={`/contacts/${rg.donor_contact}`} className="font-medium text-primary hover:underline">
+                      {rg.donor_contact_name}
                     </Link>
                   </div>
                 </div>
@@ -259,7 +159,7 @@ export default function PledgeDetail() {
                   <div>
                     <p className="text-sm text-muted-foreground">Amount & Frequency</p>
                     <p className="font-medium">
-                      {formatCurrency(pledge.amount)} / {pledgeFrequencyLabels[pledge.frequency]}
+                      {formatCurrency(rg.amount_dollars)} / {recurringGiftFrequencyLabels[rg.frequency]}
                     </p>
                   </div>
                 </div>
@@ -267,15 +167,15 @@ export default function PledgeDetail() {
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-sm text-muted-foreground">Start Date</p>
-                    <p className="font-medium">{formatLocalDate(pledge.start_date, "long")}</p>
+                    <p className="font-medium">{formatLocalDate(rg.start_date, "long")}</p>
                   </div>
                 </div>
-                {pledge.end_date && (
+                {rg.end_date && (
                   <div className="flex items-center gap-3">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                     <div>
                       <p className="text-sm text-muted-foreground">End Date</p>
-                      <p className="font-medium">{formatLocalDate(pledge.end_date, "long")}</p>
+                      <p className="font-medium">{formatLocalDate(rg.end_date, "long")}</p>
                     </div>
                   </div>
                 )}
@@ -284,65 +184,38 @@ export default function PledgeDetail() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Fulfillment Tracking</CardTitle>
+                <CardTitle>Additional Information</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Last Fulfilled</p>
-                  <p className="font-medium">{formatLocalDate(pledge.last_fulfilled_date, "long")}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Next Expected</p>
-                  <p className="font-medium">{formatLocalDate(pledge.next_expected_date, "long")}</p>
-                </div>
-                {pledge.is_late && (
-                  <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                    <div className="flex items-center gap-2 text-destructive">
-                      <AlertTriangle className="h-4 w-4" />
-                      <span className="font-medium">Payment is {pledge.days_late} days late</span>
-                    </div>
-                    {pledge.late_notified_at && (
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Late notification sent: {formatDateTime(pledge.late_notified_at)}
-                      </p>
-                    )}
+                {rg.fund_name && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Fund</p>
+                    <p className="font-medium">{rg.fund_name}</p>
                   </div>
                 )}
-                {pledge.notes && (
+                {rg.description && (
                   <div>
-                    <p className="text-sm text-muted-foreground">Notes</p>
-                    <p className="whitespace-pre-wrap">{pledge.notes}</p>
+                    <p className="text-sm text-muted-foreground">Description</p>
+                    <p className="whitespace-pre-wrap">{rg.description}</p>
+                  </div>
+                )}
+                {rg.external_gift_id && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">External Gift ID</p>
+                    <p className="font-medium font-mono text-sm">{rg.external_gift_id}</p>
                   </div>
                 )}
                 <div className="pt-4 border-t">
                   <p className="text-sm text-muted-foreground">
-                    Created: {formatDateTime(pledge.created_at)}
+                    Created: {formatDateTime(rg.created_at)}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Updated: {formatDateTime(pledge.updated_at)}
+                    Updated: {formatDateTime(rg.updated_at)}
                   </p>
                 </div>
               </CardContent>
             </Card>
           </div>
-
-          {/* Record Donation Button */}
-          {isActive && (
-            <Card className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Record a donation for this pledge</p>
-                  <p className="text-sm text-muted-foreground">
-                    This will update the fulfillment tracking
-                  </p>
-                </div>
-                <Button onClick={() => navigate(`/donations/new?contact=${pledge.contact}`)}>
-                  <DollarSign className="h-4 w-4 mr-2" />
-                  Record Donation
-                </Button>
-              </div>
-            </Card>
-          )}
         </div>
       </Container>
     </Section>

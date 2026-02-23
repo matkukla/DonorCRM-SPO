@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { useNavigate, useParams, useSearchParams } from "react-router-dom"
-import { usePledge, useCreatePledge, useUpdatePledge } from "@/hooks/usePledges"
+import { useRecurringGift, useCreateRecurringGift, useUpdateRecurringGift } from "@/hooks/useGifts"
 import { useSearchContacts } from "@/hooks/useContacts"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
@@ -15,8 +15,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { ArrowLeft, ChevronDown, Search } from "lucide-react"
-import type { PledgeFrequency, PledgeCreate } from "@/api/pledges"
-import { pledgeFrequencyLabels } from "@/api/pledges"
+import type { RecurringGiftFrequency, RecurringGiftStatus } from "@/api/gifts"
+import { recurringGiftFrequencyLabels, recurringGiftStatusLabels } from "@/api/gifts"
+
+interface FormData {
+  donor_contact: string
+  amount: string  // Dollar string for the input
+  frequency: RecurringGiftFrequency
+  status: RecurringGiftStatus
+  start_date: string
+  end_date: string
+  description: string
+}
 
 export default function PledgeForm() {
   const { id } = useParams<{ id: string }>()
@@ -26,9 +36,9 @@ export default function PledgeForm() {
 
   const preselectedContactId = searchParams.get("contact")
 
-  const { data: existingPledge, isLoading: isLoadingPledge } = usePledge(id || "")
-  const createMutation = useCreatePledge()
-  const updateMutation = useUpdatePledge()
+  const { data: existingRG, isLoading: isLoadingRG } = useRecurringGift(id || null)
+  const createMutation = useCreateRecurringGift()
+  const updateMutation = useUpdateRecurringGift()
 
   const [contactSearch, setContactSearch] = useState("")
   const [selectedContact, setSelectedContact] = useState<{ id: string; name: string } | null>(null)
@@ -36,39 +46,42 @@ export default function PledgeForm() {
 
   const { data: contactResults } = useSearchContacts(contactSearch)
 
-  const [formData, setFormData] = useState<PledgeCreate>({
-    contact: preselectedContactId || "",
+  const [formData, setFormData] = useState<FormData>({
+    donor_contact: preselectedContactId || "",
     amount: "",
     frequency: "monthly",
+    status: "active",
     start_date: new Date().toISOString().split("T")[0],
-    notes: "",
+    end_date: "",
+    description: "",
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
-    if (existingPledge) {
+    if (existingRG) {
       setFormData({
-        contact: existingPledge.contact,
-        amount: existingPledge.amount,
-        frequency: existingPledge.frequency,
-        start_date: existingPledge.start_date,
-        end_date: existingPledge.end_date || undefined,
-        notes: existingPledge.notes || "",
+        donor_contact: existingRG.donor_contact,
+        amount: existingRG.amount_dollars,
+        frequency: existingRG.frequency,
+        status: existingRG.status,
+        start_date: existingRG.start_date,
+        end_date: existingRG.end_date || "",
+        description: existingRG.description || "",
       })
       setSelectedContact({
-        id: existingPledge.contact,
-        name: existingPledge.contact_name,
+        id: existingRG.donor_contact,
+        name: existingRG.donor_contact_name,
       })
     }
-  }, [existingPledge])
+  }, [existingRG])
 
   useEffect(() => {
     if (preselectedContactId && contactResults) {
       const contact = contactResults.find((c) => c.id === preselectedContactId)
       if (contact) {
         setSelectedContact({ id: contact.id, name: contact.full_name })
-        setFormData((prev) => ({ ...prev, contact: contact.id }))
+        setFormData((prev) => ({ ...prev, donor_contact: contact.id }))
       }
     }
   }, [preselectedContactId, contactResults])
@@ -83,21 +96,21 @@ export default function PledgeForm() {
 
   const handleContactSelect = (contact: { id: string; full_name: string }) => {
     setSelectedContact({ id: contact.id, name: contact.full_name })
-    setFormData((prev) => ({ ...prev, contact: contact.id }))
+    setFormData((prev) => ({ ...prev, donor_contact: contact.id }))
     setContactSearch("")
     setShowContactDropdown(false)
-    if (errors.contact) {
-      setErrors((prev) => ({ ...prev, contact: "" }))
+    if (errors.donor_contact) {
+      setErrors((prev) => ({ ...prev, donor_contact: "" }))
     }
   }
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {}
 
-    if (!formData.contact) {
-      newErrors.contact = "Contact is required"
+    if (!formData.donor_contact) {
+      newErrors.donor_contact = "Contact is required"
     }
-    if (!formData.amount || parseFloat(String(formData.amount)) <= 0) {
+    if (!formData.amount || parseFloat(formData.amount) <= 0) {
       newErrors.amount = "Amount must be greater than 0"
     }
     if (!formData.start_date) {
@@ -113,14 +126,25 @@ export default function PledgeForm() {
 
     if (!validate()) return
 
+    const amount_cents = Math.round(parseFloat(formData.amount) * 100)
+
+    const payload = {
+      donor_contact: formData.donor_contact,
+      amount_cents,
+      frequency: formData.frequency,
+      status: formData.status,
+      start_date: formData.start_date,
+      end_date: formData.end_date || undefined,
+      description: formData.description || undefined,
+    }
+
     try {
       if (isEditing) {
-        await updateMutation.mutateAsync({ id: id!, data: formData })
-        navigate(`/pledges/${id}`)
+        await updateMutation.mutateAsync({ id: id!, data: payload })
       } else {
-        const newPledge = await createMutation.mutateAsync(formData)
-        navigate(`/pledges/${newPledge.id}`)
+        await createMutation.mutateAsync(payload)
       }
+      navigate("/pledges")
     } catch {
       // Error is handled by the mutation
     }
@@ -128,19 +152,7 @@ export default function PledgeForm() {
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending
 
-  // Calculate monthly equivalent preview
-  const getMonthlyEquivalent = () => {
-    const amount = parseFloat(String(formData.amount)) || 0
-    const multipliers: Record<PledgeFrequency, number> = {
-      monthly: 1,
-      quarterly: 1 / 3,
-      semi_annual: 1 / 6,
-      annual: 1 / 12,
-    }
-    return amount * (multipliers[formData.frequency || "monthly"] || 1)
-  }
-
-  if (isEditing && isLoadingPledge) {
+  if (isEditing && isLoadingRG) {
     return (
       <Section>
         <Container>
@@ -193,7 +205,7 @@ export default function PledgeForm() {
                             size="sm"
                             onClick={() => {
                               setSelectedContact(null)
-                              setFormData((prev) => ({ ...prev, contact: "" }))
+                              setFormData((prev) => ({ ...prev, donor_contact: "" }))
                             }}
                           >
                             Change
@@ -211,7 +223,7 @@ export default function PledgeForm() {
                             setShowContactDropdown(true)
                           }}
                           onFocus={() => setShowContactDropdown(true)}
-                          className={`pl-9 ${errors.contact ? "border-destructive" : ""}`}
+                          className={`pl-9 ${errors.donor_contact ? "border-destructive" : ""}`}
                         />
                         {showContactDropdown && contactResults && contactResults.length > 0 && (
                           <div className="absolute z-10 w-full mt-1 bg-background border rounded-lg shadow-lg max-h-60 overflow-y-auto">
@@ -232,8 +244,8 @@ export default function PledgeForm() {
                         )}
                       </div>
                     )}
-                    {errors.contact && (
-                      <p className="text-sm text-destructive">{errors.contact}</p>
+                    {errors.donor_contact && (
+                      <p className="text-sm text-destructive">{errors.donor_contact}</p>
                     )}
                   </div>
                 </CardContent>
@@ -243,7 +255,7 @@ export default function PledgeForm() {
               <Card>
                 <CardHeader>
                   <CardTitle>Pledge Details</CardTitle>
-                  <CardDescription>Amount and frequency of the pledge</CardDescription>
+                  <CardDescription>Amount, frequency, and status of the pledge</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
@@ -272,17 +284,17 @@ export default function PledgeForm() {
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="secondary" className="w-full justify-between">
-                            {pledgeFrequencyLabels[formData.frequency || "monthly"]}
+                            {recurringGiftFrequencyLabels[formData.frequency]}
                             <ChevronDown className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className="w-full">
-                          {(Object.keys(pledgeFrequencyLabels) as PledgeFrequency[]).map((f) => (
+                          {(Object.keys(recurringGiftFrequencyLabels) as RecurringGiftFrequency[]).map((f) => (
                             <DropdownMenuItem
                               key={f}
                               onClick={() => setFormData((prev) => ({ ...prev, frequency: f }))}
                             >
-                              {pledgeFrequencyLabels[f]}
+                              {recurringGiftFrequencyLabels[f]}
                             </DropdownMenuItem>
                           ))}
                         </DropdownMenuContent>
@@ -290,17 +302,29 @@ export default function PledgeForm() {
                     </div>
                   </div>
 
-                  {/* Monthly equivalent preview */}
-                  {formData.amount && parseFloat(String(formData.amount)) > 0 && (
-                    <div className="p-3 bg-muted rounded-lg">
-                      <p className="text-sm text-muted-foreground">
-                        Monthly equivalent:{" "}
-                        <span className="font-medium text-foreground">
-                          ${getMonthlyEquivalent().toFixed(2)}/month
-                        </span>
-                      </p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Status</Label>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="secondary" className="w-full justify-between">
+                            {recurringGiftStatusLabels[formData.status]}
+                            <ChevronDown className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-full">
+                          {(Object.keys(recurringGiftStatusLabels) as RecurringGiftStatus[]).map((s) => (
+                            <DropdownMenuItem
+                              key={s}
+                              onClick={() => setFormData((prev) => ({ ...prev, status: s }))}
+                            >
+                              {recurringGiftStatusLabels[s]}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
-                  )}
+                  </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -323,7 +347,7 @@ export default function PledgeForm() {
                         id="end_date"
                         name="end_date"
                         type="date"
-                        value={formData.end_date || ""}
+                        value={formData.end_date}
                         onChange={handleChange}
                       />
                     </div>
@@ -331,21 +355,21 @@ export default function PledgeForm() {
                 </CardContent>
               </Card>
 
-              {/* Notes */}
+              {/* Description */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Notes</CardTitle>
+                  <CardTitle>Description</CardTitle>
                   <CardDescription>Additional information about this pledge</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <textarea
-                    id="notes"
-                    name="notes"
-                    value={formData.notes}
+                    id="description"
+                    name="description"
+                    value={formData.description}
                     onChange={handleChange}
                     rows={4}
                     className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                    placeholder="Add any notes about this pledge..."
+                    placeholder="Add any description about this pledge..."
                   />
                 </CardContent>
               </Card>
