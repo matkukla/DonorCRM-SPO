@@ -104,6 +104,10 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 - [Phase 34]: 8px activation constraint to prevent accidental drags near handle
 - [Phase 34]: Main content flattened from left/right column divs to single grid for free reorder
 
+### Roadmap Evolution
+
+- Phase 37 added: Security check
+
 ### Pending Todos
 
 8 pending todo(s). See `.planning/todos/pending/`.

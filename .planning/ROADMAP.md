@@ -259,6 +259,15 @@ Note: Phase 30 depends on Phase 27 only (not 28/29), so it could run after 27. H
 
 **Total:** 4 milestones shipped (77 plans), 1 milestone in progress (v2.0: 10 phases, 46 requirements)
 
+### Phase 37: Security check
+
+**Goal:** [To be planned]
+**Depends on:** Phase 36
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 37 to break down)
+
 ---
 
 *Last updated: 2026-02-23 (Phase 31 replanned: 3 plans, no UI rename)*
