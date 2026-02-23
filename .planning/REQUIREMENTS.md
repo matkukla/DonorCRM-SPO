@@ -36,7 +36,7 @@ Requirements for v2.0 milestone: Import Revamp, Prayer Intentions & Dashboard Po
 - [x] **MIG-01**: Migrate existing Donation records to Gift model with field mapping and UUID preservation
 - [x] **MIG-02**: Migrate existing Pledge records to RecurringGift model
 - [x] **MIG-03**: Update Contact stats (totalGiven, lastGiftDate, lastGiftAmount) to query Gift model
-- [ ] **MIG-04**: Remove old Donation and Pledge models after migration verification
+- [x] **MIG-04**: Remove old Donation and Pledge models after migration verification
 - [x] **MIG-05**: Update all backend services (dashboard, insights, analytics) to use Gift/RecurringGift
 
 ### Import UI
@@ -132,7 +132,7 @@ Deferred to future releases.
 | MIG-01 | Phase 30 | Complete |
 | MIG-02 | Phase 30 | Complete |
 | MIG-03 | Phase 30 | Complete |
-| MIG-04 | Phase 30 | Pending |
+| MIG-04 | Phase 30 | Complete |
 | MIG-05 | Phase 30 | Complete |
 | UI-IMP-01 | Phase 32 | Pending |
 | UI-IMP-02 | Phase 32 | Pending |

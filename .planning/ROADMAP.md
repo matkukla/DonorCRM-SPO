@@ -76,7 +76,7 @@ See milestones/v1.3-ROADMAP.md for complete phase details.
 - [x] **Phase 27: Foundation Models** - Create Gift, RecurringGift, Solicitor, GiftCredit, ImportBatch, and PrayerIntention models with migrations (completed 2026-02-20)
 - [x] **Phase 28: RE Import Pipeline (Constituents & Solicitors)** - Build shared RE utilities and Constituent/Solicitor importers with encoding detection and SHA256 dedup (completed 2026-02-21)
 - [x] **Phase 29: RE Import Pipeline (Gifts & Recurring Gifts)** - Build Gift/Recurring Gift importers with multi-row grouping and prayer auto-creation (completed 2026-02-21)
-- [ ] **Phase 30: Data Migration & Backend Cutover** - Migrate Donation to Gift, Pledge to RecurringGift, update all backend services to use new models
+- [x] **Phase 30: Data Migration & Backend Cutover** - Migrate Donation to Gift, Pledge to RecurringGift, update all backend services to use new models (completed 2026-02-23)
 - [ ] **Phase 31: Gift & Recurring Gift UI** - Rename Donations to Gifts and Pledges to Recurring Gifts across all frontend pages, filters, and exports
 - [ ] **Phase 32: Import UI** - Build Import/Export page with RE import tabs, generic CSV import, drag-and-drop upload, and import history
 - [ ] **Phase 33: Prayer Intentions** - Build Prayer Intentions page, CRUD API, contact detail tab, and status tracking
@@ -235,7 +235,7 @@ Note: Phase 30 depends on Phase 27 only (not 28/29), so it could run after 27. H
 | 27. Foundation Models | 2/2 | Complete    | 2026-02-20 | - |
 | 28. RE Import (Const & Sol) | 2/2 | Complete    | 2026-02-21 | - |
 | 29. RE Import (Gifts) | 2/2 | Complete    | 2026-02-21 | - |
-| 30. Data Migration & Cutover | 2/3 | In Progress|  | - |
+| 30. Data Migration & Cutover | 3/3 | Complete   | 2026-02-23 | - |
 | 31. Gift & Recurring Gift UI | v2.0 | 0/? | Not started | - |
 | 32. Import UI | v2.0 | 0/? | Not started | - |
 | 33. Prayer Intentions | v2.0 | 0/? | Not started | - |

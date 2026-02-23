@@ -11,16 +11,16 @@ See: .planning/PROJECT.md (updated 2026-02-20)
 
 Milestone: v2.0 -- Import Revamp, Prayer Intentions & Dashboard Polish
 Phase: 30 of 36 (Data Migration Backend Cutover)
-Plan: 2 of 3 in current phase
-Status: In Progress
-Last activity: 2026-02-20 -- Completed 30-02 (Backend Service Cutover)
+Plan: 3 of 3 in current phase
+Status: Phase Complete
+Last activity: 2026-02-23 -- Completed 30-03 (Old App Cleanup)
 
-Progress: [██████████████████████░░░░░░░░░░] 67% (2/3 plans in phase 30)
+Progress: [████████████████████████████████] 100% (3/3 plans in phase 30)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 85 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3 + 8 v2.0)
+- Total plans completed: 86 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3 + 9 v2.0)
 - Average duration: ~3.9 minutes
 - Total execution time: ~5.1 hours
 
@@ -40,6 +40,7 @@ Progress: [██████████████████████░
 | Phase 29 P02 | 3min | 2 tasks | 4 files |
 | Phase 30 P01 | 2min | 2 tasks | 4 files |
 | Phase 30 P02 | 13min | 4 tasks | 16 files |
+| Phase 30 P03 | 7min | 2 tasks | 51 files |
 
 ## Accumulated Context
 
@@ -71,6 +72,8 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 - [Phase 30]: Old SPO import functions removed (returning 410 Gone) rather than ported to Gift model since RE import pipeline supersedes them
 - [Phase 30]: Late pledge features return empty data gracefully rather than raising errors since RecurringGift has no is_late field
 - [Phase 30]: Old property names (has_active_pledge, monthly_pledge_amount) kept as aliases during transition for backward compatibility
+- [Phase 30]: EventType names (DONATION_RECEIVED, PLEDGE_CREATED) preserved as historical labels to avoid orphaning existing Event records
+- [Phase 30]: Legacy import test files replaced with 410 Gone verification tests to maintain endpoint behavior coverage
 
 ### Pending Todos
 
@@ -92,10 +95,10 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 
 ## Session Continuity
 
-Last session: 2026-02-20
-Stopped at: Completed 30-02-PLAN.md (Backend Service Cutover)
-Resume: Continue with 30-03-PLAN.md.
+Last session: 2026-02-23
+Stopped at: Completed 30-03-PLAN.md (Old App Cleanup) -- Phase 30 complete
+Resume: Continue with Phase 31.
 
 ---
 
-*Last updated: 2026-02-20 (30-02 complete)*
+*Last updated: 2026-02-23 (30-03 complete, Phase 30 done)*
