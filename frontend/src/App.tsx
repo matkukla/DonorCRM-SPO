@@ -30,7 +30,6 @@ import GroupDetail from "@/pages/groups/GroupDetail"
 import GroupForm from "@/pages/groups/GroupForm"
 import Settings from "@/pages/settings/Settings"
 import AdminUsers from "@/pages/admin/AdminUsers"
-import ImportCenter from "@/pages/admin/ImportCenter"
 import ImportExport from "@/pages/imports/ImportExport"
 import AdminAnalyticsDashboard from "@/pages/admin/analytics/AdminAnalyticsDashboard"
 import StalledContacts from "@/pages/admin/analytics/StalledContacts"
@@ -109,7 +108,6 @@ function App() {
 
                 <Route path="/settings" element={<ProtectedPage><Settings /></ProtectedPage>} />
                 <Route path="/admin" element={<ProtectedPage requiredRole="admin"><AdminUsers /></ProtectedPage>} />
-                <Route path="/admin/imports" element={<ProtectedPage requiredRole="admin"><ImportCenter /></ProtectedPage>} />
                 <Route path="/admin/analytics" element={<Navigate to="/admin/analytics/dashboard" replace />} />
                 <Route path="/admin/analytics/dashboard" element={<ProtectedPage requiredRole="admin"><AdminAnalyticsDashboard /></ProtectedPage>} />
                 <Route path="/admin/analytics/stalled" element={<ProtectedPage requiredRole="admin"><StalledContacts /></ProtectedPage>} />
