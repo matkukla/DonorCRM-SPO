@@ -11,16 +11,16 @@ See: .planning/PROJECT.md (updated 2026-02-20)
 
 Milestone: v2.0 -- Import Revamp, Prayer Intentions & Dashboard Polish
 Phase: 32 of 36 (Import UI)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: Executing
-Last activity: 2026-02-23 -- Completed 32-01 (API Layer)
+Last activity: 2026-02-23 -- Completed 32-02 (Import UI Page)
 
-Progress: [██████████░░░░░░░░░░░░░░░░░░░░░░] 33% (1/3 plans in phase 32)
+Progress: [█████████████████████░░░░░░░░░░░] 67% (2/3 plans in phase 32)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 91 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3 + 14 v2.0)
+- Total plans completed: 92 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3 + 15 v2.0)
 - Average duration: ~3.9 minutes
 - Total execution time: ~5.1 hours
 
@@ -45,6 +45,7 @@ Progress: [██████████░░░░░░░░░░░░░
 | Phase 31 P02 | 5min | 2 tasks | 5 files |
 | Phase 31 P03 | 4min | 2 tasks | 7 files |
 | Phase 32 P01 | 2min | 2 tasks | 4 files |
+| Phase 32 P02 | 3min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -85,6 +86,8 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 - [Phase 31]: api/pledges.ts and hooks/usePledges.ts kept as re-export compatibility layers
 - [Phase 31]: NeedsAttention late pledges placeholder always shown (not conditional on count)
 - [Phase 32]: No serializer class for ImportBatchListView -- hand-built dict for simplicity (only 12 fields)
+- [Phase 32]: Import page sections stacked vertically with separators, not nested tabs
+- [Phase 32]: Generic import section visible to all users (Coming soon placeholder)
 
 ### Pending Todos
 
@@ -107,10 +110,10 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 ## Session Continuity
 
 Last session: 2026-02-23
-Stopped at: Completed 32-01-PLAN.md
-Resume file: .planning/phases/32-import-ui/32-01-SUMMARY.md
-Resume: Continue Phase 32 Plan 02
+Stopped at: Completed 32-02-PLAN.md
+Resume file: .planning/phases/32-import-ui/32-02-SUMMARY.md
+Resume: Continue Phase 32 Plan 03
 
 ---
 
-*Last updated: 2026-02-23 (Phase 32 Plan 01 complete)*
+*Last updated: 2026-02-23 (Phase 32 Plan 02 complete)*
