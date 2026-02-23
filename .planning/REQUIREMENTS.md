@@ -70,7 +70,7 @@ Requirements for v2.0 milestone: Import Revamp, Prayer Intentions & Dashboard Po
 
 ### Dashboard
 
-- [ ] **DASH-01**: Dashboard tiles can be rearranged via drag-and-drop (session-only, resets on refresh)
+- [x] **DASH-01**: Dashboard tiles can be rearranged via drag-and-drop (session-only, resets on refresh)
 - [x] **DASH-02**: Dashboard summary cards and charts updated to query Gift/RecurringGift instead of Donation/Pledge
 
 ### Audit
@@ -154,7 +154,7 @@ Deferred to future releases.
 | PRAY-03 | Phase 33 | Complete |
 | PRAY-04 | Phase 33 | Complete |
 | PRAY-05 | Phase 33 | Complete |
-| DASH-01 | Phase 34 | Pending |
+| DASH-01 | Phase 34 | Complete |
 | DASH-02 | Phase 31 | Complete |
 | AUDIT-01 | Phase 36 | Pending |
 
