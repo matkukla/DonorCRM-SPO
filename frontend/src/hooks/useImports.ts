@@ -6,15 +6,9 @@ import {
   exportDonations,
   downloadContactTemplate,
   downloadDonationTemplate,
-  getLatestImports,
-  importFunds,
-  importEntities,
-  importTransactions,
-  importPledges,
   getFunds,
   importRE,
   getImportBatches,
-  type ImportType,
   type REImportType,
 } from "@/api/imports"
 
@@ -82,43 +76,6 @@ export function useFunds() {
   return useQuery({
     queryKey: ["funds"],
     queryFn: getFunds,
-  })
-}
-
-// SPO Import Center Hooks
-
-/**
- * Fetch latest import runs for all 4 SPO CSV types
- */
-export function useLatestImports() {
-  return useQuery({
-    queryKey: ["latestImports"],
-    queryFn: getLatestImports,
-    staleTime: 30 * 1000, // 30 seconds - imports don't change frequently
-  })
-}
-
-/**
- * Mutation hook for SPO CSV imports
- * Handles all 4 import types with automatic query invalidation
- */
-export function useSPOImport(importType: ImportType) {
-  const queryClient = useQueryClient()
-
-  const importFn = {
-    funds: importFunds,
-    entities: importEntities,
-    transactions: importTransactions,
-    pledges: importPledges,
-  }[importType]
-
-  return useMutation({
-    mutationFn: ({ file, validateOnly }: { file: File; validateOnly: boolean }) =>
-      importFn(file, validateOnly),
-    onSuccess: () => {
-      // Invalidate latest imports to refresh tile status
-      queryClient.invalidateQueries({ queryKey: ["latestImports"] })
-    },
   })
 }
 
