@@ -54,11 +54,11 @@ Requirements for v2.0 milestone: Import Revamp, Prayer Intentions & Dashboard Po
 
 - [ ] **UI-GIFT-01**: Rewire Donations pages to query Gift API endpoints while keeping all visible "Donations" labels
 - [ ] **UI-GIFT-02**: Rewire Pledges pages to query RecurringGift API endpoints while keeping all visible "Pledges" labels
-- [ ] **UI-GIFT-03**: Gifts list page with existing filters updated for Gift model fields
-- [ ] **UI-GIFT-04**: Recurring Gifts list page with existing filters updated for RecurringGift model fields
-- [ ] **UI-GIFT-05**: Gift detail view showing solicitor credit breakdown (which missionaries are credited)
+- [x] **UI-GIFT-03**: Gifts list page with existing filters updated for Gift model fields
+- [x] **UI-GIFT-04**: Recurring Gifts list page with existing filters updated for RecurringGift model fields
+- [x] **UI-GIFT-05**: Gift detail view showing solicitor credit breakdown (which missionaries are credited)
 - [ ] **UI-GIFT-06**: Contact detail Gifts tab showing gifts linked to that contact
-- [ ] **UI-GIFT-07**: Update CSV exports to use Gift/RecurringGift data
+- [x] **UI-GIFT-07**: Update CSV exports to use Gift/RecurringGift data
 
 ### Prayer Intentions
 
@@ -144,11 +144,11 @@ Deferred to future releases.
 | UI-IMP-08 | Phase 32 | Pending |
 | UI-GIFT-01 | Phase 31 | Pending |
 | UI-GIFT-02 | Phase 31 | Pending |
-| UI-GIFT-03 | Phase 31 | Pending |
-| UI-GIFT-04 | Phase 31 | Pending |
-| UI-GIFT-05 | Phase 31 | Pending |
+| UI-GIFT-03 | Phase 31 | Complete |
+| UI-GIFT-04 | Phase 31 | Complete |
+| UI-GIFT-05 | Phase 31 | Complete |
 | UI-GIFT-06 | Phase 31 | Pending |
-| UI-GIFT-07 | Phase 31 | Pending |
+| UI-GIFT-07 | Phase 31 | Complete |
 | PRAY-01 | Phase 33 | Pending |
 | PRAY-02 | Phase 33 | Pending |
 | PRAY-03 | Phase 33 | Pending |

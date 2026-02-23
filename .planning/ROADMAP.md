@@ -240,7 +240,7 @@ Note: Phase 30 depends on Phase 27 only (not 28/29), so it could run after 27. H
 | 28. RE Import (Const & Sol) | 2/2 | Complete    | 2026-02-21 | - |
 | 29. RE Import (Gifts) | 2/2 | Complete    | 2026-02-21 | - |
 | 30. Data Migration & Cutover | 3/3 | Complete    | 2026-02-23 | - |
-| 31. Gift & Recurring Gift UI | v2.0 | 0/3 | Not started | - |
+| 31. Gift & Recurring Gift UI | 1/3 | In Progress|  | - |
 | 32. Import UI | v2.0 | 0/? | Not started | - |
 | 33. Prayer Intentions | v2.0 | 0/? | Not started | - |
 | 34. Dashboard Polish | v2.0 | 0/? | Not started | - |

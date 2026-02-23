@@ -5,22 +5,22 @@
 See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core value:** Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems, and leadership can proactively support their teams through cross-missionary analytics.
-**Current focus:** Phase 30 - Data Migration Backend Cutover (v2.0)
+**Current focus:** Phase 31 - Gift/RecurringGift UI (v2.0)
 
 ## Current Position
 
 Milestone: v2.0 -- Import Revamp, Prayer Intentions & Dashboard Polish
-Phase: 30 of 36 (Data Migration Backend Cutover)
-Plan: 3 of 3 in current phase
-Status: Phase Complete
-Last activity: 2026-02-23 -- Completed 30-03 (Old App Cleanup)
+Phase: 31 of 36 (Gift/RecurringGift UI)
+Plan: 1 of 3 in current phase
+Status: Executing
+Last activity: 2026-02-23 -- Completed 31-01 (Backend Enhancements & Frontend API Layer)
 
-Progress: [████████████████████████████████] 100% (3/3 plans in phase 30)
+Progress: [███████████░░░░░░░░░░░░░░░░░░░░░] 33% (1/3 plans in phase 31)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 86 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3 + 9 v2.0)
+- Total plans completed: 87 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3 + 10 v2.0)
 - Average duration: ~3.9 minutes
 - Total execution time: ~5.1 hours
 
@@ -41,6 +41,7 @@ Progress: [███████████████████████
 | Phase 30 P01 | 2min | 2 tasks | 4 files |
 | Phase 30 P02 | 13min | 4 tasks | 16 files |
 | Phase 30 P03 | 7min | 2 tasks | 51 files |
+| Phase 31 P01 | 4min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -74,6 +75,8 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 - [Phase 30]: Old property names (has_active_pledge, monthly_pledge_amount) kept as aliases during transition for backward compatibility
 - [Phase 30]: EventType names (DONATION_RECEIVED, PLEDGE_CREATED) preserved as historical labels to avoid orphaning existing Event records
 - [Phase 30]: Legacy import test files replaced with 410 Gone verification tests to maintain endpoint behavior coverage
+- [Phase 31]: GiftDetailView returns GiftDetailSerializer for GET and GiftSerializer for PUT/PATCH
+- [Phase 31]: Export CSV filenames keep legacy names: donations_{date}.csv and pledges_{date}.csv
 
 ### Pending Todos
 
@@ -96,10 +99,10 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 ## Session Continuity
 
 Last session: 2026-02-23
-Stopped at: Phase 31 context gathered
-Resume file: .planning/phases/31-gift-recurring-gift-ui/31-CONTEXT.md
-Resume: Plan Phase 31 (/gsd:plan-phase 31)
+Stopped at: Completed 31-01-PLAN.md
+Resume file: .planning/phases/31-gift-recurring-gift-ui/31-01-SUMMARY.md
+Resume: Execute Phase 31 Plan 02 (/gsd:execute-phase 31)
 
 ---
 
-*Last updated: 2026-02-23 (Phase 31 context gathered)*
+*Last updated: 2026-02-23 (Phase 31 Plan 01 complete)*
