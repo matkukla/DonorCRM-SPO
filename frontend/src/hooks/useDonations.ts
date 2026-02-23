@@ -1,78 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import {
-  getDonations,
-  getDonation,
-  createDonation,
-  updateDonation,
-  deleteDonation,
-  markDonationThanked,
-} from "@/api/donations"
-import type { DonationCreate, DonationUpdate } from "@/api/donations"
-
-export function useDonations(params: Record<string, string> = {}) {
-  return useQuery({
-    queryKey: ["donations", params],
-    queryFn: () => getDonations(params),
-  })
-}
-
-export function useDonation(id: string) {
-  return useQuery({
-    queryKey: ["donations", id],
-    queryFn: () => getDonation(id),
-    enabled: !!id,
-  })
-}
-
-export function useCreateDonation() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (data: DonationCreate) => createDonation(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["donations"] })
-      queryClient.invalidateQueries({ queryKey: ["contacts"] })
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] })
-    },
-  })
-}
-
-export function useUpdateDonation() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: DonationUpdate }) => updateDonation(id, data),
-    onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries({ queryKey: ["donations"] })
-      queryClient.invalidateQueries({ queryKey: ["donations", id] })
-      queryClient.invalidateQueries({ queryKey: ["contacts"] })
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] })
-    },
-  })
-}
-
-export function useDeleteDonation() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (id: string) => deleteDonation(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["donations"] })
-      queryClient.invalidateQueries({ queryKey: ["contacts"] })
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] })
-    },
-  })
-}
-
-export function useMarkDonationThanked() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (id: string) => markDonationThanked(id),
-    onSuccess: (_, id) => {
-      queryClient.invalidateQueries({ queryKey: ["donations"] })
-      queryClient.invalidateQueries({ queryKey: ["donations", id] })
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] })
-    },
-  })
-}
+// Backward compatibility -- re-export Gift hooks as Donation names
+// This file will be removed once all consumers are migrated
+export {
+  useGifts as useDonations,
+  useGift as useDonation,
+  useCreateGift as useCreateDonation,
+  useUpdateGift as useUpdateDonation,
+  useDeleteGift as useDeleteDonation,
+} from "./useGifts"
