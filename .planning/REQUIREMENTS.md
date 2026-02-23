@@ -52,7 +52,7 @@ Requirements for v2.0 milestone: Import Revamp, Prayer Intentions & Dashboard Po
 
 ### Gift/Recurring Gift UI
 
-- [ ] **UI-GIFT-01**: Rewire Donations pages to query Gift API endpoints while keeping all visible "Donations" labels
+- [x] **UI-GIFT-01**: Rewire Donations pages to query Gift API endpoints while keeping all visible "Donations" labels
 - [x] **UI-GIFT-02**: Rewire Pledges pages to query RecurringGift API endpoints while keeping all visible "Pledges" labels
 - [x] **UI-GIFT-03**: Gifts list page with existing filters updated for Gift model fields
 - [x] **UI-GIFT-04**: Recurring Gifts list page with existing filters updated for RecurringGift model fields
@@ -142,7 +142,7 @@ Deferred to future releases.
 | UI-IMP-06 | Phase 32 | Pending |
 | UI-IMP-07 | Phase 32 | Pending |
 | UI-IMP-08 | Phase 32 | Pending |
-| UI-GIFT-01 | Phase 31 | Pending |
+| UI-GIFT-01 | Phase 31 | Complete |
 | UI-GIFT-02 | Phase 31 | Complete |
 | UI-GIFT-03 | Phase 31 | Complete |
 | UI-GIFT-04 | Phase 31 | Complete |
