@@ -59,6 +59,12 @@ class PrayerIntention(TimeStampedModel):
         blank=True,
         help_text='Timestamp when archived'
     )
+    last_prayed_at = models.DateTimeField(
+        'last prayed at',
+        null=True,
+        blank=True,
+        help_text='Timestamp of last prayer for this intention'
+    )
 
     class Meta:
         db_table = 'prayer_intentions'

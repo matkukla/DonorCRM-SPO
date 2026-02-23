@@ -296,6 +296,30 @@ class ContactJournalsView(generics.ListAPIView):
         return memberships
 
 
+@extend_schema(tags=['contacts'], summary='List contact prayer intentions')
+class ContactPrayerIntentionsView(generics.ListAPIView):
+    """
+    GET: List prayer intentions for a specific contact (owner-scoped)
+    """
+    permission_classes = [permissions.IsAuthenticated, IsContactOwnerOrReadAccess]
+
+    def get_queryset(self):
+        from apps.prayers.models import PrayerIntention
+
+        contact_id = self.kwargs.get('pk')
+        user = self.request.user
+        qs = PrayerIntention.objects.filter(
+            contact_id=contact_id
+        ).select_related('contact')
+        if user.role not in ['admin', 'finance', 'read_only']:
+            qs = qs.filter(contact__owner=user)
+        return qs.order_by('-created_at')
+
+    def get_serializer_class(self):
+        from apps.prayers.serializers import PrayerIntentionSerializer
+        return PrayerIntentionSerializer
+
+
 @extend_schema(tags=['contacts'], summary='List contact journal events')
 class ContactJournalEventsView(generics.ListAPIView):
     """GET: All journal stage events for a contact across all journals."""

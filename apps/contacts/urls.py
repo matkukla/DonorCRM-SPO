@@ -11,6 +11,7 @@ from apps.contacts.views import (
     ContactJournalEventsView,
     ContactJournalsView,
     ContactListCreateView,
+    ContactPrayerIntentionsView,
     ContactRecurringGiftsView,
     ContactSearchView,
     ContactTasksView,
@@ -29,6 +30,7 @@ urlpatterns = [
     path('<uuid:pk>/donations/', ContactGiftsView.as_view(), name='contact-donations'),
     path('<uuid:pk>/pledges/', ContactRecurringGiftsView.as_view(), name='contact-pledges'),
     path('<uuid:pk>/tasks/', ContactTasksView.as_view(), name='contact-tasks'),
+    path('<uuid:pk>/prayer-intentions/', ContactPrayerIntentionsView.as_view(), name='contact-prayers'),
     path('<uuid:pk>/journals/', ContactJournalsView.as_view(), name='contact-journals'),
     path('<uuid:pk>/journal-events/', ContactJournalEventsView.as_view(), name='contact-journal-events'),
 ]
