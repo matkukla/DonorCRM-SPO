@@ -194,7 +194,11 @@ Plans:
   3. Prayer intentions have status tracking: active intentions are visually distinct from answered and archived ones
   4. Contact detail page has a Prayer tab showing all intentions for that contact
   5. Prayer intentions auto-created from RE gift imports appear linked to the correct donor contact
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 33-01-PLAN.md — Backend API (model migration, serializers, views, URLs, filters) + frontend foundation (types, hooks, sidebar, route)
+- [ ] 33-02-PLAN.md — Main Prayer page with table, status filter, Today's Focus, slide-in create/edit panel
+- [ ] 33-03-PLAN.md — Focus Mode overlay with keyboard navigation + Contact detail Prayer tab with warm amber cards
 
 ### Phase 34: Dashboard Polish
 **Goal**: Dashboard tiles can be rearranged by dragging, providing a customizable view of missionary data
@@ -246,7 +250,7 @@ Note: Phase 30 depends on Phase 27 only (not 28/29), so it could run after 27. H
 | 30. Data Migration & Cutover | 3/3 | Complete    | 2026-02-23 | - |
 | 31. Gift & Recurring Gift UI | 3/3 | Complete    | 2026-02-23 | - |
 | 32. Import UI | 3/3 | Complete    | 2026-02-23 | - |
-| 33. Prayer Intentions | v2.0 | 0/? | Not started | - |
+| 33. Prayer Intentions | v2.0 | 0/3 | Not started | - |
 | 34. Dashboard Polish | v2.0 | 0/? | Not started | - |
 | 35. Generic CSV Import | v2.0 | 0/? | Not started | - |
 | 36. Full-Stack Audit | v2.0 | 0/? | Not started | - |
