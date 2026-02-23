@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react"
 import { useNavigate, Link } from "react-router-dom"
-import { usePledges, usePausePledge, useResumePledge, useCancelPledge } from "@/hooks/usePledges"
-import { useFilterParams, pledgeFilterParsers } from "@/hooks/useFilterParams"
-import { pledgePresets } from "@/lib/filter-presets"
+import { useRecurringGifts } from "@/hooks/useGifts"
+import { useFilterParams, recurringGiftFilterParsers } from "@/hooks/useFilterParams"
+import { recurringGiftPresets } from "@/lib/filter-presets"
 import { FilterBar } from "@/components/shared/FilterBar"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
@@ -14,22 +14,22 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Plus, Search, Filter, MoreHorizontal, AlertTriangle, Pause, Play, XCircle } from "lucide-react"
+import { Plus, Search, Filter } from "lucide-react"
 import type { ColumnDef } from "@tanstack/react-table"
-import type { Pledge, PledgeStatus, PledgeFrequency } from "@/api/pledges"
-import { pledgeFrequencyLabels, pledgeStatusLabels } from "@/api/pledges"
+import type { RecurringGift, RecurringGiftStatus, RecurringGiftFrequency } from "@/api/gifts"
+import { recurringGiftFrequencyLabels, recurringGiftStatusLabels } from "@/api/gifts"
 import { formatLocalDate } from "@/lib/utils"
 
 const PAGE_SIZE = 20
 
-const statusVariants: Record<PledgeStatus, "default" | "secondary" | "success" | "warning" | "info" | "destructive"> = {
+const statusVariants: Record<RecurringGiftStatus, "default" | "secondary" | "success" | "warning" | "info" | "destructive"> = {
   active: "success",
-  paused: "warning",
+  held: "warning",
   completed: "secondary",
   cancelled: "destructive",
+  terminated: "destructive",
 }
 
 function formatCurrency(amount: string | number): string {
@@ -51,7 +51,7 @@ export default function PledgeList() {
     clearAll,
     activeFilters,
     toQueryParams,
-  } = useFilterParams(pledgeFilterParsers)
+  } = useFilterParams(recurringGiftFilterParsers)
 
   const [searchInput, setSearchInput] = useState(filters.search || "")
 
@@ -61,11 +61,7 @@ export default function PledgeList() {
   }, [filters.search])
 
   const queryParams = { ...toQueryParams(), page_size: String(PAGE_SIZE) }
-  const { data, isLoading } = usePledges(queryParams)
-
-  const pauseMutation = usePausePledge()
-  const resumeMutation = useResumePledge()
-  const cancelMutation = useCancelPledge()
+  const { data, isLoading } = useRecurringGifts(queryParams)
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -76,150 +72,55 @@ export default function PledgeList() {
     setFilters({ page: newPage + 1 })
   }
 
-  const handleCancel = (id: string) => {
-    if (window.confirm("Are you sure you want to cancel this pledge?")) {
-      cancelMutation.mutate(id)
-    }
-  }
-
-  const columns: ColumnDef<Pledge>[] = [
+  const columns: ColumnDef<RecurringGift>[] = [
     {
-      accessorKey: "contact_name",
-      header: "Donor",
+      accessorKey: "donor_contact_name",
+      header: "Donor Name",
       cell: ({ row }) => (
         <Link
-          to={`/contacts/${row.original.contact}`}
+          to={`/contacts/${row.original.donor_contact}`}
           className="font-medium text-primary hover:underline"
           onClick={(e) => e.stopPropagation()}
         >
-          {row.original.contact_name}
+          {row.original.donor_contact_name}
         </Link>
       ),
     },
     {
-      accessorKey: "amount",
+      accessorKey: "amount_dollars",
       header: "Amount",
       cell: ({ row }) => (
         <div>
-          <span className="font-semibold">{formatCurrency(row.original.amount)}</span>
+          <span className="font-semibold">{formatCurrency(row.original.amount_dollars)}</span>
           <span className="text-muted-foreground">
-            {" / "}{pledgeFrequencyLabels[row.original.frequency].toLowerCase()}
+            {" / "}{recurringGiftFrequencyLabels[row.original.frequency].toLowerCase()}
           </span>
         </div>
       ),
     },
     {
-      accessorKey: "monthly_equivalent",
-      header: "Monthly",
-      cell: ({ row }) => (
-        <span className="text-muted-foreground">
-          {formatCurrency(row.original.monthly_equivalent)}/mo
-        </span>
-      ),
+      accessorKey: "frequency",
+      header: "Frequency",
+      cell: ({ row }) => recurringGiftFrequencyLabels[row.original.frequency],
     },
     {
       accessorKey: "status",
       header: "Status",
       cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          <Badge variant={statusVariants[row.original.status]}>
-            {pledgeStatusLabels[row.original.status]}
-          </Badge>
-          {row.original.is_late && (
-            <Badge variant="destructive" className="gap-1">
-              <AlertTriangle className="h-3 w-3" />
-              {row.original.days_late}d late
-            </Badge>
-          )}
-        </div>
+        <Badge variant={statusVariants[row.original.status]}>
+          {recurringGiftStatusLabels[row.original.status]}
+        </Badge>
       ),
     },
     {
-      accessorKey: "next_expected_date",
-      header: "Next Expected",
-      cell: ({ row }) => formatLocalDate(row.original.next_expected_date),
+      accessorKey: "start_date",
+      header: "Start Date",
+      cell: ({ row }) => formatLocalDate(row.original.start_date),
     },
     {
-      accessorKey: "fulfillment_percentage",
-      header: "Fulfilled",
-      cell: ({ row }) => (
-        <div className="w-20">
-          <div className="flex justify-between text-sm mb-1">
-            <span>{Math.round(row.original.fulfillment_percentage)}%</span>
-          </div>
-          <div className="h-2 bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary rounded-full"
-              style={{ width: `${Math.min(100, row.original.fulfillment_percentage)}%` }}
-            />
-          </div>
-        </div>
-      ),
-    },
-    {
-      id: "actions",
-      cell: ({ row }) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation()
-                navigate(`/pledges/${row.original.id}`)
-              }}
-            >
-              View details
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation()
-                navigate(`/pledges/${row.original.id}/edit`)
-              }}
-            >
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            {row.original.status === "active" && (
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation()
-                  pauseMutation.mutate(row.original.id)
-                }}
-              >
-                <Pause className="h-4 w-4 mr-2" />
-                Pause
-              </DropdownMenuItem>
-            )}
-            {row.original.status === "paused" && (
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation()
-                  resumeMutation.mutate(row.original.id)
-                }}
-              >
-                <Play className="h-4 w-4 mr-2" />
-                Resume
-              </DropdownMenuItem>
-            )}
-            {(row.original.status === "active" || row.original.status === "paused") && (
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleCancel(row.original.id)
-                }}
-                className="text-destructive"
-              >
-                <XCircle className="h-4 w-4 mr-2" />
-                Cancel
-              </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ),
+      accessorKey: "fund_name",
+      header: "Fund",
+      cell: ({ row }) => row.original.fund_name || "---",
     },
   ]
 
@@ -252,19 +153,15 @@ export default function PledgeList() {
               search: "Search",
               status: "Status",
               frequency: "Frequency",
-              is_late: "Late",
-              start_date_after: "Start From",
-              start_date_before: "Start To",
-              amount_min: "Min Amount",
-              amount_max: "Max Amount",
+              owner: "Owner",
             }}
             filterValueLabels={{
-              status: pledgeStatusLabels,
-              frequency: pledgeFrequencyLabels,
+              status: recurringGiftStatusLabels,
+              frequency: recurringGiftFrequencyLabels,
             }}
-            presets={pledgePresets}
+            presets={recurringGiftPresets}
             onApplyPreset={(preset) => setFilters({ ...preset.getParams(), page: 1 })}
-            exportUrl="/pledges/export/csv/"
+            exportUrl="/pledges/recurring/export/csv/"
             exportParams={toQueryParams()}
           >
             {/* Search input */}
@@ -288,16 +185,16 @@ export default function PledgeList() {
               <DropdownMenuTrigger asChild>
                 <Button variant="secondary" size="sm" className="gap-2">
                   <Filter className="h-4 w-4" />
-                  {filters.status ? pledgeStatusLabels[filters.status as PledgeStatus] || filters.status : "All Status"}
+                  {filters.status ? recurringGiftStatusLabels[filters.status as RecurringGiftStatus] || filters.status : "All Status"}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 <DropdownMenuItem onClick={() => setFilters({ status: null, page: 1 })}>
                   All Status
                 </DropdownMenuItem>
-                {(Object.keys(pledgeStatusLabels) as PledgeStatus[]).map((s) => (
+                {(Object.keys(recurringGiftStatusLabels) as RecurringGiftStatus[]).map((s) => (
                   <DropdownMenuItem key={s} onClick={() => setFilters({ status: s, page: 1 })}>
-                    {pledgeStatusLabels[s]}
+                    {recurringGiftStatusLabels[s]}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
@@ -308,66 +205,20 @@ export default function PledgeList() {
               <DropdownMenuTrigger asChild>
                 <Button variant="secondary" size="sm" className="gap-2">
                   <Filter className="h-4 w-4" />
-                  {filters.frequency ? pledgeFrequencyLabels[filters.frequency as PledgeFrequency] || filters.frequency : "All Frequencies"}
+                  {filters.frequency ? recurringGiftFrequencyLabels[filters.frequency as RecurringGiftFrequency] || filters.frequency : "All Frequencies"}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 <DropdownMenuItem onClick={() => setFilters({ frequency: null, page: 1 })}>
                   All Frequencies
                 </DropdownMenuItem>
-                {(Object.keys(pledgeFrequencyLabels) as PledgeFrequency[]).map((f) => (
+                {(Object.keys(recurringGiftFrequencyLabels) as RecurringGiftFrequency[]).map((f) => (
                   <DropdownMenuItem key={f} onClick={() => setFilters({ frequency: f, page: 1 })}>
-                    {pledgeFrequencyLabels[f]}
+                    {recurringGiftFrequencyLabels[f]}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-
-            {/* Late toggle button */}
-            <Button
-              variant={filters.is_late ? "default" : "secondary"}
-              size="sm"
-              onClick={() => setFilters({
-                is_late: filters.is_late ? null : true,
-                page: 1,
-              })}
-              className="gap-2"
-            >
-              <AlertTriangle className="h-4 w-4" />
-              Late Pledges
-            </Button>
-
-            {/* Date range */}
-            <Input
-              type="date"
-              placeholder="Start from"
-              value={filters.start_date_after || ""}
-              onChange={(e) => setFilters({ start_date_after: e.target.value || null, page: 1 })}
-              className="w-[150px]"
-            />
-            <Input
-              type="date"
-              placeholder="Start to"
-              value={filters.start_date_before || ""}
-              onChange={(e) => setFilters({ start_date_before: e.target.value || null, page: 1 })}
-              className="w-[150px]"
-            />
-
-            {/* Amount range */}
-            <Input
-              type="number"
-              placeholder="Min $"
-              value={filters.amount_min || ""}
-              onChange={(e) => setFilters({ amount_min: e.target.value || null, page: 1 })}
-              className="w-[100px]"
-            />
-            <Input
-              type="number"
-              placeholder="Max $"
-              value={filters.amount_max || ""}
-              onChange={(e) => setFilters({ amount_max: e.target.value || null, page: 1 })}
-              className="w-[100px]"
-            />
           </FilterBar>
 
           {/* Data Table */}
@@ -380,7 +231,7 @@ export default function PledgeList() {
             pageSize={PAGE_SIZE}
             totalCount={data?.count}
             onPageChange={handlePageChange}
-            onRowClick={(pledge) => navigate(`/pledges/${pledge.id}`)}
+            onRowClick={(rg) => navigate(`/pledges/${rg.id}`)}
           />
         </div>
       </Container>
