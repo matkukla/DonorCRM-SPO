@@ -11,16 +11,16 @@ See: .planning/PROJECT.md (updated 2026-02-20)
 
 Milestone: v2.0 -- Import Revamp, Prayer Intentions & Dashboard Polish
 Phase: 31 of 36 (Gift/RecurringGift UI)
-Plan: 1 of 3 in current phase
-Status: Executing
-Last activity: 2026-02-23 -- Completed 31-01 (Backend Enhancements & Frontend API Layer)
+Plan: 3 of 3 in current phase
+Status: Phase Complete
+Last activity: 2026-02-23 -- Completed 31-03 (Pledges/Contact/Dashboard UI Rewrite)
 
-Progress: [███████████░░░░░░░░░░░░░░░░░░░░░] 33% (1/3 plans in phase 31)
+Progress: [████████████████████████████████] 100% (3/3 plans in phase 31)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 87 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3 + 10 v2.0)
+- Total plans completed: 89 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3 + 12 v2.0)
 - Average duration: ~3.9 minutes
 - Total execution time: ~5.1 hours
 
@@ -42,6 +42,7 @@ Progress: [███████████░░░░░░░░░░░░
 | Phase 30 P02 | 13min | 4 tasks | 16 files |
 | Phase 30 P03 | 7min | 2 tasks | 51 files |
 | Phase 31 P01 | 4min | 2 tasks | 9 files |
+| Phase 31 P03 | 4min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -77,6 +78,8 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 - [Phase 30]: Legacy import test files replaced with 410 Gone verification tests to maintain endpoint behavior coverage
 - [Phase 31]: GiftDetailView returns GiftDetailSerializer for GET and GiftSerializer for PUT/PATCH
 - [Phase 31]: Export CSV filenames keep legacy names: donations_{date}.csv and pledges_{date}.csv
+- [Phase 31]: api/pledges.ts and hooks/usePledges.ts kept as re-export compatibility layers
+- [Phase 31]: NeedsAttention late pledges placeholder always shown (not conditional on count)
 
 ### Pending Todos
 
@@ -99,10 +102,10 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 ## Session Continuity
 
 Last session: 2026-02-23
-Stopped at: Completed 31-01-PLAN.md
-Resume file: .planning/phases/31-gift-recurring-gift-ui/31-01-SUMMARY.md
-Resume: Execute Phase 31 Plan 02 (/gsd:execute-phase 31)
+Stopped at: Completed 31-03-PLAN.md (Phase 31 complete)
+Resume file: .planning/phases/31-gift-recurring-gift-ui/31-03-SUMMARY.md
+Resume: Execute Phase 32 (/gsd:execute-phase 32)
 
 ---
 
-*Last updated: 2026-02-23 (Phase 31 Plan 01 complete)*
+*Last updated: 2026-02-23 (Phase 31 Plan 03 complete)*
