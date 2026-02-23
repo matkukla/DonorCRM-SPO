@@ -36,6 +36,7 @@ import StalledContacts from "@/pages/admin/analytics/StalledContacts"
 import UserDetail from "@/pages/admin/analytics/UserDetail"
 import JournalDetail from "@/pages/journals/JournalDetail"
 import JournalList from "@/pages/journals/JournalList"
+import PrayerList from "@/pages/prayer/PrayerList"
 import {
   DonationsByMonthYear,
   MonthlyCommitments,
@@ -97,6 +98,7 @@ function App() {
                 <Route path="/groups/:id/edit" element={<ProtectedPage><GroupForm /></ProtectedPage>} />
                 <Route path="/journals" element={<ProtectedPage><JournalList /></ProtectedPage>} />
                 <Route path="/journals/:id" element={<ProtectedPage><JournalDetail /></ProtectedPage>} />
+                <Route path="/prayer" element={<ProtectedPage><PrayerList /></ProtectedPage>} />
 
                 {/* Insights routes */}
                 <Route path="/insights/donations-by-month-year" element={<ProtectedPage><DonationsByMonthYear /></ProtectedPage>} />

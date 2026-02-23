@@ -14,6 +14,7 @@ import {
   BarChart3,
   ChevronDown,
   BookOpen,
+  Heart,
   Calendar,
   TrendingUp,
   AlertCircle,
@@ -39,6 +40,7 @@ const navItems: NavItem[] = [
   { label: "Tasks", href: "/tasks", icon: <CheckSquare className="h-5 w-5" /> },
   { label: "Groups", href: "/groups", icon: <UsersRound className="h-5 w-5" /> },
   { label: "Journals", href: "/journals", icon: <BookOpen className="h-5 w-5" /> },
+  { label: "Prayer", href: "/prayer", icon: <Heart className="h-5 w-5" /> },
 ]
 
 const insightsItems: NavItem[] = [
