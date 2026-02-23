@@ -8,20 +8,19 @@ from django.utils import timezone
 from rest_framework import status
 
 from apps.contacts.models import ContactStatus
-from apps.donations.models import DonationType
 
 
 @pytest.mark.django_db
 class TestDonorWorkflow:
     """
-    Test the complete workflow from prospect to donor.
+    Test the complete workflow from prospect to donor using Gift model.
     """
 
     def test_complete_donor_journey(self, authenticated_client):
         """
         Test complete journey:
         1. Create prospect
-        2. Add first donation (becomes donor)
+        2. Add first gift (becomes donor)
         3. Stats update automatically
         4. Thank-you tracking
         """
@@ -41,16 +40,13 @@ class TestDonorWorkflow:
         assert response.data['total_given'] == '0.00'
         assert response.data['gift_count'] == 0
 
-        # Step 2: Add first donation
-        response = client.post('/api/v1/donations/', {
-            'contact': contact_id,
-            'amount': '100.00',
-            'date': timezone.now().date().isoformat(),
-            'donation_type': DonationType.ONE_TIME,
-            'payment_method': 'check'
+        # Step 2: Add first gift via Gift API
+        response = client.post('/api/v1/gifts/', {
+            'donor_contact': contact_id,
+            'amount_cents': 10000,  # $100.00
+            'gift_date': timezone.now().date().isoformat(),
         })
         assert response.status_code == status.HTTP_201_CREATED
-        donation_id = response.data['id']
 
         # Step 3: Verify contact stats updated
         response = client.get(f'/api/v1/contacts/{contact_id}/')
@@ -67,13 +63,11 @@ class TestDonorWorkflow:
         response = client.get(f'/api/v1/contacts/{contact_id}/')
         assert response.data['needs_thank_you'] is False
 
-        # Step 5: Add second donation
-        response = client.post('/api/v1/donations/', {
-            'contact': contact_id,
-            'amount': '50.00',
-            'date': timezone.now().date().isoformat(),
-            'donation_type': DonationType.ONE_TIME,
-            'payment_method': 'credit_card'
+        # Step 5: Add second gift
+        response = client.post('/api/v1/gifts/', {
+            'donor_contact': contact_id,
+            'amount_cents': 5000,  # $50.00
+            'gift_date': timezone.now().date().isoformat(),
         })
         assert response.status_code == status.HTTP_201_CREATED
 
@@ -84,18 +78,17 @@ class TestDonorWorkflow:
 
 
 @pytest.mark.django_db
-class TestPledgeWorkflow:
+class TestRecurringGiftWorkflow:
     """
-    Test pledge creation and fulfillment tracking.
+    Test recurring gift creation.
     """
 
-    def test_pledge_with_donations(self, authenticated_client):
+    def test_create_recurring_gift(self, authenticated_client):
         """
         Test:
         1. Create contact
-        2. Create monthly pledge
-        3. Add donations to fulfill pledge
-        4. Verify pledge tracking updates
+        2. Create monthly recurring gift
+        3. Verify recurring gift details
         """
         client, user = authenticated_client
 
@@ -107,32 +100,17 @@ class TestPledgeWorkflow:
         })
         contact_id = response.data['id']
 
-        # Create monthly pledge for $100
-        response = client.post('/api/v1/pledges/', {
-            'contact': contact_id,
-            'amount': '100.00',
+        # Create monthly recurring gift for $100 (10000 cents)
+        response = client.post('/api/v1/gifts/recurring/', {
+            'donor_contact': contact_id,
+            'amount_cents': 10000,
             'frequency': 'monthly',
             'start_date': timezone.now().date().isoformat(),
             'status': 'active'
         })
         assert response.status_code == status.HTTP_201_CREATED
-        pledge_id = response.data['id']
-        assert response.data['monthly_equivalent'] == '100.00'
-
-        # Add donation to fulfill this month's pledge
-        response = client.post('/api/v1/donations/', {
-            'contact': contact_id,
-            'pledge': pledge_id,
-            'amount': '100.00',
-            'date': timezone.now().date().isoformat(),
-            'donation_type': DonationType.RECURRING
-        })
-        assert response.status_code == status.HTTP_201_CREATED
-
-        # Verify pledge updated
-        response = client.get(f'/api/v1/pledges/{pledge_id}/')
-        assert Decimal(response.data['total_received']) == Decimal('100.00')
-        assert response.data['is_late'] is False
+        assert response.data['amount_cents'] == 10000
+        assert response.data['frequency'] == 'monthly'
 
 
 @pytest.mark.django_db
@@ -143,11 +121,11 @@ class TestDashboardIntegration:
 
     def test_dashboard_with_activity(self, authenticated_client):
         """
-        Test dashboard shows correct data after creating contacts and donations.
+        Test dashboard shows correct data after creating contacts and gifts.
         """
         client, user = authenticated_client
 
-        # Create contact and donation
+        # Create contact and gift
         contact_response = client.post('/api/v1/contacts/', {
             'first_name': 'Test',
             'last_name': 'Dashboard',
@@ -155,11 +133,10 @@ class TestDashboardIntegration:
         })
         contact_id = contact_response.data['id']
 
-        client.post('/api/v1/donations/', {
-            'contact': contact_id,
-            'amount': '250.00',
-            'date': timezone.now().date().isoformat(),
-            'donation_type': DonationType.ONE_TIME
+        client.post('/api/v1/gifts/', {
+            'donor_contact': contact_id,
+            'amount_cents': 25000,  # $250.00
+            'gift_date': timezone.now().date().isoformat(),
         })
 
         # Get dashboard
@@ -262,8 +239,8 @@ class TestEventNotifications:
     Test that events are created for significant actions.
     """
 
-    def test_donation_creates_event(self, authenticated_client):
-        """Test that adding a donation creates an event."""
+    def test_gift_creates_event(self, authenticated_client):
+        """Test that adding a gift creates an event."""
         client, user = authenticated_client
 
         # Create contact
@@ -274,23 +251,22 @@ class TestEventNotifications:
         })
         contact_id = response.data['id']
 
-        # Check events before donation
+        # Check events before gift
         events_before = client.get('/api/v1/events/').data['count']
 
-        # Add donation
-        client.post('/api/v1/donations/', {
-            'contact': contact_id,
-            'amount': '75.00',
-            'date': timezone.now().date().isoformat(),
-            'donation_type': DonationType.ONE_TIME
+        # Add gift
+        client.post('/api/v1/gifts/', {
+            'donor_contact': contact_id,
+            'amount_cents': 7500,  # $75.00
+            'gift_date': timezone.now().date().isoformat(),
         })
 
-        # Check events after donation
+        # Check events after gift
         response = client.get('/api/v1/events/')
         events_after = response.data['count']
         assert events_after > events_before
 
-        # Find the donation event
+        # Find the donation event (uses DONATION_RECEIVED event type for backward compat)
         events = response.data['results']
         donation_events = [e for e in events if e['event_type'] == 'donation_received']
         assert len(donation_events) > 0

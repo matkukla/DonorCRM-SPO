@@ -17,9 +17,8 @@ from apps.dashboard.services import (
     get_thank_you_queue,
     get_what_changed,
 )
-from apps.donations.tests.factories import DonationFactory
 from apps.events.tests.factories import EventFactory
-from apps.pledges.tests.factories import PledgeFactory
+from apps.gifts.tests.factories import GiftFactory, RecurringGiftFactory
 from apps.tasks.tests.factories import OverdueTaskFactory, TaskFactory
 from apps.users.tests.factories import UserFactory
 
@@ -52,15 +51,13 @@ class TestGetWhatChanged:
 class TestGetNeedsAttention:
     """Tests for get_needs_attention function."""
 
-    def test_get_needs_attention_late_pledges(self):
-        """Test getting needs attention with late pledges."""
+    def test_get_needs_attention_late_pledges_always_zero(self):
+        """Test that late_pledge_count is always 0 (RecurringGift has no is_late)."""
         user = UserFactory(role='staff')
-        contact = ContactFactory(owner=user)
-        PledgeFactory(contact=contact, is_late=True)
 
         result = get_needs_attention(user)
 
-        assert result['late_pledge_count'] == 1
+        assert result['late_pledge_count'] == 0
 
     def test_get_needs_attention_overdue_tasks(self):
         """Test getting needs attention with overdue tasks."""
@@ -85,32 +82,9 @@ class TestGetNeedsAttention:
 class TestGetLateDonations:
     """Tests for get_late_donations function."""
 
-    def test_get_late_donations(self):
-        """Test getting late donations returns late active pledges."""
+    def test_get_late_donations_returns_empty(self):
+        """Test that get_late_donations always returns empty list (RecurringGift has no is_late)."""
         user = UserFactory(role='staff')
-        contact = ContactFactory(owner=user)
-
-        # Create a late active pledge
-        PledgeFactory(
-            contact=contact,
-            is_late=True,
-            days_late=15,
-            frequency='monthly',
-        )
-
-        result = get_late_donations(user)
-
-        assert len(result) == 1
-        assert result[0]['contact_name'] == contact.full_name
-        assert result[0]['days_late'] == 15
-
-    def test_get_late_donations_excludes_non_late_pledges(self):
-        """Test that on-track pledges don't appear."""
-        user = UserFactory(role='staff')
-        contact = ContactFactory(owner=user)
-
-        # Create an on-time pledge
-        PledgeFactory(contact=contact, is_late=False)
 
         result = get_late_donations(user)
 
@@ -137,12 +111,12 @@ class TestGetSupportProgress:
     """Tests for get_support_progress function."""
 
     def test_get_support_progress(self):
-        """Test getting support progress."""
+        """Test getting support progress with RecurringGift."""
         user = UserFactory(role='staff', monthly_goal=Decimal('5000.00'))
         contact = ContactFactory(owner=user)
 
-        # Create $100/month pledge
-        PledgeFactory(contact=contact, amount=Decimal('100.00'), frequency='monthly')
+        # Create $100/month recurring gift (10000 cents)
+        RecurringGiftFactory(donor_contact=contact, amount_cents=10000, frequency='monthly')
 
         result = get_support_progress(user)
 
@@ -162,11 +136,11 @@ class TestGetRecentGifts:
         user = UserFactory(role='staff')
         contact = ContactFactory(owner=user)
 
-        # Recent donation
-        DonationFactory(contact=contact, date=timezone.now().date() - timedelta(days=5))
+        # Recent gift
+        GiftFactory(donor_contact=contact, gift_date=timezone.now().date() - timedelta(days=5))
 
-        # Old donation
-        DonationFactory(contact=contact, date=timezone.now().date() - timedelta(days=60))
+        # Old gift
+        GiftFactory(donor_contact=contact, gift_date=timezone.now().date() - timedelta(days=60))
 
         result = get_recent_gifts(user, days=30)
 

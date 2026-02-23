@@ -11,7 +11,7 @@ from rest_framework.test import APIClient
 
 from apps.users.tests.factories import UserFactory
 from apps.contacts.tests.factories import ContactFactory
-from apps.donations.tests.factories import DonationFactory
+from apps.gifts.tests.factories import GiftFactory
 from apps.journals.models import Journal, JournalContact, Decision, JournalStageEvent, PipelineStage
 from apps.events.models import Event
 
@@ -67,20 +67,20 @@ class TestDashboardOverviewDateFiltering:
         assert response.data['total_contacts'] == 1
 
     def test_date_range_filters_donations(self, admin_client):
-        """Create donations on different dates, verify date range filters correctly."""
+        """Create gifts on different dates, verify date range filters correctly."""
         client, admin_user = admin_client
         staff = UserFactory(role='staff')
         contact = ContactFactory(owner=staff)
 
-        # Create old donation (20 days ago)
+        # Create old gift (20 days ago)
         old_date = date.today() - timedelta(days=20)
-        DonationFactory(contact=contact, amount=Decimal('100.00'), date=old_date)
+        GiftFactory(donor_contact=contact, amount_cents=10000, gift_date=old_date)
 
-        # Create new donation (5 days ago)
+        # Create new gift (5 days ago)
         new_date = date.today() - timedelta(days=5)
-        DonationFactory(contact=contact, amount=Decimal('200.00'), date=new_date)
+        GiftFactory(donor_contact=contact, amount_cents=20000, gift_date=new_date)
 
-        # Query with date_from=10 days ago (should only count new donation)
+        # Query with date_from=10 days ago (should only count new gift)
         date_from = (date.today() - timedelta(days=10)).isoformat()
         response = client.get(f'/api/v1/insights/admin/dashboard-overview/?date_from={date_from}')
         assert response.status_code == status.HTTP_200_OK

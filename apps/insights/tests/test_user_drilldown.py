@@ -11,7 +11,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from apps.contacts.models import Contact
-from apps.donations.models import Donation
+from apps.gifts.models import Gift
 from apps.journals.models import Journal, JournalContact, Decision, JournalStageEvent, PipelineStage
 from apps.users.models import User
 
@@ -124,18 +124,16 @@ class UserDrilldownViewTest(TestCase):
             status='active',
         )
 
-        # Create donations
-        Donation.objects.create(
-            contact=self.contact1,
-            amount=Decimal('10000'),  # $100.00 in cents
-            date=timezone.now().date(),
-            donation_type='one_time',
+        # Create gifts
+        Gift.objects.create(
+            donor_contact=self.contact1,
+            amount_cents=10000,  # $100.00
+            gift_date=timezone.now().date(),
         )
-        Donation.objects.create(
-            contact=self.contact2,
-            amount=Decimal('5000'),  # $50.00 in cents
-            date=timezone.now().date(),
-            donation_type='one_time',
+        Gift.objects.create(
+            donor_contact=self.contact2,
+            amount_cents=5000,  # $50.00
+            gift_date=timezone.now().date(),
         )
 
         self.client = APIClient()
