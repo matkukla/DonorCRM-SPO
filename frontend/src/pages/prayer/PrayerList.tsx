@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { usePrayers, useUpdatePrayer } from "@/hooks/usePrayers"
+import { usePrayers, useUpdatePrayer, useTodaysFocus } from "@/hooks/usePrayers"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -22,6 +22,7 @@ import { formatLocalDate } from "@/lib/utils"
 import { TodaysFocus } from "./components/TodaysFocus"
 import { StatusBadge } from "./components/StatusBadge"
 import { PrayerIntentionPanel } from "./PrayerIntentionPanel"
+import { PrayerFocusMode } from "./PrayerFocusMode"
 import type { PrayerIntention, PrayerIntentionStatus } from "@/api/prayers"
 
 const PAGE_SIZE = 20
@@ -49,6 +50,7 @@ export default function PrayerList() {
   if (searchQuery) params.search = searchQuery
 
   const { data, isLoading } = usePrayers(params)
+  const { data: todaysFocusData } = useTodaysFocus()
   const updateMutation = useUpdatePrayer()
 
   const openCreate = () => {
@@ -289,6 +291,13 @@ export default function PrayerList() {
           </div>
         )}
       </div>
+
+      {/* Focus Mode overlay */}
+      <PrayerFocusMode
+        open={focusModeOpen}
+        onClose={() => setFocusModeOpen(false)}
+        intentions={todaysFocusData ?? []}
+      />
 
       {/* Slide-in panel */}
       <PrayerIntentionPanel
