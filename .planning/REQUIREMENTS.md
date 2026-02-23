@@ -43,10 +43,10 @@ Requirements for v2.0 milestone: Import Revamp, Prayer Intentions & Dashboard Po
 
 - [ ] **UI-IMP-01**: Import/Export page accessible from main sidebar (not admin-only)
 - [ ] **UI-IMP-02**: RE import section with 4 tabs (Constituent, Solicitor, Gift, Recurring Gift)
-- [ ] **UI-IMP-03**: Drag-and-drop file upload with file name/size display and import button
+- [x] **UI-IMP-03**: Drag-and-drop file upload with file name/size display and import button
 - [ ] **UI-IMP-04**: Import result display with success/error/already-processed banners and expandable error list
 - [ ] **UI-IMP-05**: CSV header reference showing required and optional headers per import type
-- [ ] **UI-IMP-06**: Import history list with status icons and past ImportBatch records
+- [x] **UI-IMP-06**: Import history list with status icons and past ImportBatch records
 - [ ] **UI-IMP-07**: Generic CSV import section for contacts and donations
 - [ ] **UI-IMP-08**: Remove import functionality from admin analytics page
 
@@ -136,10 +136,10 @@ Deferred to future releases.
 | MIG-05 | Phase 30 | Complete |
 | UI-IMP-01 | Phase 32 | Pending |
 | UI-IMP-02 | Phase 32 | Pending |
-| UI-IMP-03 | Phase 32 | Pending |
+| UI-IMP-03 | Phase 32 | Complete |
 | UI-IMP-04 | Phase 32 | Pending |
 | UI-IMP-05 | Phase 32 | Pending |
-| UI-IMP-06 | Phase 32 | Pending |
+| UI-IMP-06 | Phase 32 | Complete |
 | UI-IMP-07 | Phase 32 | Pending |
 | UI-IMP-08 | Phase 32 | Pending |
 | UI-GIFT-01 | Phase 31 | Complete |

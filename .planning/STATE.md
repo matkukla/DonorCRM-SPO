@@ -5,22 +5,22 @@
 See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core value:** Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems, and leadership can proactively support their teams through cross-missionary analytics.
-**Current focus:** Phase 31 - Gift/RecurringGift UI (v2.0)
+**Current focus:** Phase 32 - Import UI (v2.0)
 
 ## Current Position
 
 Milestone: v2.0 -- Import Revamp, Prayer Intentions & Dashboard Polish
-Phase: 31 of 36 (Gift/RecurringGift UI)
-Plan: 3 of 3 in current phase
-Status: Phase Complete
-Last activity: 2026-02-23 -- Completed 31-03 (Pledges/Contact/Dashboard UI Rewrite)
+Phase: 32 of 36 (Import UI)
+Plan: 1 of 3 in current phase
+Status: Executing
+Last activity: 2026-02-23 -- Completed 32-01 (API Layer)
 
-Progress: [████████████████████████████████] 100% (3/3 plans in phase 31)
+Progress: [██████████░░░░░░░░░░░░░░░░░░░░░░] 33% (1/3 plans in phase 32)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 90 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3 + 13 v2.0)
+- Total plans completed: 91 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3 + 14 v2.0)
 - Average duration: ~3.9 minutes
 - Total execution time: ~5.1 hours
 
@@ -44,6 +44,7 @@ Progress: [███████████████████████
 | Phase 31 P01 | 4min | 2 tasks | 9 files |
 | Phase 31 P02 | 5min | 2 tasks | 5 files |
 | Phase 31 P03 | 4min | 2 tasks | 7 files |
+| Phase 32 P01 | 2min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -83,6 +84,7 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 - [Phase 31]: api/donations.ts and hooks/useDonations.ts kept as re-export compatibility shims
 - [Phase 31]: api/pledges.ts and hooks/usePledges.ts kept as re-export compatibility layers
 - [Phase 31]: NeedsAttention late pledges placeholder always shown (not conditional on count)
+- [Phase 32]: No serializer class for ImportBatchListView -- hand-built dict for simplicity (only 12 fields)
 
 ### Pending Todos
 
@@ -105,10 +107,10 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 ## Session Continuity
 
 Last session: 2026-02-23
-Stopped at: Completed 31-03-PLAN.md (Phase 31 complete)
-Resume file: .planning/phases/31-gift-recurring-gift-ui/31-03-SUMMARY.md
-Resume: Execute Phase 32 (/gsd:execute-phase 32)
+Stopped at: Completed 32-01-PLAN.md
+Resume file: .planning/phases/32-import-ui/32-01-SUMMARY.md
+Resume: Continue Phase 32 Plan 02
 
 ---
 
-*Last updated: 2026-02-23 (Phase 31 Plan 03 complete)*
+*Last updated: 2026-02-23 (Phase 32 Plan 01 complete)*
