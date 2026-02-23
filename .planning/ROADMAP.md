@@ -160,7 +160,12 @@ Plans:
   5. Contact detail page has a Gifts tab showing all gifts linked to that contact
   6. CSV exports produce Gift and RecurringGift data (not old Donation/Pledge data)
   7. Dashboard summary cards and charts display data from Gift/RecurringGift models
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 31-01-PLAN.md — Backend enhancements (detail serializer, search/ordering, CSV exports) and frontend API/hooks foundation
+- [ ] 31-02-PLAN.md — Gifts list page with filters, slide-in detail panel with credits, and gift form
+- [ ] 31-03-PLAN.md — Recurring Gifts list page with status/frequency filters, detail page, and form
+- [ ] 31-04-PLAN.md — Global renames (sidebar, routes, dashboard labels, contact detail gifts tab, insights, cleanup)
 
 ### Phase 32: Import UI
 **Goal**: Users can access a unified Import/Export page from the main sidebar to upload RE CSVs, view import history, and run generic imports
@@ -236,7 +241,7 @@ Note: Phase 30 depends on Phase 27 only (not 28/29), so it could run after 27. H
 | 28. RE Import (Const & Sol) | 2/2 | Complete    | 2026-02-21 | - |
 | 29. RE Import (Gifts) | 2/2 | Complete    | 2026-02-21 | - |
 | 30. Data Migration & Cutover | 3/3 | Complete    | 2026-02-23 | - |
-| 31. Gift & Recurring Gift UI | v2.0 | 0/? | Not started | - |
+| 31. Gift & Recurring Gift UI | v2.0 | 0/4 | Not started | - |
 | 32. Import UI | v2.0 | 0/? | Not started | - |
 | 33. Prayer Intentions | v2.0 | 0/? | Not started | - |
 | 34. Dashboard Polish | v2.0 | 0/? | Not started | - |
@@ -247,4 +252,4 @@ Note: Phase 30 depends on Phase 27 only (not 28/29), so it could run after 27. H
 
 ---
 
-*Last updated: 2026-02-20 (Phase 29 planned: 2 plans)*
+*Last updated: 2026-02-23 (Phase 31 planned: 4 plans)*
