@@ -77,7 +77,7 @@ See milestones/v1.3-ROADMAP.md for complete phase details.
 - [x] **Phase 28: RE Import Pipeline (Constituents & Solicitors)** - Build shared RE utilities and Constituent/Solicitor importers with encoding detection and SHA256 dedup (completed 2026-02-21)
 - [x] **Phase 29: RE Import Pipeline (Gifts & Recurring Gifts)** - Build Gift/Recurring Gift importers with multi-row grouping and prayer auto-creation (completed 2026-02-21)
 - [x] **Phase 30: Data Migration & Backend Cutover** - Migrate Donation to Gift, Pledge to RecurringGift, update all backend services to use new models (completed 2026-02-23)
-- [ ] **Phase 31: Gift & Recurring Gift UI** - Rename Donations to Gifts and Pledges to Recurring Gifts across all frontend pages, filters, and exports
+- [ ] **Phase 31: Gift & Recurring Gift UI** - Rewire frontend to query Gift/RecurringGift API endpoints while keeping Donations/Pledges terminology, add solicitor credit slide-in panel, update filters and exports
 - [ ] **Phase 32: Import UI** - Build Import/Export page with RE import tabs, generic CSV import, drag-and-drop upload, and import history
 - [ ] **Phase 33: Prayer Intentions** - Build Prayer Intentions page, CRUD API, contact detail tab, and status tracking
 - [ ] **Phase 34: Dashboard Polish** - Draggable dashboard tiles and dashboard queries updated to Gift/RecurringGift
@@ -149,23 +149,22 @@ Plans:
 - [ ] 30-03-PLAN.md — Remove old Donation/Pledge apps and clean up configuration
 
 ### Phase 31: Gift & Recurring Gift UI
-**Goal**: Users see "Gifts" and "Recurring Gifts" everywhere that previously said "Donations" and "Pledges", with all list pages, filters, detail views, and exports working against the new models
+**Goal**: Frontend pages, filters, detail views, and exports work against the Gift/RecurringGift models while keeping all visible text as "Donations" and "Pledges"
 **Depends on**: Phase 30
 **Requirements**: UI-GIFT-01, UI-GIFT-02, UI-GIFT-03, UI-GIFT-04, UI-GIFT-05, UI-GIFT-06, UI-GIFT-07, DASH-02
 **Success Criteria** (what must be TRUE):
-  1. Sidebar, page titles, breadcrumbs, and all visible text say "Gifts" instead of "Donations" and "Recurring Gifts" instead of "Pledges"
-  2. Gifts list page works with all existing filters (date range, amount, contact, owner) querying the Gift model
-  3. Recurring Gifts list page works with all existing filters querying the RecurringGift model
-  4. Gift detail view shows solicitor credit breakdown (which missionaries are credited and for how much)
-  5. Contact detail page has a Gifts tab showing all gifts linked to that contact
-  6. CSV exports produce Gift and RecurringGift data (not old Donation/Pledge data)
-  7. Dashboard summary cards and charts display data from Gift/RecurringGift models
-**Plans**: 4 plans
+  1. Donations list page queries the Gift model with updated columns (Donor Name, Amount, Date, Fund, Description) and all filters work
+  2. Pledges list page queries the RecurringGift model with expanded status (5) and frequency (8) options
+  3. Donation detail view is a slide-in panel showing solicitor credit breakdown (hidden when no credits)
+  4. Contact detail Donations and Pledges tabs render Gift/RecurringGift data shapes correctly
+  5. CSV exports produce Gift and RecurringGift data via new backend export endpoints
+  6. Dashboard late pledges section shows "Late detection coming soon" placeholder
+  7. All visible text, sidebar labels, URL paths, and CSV headers remain as "Donations" and "Pledges"
+**Plans**: 3 plans
 Plans:
-- [ ] 31-01-PLAN.md — Backend enhancements (detail serializer, search/ordering, CSV exports) and frontend API/hooks foundation
-- [ ] 31-02-PLAN.md — Gifts list page with filters, slide-in detail panel with credits, and gift form
-- [ ] 31-03-PLAN.md — Recurring Gifts list page with status/frequency filters, detail page, and form
-- [ ] 31-04-PLAN.md — Global renames (sidebar, routes, dashboard labels, contact detail gifts tab, insights, cleanup)
+- [ ] 31-01-PLAN.md — Backend enhancements (detail serializer with credits, search/ordering, CSV exports, owner filter) and frontend API/hooks foundation
+- [ ] 31-02-PLAN.md — Donations list page with filters, slide-in detail panel with solicitor credits, and donation form
+- [ ] 31-03-PLAN.md — Pledges list/detail/form for RecurringGift model, contact detail tab updates, dashboard late pledges placeholder
 
 ### Phase 32: Import UI
 **Goal**: Users can access a unified Import/Export page from the main sidebar to upload RE CSVs, view import history, and run generic imports
@@ -241,7 +240,7 @@ Note: Phase 30 depends on Phase 27 only (not 28/29), so it could run after 27. H
 | 28. RE Import (Const & Sol) | 2/2 | Complete    | 2026-02-21 | - |
 | 29. RE Import (Gifts) | 2/2 | Complete    | 2026-02-21 | - |
 | 30. Data Migration & Cutover | 3/3 | Complete    | 2026-02-23 | - |
-| 31. Gift & Recurring Gift UI | v2.0 | 0/4 | Not started | - |
+| 31. Gift & Recurring Gift UI | v2.0 | 0/3 | Not started | - |
 | 32. Import UI | v2.0 | 0/? | Not started | - |
 | 33. Prayer Intentions | v2.0 | 0/? | Not started | - |
 | 34. Dashboard Polish | v2.0 | 0/? | Not started | - |
@@ -252,4 +251,4 @@ Note: Phase 30 depends on Phase 27 only (not 28/29), so it could run after 27. H
 
 ---
 
-*Last updated: 2026-02-23 (Phase 31 planned: 4 plans)*
+*Last updated: 2026-02-23 (Phase 31 replanned: 3 plans, no UI rename)*
