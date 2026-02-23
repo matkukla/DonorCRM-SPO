@@ -11,6 +11,9 @@ import {
   useMarkContactThanked,
   useDeleteContact,
 } from "@/hooks/useContacts"
+import { useContactPrayers, useMarkPrayed } from "@/hooks/usePrayers"
+import { PrayerCard } from "@/pages/prayer/components/PrayerCard"
+import { PrayerIntentionPanel } from "@/pages/prayer/PrayerIntentionPanel"
 import { LogEventDialog } from "@/pages/journals/components/LogEventDialog"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
@@ -30,8 +33,10 @@ import {
   DollarSign,
   FileText,
   CheckSquare,
+  Plus,
 } from "lucide-react"
 import type { ContactStatus } from "@/api/contacts"
+import type { PrayerIntention, PrayerIntentionStatus } from "@/api/prayers"
 import { formatLocalDate } from "@/lib/utils"
 
 const statusLabels: Record<ContactStatus, string> = {
@@ -83,6 +88,19 @@ export default function ContactDetail() {
   }, [journalEventsData])
 
   const [logEventOpen, setLogEventOpen] = useState(false)
+
+  // Prayer tab state
+  const { data: contactPrayers } = useContactPrayers(id!)
+  const markPrayedMutation = useMarkPrayed()
+  const [prayerFilter, setPrayerFilter] = useState<"all" | PrayerIntentionStatus>("all")
+  const [prayerPanelOpen, setPrayerPanelOpen] = useState(false)
+  const [editingPrayer, setEditingPrayer] = useState<PrayerIntention | undefined>()
+
+  const filteredPrayers = useMemo(() => {
+    const prayers = contactPrayers?.results ?? []
+    if (prayerFilter === "all") return prayers
+    return prayers.filter((p) => p.status === prayerFilter)
+  }, [contactPrayers, prayerFilter])
 
   const markThankedMutation = useMarkContactThanked()
   const deleteMutation = useDeleteContact()
@@ -236,6 +254,9 @@ export default function ContactDetail() {
               </TabsTrigger>
               <TabsTrigger value="tasks">
                 Tasks ({tasks?.length || 0})
+              </TabsTrigger>
+              <TabsTrigger value="prayer" className="flex items-center gap-1.5">
+                <Heart className="h-4 w-4" /> Prayer
               </TabsTrigger>
             </TabsList>
 
@@ -423,6 +444,74 @@ export default function ContactDetail() {
                   )}
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="prayer" className="mt-6">
+              <div className="bg-amber-50/30 dark:bg-amber-950/10 rounded-xl p-6">
+                {/* Toggle filter tabs + Add button */}
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex gap-1 bg-amber-100/50 dark:bg-amber-900/30 rounded-lg p-1">
+                    {(["all", "active", "answered", "archived"] as const).map(
+                      (filter) => (
+                        <button
+                          key={filter}
+                          onClick={() => setPrayerFilter(filter)}
+                          className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                            prayerFilter === filter
+                              ? "bg-white dark:bg-card text-amber-900 dark:text-amber-100 shadow-sm font-medium"
+                              : "text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-200"
+                          }`}
+                        >
+                          {filter.charAt(0).toUpperCase() + filter.slice(1)}
+                        </button>
+                      ),
+                    )}
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setEditingPrayer(undefined)
+                      setPrayerPanelOpen(true)
+                    }}
+                    className="gap-1.5"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add
+                  </Button>
+                </div>
+
+                {/* Prayer cards grid */}
+                {filteredPrayers.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {filteredPrayers.map((intention) => (
+                      <PrayerCard
+                        key={intention.id}
+                        intention={intention}
+                        onPrayed={(pId) => markPrayedMutation.mutate(pId)}
+                        onEdit={(p) => {
+                          setEditingPrayer(p)
+                          setPrayerPanelOpen(true)
+                        }}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-amber-700/70 dark:text-amber-400/50 text-center py-8 leading-relaxed">
+                    No prayer intentions for this contact.
+                  </p>
+                )}
+              </div>
+
+              <PrayerIntentionPanel
+                open={prayerPanelOpen}
+                onClose={() => {
+                  setPrayerPanelOpen(false)
+                  setEditingPrayer(undefined)
+                }}
+                intention={editingPrayer}
+                lockedContactId={id}
+                lockedContactName={contact.full_name}
+              />
             </TabsContent>
 
             <TabsContent value="journal" className="mt-6 space-y-6">
