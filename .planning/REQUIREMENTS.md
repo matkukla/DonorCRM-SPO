@@ -48,7 +48,7 @@ Requirements for v2.0 milestone: Import Revamp, Prayer Intentions & Dashboard Po
 - [x] **UI-IMP-05**: CSV header reference showing required and optional headers per import type
 - [x] **UI-IMP-06**: Import history list with status icons and past ImportBatch records
 - [x] **UI-IMP-07**: Generic CSV import section for contacts and donations
-- [ ] **UI-IMP-08**: Remove import functionality from admin analytics page
+- [x] **UI-IMP-08**: Remove import functionality from admin analytics page
 
 ### Gift/Recurring Gift UI
 
@@ -141,7 +141,7 @@ Deferred to future releases.
 | UI-IMP-05 | Phase 32 | Complete |
 | UI-IMP-06 | Phase 32 | Complete |
 | UI-IMP-07 | Phase 32 | Complete |
-| UI-IMP-08 | Phase 32 | Pending |
+| UI-IMP-08 | Phase 32 | Complete |
 | UI-GIFT-01 | Phase 31 | Complete |
 | UI-GIFT-02 | Phase 31 | Complete |
 | UI-GIFT-03 | Phase 31 | Complete |

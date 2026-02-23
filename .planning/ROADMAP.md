@@ -78,7 +78,7 @@ See milestones/v1.3-ROADMAP.md for complete phase details.
 - [x] **Phase 29: RE Import Pipeline (Gifts & Recurring Gifts)** - Build Gift/Recurring Gift importers with multi-row grouping and prayer auto-creation (completed 2026-02-21)
 - [x] **Phase 30: Data Migration & Backend Cutover** - Migrate Donation to Gift, Pledge to RecurringGift, update all backend services to use new models (completed 2026-02-23)
 - [x] **Phase 31: Gift & Recurring Gift UI** - Rewire frontend to query Gift/RecurringGift API endpoints while keeping Donations/Pledges terminology, add solicitor credit slide-in panel, update filters and exports (completed 2026-02-23)
-- [ ] **Phase 32: Import UI** - Build Import/Export page with RE import tabs, generic CSV import, drag-and-drop upload, and import history
+- [x] **Phase 32: Import UI** - Build Import/Export page with RE import tabs, generic CSV import, drag-and-drop upload, and import history (completed 2026-02-23)
 - [ ] **Phase 33: Prayer Intentions** - Build Prayer Intentions page, CRUD API, contact detail tab, and status tracking
 - [ ] **Phase 34: Dashboard Polish** - Draggable dashboard tiles and dashboard queries updated to Gift/RecurringGift
 - [ ] **Phase 35: Generic CSV Import** - Generic CSV import for contacts and donations with matching and dedup
@@ -245,7 +245,7 @@ Note: Phase 30 depends on Phase 27 only (not 28/29), so it could run after 27. H
 | 29. RE Import (Gifts) | 2/2 | Complete    | 2026-02-21 | - |
 | 30. Data Migration & Cutover | 3/3 | Complete    | 2026-02-23 | - |
 | 31. Gift & Recurring Gift UI | 3/3 | Complete    | 2026-02-23 | - |
-| 32. Import UI | 2/3 | In Progress|  | - |
+| 32. Import UI | 3/3 | Complete   | 2026-02-23 | - |
 | 33. Prayer Intentions | v2.0 | 0/? | Not started | - |
 | 34. Dashboard Polish | v2.0 | 0/? | Not started | - |
 | 35. Generic CSV Import | v2.0 | 0/? | Not started | - |
