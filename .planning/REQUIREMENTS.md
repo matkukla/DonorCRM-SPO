@@ -65,7 +65,7 @@ Requirements for v2.0 milestone: Import Revamp, Prayer Intentions & Dashboard Po
 - [x] **PRAY-01**: Prayer Intentions page accessible from main sidebar with list of all intentions
 - [x] **PRAY-02**: User can create, edit, and delete prayer intentions manually
 - [x] **PRAY-03**: Prayer intention status tracking (active, answered, archived)
-- [ ] **PRAY-04**: Prayer tab on Contact detail page showing intentions for that contact
+- [x] **PRAY-04**: Prayer tab on Contact detail page showing intentions for that contact
 - [x] **PRAY-05**: Prayer intentions created automatically from RE gift import descriptions are linked to the donor contact
 
 ### Dashboard
@@ -152,7 +152,7 @@ Deferred to future releases.
 | PRAY-01 | Phase 33 | Complete |
 | PRAY-02 | Phase 33 | Complete |
 | PRAY-03 | Phase 33 | Complete |
-| PRAY-04 | Phase 33 | Pending |
+| PRAY-04 | Phase 33 | Complete |
 | PRAY-05 | Phase 33 | Complete |
 | DASH-01 | Phase 34 | Pending |
 | DASH-02 | Phase 31 | Complete |
