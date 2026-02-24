@@ -75,7 +75,7 @@ Requirements for v2.0 milestone: Import Revamp, Prayer Intentions & Dashboard Po
 
 ### Audit
 
-- [ ] **AUDIT-01**: Full-stack audit covering security (OWASP top 10, auth, permission scoping), performance (N+1 queries, missing indexes, bundle size), code quality (dead code, type safety, inconsistent patterns), UI/UX (accessibility, dark mode, responsive), and API consistency across all v2.0 code paths
+- [x] **AUDIT-01**: Full-stack audit covering security (OWASP top 10, auth, permission scoping), performance (N+1 queries, missing indexes, bundle size), code quality (dead code, type safety, inconsistent patterns), UI/UX (accessibility, dark mode, responsive), and API consistency across all v2.0 code paths
 
 ## Future Requirements
 
@@ -156,7 +156,7 @@ Deferred to future releases.
 | PRAY-05 | Phase 33 | Complete |
 | DASH-01 | Phase 34 | Complete |
 | DASH-02 | Phase 31 | Complete |
-| AUDIT-01 | Phase 36 | Pending |
+| AUDIT-01 | Phase 36 | Complete |
 
 **Coverage:**
 - v2.0 requirements: 46 total
