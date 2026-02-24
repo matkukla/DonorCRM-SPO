@@ -9,14 +9,14 @@ Requirements for v2.0 milestone: Import Revamp, Prayer Intentions & Dashboard Po
 
 ### Data Models
 
-- [ ] **MODEL-01**: Gift model replaces Donation with externalGiftId, donorContact FK, solicitor credit support, and cents-based amounts
-- [ ] **MODEL-02**: GiftCredit junction model links Gift to Solicitor with per-credit amount (many-to-many with amounts)
-- [ ] **MODEL-03**: RecurringGift model replaces Pledge with installment fields, status tracking, and externalGiftId
-- [ ] **MODEL-04**: RecurringGiftCredit junction model links RecurringGift to Solicitor
-- [ ] **MODEL-05**: Solicitor model with normalized name matching and auto-linking to User accounts
-- [ ] **MODEL-06**: ImportBatch model with SHA256 file deduplication, status tracking, and summary JSON
-- [ ] **MODEL-07**: PrayerIntention model tied to Contact with title, description, status (active/answered/archived), and optional Gift link
-- [ ] **MODEL-08**: Contact model updated with externalConstituentId, organizationName, and address fields
+- [x] **MODEL-01**: Gift model replaces Donation with externalGiftId, donorContact FK, solicitor credit support, and cents-based amounts
+- [x] **MODEL-02**: GiftCredit junction model links Gift to Solicitor with per-credit amount (many-to-many with amounts)
+- [x] **MODEL-03**: RecurringGift model replaces Pledge with installment fields, status tracking, and externalGiftId
+- [x] **MODEL-04**: RecurringGiftCredit junction model links RecurringGift to Solicitor
+- [x] **MODEL-05**: Solicitor model with normalized name matching and auto-linking to User accounts
+- [x] **MODEL-06**: ImportBatch model with SHA256 file deduplication, status tracking, and summary JSON
+- [x] **MODEL-07**: PrayerIntention model tied to Contact with title, description, status (active/answered/archived), and optional Gift link
+- [x] **MODEL-08**: Contact model updated with externalConstituentId, organizationName, and address fields
 
 ### Import Pipeline
 
@@ -111,14 +111,14 @@ Deferred to future releases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MODEL-01 | Phase 27 | Pending |
-| MODEL-02 | Phase 27 | Pending |
-| MODEL-03 | Phase 27 | Pending |
-| MODEL-04 | Phase 27 | Pending |
-| MODEL-05 | Phase 27 | Pending |
-| MODEL-06 | Phase 27 | Pending |
-| MODEL-07 | Phase 27 | Pending |
-| MODEL-08 | Phase 27 | Pending |
+| MODEL-01 | Phase 27 | Complete |
+| MODEL-02 | Phase 27 | Complete |
+| MODEL-03 | Phase 27 | Complete |
+| MODEL-04 | Phase 27 | Complete |
+| MODEL-05 | Phase 27 | Complete |
+| MODEL-06 | Phase 27 | Complete |
+| MODEL-07 | Phase 27 | Complete |
+| MODEL-08 | Phase 27 | Complete |
 | IMP-01 | Phase 28 | Complete |
 | IMP-02 | Phase 28 | Complete |
 | IMP-03 | Phase 29 | Complete |

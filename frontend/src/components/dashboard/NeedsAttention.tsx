@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { AlertTriangle, Clock, CheckSquare, Heart } from "lucide-react"
+import { AlertTriangle, CheckSquare, Heart } from "lucide-react"
 import type { OverdueTask, LatePledge, ThankYouContact } from "@/api/dashboard"
 
 interface NeedsAttentionProps {
@@ -27,13 +27,11 @@ function formatCurrency(amount: string | number): string {
 export function NeedsAttention({
   overdueTasks,
   overdueTaskCount,
-  latePledges,
-  latePledgeCount,
   thankYouNeeded,
   thankYouCount,
   isLoading,
 }: NeedsAttentionProps) {
-  const hasItems = overdueTaskCount > 0 || thankYouCount > 0 || true /* always show late pledges placeholder */
+  const hasItems = overdueTaskCount > 0 || thankYouCount > 0
 
   return (
     <Card>
@@ -82,19 +80,6 @@ export function NeedsAttention({
                 </ul>
               </div>
             )}
-
-            {/* Late Pledges -- placeholder until detection is implemented */}
-            <div className="p-4 bg-amber-50 dark:bg-amber-950/50 border border-amber-100 dark:border-amber-900/50 rounded-lg">
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                <span className="font-medium text-amber-900 dark:text-amber-200">
-                  Late detection coming soon
-                </span>
-              </div>
-              <p className="text-sm text-amber-800 dark:text-amber-300 mt-1">
-                Late pledge detection will be available in a future update.
-              </p>
-            </div>
 
             {/* Thank You Queue */}
             {thankYouCount > 0 && (
