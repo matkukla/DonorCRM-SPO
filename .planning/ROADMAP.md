@@ -232,7 +232,15 @@ Plans:
   3. Code quality audit completed: dead code removed, inconsistent patterns unified, type safety gaps closed
   4. UI/UX audit completed: dark mode coverage verified on all new pages, accessibility checked (WCAG 4.5:1 contrast), responsive behavior verified
   5. API consistency audit completed: error response formats consistent, endpoint naming follows conventions, serializer field naming aligned
-**Plans**: TBD
+**Plans**: 6 plans
+
+Plans:
+- [ ] 36-01-PLAN.md — Fix 6 known tech debt items from v2.0 milestone audit
+- [ ] 36-02-PLAN.md — Security audit: unvalidated int() casts, write-route guards, import parser hardening
+- [ ] 36-03-PLAN.md — Performance audit: dashboard SQL optimization, frontend code splitting
+- [ ] 36-04-PLAN.md — Code quality audit: dead code removal, error response unification
+- [ ] 36-05-PLAN.md — UI/UX audit: dark mode sweep, accessibility (ARIA, keyboard, contrast)
+- [ ] 36-06-PLAN.md — Tests, API consistency review, audit report, human testing checklist
 
 ## Progress
 
@@ -255,7 +263,7 @@ Note: Phase 30 depends on Phase 27 only (not 28/29), so it could run after 27. H
 | 33. Prayer Intentions | 3/3 | Complete    | 2026-02-23 | - |
 | 34. Dashboard Polish | v2.0 | Complete    | 2026-02-23 | 2026-02-23 |
 | 35. Generic CSV Import | v2.0 | 0/? | Not started | - |
-| 36. Full-Stack Audit | v2.0 | 0/? | Not started | - |
+| 36. Full-Stack Audit | v2.0 | 0/6 | Not started | - |
 
 **Total:** 4 milestones shipped (77 plans), 1 milestone in progress (v2.0: 10 phases, 46 requirements)
 
@@ -270,4 +278,4 @@ Plans:
 
 ---
 
-*Last updated: 2026-02-23 (Phase 31 replanned: 3 plans, no UI rename)*
+*Last updated: 2026-02-24 (Phase 36 planned: 6 plans, 3 waves)*
