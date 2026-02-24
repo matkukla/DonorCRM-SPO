@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-20)
 
 Milestone: v2.0 -- Import Revamp, Prayer Intentions & Dashboard Polish
 Phase: 36 of 37 (Full Stack Audit)
-Plan: 2 of 6 in current phase
+Plan: 4 of 6 in current phase
 Status: In Progress
-Last activity: 2026-02-24 -- Completed 36-01 (Known Tech Debt Fixes)
+Last activity: 2026-02-24 -- Completed 36-03 (Performance Audit)
 
-Progress: [█████░░░░░░░░░░░░░░░░░░░░░░░░░░░] 17% (1/6 plans in phase 36)
+Progress: [████████████████░░░░░░░░░░░░░░░░] 50% (3/6 plans in phase 36)
 
 ## Performance Metrics
 
@@ -52,6 +52,8 @@ Progress: [█████░░░░░░░░░░░░░░░░░░
 | Phase 33 P03 | 2min | 2 tasks | 4 files |
 | Phase 34 P01 | 2min | 2 tasks | 4 files |
 | Phase 36 P01 | 5min | 2 tasks | 5 files |
+| Phase 36 P02 | 8min | 2 tasks | 7 files |
+| Phase 36 P03 | 7min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -104,6 +106,13 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 - [Phase 34]: PointerSensor only (no TouchSensor) -- desktop-only drag per user decision
 - [Phase 34]: 8px activation constraint to prevent accidental drags near handle
 - [Phase 34]: Main content flattened from left/right column divs to single grid for free reorder
+- [Phase 36]: SQL CASE/WHEN frequency multipliers for RecurringGift aggregation (matches monthly_equivalent property)
+- [Phase 36]: Contact.needs_thank_you and PrayerIntention.status indexes already present (no migration)
+- [Phase 36]: 12 pages lazy-loaded via React.lazy with Suspense inside AppLayout
+- [Phase 36]: Vite manualChunks splits recharts and dnd-kit into dedicated vendor chunks
+- [Phase 36]: Shared get_safe_int_param/get_safe_year_param in apps/core/utils.py for all query param parsing
+- [Phase 36]: Write routes guarded with requiredRole="staff" to exclude read_only users
+- [Phase 36]: Import parser fields sanitized via _sanitize_field (null bytes stripped, 10k char truncation)
 
 ### Roadmap Evolution
 
@@ -130,10 +139,10 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 ## Session Continuity
 
 Last session: 2026-02-24
-Stopped at: Completed 36-01-PLAN.md
-Resume file: .planning/phases/36-full-stack-audit/36-01-SUMMARY.md
-Resume: Continue with 36-02-PLAN.md
+Stopped at: Completed 36-03-PLAN.md
+Resume file: .planning/phases/36-full-stack-audit/36-03-SUMMARY.md
+Resume: Continue with 36-04-PLAN.md
 
 ---
 
-*Last updated: 2026-02-24 (Phase 36 Plan 01 complete)*
+*Last updated: 2026-02-24 (Phase 36 Plan 03 complete)*
