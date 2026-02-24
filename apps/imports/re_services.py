@@ -221,6 +221,7 @@ def import_re_solicitors(
     if existing:
         logger.info('Duplicate solicitor import detected for %s', filename)
         existing.status = ImportBatchStatus.DUPLICATE
+        existing.save(update_fields=['status'])
         return existing
 
     # Step 2: Decode
@@ -603,6 +604,7 @@ def import_re_constituents(
     if existing:
         logger.info('Duplicate constituent import detected for %s', filename)
         existing.status = ImportBatchStatus.DUPLICATE
+        existing.save(update_fields=['status'])
         return existing
 
     # Step 2: Decode
@@ -1084,6 +1086,7 @@ def import_re_gifts(
     if existing:
         logger.info('Duplicate gift import detected for %s', filename)
         existing.status = ImportBatchStatus.DUPLICATE
+        existing.save(update_fields=['status'])
         return existing
 
     # Step 2: Decode
@@ -1474,6 +1477,7 @@ def import_re_recurring_gifts(
     if existing:
         logger.info('Duplicate recurring gift import detected for %s', filename)
         existing.status = ImportBatchStatus.DUPLICATE
+        existing.save(update_fields=['status'])
         return existing
 
     # Step 2: Decode
