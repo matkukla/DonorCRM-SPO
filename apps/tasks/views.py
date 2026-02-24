@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.permissions import IsOwnerOrAdmin
+from apps.core.utils import get_safe_int_param
 from apps.tasks.filters import TaskFilterSet
 from apps.tasks.models import Task, TaskStatus
 from apps.tasks.serializers import TaskCreateSerializer, TaskSerializer
@@ -120,7 +121,7 @@ class UpcomingTasksView(generics.ListAPIView):
     def get_queryset(self):
         user = self.request.user
         today = date.today()
-        days = int(self.request.query_params.get('days', 7))
+        days = get_safe_int_param(self.request, 'days', default=7, min_val=1, max_val=365)
         end_date = today + timedelta(days=days)
 
         base_query = Task.objects.filter(
