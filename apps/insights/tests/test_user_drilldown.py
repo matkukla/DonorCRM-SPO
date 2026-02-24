@@ -156,7 +156,7 @@ class UserDrilldownViewTest(TestCase):
         self.client.force_authenticate(user=self.admin)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('error', response.data)
+        self.assertIn('detail', response.data)
 
     def test_returns_correct_stats(self):
         """Returns correct stats for the user."""
@@ -225,4 +225,4 @@ class UserDrilldownViewTest(TestCase):
         fake_uuid = '00000000-0000-0000-0000-000000000000'
         response = self.client.get(self.url, {'user_id': fake_uuid})
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        self.assertIn('error', response.data)
+        self.assertIn('detail', response.data)

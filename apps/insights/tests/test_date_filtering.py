@@ -92,8 +92,8 @@ class TestDashboardOverviewDateFiltering:
         client, admin_user = admin_client
         response = client.get('/api/v1/insights/admin/dashboard-overview/?date_from=invalid-date')
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert 'error' in response.data
-        assert 'date_from' in response.data['error']
+        assert 'detail' in response.data
+        assert 'date_from' in response.data['detail']
 
     def test_date_from_without_date_to_works(self, admin_client):
         """Send only date_from, verify it works (open-ended range)."""
@@ -151,7 +151,7 @@ class TestStalledContactsDateFiltering:
         client, admin_user = admin_client
         response = client.get('/api/v1/insights/admin/stalled-contacts/?date_from=bad-date')
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert 'error' in response.data
+        assert 'detail' in response.data
 
 
 @pytest.mark.django_db
@@ -288,4 +288,4 @@ class TestActivityHeatmap:
         client, admin_user = admin_client
         response = client.get('/api/v1/insights/admin/activity-heatmap/?date_from=invalid')
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert 'error' in response.data
+        assert 'detail' in response.data

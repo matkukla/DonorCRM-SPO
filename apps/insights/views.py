@@ -211,7 +211,7 @@ class DashboardOverviewView(APIView):
                 try:
                     datetime.strptime(param_val, '%Y-%m-%d')
                 except ValueError:
-                    return Response({'error': f'Invalid {param_name} format. Use YYYY-MM-DD.'}, status=400)
+                    return Response({'detail': f'Invalid {param_name} format. Use YYYY-MM-DD.'}, status=400)
 
         data = get_dashboard_overview(date_from=date_from, date_to=date_to)
         serializer = DashboardOverviewSerializer(data)
@@ -261,7 +261,7 @@ class StalledContactsView(APIView):
                 try:
                     datetime.strptime(param_val, '%Y-%m-%d')
                 except ValueError:
-                    return Response({'error': f'Invalid {param_name} format. Use YYYY-MM-DD.'}, status=400)
+                    return Response({'detail': f'Invalid {param_name} format. Use YYYY-MM-DD.'}, status=400)
 
         data = get_stalled_contacts(limit=limit, offset=offset, sort_by=sort_by, sort_dir=sort_dir, date_from=date_from, date_to=date_to)
         serializer = StalledContactsResponseSerializer(data)
@@ -314,7 +314,7 @@ class ConversionFunnelView(APIView):
                 try:
                     datetime.strptime(param_val, '%Y-%m-%d')
                 except ValueError:
-                    return Response({'error': f'Invalid {param_name} format. Use YYYY-MM-DD.'}, status=400)
+                    return Response({'detail': f'Invalid {param_name} format. Use YYYY-MM-DD.'}, status=400)
 
         data = get_conversion_funnel(date_from=date_from, date_to=date_to)
         serializer = ConversionFunnelResponseSerializer(data)
@@ -350,7 +350,7 @@ class TeamActivityView(APIView):
                 try:
                     datetime.strptime(param_val, '%Y-%m-%d')
                 except ValueError:
-                    return Response({'error': f'Invalid {param_name} format. Use YYYY-MM-DD.'}, status=400)
+                    return Response({'detail': f'Invalid {param_name} format. Use YYYY-MM-DD.'}, status=400)
 
         data = get_team_activity(limit=limit, date_from=date_from, date_to=date_to)
         serializer = TeamActivityResponseSerializer(data)
@@ -387,7 +387,7 @@ class TeamTrendsView(APIView):
                 try:
                     datetime.strptime(param_val, '%Y-%m-%d')
                 except ValueError:
-                    return Response({'error': f'Invalid {param_name} format. Use YYYY-MM-DD.'}, status=400)
+                    return Response({'detail': f'Invalid {param_name} format. Use YYYY-MM-DD.'}, status=400)
 
         data = get_team_trends(weeks=weeks, date_from=date_from, date_to=date_to)
         serializer = TeamTrendsResponseSerializer(data)
@@ -414,7 +414,7 @@ class UserTrendsView(APIView):
     def get(self, request):
         user_id = request.query_params.get('user_id')
         if not user_id:
-            return Response({'error': 'user_id parameter is required'}, status=400)
+            return Response({'detail': 'user_id parameter is required'}, status=400)
 
         weeks = get_safe_int_param(request, 'weeks', default=12, min_val=1, max_val=52)
         data = get_user_trends(user_id=user_id, weeks=weeks)
@@ -441,7 +441,7 @@ class UserJournalsView(APIView):
     def get(self, request):
         user_id = request.query_params.get('user_id')
         if not user_id:
-            return Response({'error': 'user_id parameter is required'}, status=400)
+            return Response({'detail': 'user_id parameter is required'}, status=400)
 
         data = get_user_journals(user_id=user_id)
         serializer = UserJournalsResponseSerializer(data)
@@ -468,7 +468,7 @@ class StageContactsView(APIView):
     def get(self, request):
         stage = request.query_params.get('stage')
         if stage is None:
-            return Response({'error': 'stage parameter is required'}, status=400)
+            return Response({'detail': 'stage parameter is required'}, status=400)
 
         # Handle special value "none" for null stage (No Activity contacts)
         if stage == 'none' or stage == '':
@@ -500,12 +500,12 @@ class UserDrilldownView(APIView):
     def get(self, request):
         user_id = request.query_params.get('user_id')
         if not user_id:
-            return Response({'error': 'user_id parameter is required'}, status=400)
+            return Response({'detail': 'user_id parameter is required'}, status=400)
 
         data = get_user_drilldown(user_id=user_id)
 
         # Check if service returned an error (user not found)
-        if 'error' in data:
+        if 'detail' in data:
             return Response(data, status=404)
 
         serializer = UserDrilldownResponseSerializer(data)
@@ -539,7 +539,7 @@ class ActivityHeatmapView(APIView):
                 try:
                     datetime.strptime(param_val, '%Y-%m-%d')
                 except ValueError:
-                    return Response({'error': f'Invalid {param_name} format. Use YYYY-MM-DD.'}, status=400)
+                    return Response({'detail': f'Invalid {param_name} format. Use YYYY-MM-DD.'}, status=400)
 
         data = get_activity_heatmap(date_from=date_from, date_to=date_to)
         serializer = ActivityHeatmapResponseSerializer(data)

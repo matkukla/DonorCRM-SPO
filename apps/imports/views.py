@@ -585,6 +585,7 @@ class ImportRunErrorsCSVView(APIView):
         return response
 
 
+# Inline serializer: only 3 lines, not worth a separate serializers module.
 class FundListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Fund
@@ -797,7 +798,11 @@ class MPDUploadHistoryView(APIView):
 
 
 class ImportBatchListView(APIView):
-    """GET: List recent ImportBatch records for import history display."""
+    """GET: List recent ImportBatch records for import history display.
+
+    Note: Uses hand-built dict instead of serializer class -- Phase 32
+    decision for simplicity (only 12 fields, no nested relations).
+    """
     permission_classes = [permissions.IsAuthenticated, IsAdmin]
 
     def get(self, request):
