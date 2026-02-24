@@ -43,15 +43,32 @@ def decode_csv_bytes(file_bytes: bytes) -> str:
     RE exports may use UTF-8 (modern), UTF-8-sig (Excel BOM), or
     Windows-1252 (legacy with smart quotes, accented names).
 
+    Strips null bytes that can appear in corrupted files or binary data
+    pasted into CSV editors.
+
     Raises ValueError if no encoding works (should never happen
     since Windows-1252 accepts all byte values 0x00-0xFF).
     """
     for encoding in ('utf-8-sig', 'utf-8', 'windows-1252'):
         try:
-            return file_bytes.decode(encoding)
+            content = file_bytes.decode(encoding)
+            # Strip null bytes that can break csv.reader
+            return content.replace('\x00', '')
         except (UnicodeDecodeError, ValueError):
             continue
     raise ValueError('Unable to decode file with any supported encoding')
+
+
+# Maximum length for string fields before DB save (prevents oversized values)
+MAX_FIELD_LENGTH = 10000
+
+
+def _sanitize_field(value: str) -> str:
+    """Sanitize a CSV field value: strip whitespace and truncate to MAX_FIELD_LENGTH."""
+    value = value.strip()
+    if len(value) > MAX_FIELD_LENGTH:
+        return value[:MAX_FIELD_LENGTH]
+    return value
 
 
 def check_duplicate_import(file_bytes: bytes, import_type: str) -> ImportBatch | None:
@@ -308,7 +325,7 @@ def import_re_solicitors(
                 total_rows += 1
 
                 # Extract raw name
-                raw_name = (row.get(name_col) or '').strip()
+                raw_name = _sanitize_field(row.get(name_col) or '')
                 if not raw_name:
                     errors.append({
                         'row': row_number,
@@ -319,7 +336,7 @@ def import_re_solicitors(
                 # Extract external ID if present
                 ext_id = ''
                 if ext_id_col:
-                    ext_id = (row.get(ext_id_col) or '').strip()
+                    ext_id = _sanitize_field(row.get(ext_id_col) or '')
 
                 # Normalize name
                 norm_name = normalize_solicitor_name(raw_name)
@@ -684,11 +701,11 @@ def import_re_constituents(
                 total_rows += 1
 
                 try:
-                    # Build row_data dict from mapped columns
+                    # Build row_data dict from mapped columns with sanitization
                     row_data: dict[str, str] = {}
                     for canonical_name, actual_col in col_map.items():
                         if actual_col is not None:
-                            row_data[canonical_name] = (row.get(actual_col) or '').strip()
+                            row_data[canonical_name] = _sanitize_field(row.get(actual_col) or '')
 
                     # Minimum data validation: require (first_name + last_name) or organization_name
                     first_name = row_data.get('first_name', '')
@@ -906,11 +923,11 @@ def _group_rows_by_id(
 
     for row_number, row in enumerate(reader, start=2):
         total_rows += 1
-        # Build row_data from col_map
+        # Build row_data from col_map with sanitization
         row_data: dict[str, str] = {}
         for canonical, actual_col in col_map.items():
             if actual_col is not None:
-                row_data[canonical] = (row.get(actual_col) or '').strip()
+                row_data[canonical] = _sanitize_field(row.get(actual_col) or '')
 
         id_value = row_data.get(id_field, '')
         if not id_value:
