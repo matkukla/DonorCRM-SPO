@@ -677,32 +677,56 @@ class MPDOverviewView(APIView):
 
     Returns per-user financial summary: current_mpd_cap,
     latest_roll_forward_balance, months_remaining_rf.
+
+    Uses a single query with Subquery to fetch the latest snapshot per user
+    instead of N+1 per-user queries.
     """
     permission_classes = [permissions.IsAuthenticated, IsAdmin]
 
     def get(self, request):
+        from django.db.models import OuterRef, Subquery
+
         from apps.users.models import User
 
-        # Get distinct user IDs that have at least one MPDSnapshot
-        user_ids = (
+        # Subquery: get the ID of the latest snapshot per user
+        # (ordered by upload's created_at descending)
+        latest_snapshot_id = (
+            MPDSnapshot.objects
+            .filter(user=OuterRef('pk'))
+            .select_related('upload')
+            .order_by('-upload__created_at')
+            .values('id')[:1]
+        )
+
+        # Get active users who have snapshots, annotating with latest snapshot ID
+        user_ids_with_snapshots = (
             MPDSnapshot.objects
             .values_list('user_id', flat=True)
             .distinct()
         )
+        users = (
+            User.objects
+            .filter(id__in=user_ids_with_snapshots, is_active=True)
+            .annotate(latest_snapshot_id=Subquery(latest_snapshot_id))
+        )
 
-        # For each user, get their most recent snapshot
-        missionaries = []
-        users = User.objects.filter(id__in=user_ids, is_active=True)
-
+        # Collect the latest snapshot IDs
+        snapshot_id_map = {}
+        user_map = {}
         for user in users:
-            snapshot = (
-                MPDSnapshot.objects
-                .filter(user=user)
-                .select_related('upload')
-                .order_by('-upload__created_at')
-                .first()
-            )
-            if snapshot:
+            if user.latest_snapshot_id:
+                snapshot_id_map[user.latest_snapshot_id] = user
+                user_map[user.id] = user
+
+        # Single query to fetch all latest snapshots
+        snapshots = MPDSnapshot.objects.filter(
+            id__in=snapshot_id_map.keys()
+        )
+
+        missionaries = []
+        for snapshot in snapshots:
+            user = snapshot_id_map.get(snapshot.id)
+            if user:
                 missionaries.append({
                     'user_id': str(user.id),
                     'user_name': user.full_name,
