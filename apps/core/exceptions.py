@@ -16,10 +16,3 @@ class ImportValidationError(APIException):
     status_code = 400
     default_detail = 'Import validation failed.'
     default_code = 'import_validation_error'
-
-
-class PledgeFulfillmentError(APIException):
-    """Raised when pledge fulfillment operation fails."""
-    status_code = 400
-    default_detail = 'Pledge fulfillment operation failed.'
-    default_code = 'pledge_fulfillment_error'
