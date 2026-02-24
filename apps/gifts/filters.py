@@ -12,8 +12,8 @@ class GiftFilterSet(django_filters.FilterSet):
     fund = django_filters.UUIDFilter(field_name='fund')
     gift_date_after = django_filters.DateFilter(field_name='gift_date', lookup_expr='gte')
     gift_date_before = django_filters.DateFilter(field_name='gift_date', lookup_expr='lte')
-    min_amount = django_filters.NumberFilter(field_name='amount_cents', lookup_expr='gte')
-    max_amount = django_filters.NumberFilter(field_name='amount_cents', lookup_expr='lte')
+    min_amount = django_filters.NumberFilter(method='filter_min_amount')
+    max_amount = django_filters.NumberFilter(method='filter_max_amount')
     owner = django_filters.NumberFilter(field_name='donor_contact__owner')
 
     class Meta:
@@ -22,6 +22,12 @@ class GiftFilterSet(django_filters.FilterSet):
             'donor_contact', 'fund', 'gift_date_after', 'gift_date_before',
             'min_amount', 'max_amount', 'owner',
         ]
+
+    def filter_min_amount(self, queryset, name, value):
+        return queryset.filter(amount_cents__gte=int(value * 100))
+
+    def filter_max_amount(self, queryset, name, value):
+        return queryset.filter(amount_cents__lte=int(value * 100))
 
 
 class RecurringGiftFilterSet(django_filters.FilterSet):
