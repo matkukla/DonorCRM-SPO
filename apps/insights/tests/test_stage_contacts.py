@@ -124,8 +124,8 @@ class TestStageContacts(TestCase):
         url = reverse('insights:admin-stage-contacts')
         response = self.client.get(url)
         self.assertEqual(response.status_code, 400)
-        self.assertIn('error', response.data)
-        self.assertIn('stage', response.data['error'])
+        self.assertIn('detail', response.data)
+        self.assertIn('stage', response.data['detail'])
 
     def test_returns_contacts_in_correct_stage(self):
         """Test that endpoint returns contacts in the correct stage."""

@@ -1,5 +1,16 @@
 """
 Custom permission classes for role-based access control.
+
+Access Control Matrix:
+  admin      - Full access to all resources (all CRUD, all users' data)
+  finance    - Read access to all resources; write access to own data only
+  staff      - Full CRUD on own resources only
+  read_only  - Read access to own resources only (safe HTTP methods)
+
+Owner scoping in views uses two patterns:
+  - Multi-role check: role in ['admin', 'finance', 'read_only'] -> see all
+  - Single-role check: role == 'admin' -> see all (admin-only endpoints)
+Write operations are gated by IsStaffOrAbove (excludes read_only).
 """
 from rest_framework import permissions
 

@@ -52,7 +52,7 @@ class StalledContactsCSVView(APIView):
                 try:
                     datetime.strptime(param_val, '%Y-%m-%d')
                 except ValueError:
-                    return Response({'error': f'Invalid {param_name} format. Use YYYY-MM-DD.'}, status=400)
+                    return Response({'detail': f'Invalid {param_name} format. Use YYYY-MM-DD.'}, status=400)
 
         # Validate sort parameters
         if sort_by not in ('days_stalled', 'full_name', 'owner_name', 'last_activity_date'):
@@ -139,7 +139,7 @@ class TeamActivityCSVView(APIView):
                 try:
                     datetime.strptime(param_val, '%Y-%m-%d')
                 except ValueError:
-                    return Response({'error': f'Invalid {param_name} format. Use YYYY-MM-DD.'}, status=400)
+                    return Response({'detail': f'Invalid {param_name} format. Use YYYY-MM-DD.'}, status=400)
 
         # Get team activity with high limit for export
         data = get_team_activity(limit=limit, date_from=date_from, date_to=date_to)

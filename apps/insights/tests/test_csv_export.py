@@ -242,7 +242,7 @@ class TestTeamActivityCSVExport:
         client, admin_user = admin_client
         response = client.get('/api/v1/insights/admin/team-activity/export/?date_from=bad-date')
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert 'error' in response.data
+        assert 'detail' in response.data
 
     def test_limit_parameter_works(self, admin_client):
         """Verify limit parameter restricts number of rows."""

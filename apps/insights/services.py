@@ -970,7 +970,7 @@ def get_user_drilldown(user_id):
     try:
         user = User.objects.get(id=user_id)
     except User.DoesNotExist:
-        return {'error': 'User not found'}
+        return {'detail': 'User not found'}
 
     # Per-user stats (reusing patterns from get_user_performance)
     total_contacts = Contact.objects.filter(owner_id=user_id).count()
