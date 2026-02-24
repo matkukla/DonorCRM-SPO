@@ -263,7 +263,7 @@ Note: Phase 30 depends on Phase 27 only (not 28/29), so it could run after 27. H
 | 33. Prayer Intentions | 3/3 | Complete    | 2026-02-23 | - |
 | 34. Dashboard Polish | v2.0 | Complete    | 2026-02-23 | 2026-02-23 |
 | 35. Generic CSV Import | v2.0 | 0/? | Not started | - |
-| 36. Full-Stack Audit | 4/6 | In Progress|  | - |
+| 36. Full-Stack Audit | 5/6 | In Progress|  | - |
 
 **Total:** 4 milestones shipped (77 plans), 1 milestone in progress (v2.0: 10 phases, 46 requirements)
 
@@ -271,7 +271,7 @@ Note: Phase 30 depends on Phase 27 only (not 28/29), so it could run after 27. H
 
 **Goal:** [To be planned]
 **Depends on:** Phase 36
-**Plans:** 4/6 plans executed
+**Plans:** 5/6 plans executed
 
 Plans:
 - [ ] TBD (run /gsd:plan-phase 37 to break down)
