@@ -91,7 +91,9 @@ export function useREImport(importType: REImportType) {
       // Invalidate related data queries
       queryClient.invalidateQueries({ queryKey: ['contacts'] })
       queryClient.invalidateQueries({ queryKey: ['gifts'] })
-      queryClient.invalidateQueries({ queryKey: ['recurringGifts'] })
+      queryClient.invalidateQueries({ queryKey: ['recurring-gifts'] })
+      queryClient.invalidateQueries({ queryKey: ['prayers'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
     },
   })
 }
