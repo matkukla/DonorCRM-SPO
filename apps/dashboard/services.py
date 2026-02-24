@@ -6,16 +6,55 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from dateutil.relativedelta import relativedelta
-from django.db.models import Count, Q, Sum
+from django.db.models import Case, Count, DecimalField, F, Q, Sum, Value, When
 from django.db.models.functions import TruncMonth
 
 from apps.contacts.models import Contact
 from apps.events.models import Event
-from apps.gifts.models import Gift, RecurringGift, RecurringGiftStatus
+from apps.gifts.models import Gift, RecurringGift, RecurringGiftFrequency, RecurringGiftStatus
 from apps.journals.models import JournalStageEvent
 from apps.tasks.models import Task, TaskStatus
 
 logger = logging.getLogger(__name__)
+
+# Frequency multipliers for SQL CASE/WHEN aggregation.
+# Must match RecurringGift.monthly_equivalent property exactly.
+FREQUENCY_MULTIPLIERS = {
+    RecurringGiftFrequency.MONTHLY: Decimal('1'),
+    RecurringGiftFrequency.QUARTERLY: Decimal('1') / Decimal('3'),
+    RecurringGiftFrequency.SEMI_ANNUALLY: Decimal('1') / Decimal('6'),
+    RecurringGiftFrequency.ANNUALLY: Decimal('1') / Decimal('12'),
+    RecurringGiftFrequency.BIMONTHLY: Decimal('1') / Decimal('2'),
+    RecurringGiftFrequency.BIWEEKLY: Decimal('26') / Decimal('12'),
+    RecurringGiftFrequency.WEEKLY: Decimal('52') / Decimal('12'),
+    RecurringGiftFrequency.IRREGULAR: Decimal('1'),
+}
+
+
+def _monthly_equivalent_aggregate(queryset):
+    """
+    Compute the total monthly equivalent of recurring gifts via SQL aggregation.
+
+    Uses CASE/WHEN to apply the correct frequency multiplier per row,
+    then SUM across all rows. Returns the total in dollars (Decimal).
+
+    This replaces the O(N) Python loop pattern:
+      sum(rg.monthly_equivalent for rg in queryset)
+    """
+    result = queryset.annotate(
+        freq_multiplier=Case(
+            *[
+                When(frequency=freq, then=Value(mult))
+                for freq, mult in FREQUENCY_MULTIPLIERS.items()
+            ],
+            default=Value(Decimal('1')),
+            output_field=DecimalField(max_digits=20, decimal_places=10),
+        ),
+        monthly_cents=F('amount_cents') * F('freq_multiplier'),
+    ).aggregate(total=Sum('monthly_cents'))
+
+    total_cents = result['total'] or Decimal('0')
+    return round(total_cents / Decimal('100'), 2)
 
 
 def get_what_changed(user, since=None):
@@ -105,7 +144,8 @@ def get_thank_you_queue(user):
 def get_support_progress(user):
     """
     Calculate support progress toward monthly goal.
-    Uses RecurringGift.monthly_equivalent property.
+    Uses SQL aggregation with CASE/WHEN for frequency multipliers
+    instead of loading all RecurringGifts into Python.
     """
     if user.role == 'admin':
         recurring_gifts = RecurringGift.objects.all()
@@ -115,9 +155,8 @@ def get_support_progress(user):
     # Get active recurring gifts
     active_recurring = recurring_gifts.filter(status=RecurringGiftStatus.ACTIVE)
 
-    # Calculate monthly equivalent using Python (simpler and more maintainable)
-    # The monthly_equivalent property handles the calculation correctly
-    total_monthly = float(sum(rg.monthly_equivalent for rg in active_recurring))
+    # Calculate monthly equivalent via SQL aggregation (O(1) memory)
+    total_monthly = float(_monthly_equivalent_aggregate(active_recurring))
     rg_count = active_recurring.count()
 
     # Get user's goal
@@ -195,9 +234,10 @@ def get_giving_summary(user, year=None):
     ).aggregate(total=Sum('amount_cents'))['total'] or 0
     given = Decimal(total_cents) / Decimal(100)
 
-    # Active recurring gifts annualized
+    # Active recurring gifts annualized via SQL aggregation (O(1) memory)
     active_recurring = recurring_gifts.filter(status=RecurringGiftStatus.ACTIVE)
-    annualized_recurring = sum(rg.monthly_equivalent * 12 for rg in active_recurring)
+    monthly_recurring = _monthly_equivalent_aggregate(active_recurring)
+    annualized_recurring = monthly_recurring * 12
 
     # Expecting: annualized recurring minus what's already given this year
     expecting = max(0, float(annualized_recurring) - float(given))
