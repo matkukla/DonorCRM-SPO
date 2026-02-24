@@ -158,7 +158,7 @@ export function MPDOverviewTable() {
           </p>
         ) : (
           <div className="rounded-lg border">
-            <Table>
+            <Table aria-label="MPD overview">
               <TableHeader>
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow key={headerGroup.id}>

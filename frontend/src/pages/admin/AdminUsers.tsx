@@ -317,7 +317,7 @@ export default function AdminUsers() {
             </CardHeader>
             <CardContent>
               {users && users.length > 0 ? (
-                <Table>
+                <Table aria-label="Users">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Name</TableHead>
@@ -351,7 +351,7 @@ export default function AdminUsers() {
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="User actions">
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>

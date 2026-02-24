@@ -310,7 +310,7 @@ export default function UserDetail() {
                 <CardDescription>{journalsData.journals.length} active journals</CardDescription>
               </CardHeader>
               <CardContent>
-                <Table>
+                <Table aria-label="User journals">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Journal Name</TableHead>

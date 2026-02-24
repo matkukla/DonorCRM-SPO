@@ -151,7 +151,7 @@ export function UserDrilldownPanel({ open, userId, onClose }: UserDrilldownPanel
                 </p>
               ) : (
                 <div className="rounded-lg border">
-                  <Table>
+                  <Table aria-label="User journals">
                     <TableHeader>
                       <TableRow>
                         <TableHead>Name</TableHead>

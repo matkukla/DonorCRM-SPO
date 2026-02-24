@@ -136,7 +136,7 @@ export function DonationDetailPanel({ open, giftId, onClose }: DonationDetailPan
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold">Solicitor Credits</h3>
                 <div className="rounded-lg border">
-                  <Table>
+                  <Table aria-label="Solicitor credits">
                     <TableHeader>
                       <TableRow>
                         <TableHead>Solicitor Name</TableHead>

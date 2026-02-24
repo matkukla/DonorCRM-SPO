@@ -232,6 +232,7 @@ export default function PledgeList() {
             totalCount={data?.count}
             onPageChange={handlePageChange}
             onRowClick={(rg) => navigate(`/pledges/${rg.id}`)}
+            aria-label="Recurring gifts"
           />
         </div>
       </Container>

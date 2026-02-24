@@ -92,7 +92,7 @@ export default function DonationsByMonthYear() {
                   <CardTitle>Monthly Details</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <Table>
+                  <Table aria-label="Donations by month">
                     <TableHeader>
                       <TableRow>
                         <TableHead>Month</TableHead>

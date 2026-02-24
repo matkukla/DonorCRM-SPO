@@ -89,7 +89,7 @@ export default function FollowUps() {
                       No pending tasks! You're all caught up.
                     </div>
                   ) : (
-                    <Table>
+                    <Table aria-label="Follow-up tasks">
                       <TableHeader>
                         <TableRow>
                           <TableHead>Task</TableHead>

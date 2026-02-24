@@ -250,6 +250,7 @@ export function PrayerIntentionPanel({
                 onClick={handleDelete}
                 disabled={deleteMutation.isPending}
                 className="text-destructive hover:text-destructive"
+                aria-label="Delete prayer intention"
               >
                 <Trash2 className="h-4 w-4" />
               </Button>

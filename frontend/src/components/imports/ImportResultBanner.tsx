@@ -27,6 +27,7 @@ export function ImportResultBanner({ result, onDismiss }: ImportResultBannerProp
             size="icon"
             className="absolute top-2 right-2 h-6 w-6"
             onClick={onDismiss}
+            aria-label="Dismiss"
           >
             <X className="h-3 w-3" />
           </Button>
@@ -54,6 +55,7 @@ export function ImportResultBanner({ result, onDismiss }: ImportResultBannerProp
             size="icon"
             className="absolute top-2 right-2 h-6 w-6"
             onClick={onDismiss}
+            aria-label="Dismiss"
           >
             <X className="h-3 w-3" />
           </Button>
@@ -92,6 +94,7 @@ export function ImportResultBanner({ result, onDismiss }: ImportResultBannerProp
           size="icon"
           className="absolute top-2 right-2 h-6 w-6"
           onClick={onDismiss}
+          aria-label="Dismiss"
         >
           <X className="h-3 w-3" />
         </Button>

@@ -47,7 +47,7 @@ export function FunnelDrilldownPanel({ open, stage, onClose }: FunnelDrilldownPa
             </p>
           ) : (
             <div className="rounded-lg border">
-              <Table>
+              <Table aria-label="Funnel stage contacts">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>

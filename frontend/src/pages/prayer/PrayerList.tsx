@@ -191,22 +191,22 @@ export default function PrayerList() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full" aria-label="Prayer intentions">
                 <thead>
                   <tr className="border-b border-amber-100 dark:border-amber-800">
-                    <th className="text-left px-4 py-3 text-sm font-medium text-amber-800 dark:text-amber-300">
+                    <th scope="col" className="text-left px-4 py-3 text-sm font-medium text-amber-800 dark:text-amber-300">
                       Title
                     </th>
-                    <th className="text-left px-4 py-3 text-sm font-medium text-amber-800 dark:text-amber-300">
+                    <th scope="col" className="text-left px-4 py-3 text-sm font-medium text-amber-800 dark:text-amber-300">
                       Contact
                     </th>
-                    <th className="text-left px-4 py-3 text-sm font-medium text-amber-800 dark:text-amber-300">
+                    <th scope="col" className="text-left px-4 py-3 text-sm font-medium text-amber-800 dark:text-amber-300">
                       Status
                     </th>
-                    <th className="text-left px-4 py-3 text-sm font-medium text-amber-800 dark:text-amber-300">
+                    <th scope="col" className="text-left px-4 py-3 text-sm font-medium text-amber-800 dark:text-amber-300">
                       Created
                     </th>
-                    <th className="text-left px-4 py-3 text-sm font-medium text-amber-800 dark:text-amber-300">
+                    <th scope="col" className="text-left px-4 py-3 text-sm font-medium text-amber-800 dark:text-amber-300">
                       Description
                     </th>
                   </tr>
