@@ -242,7 +242,7 @@ export default function StalledContacts() {
             <CardContent>
               {data.stalled_contacts.length > 0 ? (
                 <>
-                  <Table>
+                  <Table aria-label="Stalled contacts">
                     <TableHeader>
                       <TableRow>
                         <TableHead>

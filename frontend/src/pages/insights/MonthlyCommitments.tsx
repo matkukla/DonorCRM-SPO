@@ -104,7 +104,7 @@ export default function MonthlyCommitments() {
                       No active pledges found.
                     </div>
                   ) : (
-                    <Table>
+                    <Table aria-label="Monthly commitments">
                       <TableHeader>
                         <TableRow>
                           <TableHead>Contact</TableHead>

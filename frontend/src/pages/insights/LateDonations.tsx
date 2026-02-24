@@ -81,7 +81,7 @@ export default function LateDonations() {
                       No late donations! All pledges are on track.
                     </div>
                   ) : (
-                    <Table>
+                    <Table aria-label="Late donations">
                       <TableHeader>
                         <TableRow>
                           <TableHead>Contact</TableHead>

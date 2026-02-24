@@ -68,7 +68,7 @@ export default function ReviewQueue() {
                       No items pending review.
                     </div>
                   ) : (
-                    <Table>
+                    <Table aria-label="Review queue">
                       <TableHeader>
                         <TableRow>
                           <TableHead>Type</TableHead>

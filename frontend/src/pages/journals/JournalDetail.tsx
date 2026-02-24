@@ -106,7 +106,7 @@ export default function JournalDetail() {
       {/* Back button and Add Contacts */}
       <div className="flex items-center justify-between">
         <Link to="/journals">
-          <Button variant="ghost" size="icon">
+          <Button variant="ghost" size="icon" aria-label="Back to journals">
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>

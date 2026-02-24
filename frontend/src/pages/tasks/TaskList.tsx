@@ -207,7 +207,7 @@ export default function TaskList() {
       cell: ({ row }) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Task actions">
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -358,6 +358,7 @@ export default function TaskList() {
             totalCount={data?.count}
             onPageChange={handlePageChange}
             onRowClick={(task) => navigate(`/tasks/${task.id}`)}
+            aria-label="Tasks"
           />
         </div>
       </Container>

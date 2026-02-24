@@ -27,6 +27,8 @@ interface DataTableProps<TData, TValue> {
   totalCount?: number
   // Row click
   onRowClick?: (row: TData) => void
+  // Accessibility
+  "aria-label"?: string
 }
 
 export function DataTable<TData, TValue>({
@@ -39,6 +41,7 @@ export function DataTable<TData, TValue>({
   onPageChange,
   totalCount,
   onRowClick,
+  "aria-label": ariaLabel,
 }: DataTableProps<TData, TValue>) {
   const table = useReactTable({
     data,
@@ -54,7 +57,7 @@ export function DataTable<TData, TValue>({
   return (
     <div className="space-y-4">
       <div className="rounded-lg border">
-        <Table>
+        <Table aria-label={ariaLabel}>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>

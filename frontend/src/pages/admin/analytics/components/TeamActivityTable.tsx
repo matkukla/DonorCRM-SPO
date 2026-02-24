@@ -147,7 +147,7 @@ export function TeamActivityTable({ dateParams, onUserDrilldown }: TeamActivityT
           </p>
         ) : (
           <div className="rounded-lg border">
-            <Table>
+            <Table aria-label="Team activity">
               <TableHeader>
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow key={headerGroup.id}>

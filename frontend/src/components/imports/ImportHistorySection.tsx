@@ -53,7 +53,7 @@ export function ImportHistorySection() {
         </div>
       ) : (
         <div className="border rounded-lg">
-          <Table>
+          <Table aria-label="Import history">
             <TableHeader>
               <TableRow>
                 <TableHead>Date</TableHead>

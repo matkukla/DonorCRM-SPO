@@ -100,7 +100,7 @@ export function MPDResultsDialog({ open, onClose, result }: MPDResultsDialogProp
           <div className="space-y-2">
             <h3 className="text-sm font-medium">Unmatched Rows</h3>
             <div className="rounded-md border">
-              <Table>
+              <Table aria-label="Unmatched import rows">
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[50px]">Row</TableHead>

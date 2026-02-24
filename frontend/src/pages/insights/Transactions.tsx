@@ -149,7 +149,7 @@ export default function Transactions() {
                     </div>
                   ) : (
                     <>
-                      <Table>
+                      <Table aria-label="Transactions">
                         <TableHeader>
                           <TableRow>
                             <TableHead>Date</TableHead>

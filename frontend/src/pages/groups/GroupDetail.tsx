@@ -258,7 +258,7 @@ export default function GroupDetail() {
                   ))}
                 </div>
               ) : contacts && contacts.length > 0 ? (
-                <Table>
+                <Table aria-label="Group contacts">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-12">

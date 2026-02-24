@@ -273,6 +273,7 @@ export default function DonationList() {
             totalCount={data?.count}
             onPageChange={handlePageChange}
             onRowClick={(gift) => setSelectedGiftId(gift.id)}
+            aria-label="Gifts"
           />
 
           {/* Slide-in detail panel */}

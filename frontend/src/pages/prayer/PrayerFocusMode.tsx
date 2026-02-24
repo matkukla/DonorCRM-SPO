@@ -170,6 +170,7 @@ export function PrayerFocusMode({
           onClick={goToPrevious}
           disabled={currentIndex === 0}
           className="text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200"
+          aria-label="Previous intention"
         >
           <ChevronLeft className="h-5 w-5" />
         </Button>
@@ -197,6 +198,7 @@ export function PrayerFocusMode({
           onClick={goToNext}
           disabled={currentIndex >= intentions.length - 1}
           className="text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200"
+          aria-label="Next intention"
         >
           <ChevronRight className="h-5 w-5" />
         </Button>
