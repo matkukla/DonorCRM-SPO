@@ -1,6 +1,8 @@
+import React, { Suspense } from "react"
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import { NuqsAdapter } from "nuqs/adapters/react-router/v6"
 import { ErrorBoundary } from "react-error-boundary"
+import { Loader2 } from "lucide-react"
 import { QueryProvider } from "@/providers/QueryProvider"
 import { AuthProvider } from "@/providers/AuthProvider"
 import { ThemeProvider } from "@/providers/ThemeProvider"
@@ -9,9 +11,8 @@ import { AppLayout } from "@/components/layout/AppLayout"
 import { ErrorFallback } from "@/components/ErrorFallback"
 import { Toaster } from "@/components/ui/sonner"
 
-// Pages
+// Eagerly loaded pages (lightweight, frequently visited)
 import Login from "@/pages/Login"
-import Dashboard from "@/pages/Dashboard"
 import Styleguide from "@/pages/Styleguide"
 import ContactList from "@/pages/contacts/ContactList"
 import ContactDetail from "@/pages/contacts/ContactDetail"
@@ -30,29 +31,50 @@ import GroupDetail from "@/pages/groups/GroupDetail"
 import GroupForm from "@/pages/groups/GroupForm"
 import Settings from "@/pages/settings/Settings"
 import AdminUsers from "@/pages/admin/AdminUsers"
-import ImportExport from "@/pages/imports/ImportExport"
-import AdminAnalyticsDashboard from "@/pages/admin/analytics/AdminAnalyticsDashboard"
-import StalledContacts from "@/pages/admin/analytics/StalledContacts"
-import UserDetail from "@/pages/admin/analytics/UserDetail"
-import JournalDetail from "@/pages/journals/JournalDetail"
 import JournalList from "@/pages/journals/JournalList"
-import PrayerList from "@/pages/prayer/PrayerList"
-import {
-  DonationsByMonthYear,
-  MonthlyCommitments,
-  LateDonations,
-  FollowUps,
-  ReviewQueue,
-  Transactions,
-} from "@/pages/insights"
+
+// Lazy-loaded pages (heavy: recharts, dnd-kit, complex sub-components)
+const Dashboard = React.lazy(() => import("@/pages/Dashboard"))
+const JournalDetail = React.lazy(() => import("@/pages/journals/JournalDetail"))
+const ImportExport = React.lazy(() => import("@/pages/imports/ImportExport"))
+const AdminAnalyticsDashboard = React.lazy(() => import("@/pages/admin/analytics/AdminAnalyticsDashboard"))
+const PrayerList = React.lazy(() => import("@/pages/prayer/PrayerList"))
+
+// Lazy-loaded admin analytics sub-pages (recharts, data tables)
+const StalledContacts = React.lazy(() => import("@/pages/admin/analytics/StalledContacts"))
+const UserDetail = React.lazy(() => import("@/pages/admin/analytics/UserDetail"))
+
+// Lazy-loaded insights pages (recharts charts) -- individual imports for proper code splitting
+const DonationsByMonthYear = React.lazy(() => import("@/pages/insights/DonationsByMonthYear"))
+const MonthlyCommitments = React.lazy(() => import("@/pages/insights/MonthlyCommitments"))
+const LateDonations = React.lazy(() => import("@/pages/insights/LateDonations"))
+const FollowUps = React.lazy(() => import("@/pages/insights/FollowUps"))
+const ReviewQueue = React.lazy(() => import("@/pages/insights/ReviewQueue"))
+const Transactions = React.lazy(() => import("@/pages/insights/Transactions"))
 
 /**
- * Wrap a page with protected route and app layout
+ * Loading fallback shown inside the app layout while lazy chunks load.
+ */
+function PageLoadingFallback() {
+  return (
+    <div className="flex items-center justify-center h-64">
+      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+    </div>
+  )
+}
+
+/**
+ * Wrap a page with protected route and app layout.
+ * Suspense boundary is inside the layout so sidebar stays visible during chunk loading.
  */
 function ProtectedPage({ children, requiredRole }: { children: React.ReactNode; requiredRole?: "admin" | "staff" | "finance" | "read_only" }) {
   return (
     <ProtectedRoute requiredRole={requiredRole}>
-      <AppLayout>{children}</AppLayout>
+      <AppLayout>
+        <Suspense fallback={<PageLoadingFallback />}>
+          {children}
+        </Suspense>
+      </AppLayout>
     </ProtectedRoute>
   )
 }
@@ -78,24 +100,24 @@ function App() {
                 {/* Protected routes with app layout */}
                 <Route path="/" element={<ProtectedPage><Dashboard /></ProtectedPage>} />
                 <Route path="/contacts" element={<ProtectedPage><ContactList /></ProtectedPage>} />
-                <Route path="/contacts/new" element={<ProtectedPage><ContactForm /></ProtectedPage>} />
+                <Route path="/contacts/new" element={<ProtectedPage requiredRole="staff"><ContactForm /></ProtectedPage>} />
                 <Route path="/contacts/:id" element={<ProtectedPage><ContactDetail /></ProtectedPage>} />
-                <Route path="/contacts/:id/edit" element={<ProtectedPage><ContactForm /></ProtectedPage>} />
+                <Route path="/contacts/:id/edit" element={<ProtectedPage requiredRole="staff"><ContactForm /></ProtectedPage>} />
                 <Route path="/donations" element={<ProtectedPage><DonationList /></ProtectedPage>} />
-                <Route path="/donations/new" element={<ProtectedPage><DonationForm /></ProtectedPage>} />
+                <Route path="/donations/new" element={<ProtectedPage requiredRole="staff"><DonationForm /></ProtectedPage>} />
                 <Route path="/donations/:id" element={<ProtectedPage><DonationDetail /></ProtectedPage>} />
-                <Route path="/donations/:id/edit" element={<ProtectedPage><DonationForm /></ProtectedPage>} />
+                <Route path="/donations/:id/edit" element={<ProtectedPage requiredRole="staff"><DonationForm /></ProtectedPage>} />
                 <Route path="/pledges" element={<ProtectedPage><PledgeList /></ProtectedPage>} />
-                <Route path="/pledges/new" element={<ProtectedPage><PledgeForm /></ProtectedPage>} />
+                <Route path="/pledges/new" element={<ProtectedPage requiredRole="staff"><PledgeForm /></ProtectedPage>} />
                 <Route path="/pledges/:id" element={<ProtectedPage><PledgeDetail /></ProtectedPage>} />
-                <Route path="/pledges/:id/edit" element={<ProtectedPage><PledgeForm /></ProtectedPage>} />
+                <Route path="/pledges/:id/edit" element={<ProtectedPage requiredRole="staff"><PledgeForm /></ProtectedPage>} />
                 <Route path="/tasks" element={<ProtectedPage><TaskList /></ProtectedPage>} />
-                <Route path="/tasks/new" element={<ProtectedPage><TaskForm /></ProtectedPage>} />
+                <Route path="/tasks/new" element={<ProtectedPage requiredRole="staff"><TaskForm /></ProtectedPage>} />
                 <Route path="/tasks/:id" element={<ProtectedPage><TaskDetail /></ProtectedPage>} />
-                <Route path="/tasks/:id/edit" element={<ProtectedPage><TaskForm /></ProtectedPage>} />
+                <Route path="/tasks/:id/edit" element={<ProtectedPage requiredRole="staff"><TaskForm /></ProtectedPage>} />
                 <Route path="/groups" element={<ProtectedPage><GroupList /></ProtectedPage>} />
                 <Route path="/groups/:id" element={<ProtectedPage><GroupDetail /></ProtectedPage>} />
-                <Route path="/groups/:id/edit" element={<ProtectedPage><GroupForm /></ProtectedPage>} />
+                <Route path="/groups/:id/edit" element={<ProtectedPage requiredRole="staff"><GroupForm /></ProtectedPage>} />
                 <Route path="/journals" element={<ProtectedPage><JournalList /></ProtectedPage>} />
                 <Route path="/journals/:id" element={<ProtectedPage><JournalDetail /></ProtectedPage>} />
                 <Route path="/prayer" element={<ProtectedPage><PrayerList /></ProtectedPage>} />
@@ -114,7 +136,7 @@ function App() {
                 <Route path="/admin/analytics/dashboard" element={<ProtectedPage requiredRole="admin"><AdminAnalyticsDashboard /></ProtectedPage>} />
                 <Route path="/admin/analytics/stalled" element={<ProtectedPage requiredRole="admin"><StalledContacts /></ProtectedPage>} />
                 <Route path="/admin/analytics/users/:id" element={<ProtectedPage requiredRole="admin"><UserDetail /></ProtectedPage>} />
-                <Route path="/import-export" element={<ProtectedPage><ImportExport /></ProtectedPage>} />
+                <Route path="/import-export" element={<ProtectedPage requiredRole="staff"><ImportExport /></ProtectedPage>} />
 
                 {/* Catch-all redirect */}
                 <Route path="*" element={<Navigate to="/" replace />} />
