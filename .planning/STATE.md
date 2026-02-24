@@ -11,16 +11,16 @@ See: .planning/PROJECT.md (updated 2026-02-20)
 
 Milestone: v2.0 -- Import Revamp, Prayer Intentions & Dashboard Polish
 Phase: 36 of 37 (Full Stack Audit)
-Plan: 5 of 6 in current phase
+Plan: 6 of 6 in current phase
 Status: In Progress
-Last activity: 2026-02-24 -- Completed 36-04 (Code Quality Audit)
+Last activity: 2026-02-24 -- Completed 36-05 (UI/UX Dark Mode & Accessibility Audit)
 
-Progress: [█████████████████████░░░░░░░░░░░] 67% (4/6 plans in phase 36)
+Progress: [███████████████████████████░░░░░] 83% (5/6 plans in phase 36)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 98 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3 + 21 v2.0)
+- Total plans completed: 99 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3 + 22 v2.0)
 - Average duration: ~3.9 minutes
 - Total execution time: ~5.1 hours
 
@@ -55,6 +55,7 @@ Progress: [█████████████████████░░
 | Phase 36 P02 | 8min | 2 tasks | 7 files |
 | Phase 36 P03 | 7min | 2 tasks | 4 files |
 | Phase 36 P04 | 6min | 2 tasks | 15 files |
+| Phase 36 P05 | 9min | 2 tasks | 32 files |
 
 ## Accumulated Context
 
@@ -116,6 +117,8 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 - [Phase 36]: Import parser fields sanitized via _sanitize_field (null bytes stripped, 10k char truncation)
 - [Phase 36]: All API error responses use {'detail'} format (DRF convention), not {'error'}
 - [Phase 36]: Frontend re-export shims (api/donations.ts, api/pledges.ts, hooks/useDonations.ts, hooks/usePledges.ts) deleted -- zero imports found
+- [Phase 36]: ActivityHeatmap uses light/dark color constant maps with useTheme hook (hex required by @uiw/react-heat-map)
+- [Phase 36]: TableHead scope="col" added as default in shared shadcn component for global table accessibility
 
 ### Roadmap Evolution
 
@@ -142,10 +145,10 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 ## Session Continuity
 
 Last session: 2026-02-24
-Stopped at: Completed 36-04-PLAN.md
-Resume file: .planning/phases/36-full-stack-audit/36-04-SUMMARY.md
-Resume: Continue with 36-05-PLAN.md
+Stopped at: Completed 36-05-PLAN.md
+Resume file: .planning/phases/36-full-stack-audit/36-05-SUMMARY.md
+Resume: Continue with 36-06-PLAN.md
 
 ---
 
-*Last updated: 2026-02-24 (Phase 36 Plan 04 complete)*
+*Last updated: 2026-02-24 (Phase 36 Plan 05 complete)*
