@@ -11,16 +11,16 @@ See: .planning/PROJECT.md (updated 2026-02-20)
 
 Milestone: v2.0 -- Import Revamp, Prayer Intentions & Dashboard Polish
 Phase: 36 of 37 (Full Stack Audit)
-Plan: 4 of 6 in current phase
+Plan: 5 of 6 in current phase
 Status: In Progress
-Last activity: 2026-02-24 -- Completed 36-03 (Performance Audit)
+Last activity: 2026-02-24 -- Completed 36-04 (Code Quality Audit)
 
-Progress: [████████████████░░░░░░░░░░░░░░░░] 50% (3/6 plans in phase 36)
+Progress: [█████████████████████░░░░░░░░░░░] 67% (4/6 plans in phase 36)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 97 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3 + 20 v2.0)
+- Total plans completed: 98 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3 + 21 v2.0)
 - Average duration: ~3.9 minutes
 - Total execution time: ~5.1 hours
 
@@ -54,6 +54,7 @@ Progress: [████████████████░░░░░░░
 | Phase 36 P01 | 5min | 2 tasks | 5 files |
 | Phase 36 P02 | 8min | 2 tasks | 7 files |
 | Phase 36 P03 | 7min | 2 tasks | 4 files |
+| Phase 36 P04 | 6min | 2 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -113,6 +114,8 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 - [Phase 36]: Shared get_safe_int_param/get_safe_year_param in apps/core/utils.py for all query param parsing
 - [Phase 36]: Write routes guarded with requiredRole="staff" to exclude read_only users
 - [Phase 36]: Import parser fields sanitized via _sanitize_field (null bytes stripped, 10k char truncation)
+- [Phase 36]: All API error responses use {'detail'} format (DRF convention), not {'error'}
+- [Phase 36]: Frontend re-export shims (api/donations.ts, api/pledges.ts, hooks/useDonations.ts, hooks/usePledges.ts) deleted -- zero imports found
 
 ### Roadmap Evolution
 
@@ -139,10 +142,10 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 ## Session Continuity
 
 Last session: 2026-02-24
-Stopped at: Completed 36-03-PLAN.md
-Resume file: .planning/phases/36-full-stack-audit/36-03-SUMMARY.md
-Resume: Continue with 36-04-PLAN.md
+Stopped at: Completed 36-04-PLAN.md
+Resume file: .planning/phases/36-full-stack-audit/36-04-SUMMARY.md
+Resume: Continue with 36-05-PLAN.md
 
 ---
 
-*Last updated: 2026-02-24 (Phase 36 Plan 03 complete)*
+*Last updated: 2026-02-24 (Phase 36 Plan 04 complete)*
