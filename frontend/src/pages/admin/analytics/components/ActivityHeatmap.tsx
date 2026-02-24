@@ -4,6 +4,7 @@ import HeatMap from "@uiw/react-heat-map"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useAdminActivityHeatmap } from "@/hooks/useInsights"
+import { useTheme } from "@/providers/ThemeProvider"
 
 interface ActivityHeatmapProps {
   dateParams?: {
@@ -12,8 +13,27 @@ interface ActivityHeatmapProps {
   }
 }
 
+const LIGHT_PANEL_COLORS: Record<number, string> = {
+  0: '#ebedf0',
+  2: '#c6e48b',
+  4: '#7bc96f',
+  10: '#239a3b',
+  20: '#196127',
+}
+
+const DARK_PANEL_COLORS: Record<number, string> = {
+  0: '#2d333b',
+  2: '#0e4429',
+  4: '#006d32',
+  10: '#26a641',
+  20: '#39d353',
+}
+
 export function ActivityHeatmap({ dateParams }: ActivityHeatmapProps) {
   const { data, isLoading } = useAdminActivityHeatmap(dateParams)
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === "dark"
+  const panelColors = isDark ? DARK_PANEL_COLORS : LIGHT_PANEL_COLORS
 
   // Transform data: replace hyphens with forward slashes for Safari compatibility
   const heatmapData = useMemo(() => {
@@ -87,29 +107,21 @@ export function ActivityHeatmap({ dateParams }: ActivityHeatmapProps) {
                   </Tooltip>
                 )
               }}
-              panelColors={{
-                0: '#ebedf0',
-                2: '#c6e48b',
-                4: '#7bc96f',
-                10: '#239a3b',
-                20: '#196127',
-              }}
+              panelColors={panelColors}
               rectProps={{
                 rx: 2,
               }}
               rectSize={14}
               space={3}
-              style={{ color: '#000' }}
+              style={{ color: isDark ? 'hsl(var(--muted-foreground))' : '#000' }}
             />
           </div>
           <div className="flex items-center justify-end gap-2 mt-4 text-xs text-muted-foreground">
             <span>Less</span>
             <div className="flex gap-1">
-              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#ebedf0' }} />
-              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#c6e48b' }} />
-              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#7bc96f' }} />
-              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#239a3b' }} />
-              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#196127' }} />
+              {Object.values(panelColors).map((color, i) => (
+                <div key={i} className="w-3 h-3 rounded-sm" style={{ backgroundColor: color }} />
+              ))}
             </div>
             <span>More</span>
           </div>
