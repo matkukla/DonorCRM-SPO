@@ -6,6 +6,8 @@ from rest_framework import permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.core.utils import get_safe_int_param, get_safe_year_param
+
 from apps.dashboard.services import (
     get_dashboard_summary,
     get_giving_summary,
@@ -101,7 +103,7 @@ class LateDonationsView(APIView):
     )
     def get(self, request):
         user = request.user
-        limit = int(request.query_params.get('limit', 10))
+        limit = get_safe_int_param(request, 'limit', default=10, min_val=1, max_val=100)
 
         late_donations = get_late_donations(user, limit=limit)
 
@@ -160,8 +162,8 @@ class RecentGiftsView(APIView):
     )
     def get(self, request):
         user = request.user
-        days = int(request.query_params.get('days', 30))
-        limit = int(request.query_params.get('limit', 10))
+        days = get_safe_int_param(request, 'days', default=30, min_val=1, max_val=365)
+        limit = get_safe_int_param(request, 'limit', default=10, min_val=1, max_val=100)
 
         gifts = get_recent_gifts(user, days=days, limit=limit)
 
@@ -199,8 +201,7 @@ class GivingSummaryView(APIView):
         parameters=[OpenApiParameter(name='year', description='Calendar year (default: current)', type=int)]
     )
     def get(self, request):
-        year = request.query_params.get('year')
-        year = int(year) if year else None
+        year = get_safe_year_param(request, 'year')
         return Response(get_giving_summary(request.user, year=year))
 
 
@@ -216,5 +217,5 @@ class MonthlyGiftsView(APIView):
         parameters=[OpenApiParameter(name='months', description='Number of months (default: 12)', type=int)]
     )
     def get(self, request):
-        months = int(request.query_params.get('months', 12))
+        months = get_safe_int_param(request, 'months', default=12, min_val=1, max_val=60)
         return Response(get_monthly_gifts(request.user, months=months))

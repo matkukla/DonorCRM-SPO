@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.permissions import IsAdmin, IsFinanceOrAdmin
+from apps.core.utils import get_safe_int_param, get_safe_year_param
 from apps.insights.services import (
     get_dashboard_overview,
     get_donations_by_month,
@@ -44,15 +45,6 @@ from apps.insights.serializers import (
 )
 
 
-def get_safe_int_param(request, key, default, min_val=1, max_val=1000):
-    """Safely parse integer query parameter with bounds."""
-    try:
-        value = int(request.query_params.get(key, default))
-    except (ValueError, TypeError):
-        return default
-    return max(min_val, min(value, max_val))
-
-
 class DonationsByMonthView(APIView):
     """
     GET: Get donation totals grouped by month for a year.
@@ -67,8 +59,7 @@ class DonationsByMonthView(APIView):
         ]
     )
     def get(self, request):
-        year = request.query_params.get('year')
-        year = int(year) if year else None
+        year = get_safe_year_param(request, 'year')
         return Response(get_donations_by_month(request.user, year=year))
 
 
@@ -86,7 +77,7 @@ class DonationsByYearView(APIView):
         ]
     )
     def get(self, request):
-        years = int(request.query_params.get('years', 5))
+        years = get_safe_int_param(request, 'years', default=5, min_val=1, max_val=50)
         return Response(get_donations_by_year(request.user, years=years))
 
 
@@ -115,7 +106,7 @@ class LateDonationsView(APIView):
         ]
     )
     def get(self, request):
-        limit = int(request.query_params.get('limit', 50))
+        limit = get_safe_int_param(request, 'limit', default=50, min_val=1, max_val=500)
         return Response(get_late_donations(request.user, limit=limit))
 
 
@@ -133,7 +124,7 @@ class FollowUpsView(APIView):
         ]
     )
     def get(self, request):
-        limit = int(request.query_params.get('limit', 50))
+        limit = get_safe_int_param(request, 'limit', default=50, min_val=1, max_val=500)
         return Response(get_follow_ups(request.user, limit=limit))
 
 
@@ -168,8 +159,8 @@ class TransactionsView(APIView):
         ]
     )
     def get(self, request):
-        limit = int(request.query_params.get('limit', 100))
-        offset = int(request.query_params.get('offset', 0))
+        limit = get_safe_int_param(request, 'limit', default=100, min_val=1, max_val=1000)
+        offset = get_safe_int_param(request, 'offset', default=0, min_val=0, max_val=100000)
         contact_id = request.query_params.get('contact_id')
 
         date_from = request.query_params.get('date_from')

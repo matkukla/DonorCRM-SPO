@@ -11,6 +11,7 @@ from rest_framework.views import APIView
 from django.http import StreamingHttpResponse
 
 from apps.core.permissions import IsAdmin
+from apps.core.utils import get_safe_int_param
 from apps.imports.services import sanitize_csv_value
 from apps.insights.services import get_stalled_contacts, get_team_activity
 
@@ -130,7 +131,7 @@ class TeamActivityCSVView(APIView):
         # Parse query parameters
         date_from = request.query_params.get('date_from')
         date_to = request.query_params.get('date_to')
-        limit = int(request.query_params.get('limit', 10000))
+        limit = get_safe_int_param(request, 'limit', default=10000, min_val=1, max_val=100000)
 
         # Validate date format if provided
         for param_name, param_val in [('date_from', date_from), ('date_to', date_to)]:
