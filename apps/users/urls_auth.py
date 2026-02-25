@@ -9,10 +9,21 @@ from rest_framework_simplejwt.views import (
 
 from apps.users.views_auth import LogoutView
 
+
+class ThrottledTokenObtainPairView(TokenObtainPairView):
+    """Login view with rate limiting to prevent brute-force attacks."""
+    throttle_scope = 'auth'
+
+
+class ThrottledTokenRefreshView(TokenRefreshView):
+    """Token refresh view with rate limiting."""
+    throttle_scope = 'auth'
+
+
 app_name = 'auth'
 
 urlpatterns = [
-    path('login/', TokenObtainPairView.as_view(), name='login'),
-    path('refresh/', TokenRefreshView.as_view(), name='token-refresh'),
+    path('login/', ThrottledTokenObtainPairView.as_view(), name='login'),
+    path('refresh/', ThrottledTokenRefreshView.as_view(), name='token-refresh'),
     path('logout/', LogoutView.as_view(), name='logout'),
 ]
