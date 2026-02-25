@@ -2,6 +2,7 @@
 API URL configuration for DonorCRM.
 All API endpoints are prefixed with /api/v1/
 """
+from django.conf import settings
 from django.http import JsonResponse
 from django.urls import include, path
 from drf_spectacular.views import (
@@ -9,6 +10,7 @@ from drf_spectacular.views import (
     SpectacularRedocView,
     SpectacularSwaggerView,
 )
+from rest_framework.permissions import IsAuthenticated
 
 
 def health_check(request):
@@ -16,14 +18,17 @@ def health_check(request):
     return JsonResponse({'status': 'ok'})
 
 
+# In production, require authentication for API docs; open in development
+schema_permission = [IsAuthenticated] if not settings.DEBUG else []
+
 urlpatterns = [
     # Health check
     path('health/', health_check, name='health-check'),
 
-    # API Documentation
-    path('schema/', SpectacularAPIView.as_view(), name='schema'),
-    path('docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
-    path('redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
+    # API Documentation (authenticated in production, open in development)
+    path('schema/', SpectacularAPIView.as_view(permission_classes=schema_permission), name='schema'),
+    path('docs/', SpectacularSwaggerView.as_view(url_name='schema', permission_classes=schema_permission), name='swagger-ui'),
+    path('redoc/', SpectacularRedocView.as_view(url_name='schema', permission_classes=schema_permission), name='redoc'),
 
     # Authentication
     path('auth/', include('apps.users.urls_auth')),
