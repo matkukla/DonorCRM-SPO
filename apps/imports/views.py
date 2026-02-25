@@ -12,9 +12,14 @@ from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.core.permissions import IsAdmin, IsFinanceOrAdmin
+from apps.core.permissions import IsAdmin, IsFinanceOrAdmin, IsStaffOrAbove
 from apps.imports.models import Fund, ImportBatchStatus, MPDSnapshot, MPDUpload
 from apps.imports.mpd_services import process_mpd_upload
+from apps.imports.generic_services import (
+    VALID_MATCH_BY,
+    import_generic_contacts,
+    import_generic_donations,
+)
 from apps.imports.re_services import (
     import_re_constituents,
     import_re_gifts,
@@ -866,6 +871,117 @@ class RESolicitorImportView(APIView):
             file_bytes=file_bytes,
             filename=file.name,
             uploaded_by=request.user,
+        )
+
+        return Response({
+            'batch_id': str(batch.id),
+            'status': batch.status,
+            'is_duplicate': batch.status == ImportBatchStatus.DUPLICATE,
+            'created_count': batch.created_count,
+            'updated_count': batch.updated_count,
+            'skipped_count': batch.skipped_count,
+            'error_count': batch.error_count,
+            'total_rows': batch.total_rows,
+            'summary': batch.summary,
+        })
+
+
+class GenericContactImportView(APIView):
+    """
+    POST: Import contacts from a generic CSV file.
+
+    Accepts CSV file upload with configurable contact matching strategy
+    (name, email, or external_id). Staff users and above can access.
+    Returns ImportBatch result in the same shape as RE import views.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsStaffOrAbove]
+    parser_classes = [MultiPartParser]
+
+    def post(self, request):
+        if 'file' not in request.FILES:
+            return Response(
+                {'detail': 'No file provided.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        file = request.FILES['file']
+        if file.size > MAX_UPLOAD_SIZE:
+            return Response(
+                {'detail': 'File too large (max 10 MB).'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        match_by = request.data.get('match_by', 'email')
+        if match_by not in VALID_MATCH_BY:
+            return Response(
+                {'detail': f'Invalid match_by value. Must be one of: {", ".join(VALID_MATCH_BY)}'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        file_bytes = file.read()
+
+        batch = import_generic_contacts(
+            file_bytes=file_bytes,
+            filename=file.name,
+            uploaded_by=request.user,
+            owner=request.user,
+            match_by=match_by,
+        )
+
+        return Response({
+            'batch_id': str(batch.id),
+            'status': batch.status,
+            'is_duplicate': batch.status == ImportBatchStatus.DUPLICATE,
+            'created_count': batch.created_count,
+            'updated_count': batch.updated_count,
+            'skipped_count': batch.skipped_count,
+            'error_count': batch.error_count,
+            'total_rows': batch.total_rows,
+            'summary': batch.summary,
+        })
+
+
+class GenericDonationImportView(APIView):
+    """
+    POST: Import donations from a generic CSV file.
+
+    Accepts CSV file upload with configurable contact matching strategy
+    (name, email, or external_id). Creates Gift records linked to
+    existing contacts. Staff users and above can access.
+    Returns ImportBatch result in the same shape as RE import views.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsStaffOrAbove]
+    parser_classes = [MultiPartParser]
+
+    def post(self, request):
+        if 'file' not in request.FILES:
+            return Response(
+                {'detail': 'No file provided.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        file = request.FILES['file']
+        if file.size > MAX_UPLOAD_SIZE:
+            return Response(
+                {'detail': 'File too large (max 10 MB).'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        match_by = request.data.get('match_by', 'email')
+        if match_by not in VALID_MATCH_BY:
+            return Response(
+                {'detail': f'Invalid match_by value. Must be one of: {", ".join(VALID_MATCH_BY)}'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        file_bytes = file.read()
+
+        batch = import_generic_donations(
+            file_bytes=file_bytes,
+            filename=file.name,
+            uploaded_by=request.user,
+            owner=request.user,
+            match_by=match_by,
         )
 
         return Response({
