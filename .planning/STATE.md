@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-25)
 ## Current Position
 
 Phase: 37-security-check -- Full Security Check
-Current Plan: 2 of 3
+Current Plan: 3 of 3
 Status: Executing
-Last activity: 2026-02-25 -- Completed 37-01 (auth hardening)
+Last activity: 2026-02-25 -- Completed 37-02 (security headers & API docs)
 
-Progress: [███████████░░░░░░░░░░░░░░░░░░░░░] 33% (1/3 plans complete)
+Progress: [███████████░░░░░░░░░░░░░░░░░░░░░] 67% (2/3 plans complete)
 
 ## Performance Metrics
 
@@ -32,6 +32,7 @@ Progress: [███████████░░░░░░░░░░░░
 | v1.2 (Phases 13-19) | 18 | 7 | 26 |
 | v1.3 (Phases 20-26) | 20 | 7 | 35 |
 | v2.0 (Phases 27-36) | 27 | 10 | 46 |
+| Phase 37 P02 | 3min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -43,6 +44,10 @@ Key v2.0 decisions preserved in milestones/v2.0-ROADMAP.md.
 
 - Phase 37-01: Used ScopedRateThrottle for per-endpoint rate limiting control
 - Phase 37-01: Set 100/min dev override to prevent throttling during development
+- Phase 37-02: Strict CSP (default-src: 'none') for Django API; excluded admin/docs from CSP
+- Phase 37-02: Skip Permissions-Policy on Django API (JSON-only); frontend only via render.yaml
+- Phase 37-02: Conditional API docs auth using settings.DEBUG flag
+- [Phase 37]: Strict CSP (default-src: none) for Django API; excluded admin/docs from CSP
 
 ### Roadmap Evolution
 
@@ -67,10 +72,10 @@ None active (all v2.0 blockers resolved).
 ## Session Continuity
 
 Last session: 2026-02-25
-Stopped at: Completed 37-01-PLAN.md
-Resume file: .planning/phases/37-security-check/37-01-SUMMARY.md
-Resume: Plan 37-01 complete. Continue with 37-02 (security headers).
+Stopped at: Completed 37-02-PLAN.md
+Resume file: .planning/phases/37-security-check/37-02-SUMMARY.md
+Resume: Plan 37-02 complete. Continue with 37-03 (dependency scanning and security report).
 
 ---
 
-*Last updated: 2026-02-25 (Phase 37 plan 01 complete)*
+*Last updated: 2026-02-25 (Phase 37 plan 02 complete)*
