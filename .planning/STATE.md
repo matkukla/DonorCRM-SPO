@@ -42,7 +42,7 @@ Key v2.0 decisions preserved in milestones/v2.0-ROADMAP.md.
 
 ### Roadmap Evolution
 
-No active milestone. Run `/gsd:new-milestone` to start the next one.
+- Phase 37 added: Full Security Check
 
 ### Pending Todos
 
@@ -63,8 +63,9 @@ None active (all v2.0 blockers resolved).
 ## Session Continuity
 
 Last session: 2026-02-25
-Stopped at: v2.0 milestone archived
-Resume: No active milestone. Run `/gsd:new-milestone` to start next version.
+Stopped at: Phase 37 context gathered
+Resume file: .planning/phases/37-security-check/37-CONTEXT.md
+Resume: Phase 37 context captured. Continue with /gsd:plan-phase 37.
 
 ---
 
