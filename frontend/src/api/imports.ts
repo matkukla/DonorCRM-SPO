@@ -109,6 +109,28 @@ export async function downloadDonationTemplate(): Promise<void> {
   downloadFile(response.data, "donation_import_template.csv", "text/csv")
 }
 
+// Generic Import types
+export type GenericImportType = 'contacts' | 'donations'
+
+const GENERIC_IMPORT_ENDPOINTS: Record<GenericImportType, string> = {
+  contacts: '/imports/generic/contacts/',
+  donations: '/imports/generic/donations/',
+}
+
+export async function importGeneric(
+  importType: GenericImportType,
+  file: File,
+  matchBy: string = 'email',
+): Promise<REImportResponse> {
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('match_by', matchBy)
+  const response = await apiClient.post(GENERIC_IMPORT_ENDPOINTS[importType], formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return response.data
+}
+
 // RE Import types
 export type REImportType = 'constituent' | 'solicitor' | 'gift' | 'recurring_gift'
 
