@@ -103,7 +103,7 @@ See milestones/v2.0-ROADMAP.md for complete phase details.
 
 **Goal:** Harden DonorCRM against common security vulnerabilities (auth brute-force, missing headers, broken token rotation, weak passwords, known CVEs) with a documented security report
 **Depends on:** Phase 36
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
 - [ ] 37-01-PLAN.md -- Auth hardening: rate limiting, refresh token rotation fix, password validator
