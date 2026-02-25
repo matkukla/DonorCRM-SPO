@@ -5,22 +5,22 @@
 See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core value:** Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems, and leadership can proactively support their teams through cross-missionary analytics.
-**Current focus:** Phase 36 - Full Stack Audit (v2.0)
+**Current focus:** Phase 35 - Generic CSV Import (v2.0)
 
 ## Current Position
 
 Milestone: v2.0 -- Import Revamp, Prayer Intentions & Dashboard Polish
-Phase: 36 of 37 (Full Stack Audit)
-Plan: 6 of 6 in current phase (COMPLETE)
-Status: Phase Complete
-Last activity: 2026-02-24 -- Completed 36-06 (Tests, API Consistency, Audit Report & Checklist)
+Phase: 35 of 37 (Generic CSV Import)
+Plan: 1 of 2 in current phase
+Status: In Progress
+Last activity: 2026-02-25 -- Completed 35-01 (Generic CSV Import Backend)
 
-Progress: [████████████████████████████████] 100% (6/6 plans in phase 36)
+Progress: [████████████████                ] 50% (1/2 plans in phase 35)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 100 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3 + 23 v2.0)
+- Total plans completed: 101 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3 + 24 v2.0)
 - Average duration: ~3.9 minutes
 - Total execution time: ~5.1 hours
 
@@ -57,6 +57,7 @@ Progress: [███████████████████████
 | Phase 36 P04 | 6min | 2 tasks | 15 files |
 | Phase 36 P05 | 9min | 2 tasks | 32 files |
 | Phase 36 P06 | 7min | 2 tasks | 5 files |
+| Phase 35 P01 | 6min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -120,6 +121,9 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 - [Phase 36]: Frontend re-export shims (api/donations.ts, api/pledges.ts, hooks/useDonations.ts, hooks/usePledges.ts) deleted -- zero imports found
 - [Phase 36]: ActivityHeatmap uses light/dark color constant maps with useTheme hook (hex required by @uiw/react-heat-map)
 - [Phase 36]: TableHead scope="col" added as default in shared shadcn component for global table accessibility
+- [Phase 35]: Generic import uses configurable match_by parameter (name, email, external_id) with header alias dicts reusing RE utilities
+- [Phase 35]: Staff users (not just admin) can access generic import endpoints via IsStaffOrAbove permission
+- [Phase 35]: Gift.objects.create has no owner field -- ownership is implicit through donor_contact.owner
 
 ### Roadmap Evolution
 
@@ -145,11 +149,11 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 
 ## Session Continuity
 
-Last session: 2026-02-24
-Stopped at: Completed 36-06-PLAN.md (Phase 36 complete)
-Resume file: .planning/phases/36-full-stack-audit/36-06-SUMMARY.md
-Resume: Phase 36 complete. Continue with Phase 37 if applicable.
+Last session: 2026-02-25
+Stopped at: Completed 35-01-PLAN.md
+Resume file: .planning/phases/35-generic-csv-import/35-01-SUMMARY.md
+Resume: Continue with Phase 35 Plan 02 (frontend integration).
 
 ---
 
-*Last updated: 2026-02-24 (Phase 36 Plan 06 complete -- Phase 36 fully complete)*
+*Last updated: 2026-02-25 (Phase 35 Plan 01 complete)*
