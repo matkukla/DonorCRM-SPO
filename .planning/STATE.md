@@ -11,16 +11,16 @@ See: .planning/PROJECT.md (updated 2026-02-20)
 
 Milestone: v2.0 -- Import Revamp, Prayer Intentions & Dashboard Polish
 Phase: 35 of 37 (Generic CSV Import)
-Plan: 1 of 2 in current phase
-Status: In Progress
-Last activity: 2026-02-25 -- Completed 35-01 (Generic CSV Import Backend)
+Plan: 2 of 2 in current phase
+Status: Phase Complete
+Last activity: 2026-02-25 -- Completed 35-02 (Generic CSV Import Frontend)
 
-Progress: [████████████████                ] 50% (1/2 plans in phase 35)
+Progress: [████████████████████████████████] 100% (2/2 plans in phase 35)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 101 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3 + 24 v2.0)
+- Total plans completed: 102 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3 + 25 v2.0)
 - Average duration: ~3.9 minutes
 - Total execution time: ~5.1 hours
 
@@ -58,6 +58,7 @@ Progress: [████████████████                ] 50%
 | Phase 36 P05 | 9min | 2 tasks | 32 files |
 | Phase 36 P06 | 7min | 2 tasks | 5 files |
 | Phase 35 P01 | 6min | 2 tasks | 4 files |
+| Phase 35 P02 | 2min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -124,6 +125,8 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 - [Phase 35]: Generic import uses configurable match_by parameter (name, email, external_id) with header alias dicts reusing RE utilities
 - [Phase 35]: Staff users (not just admin) can access generic import endpoints via IsStaffOrAbove permission
 - [Phase 35]: Gift.objects.create has no owner field -- ownership is implicit through donor_contact.owner
+- [Phase 35]: GenericImportCard follows REImportTab pattern but simplified (no CSV header reference, uses mutateAsync with matchBy param)
+- [Phase 35]: Reuses REImportResponse type since backend returns same shape for generic and RE imports
 
 ### Roadmap Evolution
 
@@ -150,10 +153,10 @@ v2.0 key decision: REPLACE Donation/Pledge with Gift/RecurringGift (full data mi
 ## Session Continuity
 
 Last session: 2026-02-25
-Stopped at: Completed 35-01-PLAN.md
-Resume file: .planning/phases/35-generic-csv-import/35-01-SUMMARY.md
-Resume: Continue with Phase 35 Plan 02 (frontend integration).
+Stopped at: Completed 35-02-PLAN.md
+Resume file: .planning/phases/35-generic-csv-import/35-02-SUMMARY.md
+Resume: Phase 35 complete. Continue with next phase.
 
 ---
 
-*Last updated: 2026-02-25 (Phase 35 Plan 01 complete)*
+*Last updated: 2026-02-25 (Phase 35 Plan 02 complete)*

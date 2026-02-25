@@ -81,7 +81,7 @@ See milestones/v1.3-ROADMAP.md for complete phase details.
 - [x] **Phase 32: Import UI** - Build Import/Export page with RE import tabs, generic CSV import, drag-and-drop upload, and import history (completed 2026-02-23)
 - [x] **Phase 33: Prayer Intentions** - Build Prayer Intentions page, CRUD API, contact detail tab, and status tracking (completed 2026-02-23)
 - [x] **Phase 34: Dashboard Polish** - Draggable dashboard tiles and dashboard queries updated to Gift/RecurringGift (completed 2026-02-23)
-- [ ] **Phase 35: Generic CSV Import** - Generic CSV import for contacts and donations with matching and dedup
+- [x] **Phase 35: Generic CSV Import** - Generic CSV import for contacts and donations with matching and dedup (completed 2026-02-25)
 - [x] **Phase 36: Full-Stack Audit** - Comprehensive security, performance, code quality, UI/UX, and API audit across all v2.0 code paths (completed 2026-02-24)
 
 ## Phase Details
@@ -265,7 +265,7 @@ Note: Phase 30 depends on Phase 27 only (not 28/29), so it could run after 27. H
 | 32. Import UI | 3/3 | Complete    | 2026-02-23 | - |
 | 33. Prayer Intentions | 3/3 | Complete    | 2026-02-23 | - |
 | 34. Dashboard Polish | v2.0 | Complete    | 2026-02-23 | 2026-02-23 |
-| 35. Generic CSV Import | 1/2 | In Progress|  | - |
+| 35. Generic CSV Import | 2/2 | Complete   | 2026-02-25 | - |
 | 36. Full-Stack Audit | 6/6 | Complete   | 2026-02-24 | - |
 
 **Total:** 4 milestones shipped (77 plans), 1 milestone in progress (v2.0: 10 phases, 46 requirements)
@@ -274,7 +274,7 @@ Note: Phase 30 depends on Phase 27 only (not 28/29), so it could run after 27. H
 
 **Goal:** [To be planned]
 **Depends on:** Phase 36
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] TBD (run /gsd:plan-phase 37 to break down)
