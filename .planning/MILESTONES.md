@@ -119,41 +119,68 @@ Enable Smartsheet file import with column mapping, add comprehensive filtering a
 
 ---
 
-## Active Milestones
-
-### v2.0 -- Import Revamp, Prayer Intentions & Dashboard Polish (In Progress)
-**Started:** 2026-02-20
+### v2.0 -- Import Revamp, Prayer Intentions & Dashboard Polish
+**Completed:** 2026-02-25
+**Duration:** 5 days (2026-02-20 -> 2026-02-25)
 
 Replace the existing Donation/Pledge system with Gift/RecurringGift models, build a Raiser's Edge CSV import pipeline, add prayer intentions tracking, and make dashboard tiles draggable.
 
 **Scope:**
-- 46 requirements defined
-- 10 phases planned (27-36)
-- Plans: TBD (pending phase planning)
+- 46 requirements implemented
+- 10 phases executed (27-36)
+- 27 plans completed
 
 **Key Features:**
 - Gift/RecurringGift models replacing Donation/Pledge (full data migration)
-- Raiser's Edge CSV import (4 types: Constituent, Solicitor, Gift, Recurring Gift)
-- Solicitor model with auto-linking to User accounts
-- SHA256-based import deduplication (ImportBatch)
-- Gift credit splitting (one gift credits multiple missionaries)
-- Prayer Intentions tied to contacts (with auto-creation from RE gift descriptions)
-- Draggable dashboard tiles (session-only)
-- Generic CSV import for contacts and donations
-- UI rename: "Donations" -> "Gifts", "Pledges" -> "Recurring Gifts"
+- Raiser's Edge CSV import pipeline (4 types: Constituent, Solicitor, Gift, Recurring Gift)
+- Generic CSV import (contacts, donations) with configurable matching
+- Solicitor model with auto-linking and credit splitting
+- Prayer Intentions with Focus Mode, Today's Focus, contact integration
+- Draggable dashboard tiles (dnd-kit)
+- Full-stack audit: 52 issues fixed (security, performance, code quality, UI/UX)
 
-**Phases:**
-- Phase 27: Foundation Models
-- Phase 28: RE Import Pipeline (Constituents & Solicitors)
-- Phase 29: RE Import Pipeline (Gifts & Recurring Gifts)
-- Phase 30: Data Migration & Backend Cutover
-- Phase 31: Gift & Recurring Gift UI
-- Phase 32: Import UI
-- Phase 33: Prayer Intentions
-- Phase 34: Dashboard Polish
-- Phase 35: Generic CSV Import
-- Phase 36: Full-Stack Audit
+**Archives:**
+- [v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md)
+- [v2.0-REQUIREMENTS.md](milestones/v2.0-REQUIREMENTS.md)
+- [v2.0-MILESTONE-AUDIT.md](milestones/v2.0-MILESTONE-AUDIT.md)
+
+**Git Tag:** v2.0
 
 ---
 
-*Last updated: 2026-02-20 (v2.0 milestone roadmap created)*
+### v2.1 -- Security Hardening
+**Completed:** 2026-02-25
+
+Harden DonorCRM against common security vulnerabilities identified in Phase 36's full-stack audit.
+
+**Scope:**
+- 1 phase executed (37)
+- 3 plans completed, 6 tasks
+- 20 files changed, +845 lines
+
+**Key Features:**
+- Auth rate limiting (5/min via DRF ScopedRateThrottle) on login and token refresh
+- Fixed broken refresh token rotation in frontend (both tokens stored after refresh)
+- Custom password validator requiring letters + numbers
+- Content-Security-Policy via django-csp in production
+- Referrer-Policy and Permissions-Policy on frontend static site
+- API docs gated behind authentication in production
+- 8 Python CVEs patched (Django 4.2.28, gunicorn 22.x)
+- 3 JS CVEs patched (axios, minimatch, ajv)
+- Comprehensive SECURITY-REPORT.md with 12 findings documented
+
+**Archives:**
+- [v2.1-ROADMAP.md](milestones/v2.1-ROADMAP.md)
+
+**Git Tag:** v2.1
+
+---
+
+## Active Milestones
+
+_No active milestones. Run `/gsd:new-milestone` to start the next one._
+
+---
+
+*Last updated: 2026-02-25 (v2.1 shipped)*
+

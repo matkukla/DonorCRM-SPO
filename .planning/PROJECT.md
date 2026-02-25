@@ -8,28 +8,28 @@ A donor relationship management system for missionaries. Includes contact manage
 
 Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems, and leadership can proactively support their teams through cross-missionary analytics.
 
-## Current State (after v2.0)
+## Current State (after v2.1)
 
-- **Backend:** Django 4.2 + DRF, ~26,000 LOC Python (excluding migrations), 9 apps (contacts, gifts, prayers, tasks, journals, insights, users, imports, core)
+- **Backend:** Django 4.2.28 + DRF, ~26,000 LOC Python (excluding migrations), 9 apps (contacts, gifts, prayers, tasks, journals, insights, users, imports, core)
 - **Frontend:** React 19 + TypeScript + Vite, ~24,000 LOC TypeScript
 - **Database:** PostgreSQL with Django ORM, UUID primary keys
 - **UI:** Tailwind CSS + Radix UI components, Recharts for charts, @uiw/react-heat-map for heatmap, @dnd-kit for drag-and-drop, TanStack Table for sorting
 - **Filtering:** django-filter 24.3 backend, nuqs URL state frontend, FilterBar shared component
 - **Import systems:** Raiser's Edge CSV (4 types), Generic CSV (contacts, donations), Smartsheet MPD (Excel/CSV)
-- **Total milestones shipped:** 5 (v1.0, v1.1, v1.2, v1.3, v2.0)
-- **Total plans executed:** 104 across 36 phases
+- **Security:** Rate-limited auth (5/min), CSP headers (django-csp), authenticated API docs, security-scanned dependencies
+- **Total milestones shipped:** 6 (v1.0, v1.1, v1.2, v1.3, v2.0, v2.1)
+- **Total plans executed:** 107 across 37 phases
 
-### What's New in v2.0
+### What's New in v2.1
 
-- Gift/RecurringGift models replacing Donation/Pledge (full data migration)
-- Raiser's Edge CSV import pipeline (Constituent, Solicitor, Gift, Recurring Gift)
-- Generic CSV import (contacts, donations) with configurable matching
-- Solicitor model with auto-linking to User accounts and credit splitting
-- SHA256-based import deduplication (ImportBatch)
-- Prayer Intentions with Focus Mode, Today's Focus rotation, contact integration
-- Draggable dashboard tiles (dnd-kit, session-only persistence)
-- Full-stack audit: 52 issues fixed across security, performance, code quality, UI/UX
-- React.lazy code splitting for 12 pages, Vite vendor chunking
+- Auth rate limiting (5/min) via DRF ScopedRateThrottle on login and token refresh
+- Fixed refresh token rotation (frontend stores both access + refresh tokens)
+- Custom AlphanumericPasswordValidator (requires letters + numbers)
+- Content-Security-Policy via django-csp in production
+- Referrer-Policy and Permissions-Policy on frontend static site
+- API docs (schema/swagger/redoc) gated behind authentication in production
+- 8 Python CVEs + 3 JS CVEs patched
+- bandit and pip-audit added as dev dependencies for CI security scanning
 
 ## Requirements
 
@@ -107,6 +107,15 @@ Missionaries can manage donor relationships efficiently, with accurate data impo
 - ✓ Prayer Intentions page with Focus Mode and contact integration — v2.0
 - ✓ Draggable dashboard tiles with dnd-kit — v2.0
 - ✓ Full-stack audit (security, performance, code quality, UI/UX, API consistency) — v2.0
+- ✓ Auth endpoint rate limiting (ScopedRateThrottle, 5/min production) — v2.1
+- ✓ Refresh token rotation fix (both tokens stored after refresh) — v2.1
+- ✓ Custom password validator (letters + numbers required) — v2.1
+- ✓ Content-Security-Policy via django-csp in production — v2.1
+- ✓ Security headers on frontend static site (CSP, Referrer-Policy, Permissions-Policy) — v2.1
+- ✓ API docs authentication gate in production — v2.1
+- ✓ Python dependency CVE patches (Django 4.2.28, gunicorn 22.x) — v2.1
+- ✓ JS dependency CVE patches (axios, minimatch, ajv) — v2.1
+- ✓ Security audit report (SECURITY-REPORT.md) — v2.1
 
 ### Active
 
@@ -186,6 +195,10 @@ _No active milestone. Run `/gsd:new-milestone` to start the next one._
 | Desktop-only drag for dashboard (v2.0) | PointerSensor only per user decision | ✓ Good |
 | Configurable match_by for generic import (v2.0) | Supports name, email, external_id matching strategies | ✓ Good |
 | React.lazy code splitting for 12 pages (v2.0) | Reduces initial bundle, improves first load | ✓ Good |
+| ScopedRateThrottle for auth endpoints (v2.1) | Per-endpoint control via throttle_scope, 100/min dev override | ✓ Good |
+| Strict CSP (default-src: 'none') for Django API (v2.1) | API serves JSON only; admin/docs excluded from CSP | ✓ Good |
+| Conditional API docs auth via settings.DEBUG (v2.1) | Open in dev for convenience, gated in production | ✓ Good |
+| django-csp 4.0 dict config format (v2.1) | CONTENT_SECURITY_POLICY dict with EXCLUDE_URL_PREFIXES | ✓ Good |
 
 ---
-*Last updated: 2026-02-25 after v2.0 shipped*
+*Last updated: 2026-02-25 after v2.1 shipped*
