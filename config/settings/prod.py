@@ -26,6 +26,9 @@ SECURE_HSTS_PRELOAD = True
 
 # Static files with Whitenoise
 MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')  # noqa: F405
+
+# Content-Security-Policy via django-csp (after SecurityMiddleware + WhiteNoise)
+MIDDLEWARE.insert(2, 'csp.middleware.CSPMiddleware')  # noqa: F405
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Sentry for error tracking
@@ -75,6 +78,30 @@ else:
             'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
         }
     }
+
+# Content-Security-Policy directives (django-csp 4.0 format)
+# Strict policy for API responses (Django serves JSON, not HTML pages).
+# Admin and API docs are excluded because they use inline styles/scripts.
+CONTENT_SECURITY_POLICY = {
+    "EXCLUDE_URL_PREFIXES": ["/admin", "/api/v1/docs", "/api/v1/redoc"],
+    "DIRECTIVES": {
+        "default-src": ["'none'"],
+        "script-src": ["'self'"],
+        "style-src": ["'self'"],
+        "img-src": ["'self'"],
+        "connect-src": ["'self'"],
+        "frame-ancestors": ["'none'"],
+        "form-action": ["'self'"],
+        "base-uri": ["'self'"],
+    },
+}
+
+# Referrer-Policy (natively supported by Django SecurityMiddleware 4.2+)
+SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
+
+# Note: Permissions-Policy is not added to the Django API server because it is
+# primarily a browser-enforced policy for HTML pages. Django serves JSON API
+# responses. Permissions-Policy is set on the frontend static site via render.yaml.
 
 # Logging for production
 LOGGING['handlers']['console']['formatter'] = 'verbose'  # noqa: F405
