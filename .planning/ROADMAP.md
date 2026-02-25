@@ -220,7 +220,10 @@ Plans:
   1. User can upload a generic CSV of contacts with configurable matching (by name, email, or external ID) and dedup options
   2. User can upload a generic CSV of donations that links to existing contacts and triggers stat recalculation
   3. Both generic import types use the same row-level error reporting and result display as RE imports
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 35-01-PLAN.md — Backend: generic_services.py with contact/donation import orchestrators, API views, URL routes, and tests
+- [ ] 35-02-PLAN.md — Frontend: replace GenericImportSection placeholder with real import cards (FileDropZone, matching selector, ImportResultBanner)
 
 ### Phase 36: Full-Stack Audit
 **Goal**: All v2.0 code paths are audited for security vulnerabilities, performance bottlenecks, code quality issues, UI/UX gaps, and API inconsistencies
