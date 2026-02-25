@@ -2,15 +2,41 @@
 
 ## What This Is
 
-A donor relationship management system for missionaries. Includes contact management, donation tracking, pledge management, task system, Journal feature for fundraising campaign pipelines, SPO-compatible CSV import, Smartsheet MPD report import, comprehensive list page filtering with URL-based state, and an Admin Analytics Dashboard for coaches and leadership to monitor missionary performance across the organization.
+A donor relationship management system for missionaries. Includes contact management, gift tracking (with solicitor credit splitting), recurring gift management, task system, Journal feature for fundraising campaign pipelines, Raiser's Edge and generic CSV import, Smartsheet MPD report import, prayer intentions tracking, comprehensive list page filtering with URL-based state, draggable dashboard tiles, and an Admin Analytics Dashboard for coaches and leadership to monitor missionary performance across the organization.
 
 ## Core Value
 
 Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems, and leadership can proactively support their teams through cross-missionary analytics.
 
+## Current State (after v2.0)
+
+- **Backend:** Django 4.2 + DRF, ~26,000 LOC Python (excluding migrations), 9 apps (contacts, gifts, prayers, tasks, journals, insights, users, imports, core)
+- **Frontend:** React 19 + TypeScript + Vite, ~24,000 LOC TypeScript
+- **Database:** PostgreSQL with Django ORM, UUID primary keys
+- **UI:** Tailwind CSS + Radix UI components, Recharts for charts, @uiw/react-heat-map for heatmap, @dnd-kit for drag-and-drop, TanStack Table for sorting
+- **Filtering:** django-filter 24.3 backend, nuqs URL state frontend, FilterBar shared component
+- **Import systems:** Raiser's Edge CSV (4 types), Generic CSV (contacts, donations), Smartsheet MPD (Excel/CSV)
+- **Total milestones shipped:** 5 (v1.0, v1.1, v1.2, v1.3, v2.0)
+- **Total plans executed:** 104 across 36 phases
+
+### What's New in v2.0
+
+- Gift/RecurringGift models replacing Donation/Pledge (full data migration)
+- Raiser's Edge CSV import pipeline (Constituent, Solicitor, Gift, Recurring Gift)
+- Generic CSV import (contacts, donations) with configurable matching
+- Solicitor model with auto-linking to User accounts and credit splitting
+- SHA256-based import deduplication (ImportBatch)
+- Prayer Intentions with Focus Mode, Today's Focus rotation, contact integration
+- Draggable dashboard tiles (dnd-kit, session-only persistence)
+- Full-stack audit: 52 issues fixed across security, performance, code quality, UI/UX
+- React.lazy code splitting for 12 pages, Vite vendor chunking
+
 ## Requirements
 
 ### Validated
+
+<details>
+<summary>v1.0-v1.3 requirements (68 items)</summary>
 
 - ✓ Contact management (CRUD, ownership, search, filtering) — existing
 - ✓ Donation tracking with automatic contact stat updates — existing
@@ -66,24 +92,25 @@ Missionaries can manage donor relationships efficiently, with accurate data impo
 - ✓ MPD financial snapshot storage with historical accumulation — v1.3
 - ✓ MPD data on admin dashboard and missionary personal views — v1.3
 
+</details>
+
+- ✓ Gift model replacing Donation with solicitor credit support and cents-based amounts — v2.0
+- ✓ RecurringGift model replacing Pledge with installment fields and status tracking — v2.0
+- ✓ Solicitor model with normalized name matching and User auto-linking — v2.0
+- ✓ ImportBatch model with SHA256 file deduplication — v2.0
+- ✓ PrayerIntention model with contact FK and status tracking — v2.0
+- ✓ RE CSV import pipeline (4 types) with encoding detection and row-level errors — v2.0
+- ✓ Generic CSV import for contacts and donations with configurable matching — v2.0
+- ✓ Data migration: Donation→Gift, Pledge→RecurringGift with UUID preservation — v2.0
+- ✓ Gift/RecurringGift UI with solicitor credits and expanded filters — v2.0
+- ✓ Unified Import/Export page with RE tabs, generic import, and history — v2.0
+- ✓ Prayer Intentions page with Focus Mode and contact integration — v2.0
+- ✓ Draggable dashboard tiles with dnd-kit — v2.0
+- ✓ Full-stack audit (security, performance, code quality, UI/UX, API consistency) — v2.0
+
 ### Active
 
-## Current Milestone: v2.0 — Import Revamp, Prayer Intentions & Dashboard Polish
-
-**Goal:** Replace the existing import/donation/pledge system with a Raiser's Edge-compatible import pipeline, add prayer intentions tracking, and make dashboard tiles draggable.
-
-**Target features:**
-- Raiser's Edge CSV import (4 types: Constituent, Solicitor, Gift, Recurring Gift)
-- Generic CSV import layer (contacts, donations)
-- Gift/RecurringGift models replacing Donation/Pledge
-- Solicitor model with auto-linking to User accounts
-- SHA256-based import deduplication (ImportBatch)
-- Gift credit splitting (one gift credits multiple missionaries)
-- Data migration: existing Donations → Gifts, Pledges → RecurringGifts
-- Prayer Intentions tied to contacts (with auto-creation from RE gift prayer descriptions)
-- Draggable dashboard tiles (session-only, no persistence)
-- UI rename: "Donations" → "Gifts", "Pledges" → "Recurring Gifts"
-- Update all dependent features (dashboard, contact stats, list pages, filters, exports)
+_No active milestone. Run `/gsd:new-milestone` to start the next one._
 
 ### Out of Scope
 
@@ -100,19 +127,10 @@ Missionaries can manage donor relationships efficiently, with accurate data impo
 - Import undo/rollback — snapshots are immutable; admin can re-upload corrected files
 - Automated Smartsheet API — manual monthly upload sufficient
 - Advanced filter query builder — stacked AND covers 95% of use cases
-- Multi-select filter dropdowns — complicates serialization; marginal value
+- Dashboard tile persistence (backend) — session-only sufficient for now
+- Prayer intention reminders/notifications — no notification infrastructure
 
 ## Context
-
-### Current State (after v1.3)
-- **Backend:** Django 4.2 + DRF, ~25,000 LOC Python (excluding migrations), 8 apps
-- **Frontend:** React 19 + TypeScript + Vite, ~23,000 LOC TypeScript, ~150 files
-- **Database:** PostgreSQL with Django ORM, UUID primary keys
-- **UI:** Tailwind CSS + Radix UI components, Recharts for charts, @uiw/react-heat-map for heatmap, TanStack Table for sorting
-- **Filtering:** django-filter 24.3 backend, nuqs URL state frontend, FilterBar shared component
-- **Import systems:** SPO CSV import (4 types) + Smartsheet MPD import (Excel/CSV)
-- **Total milestones shipped:** 4 (v1.0, v1.1, v1.2, v1.3)
-- **Total plans executed:** 77 across 26 phases
 
 ### Domain Context
 - Primary user: individual missionary fundraiser
@@ -125,13 +143,15 @@ Missionaries can manage donor relationships efficiently, with accurate data impo
 - Monthly Smartsheet MPD report tracks each missionary's fundraising financial health
 
 ### Data Model Decisions
-- Money stored in cents (integer) for precision
+- Money stored in cents (PositiveBigIntegerField) with Decimal amount_dollars property
+- Gift/RecurringGift models with solicitor credit splitting (GiftCredit/RecurringGiftCredit junction tables)
 - Decision has "current" table (unique per journal+contact) and "history" table
 - Stage events are append-only log entries, not state transitions
 - Next Steps are independent checklist items, not single boolean
 - Journal tasks link to existing Task model via journal_id foreign key
 - MPD financial fields use DecimalField (max_digits=12) for values like $71,352.72
 - MPDSnapshot accumulates per user per upload (no overwrite)
+- PrayerIntention uses M2M to gifts (multi-gift prayer dedup)
 
 ## Constraints
 
@@ -141,9 +161,9 @@ Missionaries can manage donor relationships efficiently, with accurate data impo
 - **UI framework**: Tailwind CSS + Radix UI primitives — match existing component library
 - **Charts**: Recharts for standard charts, @uiw/react-heat-map for heatmap
 - **Performance**: Report queries must avoid N+1; use select_related/prefetch_related and aggregation
-- **Compatibility**: New models must work with existing Contact, Task, User models
 - **Filtering**: Use django-filter 24.3 (NOT 25.2), nuqs for URL state, FilterBar for UI
 - **Dark mode**: All new UI must include dark: variants; use semantic Tailwind tokens
+- **Code splitting**: Heavy pages use React.lazy; large vendors in dedicated Vite chunks
 
 ## Key Decisions
 
@@ -152,24 +172,20 @@ Missionaries can manage donor relationships efficiently, with accurate data impo
 | Django/DRF over Node/Prisma | Follow existing codebase patterns | ✓ Good |
 | Link journal tasks to existing Task model | Avoid duplicate task systems, reuse existing UI | ✓ Good |
 | Owner + admin visibility for journals | Supports cross-missionary analytics | ✓ Good |
-| Contact "Journals" as new tab | Keep contact detail focused | ✓ Good |
 | Fixed 6-stage pipeline | Matches missionary fundraising workflow | ✓ Good |
 | Cents for money storage | Precision, no floating point issues | ✓ Good |
-| Extend insights app for analytics (v1.2) | Reuse existing service pattern, avoid new app | ✓ Good |
-| F() expressions for atomic updates (v1.2) | Prevents race conditions in concurrent writes | ✓ Good |
 | Database-level aggregation (v1.2) | <20 queries per endpoint, avoids N+1 | ✓ Good |
-| Subquery annotation for stalled detection (v1.2) | Efficient correlated query, includes zero-activity contacts | ✓ Good |
 | DRF permission classes over manual checks (v1.2) | Consistent enforcement, prevents ListAPIView bypass | ✓ Good |
-| StreamingHttpResponse for CSV export (v1.2) | Memory-efficient for large datasets | ✓ Good |
-| Client-side sort for small tables, server-side for large (v1.2) | Right tool for dataset size | ✓ Good |
-| URL param sync for date filters (v1.2) | Shareable dashboard URLs, browser back/forward works | ✓ Good |
-| django-filter 24.3 pinned (v1.3) | 25.2 requires Django 5.2+; individual DateFilters avoid suffix breaking change | ✓ Good |
+| django-filter 24.3 pinned (v1.3) | 25.2 requires Django 5.2+; individual DateFilters avoid suffix | ✓ Good |
 | nuqs for URL filter state (v1.3) | Type-safe parsers, shallow:false triggers React Query re-renders | ✓ Good |
-| Owner filter in get_queryset not FilterSet (v1.3) | Security: admin-only, avoids exposing filter to non-admins | ✓ Good |
-| OWASP single-quote prefix for CSV sanitization (v1.3) | Spreadsheet-native text-mode indicator, minimal disruption | ✓ Good |
-| Magic-byte format detection for MPD upload (v1.3) | No file extension check needed; handles both XLSX and CSV reliably | ✓ Good |
-| DecimalField for MPD financial data (v1.3) | Accurate representation of currency and percentage values | ✓ Good |
-| Duplicate user names → unmatched (v1.3) | Ambiguous match is worse than no match; admin resolves manually | ✓ Good |
+| Magic-byte format detection for MPD upload (v1.3) | No file extension check; handles XLSX and CSV reliably | ✓ Good |
+| REPLACE Donation/Pledge with Gift/RecurringGift (v2.0) | Full migration, not dual-model — cleaner long-term | ✓ Good |
+| Solicitor.user as ForeignKey not OneToOne (v2.0) | Many-to-one allows multiple solicitor records per user | ✓ Good |
+| PrayerIntention.gifts as M2M (v2.0) | Multi-gift prayer dedup without duplicate intentions | ✓ Good |
+| Old SPO import removed with 410 Gone (v2.0) | RE pipeline supersedes; clean break | ✓ Good |
+| Desktop-only drag for dashboard (v2.0) | PointerSensor only per user decision | ✓ Good |
+| Configurable match_by for generic import (v2.0) | Supports name, email, external_id matching strategies | ✓ Good |
+| React.lazy code splitting for 12 pages (v2.0) | Reduces initial bundle, improves first load | ✓ Good |
 
 ---
-*Last updated: 2026-02-20 after v2.0 milestone started*
+*Last updated: 2026-02-25 after v2.0 shipped*
