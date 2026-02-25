@@ -8,8 +8,10 @@ import {
   downloadDonationTemplate,
   getFunds,
   importRE,
+  importGeneric,
   getImportBatches,
   type REImportType,
+  type GenericImportType,
 } from "@/api/imports"
 
 export function useImportContacts() {
@@ -103,5 +105,22 @@ export function useImportBatches(importType?: string) {
     queryKey: ['importBatches', importType].filter(Boolean),
     queryFn: () => getImportBatches(importType),
     staleTime: 30 * 1000, // 30 seconds
+  })
+}
+
+// Generic Import Hook
+
+export function useGenericImport(importType: GenericImportType) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ file, matchBy }: { file: File; matchBy: string }) =>
+      importGeneric(importType, file, matchBy),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['importBatches'] })
+      queryClient.invalidateQueries({ queryKey: ['contacts'] })
+      queryClient.invalidateQueries({ queryKey: ['gifts'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    },
   })
 }
