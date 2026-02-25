@@ -6,7 +6,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from dateutil.relativedelta import relativedelta
-from django.db.models import Case, Count, DecimalField, F, Q, Sum, Value, When
+from django.db.models import Case, Count, DecimalField, ExpressionWrapper, F, Q, Sum, Value, When
 from django.db.models.functions import TruncMonth
 
 from apps.contacts.models import Contact
@@ -350,8 +350,15 @@ def get_dashboard_summary(user):
         'thank_you_queue': thank_you_list,
         'thank_you_count': thank_you_count,
         'support_progress': get_support_progress(user),
-        'recent_gifts': list(get_recent_gifts(user).values(
-            'id', 'amount_cents', 'gift_date', 'donor_contact_id',
+        'recent_gifts': list(get_recent_gifts(user).annotate(
+            amount=ExpressionWrapper(
+                F('amount_cents') / Value(100),
+                output_field=DecimalField(max_digits=12, decimal_places=2),
+            ),
+            date=F('gift_date'),
+            contact_id=F('donor_contact_id'),
+        ).values(
+            'id', 'amount', 'date', 'contact_id',
             'donor_contact__first_name', 'donor_contact__last_name'
         )),
         'journal_activity': get_recent_journal_activity(user),
