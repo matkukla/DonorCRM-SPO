@@ -27,6 +27,12 @@ CORS_ALLOW_ALL_ORIGINS = True
 SIMPLE_JWT['ACCESS_TOKEN_LIFETIME'] = timedelta(hours=1)  # noqa: F405
 SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'] = timedelta(days=30)  # noqa: F405
 
+# More permissive throttle rates for development
+REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = {  # noqa: F405
+    'auth': '100/min',
+    'password': '100/min',
+}
+
 # Email backend for development (console)
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 

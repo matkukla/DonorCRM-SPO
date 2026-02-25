@@ -115,6 +115,9 @@ AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
+    {
+        'NAME': 'apps.core.validators.AlphanumericPasswordValidator',
+    },
 ]
 
 # Internationalization
@@ -154,6 +157,13 @@ REST_FRAMEWORK = {
         'rest_framework.parsers.FormParser',
     ],
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.ScopedRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'auth': '5/min',
+        'password': '3/min',
+    },
 }
 
 # API Documentation (drf-spectacular)
