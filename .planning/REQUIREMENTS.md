@@ -27,8 +27,8 @@ Requirements for v2.0 milestone: Import Revamp, Prayer Intentions & Dashboard Po
 - [x] **IMP-05**: SHA256 idempotency -- re-uploading same file returns cached result without reprocessing
 - [x] **IMP-06**: Row-level error collection -- errors don't stop processing, final report shows all errors with row numbers
 - [x] **IMP-07**: Windows-1252 encoding detection with cascading fallback (UTF-8-sig, UTF-8, Windows-1252)
-- [ ] **IMP-08**: Generic CSV import for contacts with matching and dedup options
-- [ ] **IMP-09**: Generic CSV import for donations with contact linking and stat recalculation
+- [x] **IMP-08**: Generic CSV import for contacts with matching and dedup options
+- [x] **IMP-09**: Generic CSV import for donations with contact linking and stat recalculation
 - [x] **IMP-10**: Prayer intention auto-creation from RE gift description field during gift import
 
 ### Data Migration
@@ -126,8 +126,8 @@ Deferred to future releases.
 | IMP-05 | Phase 28 | Complete |
 | IMP-06 | Phase 28 | Complete |
 | IMP-07 | Phase 28 | Complete |
-| IMP-08 | Phase 35 | Pending |
-| IMP-09 | Phase 35 | Pending |
+| IMP-08 | Phase 35 | Complete |
+| IMP-09 | Phase 35 | Complete |
 | IMP-10 | Phase 29 | Complete |
 | MIG-01 | Phase 30 | Complete |
 | MIG-02 | Phase 30 | Complete |
