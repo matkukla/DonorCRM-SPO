@@ -103,8 +103,8 @@ apiClient.interceptors.response.use(
           refresh: refreshToken,
         })
 
-        const { access } = response.data
-        localStorage.setItem(ACCESS_TOKEN_KEY, access)
+        const { access, refresh } = response.data
+        setTokens(access, refresh)
 
         processQueue(null, access)
         originalRequest.headers.Authorization = `Bearer ${access}`
