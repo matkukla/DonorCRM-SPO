@@ -99,6 +99,17 @@ See milestones/v2.0-ROADMAP.md for complete phase details.
 
 **Total:** 5 milestones shipped, 104 plans executed across 36 phases
 
+### Phase 37: Full Security Check
+
+**Goal:** Harden DonorCRM against common security vulnerabilities (auth brute-force, missing headers, broken token rotation, weak passwords, known CVEs) with a documented security report
+**Depends on:** Phase 36
+**Plans:** 3 plans
+
+Plans:
+- [ ] 37-01-PLAN.md -- Auth hardening: rate limiting, refresh token rotation fix, password validator
+- [ ] 37-02-PLAN.md -- Security headers (CSP, Referrer-Policy) and API docs restriction
+- [ ] 37-03-PLAN.md -- Automated scanning (bandit, pip-audit, npm audit), secrets audit, SECURITY-REPORT.md
+
 ---
 
-*Last updated: 2026-02-25 (v2.0 milestone archived)*
+*Last updated: 2026-02-25 (Phase 37 planned)*
