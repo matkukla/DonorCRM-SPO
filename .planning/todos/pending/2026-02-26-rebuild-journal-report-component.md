@@ -20,11 +20,11 @@ Key sections:
 Uses `journalsApi.getReport(journalId)` API endpoint with React Query. Recharts for charts. Specific hex colors for stages and decision statuses defined in the spec.
 
 Additional requirements from updated prompt:
-- **Stage ordering**: Keep Decision column between Close and Thank (not at the end)
-- **Decision functionality**: Add Decision column functionality after Next Steps
-- **Remove duplicate**: Remove the duplicate Decision section at the end
-- **Remove Pipeline Breakdown**: Remove the Pipeline Breakdown section from Reports
+- **Remove Decision column after Next Steps** — delete the duplicate Decision section at the end entirely
+- **Decision column between Close and Thank** — should allow adding a decision (not just a checkbox)
+- **Remove Pipeline Breakdown** — remove Pipeline Breakdown section from Reports
+- **Checkbox behavior** — when a checkbox is clicked, the box should be checked directly instead of requiring a logged event
 
 ## Solution
 
-Create/replace `JournalReport.tsx` per the detailed spec in `prompts/journal_report.md`. Includes loading skeleton, error state, responsive design, chart tooltips, and singular/plural alert text handling. Also reorder stages so Decision sits between Close and Thank, remove duplicate Decision section, and remove Pipeline Breakdown from the report.
+Create/replace `JournalReport.tsx` per the detailed spec in `prompts/journal_report.md`. Includes loading skeleton, error state, responsive design, chart tooltips, and singular/plural alert text handling. Also: remove duplicate Decision column after Next Steps, make the Decision column between Close/Thank support adding decisions, remove Pipeline Breakdown, and make checkboxes toggle directly on click.
