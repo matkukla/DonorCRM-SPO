@@ -49,7 +49,7 @@ Key v2.1 decisions: ScopedRateThrottle, strict CSP for API, conditional API docs
 
 ### Pending Todos
 
-0 pending todos. All 8 previous todos completed in v1.3-v2.0 milestones.
+1 pending todo(s). See `.planning/todos/pending/`.
 
 ### Blockers/Concerns
 
