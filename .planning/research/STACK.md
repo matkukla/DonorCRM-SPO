@@ -1,458 +1,468 @@
-# Technology Stack: v2.0 Additions
+# Technology Stack: v2.2 Additions
 
-**Project:** DonorCRM v2.0 -- RE Import Pipeline, Prayer Intentions, Dashboard Drag-and-Drop
-**Researched:** 2026-02-20
+**Project:** DonorCRM v2.2 -- UI Polish, Journal Report Rebuild & Mission Supervisor Role
+**Researched:** 2026-02-26
 **Confidence:** HIGH
 
-## Existing Stack (DO NOT re-research)
+## Summary
 
-| Layer | Technology | Version |
-|-------|-----------|---------|
-| Backend | Django 4.2 + DRF | 4.2.27 |
-| Frontend | React 19 + TypeScript + Vite | 19.2.0 / 5.9.3 / 7.2.4 |
-| Database | PostgreSQL + Django ORM | UUID PKs, TimeStampedModel |
-| UI | Tailwind 3.4 + Radix UI | Various |
-| Data | TanStack Query + TanStack Table | 5.90.17 / 8.21.3 |
-| CSV Frontend | react-papaparse | 4.4.0 |
-| Charts | Recharts | 3.6.0 |
-| Filtering | django-filter 24.3 + nuqs | Pinned (no Django 5.2) |
-| Auth | JWT (simplejwt) | Role-based |
-| Import | Existing SPO CSV pipeline | 4 types |
-| Async | Celery 5.6 + Redis | For large imports |
+v2.2 requires **zero new dependencies** -- no new npm packages, no new Python packages. Every feature (Mission Supervisor role, missionary dashboard selector, journal report rebuild with bar/donut charts and progress bars, Begin Prayer expansion, chart toggle) is fully achievable with the already-installed stack. This was verified by examining every installed package version and every existing usage pattern in the codebase.
 
-## New Stack Additions for v2.0
+---
 
-### 1. SHA256 File Hashing -- Python stdlib (NO new dependency)
+## Existing Stack (DO NOT re-research, DO NOT re-install)
 
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| `hashlib` (stdlib) | Python 3.12 built-in | SHA256 hash of uploaded CSV files for ImportBatch dedup | Zero dependency. Part of Python standard library since Python 2. `hashlib.sha256()` is implemented in C (OpenSSL binding), so performance is excellent even for 10MB files. Produces 64-char hex digest for DB storage. |
+| Layer | Technology | Version | v2.2 Relevance |
+|-------|-----------|---------|----------------|
+| Backend | Django 4.2.28 + DRF | 4.2.28 / 3.14+ | Supervisor role, M2M assignment, scoped querysets |
+| Frontend | React 19 + TypeScript + Vite | 19.2.0 / 5.9.3 / 7.2.4 | All UI features |
+| Database | PostgreSQL + Django ORM | UUID PKs, TimeStampedModel | User M2M relationship |
+| UI | Tailwind 3.4 + Radix UI | Various | All component styling |
+| Charts | Recharts | 3.6.0 | Journal report bar/donut, dashboard chart toggle |
+| Progress | @radix-ui/react-progress | 1.1.8 | Journal report goal progress bar |
+| Select | @radix-ui/react-select | 2.2.6 | Missionary dashboard selector |
+| Checkbox | @radix-ui/react-checkbox | 1.3.3 | Journal report direct-check behavior |
+| Dialog | @radix-ui/react-dialog | 1.1.15 | Modal centering fix, prayer UI |
+| Data | TanStack Query + TanStack Table | 5.90.17 / 8.21.3 | Data fetching, table rendering |
+| Filtering | django-filter 24.3 + nuqs | Pinned | URL state for missionary selector |
+| Auth | JWT (simplejwt) + role-based | 5.3+ | Role extension for supervisor |
+| DnD | @dnd-kit/core + sortable | 6.3.1 / 10.0.0 | Dashboard tile reordering (already works) |
+| Icons | lucide-react | 0.562.0 | Chart toggle icons, prayer icons |
+| Dates | date-fns | 4.1.0 | Journal report date formatting |
 
-**How it works in practice:**
+---
 
-```python
-import hashlib
+## Feature-by-Feature Stack Analysis
 
-def compute_sha256(file_bytes: bytes) -> str:
-    """Compute SHA256 hash of file content for dedup.
+### 1. Mission Supervisor Role -- Django model + permission changes (NO new dependency)
 
-    For files up to 10MB (our upload limit), reading the entire
-    buffer at once is fine. No need for chunked reading.
-    """
-    return hashlib.sha256(file_bytes).hexdigest()
-```
+**What's needed:** New `SUPERVISOR` role value, M2M relationship for supervisor-to-missionary assignments, scoped queryset filtering across all views.
 
-**Why not chunk-read:** The project already enforces a 10MB upload limit (`MAX_UPLOAD_SIZE = 10 * 1024 * 1024` in `apps/imports/views.py`). At 10MB, hashing the entire buffer in one call takes ~15ms. Chunked reading is only needed for files >100MB.
+| Component | Technology | Pattern Source |
+|-----------|-----------|----------------|
+| New role enum | `UserRole.SUPERVISOR = 'supervisor'` added to `TextChoices` | Follows existing `STAFF/ADMIN/FINANCE/READ_ONLY` in `apps/users/models.py:13-20` |
+| Supervisor-missionary M2M | `ManyToManyField('self', symmetrical=False)` on User model | Similar to `PrayerIntention.gifts` M2M pattern |
+| Scoped querysets | Extend existing role checks in `get_queryset()` across all view files | Pattern already in every view: contacts, journals, gifts, tasks, prayers, insights |
+| Permission classes | New `IsSupervisorOrAdmin` or extend `IsAdmin` | Follows existing `IsFinanceOrAdmin`, `IsStaffOrAbove` in `apps/core/permissions.py` |
+| Serializer/admin | Add `supervised_users` to `UserAdminUpdateSerializer` | Follows existing admin update pattern in `apps/users/serializers.py` |
 
-**DB storage:** The SHA256 hex digest is exactly 64 characters. Use `CharField(max_length=64)` on the `ImportBatch` model. Combined with `type` in a unique constraint: `UniqueConstraint(fields=['type', 'sha256'], name='unique_batch_per_type_sha256')`.
+**Why M2M on User model (not a FK):**
 
-**Confidence:** HIGH -- `hashlib` is Python stdlib, verified in Python 3.12 docs.
+A supervisor oversees multiple missionaries, and a missionary could theoretically have multiple supervisors. `ManyToManyField('self', symmetrical=False, related_name='supervisors', blank=True)` creates an auto-generated join table. This is more flexible than adding a `supervisor` FK on User, which would limit each missionary to one supervisor.
 
-### 2. CSV Parsing for Messy RE Exports -- Python stdlib `csv` module (NO new dependency)
+**Why NOT a separate assignment model with metadata:**
 
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| `csv` (stdlib) | Python 3.12 built-in | Parse Raiser's Edge CSV exports with messy quoting | Already used throughout `apps/imports/services.py`. The existing codebase uses `csv.DictReader` for all 6 import types. RE exports are well-formed enough for the stdlib -- they use standard RFC 4180 quoting (double-quote escaping). |
+The relationship is simple -- user-to-user with no extra data (no "assigned_date" or "role within supervision" needed). Django's built-in M2M join table is sufficient. If metadata is needed later, the M2M can be refactored to use a `through` model without breaking the API.
 
-**The "relaxed quotes" concern addressed:**
-
-The original prompt (from `prompts/CSV_import_system_2.md`) mentions `relax_quotes: true` from Node.js `csv-parse`. This is because Node's csv-parse is strict by default and chokes on fields like `"Prayer request with, comma"`. However, Python's `csv` module handles this correctly out of the box:
-
-- Python's `csv.DictReader` with default settings (`quoting=csv.QUOTE_MINIMAL`, `doublequote=True`) correctly handles:
-  - Fields containing commas wrapped in double quotes
-  - Fields with embedded double quotes (doubled: `""`)
-  - The "Gift Specific Attributes Prayer Requests Description" field which may contain commas
-
-- The existing codebase already parses CSVs with `csv.DictReader(io.StringIO(file_content))` and this works for all current import types including fields with commas.
-
-**One addition needed: UTF-8 BOM handling.** RE exports from Windows often have UTF-8 BOM (`\xef\xbb\xbf`). The existing fund/entity/transaction/pledge import views already decode with `utf-8-sig` (which strips BOM), but the contact/donation views use plain `utf-8`. All new RE import views should use `utf-8-sig`:
+**Queryset scoping pattern (exists in every view, add one `elif`):**
 
 ```python
-content = file.read().decode('utf-8-sig')  # Handles BOM from Windows/Excel exports
+# Current pattern in apps/contacts/views.py:56-68
+def get_queryset(self):
+    user = self.request.user
+    if user.role in ['admin', 'finance', 'read_only']:
+        qs = Contact.objects.all()
+    else:
+        qs = Contact.objects.filter(owner=user)
+
+# v2.2 extension -- add supervisor between admin and staff:
+def get_queryset(self):
+    user = self.request.user
+    if user.role in ['admin', 'finance', 'read_only']:
+        qs = Contact.objects.all()
+    elif user.role == 'supervisor':
+        qs = Contact.objects.filter(
+            owner__in=user.supervised_users.all()
+        )
+    else:
+        qs = Contact.objects.filter(owner=user)
 ```
 
-**If truly malformed CSVs are encountered:** Create a custom `csv.Dialect` rather than adding a third-party library:
+**Views that need the supervisor elif (verified count: ~25 get_queryset methods):**
+
+| App | File | Methods |
+|-----|------|---------|
+| contacts | `views.py` | 10 `get_queryset()` methods |
+| contacts | `export_views.py` | 1 queryset method |
+| journals | `views.py` | 11 `get_queryset()` methods |
+| journals | `export_views.py` | 1 queryset method |
+| gifts | `views.py` | Multiple queryset methods |
+| tasks | `views.py` | Multiple queryset methods |
+| prayers | `views.py` | Multiple queryset methods |
+| insights | `views.py` | Admin analytics endpoints |
+
+**Mixin approach to reduce repetition:**
 
 ```python
-class RaisersEdgeDialect(csv.Dialect):
-    delimiter = ','
-    quotechar = '"'
-    doublequote = True
-    skipinitialspace = True
-    lineterminator = '\r\n'
-    quoting = csv.QUOTE_MINIMAL
+# apps/core/mixins.py
+class ScopedQuerysetMixin:
+    """Mixin for owner-scoped querysets with supervisor support."""
+    owner_field = 'owner'  # Override in views where FK is different
 
-csv.register_dialect('raisers_edge', RaisersEdgeDialect)
-reader = csv.DictReader(io.StringIO(content), dialect='raisers_edge')
+    def get_scoped_queryset(self, base_qs):
+        user = self.request.user
+        if user.role in ['admin', 'finance', 'read_only']:
+            return base_qs
+        elif user.role == 'supervisor':
+            return base_qs.filter(
+                **{f'{self.owner_field}__in': user.supervised_users.all()}
+            )
+        return base_qs.filter(**{self.owner_field: user})
 ```
 
-**Confidence:** HIGH -- Python's `csv` module already handles RE CSV format correctly. Verified by examining the exact CSV headers from `prompts/CSV_import_system_2.md` against existing parsing patterns in `apps/imports/services.py`.
+**Should supervisors see their OWN data too?** Per the spec ("same access as Admin but can only see missionaries under them"), supervisors see ONLY their assigned missionaries' data, not their own (unless they are assigned to themselves). The admin does the assignment, so they can add the supervisor to their own list if needed. This avoids special-casing.
 
-### 3. Data Migration Tooling (Donation -> Gift, Pledge -> RecurringGift) -- Django migrations (NO new dependency)
+**Confidence:** HIGH -- Django `ManyToManyField('self')` is documented since Django 1.0. The queryset scoping pattern is proven across 25+ view methods in this codebase.
 
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| Django migrations (`RunPython`) | Django 4.2 built-in | Migrate data from Donation/Pledge tables to new Gift/RecurringGift tables | Django's migration framework handles schema changes and data migrations in a single, reversible, ordered pipeline. `RunPython` operations allow custom Python code within migrations. This is the standard Django pattern for model renames/replacements. |
+### 2. Missionary Dashboard Selector -- Radix Select + nuqs (NO new dependency)
 
-**Migration strategy -- New tables + data copy (NOT RenameModel):**
+**What's needed:** A dropdown on the Dashboard page allowing supervisors and admins to select a missionary and view their dashboard data.
 
-The v2.0 changes are NOT simple renames. The new models have structural differences:
-- `Gift` adds `external_gift_id`, `is_anonymous`, `payment_type`, `description` (prayer), `last_changed_at`, removes `pledge` FK, removes `thanked` tracking
-- `Gift` needs a many-to-many `GiftCredit` junction table (new concept)
-- `RecurringGift` adds `installment_frequency`, `installments_scheduled`, `first_installment_due`, `status_date`, removes `total_expected`/`total_received`/`is_late`/`days_late`
+| Component | Technology | Why This Exact Technology |
+|-----------|-----------|--------------------------|
+| Selector dropdown | `@radix-ui/react-select` v2.2.6 | Already used for every dropdown in the app (role selector in AdminUsers, filter selectors in FilterBar). Accessible, keyboard-navigable, styled via shadcn/ui. |
+| Selected user state | `nuqs` URL param `?viewing_user=<uuid>` | App convention: all filter state lives in URL params via nuqs. Makes selection bookmarkable, shareable, survives page refresh. Used in FilterBar, analytics dashboard. |
+| User list data | New API endpoint or extend `/api/users/` | Returns missionaries the current user can view. Supervisors get their assigned list; admins get all staff users. |
+| Dashboard data | Existing `/api/dashboard/summary/` with `?user_id=<uuid>` param | Backend validates requesting user has permission to view target user's data. |
 
-Therefore: **Create new tables, migrate data with RunPython, deprecate old tables.**
+**Frontend implementation pattern:**
 
-**Migration sequence (3 migration files):**
-
-```
-Migration 1: Create new schema
-  - CreateModel: Gift, GiftCredit, RecurringGift, RecurringGiftCredit, Solicitor, ImportBatch
-  - Add external_constituent_id to Contact (if not already present)
-
-Migration 2: Data migration (RunPython)
-  - Copy Donation rows -> Gift rows (map fields, generate external_gift_id from existing external_id)
-  - Copy Pledge rows -> RecurringGift rows (map frequency/status/dates)
-  - Create placeholder GiftCredit for each Gift (1:1 until RE imports add multi-solicitor)
-  - Update Contact.update_giving_stats references (if any hardcoded references)
-
-Migration 3: Cleanup (DEFER to v2.1)
-  - Drop old Donation/Pledge tables only AFTER confirming v2.0 is stable
-  - Keep old tables as read-only backup during v2.0
-```
-
-**Reversibility:** Migration 2 should include a `reverse_func` that copies data back from Gift -> Donation and RecurringGift -> Pledge. Use `RunPython(forwards, reverse)` pattern.
-
-**Key field mappings:**
-
-| Donation field | Gift field | Notes |
-|---|---|---|
-| `id` | (new UUID) | Fresh UUIDs for Gift |
-| `contact` | `donor_contact` | Same FK |
-| `amount` | `fund_split_amount` | DecimalField preserved |
-| `date` | `gift_date` | DateField -> DateField |
-| `external_id` | `external_gift_id` | CharField preserved |
-| `donation_type` | `gift_type` | Map enum values |
-| `payment_method` | `payment_method` | Direct copy |
-| `fund` | `fund` | Same FK |
-| `notes` | `description` | TextField -> TextField |
-| `thanked`/`thanked_at`/`thanked_by` | (dropped) | Thank-you tracking stays on Contact |
-| `import_batch` (CharField) | `import_batch` (FK) | Upgrade to proper FK |
-
-| Pledge field | RecurringGift field | Notes |
-|---|---|---|
-| `contact` | `donor_contact` | Same FK |
-| `amount` | `installment_amount` | Per-period amount |
-| `frequency` | `installment_frequency` | Map enum values |
-| `status` | `status` | Map enum values |
-| `start_date` | `gift_date` | First gift date |
-| `external_id` | `external_gift_id` | CharField preserved |
-| `fund` | `fund` | Same FK |
-| `notes` | `description` | TextField -> TextField |
-| `end_date` | `last_installment_due` | Nullable DateField |
-| `total_expected`/`total_received` | (dropped) | Computed from actual gifts |
-| `is_late`/`days_late` | (dropped) | Computed property instead |
-
-**Confidence:** HIGH -- Django migration framework is well-documented and battle-tested. The `RunPython` + `SeparateDatabaseAndState` patterns are standard.
-
-### 4. Drag-and-Drop Dashboard Tiles -- @dnd-kit/core + @dnd-kit/sortable (NEW frontend dependency)
-
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| `@dnd-kit/core` | 6.3.1 | Core drag-and-drop primitives | Battle-tested, 2185 dependents on npm, accessible (keyboard + screen reader support built-in), peer dep `react: ">=16.8.0"` includes React 19. |
-| `@dnd-kit/sortable` | 10.0.0 | Sortable preset for grid reordering | Built on @dnd-kit/core, provides `SortableContext` + `useSortable` hook. Supports grid layouts natively. Peer dep: `react: ">=16.8.0"`, `@dnd-kit/core: "^6.3.0"`. |
-| `@dnd-kit/utilities` | 3.2.2 | CSS transform utilities | `CSS.Transform.toString()` helper for smooth drag animations. Peer dep: `react: ">=16.8.0"`. |
-
-**Why @dnd-kit/core+sortable over alternatives:**
-
-| Library | React 19 | Grid Support | Size | Maintenance | Verdict |
-|---------|----------|-------------|------|-------------|---------|
-| `@dnd-kit/core` + `@dnd-kit/sortable` | Yes (>=16.8.0) | Native grid preset | ~15KB | Stable release, widely used | **CHOSEN** |
-| `@dnd-kit/react` (new API) | Yes (^18 or ^19) | Sortable via @dnd-kit/dom | ~10KB | Pre-1.0 (v0.3.2), API unstable | Too early |
-| `@atlaskit/pragmatic-drag-and-drop` | Yes (vanilla JS core) | Manual implementation | ~5KB core | Active (Atlassian) | More work for grid, known sorting bugs |
-| `react-beautiful-dnd` | No (archived) | List only, no grid | N/A | Deprecated/archived | Dead |
-| HTML5 native drag | Yes | Manual everything | 0KB | Browser API | Too much boilerplate |
-
-**Why NOT @dnd-kit/react (v0.3.2):**
-- Pre-1.0 semver: API can break between minor versions
-- Open issue #1654: missing "use client" directive for React 19 Server Components
-- Open issue #1695: no official sortable example for new API
-- The legacy `@dnd-kit/core` (6.3.1) + `@dnd-kit/sortable` (10.0.0) have `react: ">=16.8.0"` peer deps which explicitly include React 19 -- no `--legacy-peer-deps` needed
-
-**Dashboard integration pattern:**
-
-The current Dashboard (`frontend/src/pages/Dashboard.tsx`) uses a static grid layout:
 ```tsx
-{/* Current: static 2-column grid */}
-<div className="grid gap-6 lg:grid-cols-2">
-  <GivingSummaryCard />
-  <MonthlyGiftsCard />
+// In Dashboard.tsx - add at top alongside existing useAuth
+import { useQueryState } from 'nuqs'
+
+const { user } = useAuth()
+const canSelectUser = user?.role === 'admin' || user?.role === 'supervisor'
+
+const [viewingUserId, setViewingUserId] = useQueryState('viewing_user')
+
+// Pass to dashboard data hook
+const { data } = useDashboardSummary({ user_id: viewingUserId || undefined })
+```
+
+**Backend validation pattern:**
+
+```python
+# In dashboard view
+def get(self, request):
+    target_user_id = request.query_params.get('user_id')
+    if target_user_id:
+        if request.user.role == 'admin':
+            pass  # Admin can view anyone
+        elif request.user.role == 'supervisor':
+            if not request.user.supervised_users.filter(id=target_user_id).exists():
+                raise PermissionDenied("Cannot view this user's dashboard")
+        else:
+            raise PermissionDenied("Only admins and supervisors can view other dashboards")
+```
+
+**Why NOT a separate "impersonation" system:** The missionary selector only changes what dashboard data is displayed. It does not change the authenticated user or their permissions. This is "viewing someone's data with permission" not "acting as someone else." Simpler, safer, no session manipulation needed.
+
+**Confidence:** HIGH -- Follows exact patterns already in the codebase (admin owner filter on contacts page uses same Radix Select + query param pattern).
+
+### 3. Journal Report Rebuild -- Recharts + Radix Progress (NO new dependency)
+
+**What's needed:** New component with 4 metric cards, progress bar toward goal, bar chart (contacts by stage), donut chart (decision status), checkbox direct-check behavior, removal of Pipeline Breakdown and extra decision column.
+
+Every chart type and UI component is already installed and used in this codebase:
+
+| Report Element | Component | Already Used In |
+|---------------|-----------|----------------|
+| Bar chart (contacts by stage) | `recharts` `BarChart` + `Bar` + `Cell` | `MonthlyGiftsCard.tsx`, `ReportCharts.tsx` DecisionTrendsChart |
+| Donut chart (decision status) | `recharts` `PieChart` + `Pie` with `innerRadius` | `GivingSummaryCard.tsx` lines 80-94 (exact donut pattern) |
+| Progress bar (goal progress) | `@radix-ui/react-progress` | `components/ui/progress.tsx` (installed, component exists) |
+| Chart container + theming | `ChartContainer` + `ChartTooltip` | `components/ui/chart.tsx` (shadcn/ui wrapper) |
+| Metric cards | `Card` + `CardContent` + `CardHeader` | Used in dashboard StatCards, analytics cards |
+| Checkbox (direct-check) | `@radix-ui/react-checkbox` | Used in journal grid already |
+
+**Donut chart pattern (already proven in `GivingSummaryCard.tsx`):**
+
+```tsx
+// Exact pattern from GivingSummaryCard.tsx:80-94 -- reuse for decision status donut
+<PieChart>
+  <Pie
+    data={donutData}
+    dataKey="value"
+    innerRadius={60}    // Creates the donut hole
+    outerRadius={90}
+    paddingAngle={2}
+    startAngle={90}
+    endAngle={-270}
+    strokeWidth={0}
+  >
+    {donutData.map((entry, index) => (
+      <Cell key={index} fill={entry.fill} />
+    ))}
+  </Pie>
+</PieChart>
+```
+
+**Progress bar with inner label (extend existing component):**
+
+The existing `@radix-ui/react-progress` component at `components/ui/progress.tsx` provides the accessible base (Root + Indicator with `translateX` transform). The journal report spec calls for showing the confirmed amount text inside the bar. This can be done by composing the existing component with an absolutely-positioned label:
+
+```tsx
+// No new component needed -- compose inline
+<div className="relative">
+  <Progress value={progressPercent} className="h-8" />
+  {progressPercent >= 15 && (
+    <span className="absolute inset-0 flex items-center justify-end pr-2 text-white text-sm font-medium">
+      {formatCurrency(confirmedAmount)}
+    </span>
+  )}
 </div>
 ```
 
-With @dnd-kit/sortable, this becomes:
+**Checkbox direct-check behavior change:**
+
+The current journal grid requires logging a stage event (opens `LogEventDialog`) when a checkbox is clicked. The v2.2 spec says "whenever a checkbox is clicked, the box should be checked instead of having to log an event." This means:
+
+1. Clicking a stage checkbox directly creates a stage event via the existing API (no dialog)
+2. Uses existing `@radix-ui/react-checkbox` component
+3. Calls existing stage event creation mutation, just skips the dialog step
+4. This is a behavior change in the journal grid component, not a stack change
+
+**API data structure (already exists):**
+
+The existing `GET /api/journals/{id}/report/` endpoint returns:
+- `journal.goalAmountCents` -- for progress bar denominator
+- `summary.decisions.confirmedTotalCents` -- for progress bar numerator
+- `summary.stageDistribution` -- for bar chart data
+- `summary.decisions.{pending, confirmed, declined, canceled}` -- for donut chart data
+- `summary.goalProgressPercent` -- computed percentage
+
+No API changes needed for the report rebuild. The data structure already contains every field referenced in the `prompts/journal_report.md` spec.
+
+**Confidence:** HIGH -- Every chart type verified as already in use in this codebase with the exact Recharts 3.6.0 API.
+
+### 4. Begin Prayer Expansion -- Pure component work (NO new dependency)
+
+**What's needed:** Expand the existing Focus Mode with a dedicated "Begin Prayer" entry point and enhanced session flow.
+
+The existing `PrayerFocusMode.tsx` (243 lines) is a complete, polished focus mode with:
+- Full-screen amber overlay (`fixed inset-0 z-50`)
+- Card-by-card prayer intention display
+- Forward/backward navigation with keyboard shortcuts (Arrow keys, Space, Enter, P, Esc)
+- "Mark as Prayed" mutation via `useMarkPrayed` hook
+- Prayer count tracking in session state
+- Completion screen with summary
+- Empty state handling
+
+**What "Begin Prayer" adds (all achievable with existing stack):**
+
+| Addition | Technology | Notes |
+|----------|-----------|-------|
+| "Begin Prayer" button on Prayer page | Existing `Button` component + React state | New entry point, triggers existing `PrayerFocusMode` |
+| Prayer session view/page | Existing fullscreen overlay pattern | Could be a dedicated route or reuse the overlay |
+| Session summary | React state (already tracks `prayedIds`) | Already built in completion screen |
+| Today's focus filtering | Existing `TodaysFocus.tsx` component | Already filters active intentions |
+
+**No technology gaps.** The "Begin Prayer" feature is a UX entry point expansion -- a new button placement and potentially a streamlined flow into the existing Focus Mode. The `PrayerFocusMode` component does all the heavy lifting already.
+
+**Confidence:** HIGH -- Verified by reading every line of `PrayerFocusMode.tsx` and `TodaysFocus.tsx`.
+
+### 5. Dashboard Chart Toggle (Bar vs Line) -- Recharts conditional render (NO new dependency)
+
+**What's needed:** A toggle on the Monthly Gifts card to switch between BarChart and LineChart views of the same data.
+
+Both chart types are already imported and used in the codebase:
+
+| Chart Type | Already Used In | Import Statement |
+|------------|----------------|-----------------|
+| `BarChart` + `Bar` | `MonthlyGiftsCard.tsx` (current view) | `from "recharts"` |
+| `LineChart` + `Line` | `UserDetail.tsx`, `TrendCharts.tsx` | `from "recharts"` |
+
+**The data shape is identical.** Both BarChart and LineChart consume the same `data.months` array with `total` dataKey. Switching between them is a conditional render, not a data transformation.
+
+**Toggle UI recommendation -- simple button pair (no new component):**
+
 ```tsx
-import { DndContext, closestCenter } from '@dnd-kit/core';
-import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable';
+// In MonthlyGiftsCard.tsx
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, ReferenceLine } from "recharts"
+import { BarChart3, TrendingUp } from "lucide-react"  // Already installed
 
-const [tileOrder, setTileOrder] = useState<string[]>([
-  'giving-summary', 'monthly-gifts', 'needs-attention',
-  'support-progress', 'recent-donations', 'journal-activity'
-]);
+const [chartType, setChartType] = useState<"bar" | "line">("bar")
 
-<DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-  <SortableContext items={tileOrder} strategy={rectSortingStrategy}>
-    <div className="grid gap-6 lg:grid-cols-2">
-      {tileOrder.map(id => <SortableTile key={id} id={id} />)}
-    </div>
-  </SortableContext>
-</DndContext>
+// In CardHeader, alongside title:
+<div className="flex items-center gap-1">
+  <button
+    onClick={() => setChartType("bar")}
+    className={cn("p-1.5 rounded", chartType === "bar" ? "bg-muted" : "hover:bg-muted/50")}
+  >
+    <BarChart3 className="h-4 w-4" />
+  </button>
+  <button
+    onClick={() => setChartType("line")}
+    className={cn("p-1.5 rounded", chartType === "line" ? "bg-muted" : "hover:bg-muted/50")}
+  >
+    <TrendingUp className="h-4 w-4" />
+  </button>
+</div>
+
+// In chart area:
+{chartType === "bar" ? (
+  <BarChart data={data.months}>
+    <CartesianGrid vertical={false} />
+    <XAxis dataKey="short_label" ... />
+    <YAxis ... />
+    <ChartTooltip ... />
+    <Bar dataKey="total" fill="var(--color-total)" radius={[4, 4, 0, 0]} />
+    {/* ReferenceLine for goal */}
+  </BarChart>
+) : (
+  <LineChart data={data.months}>
+    <CartesianGrid vertical={false} />
+    <XAxis dataKey="short_label" ... />
+    <YAxis ... />
+    <ChartTooltip ... />
+    <Line dataKey="total" stroke="var(--color-total)" strokeWidth={2} dot={{ r: 3 }} />
+    {/* ReferenceLine for goal */}
+  </LineChart>
+)}
 ```
 
-**Session-only persistence:** Per PROJECT.md scope, tile order is session-only (no backend persistence). Use React `useState` -- order resets on page refresh. This avoids needing a user preferences model.
+**Why NOT Radix ToggleGroup:** Not installed (`@radix-ui/react-toggle-group` is not in `package.json`). Simple styled buttons with `cn()` conditional classes achieve the same result with zero new dependencies. The toggle has only two options -- a toggle group is overkill.
 
-**Confidence:** HIGH -- `@dnd-kit/core` 6.3.1 peer deps verified via `npm view @dnd-kit/core@6.3.1 peerDependencies` returning `{ react: '>=16.8.0', 'react-dom': '>=16.8.0' }`. React 19.2.0 satisfies `>=16.8.0`.
+**Why NOT Radix Tabs:** Semantically, tabs imply switching between different content panels. A chart type toggle is switching visualization of the SAME data. Button pair is more semantically correct.
 
-### 5. Gift Credit Many-to-Many with Amounts -- Django `through` model (NO new dependency)
+**Confidence:** HIGH -- BarChart and LineChart share identical Recharts API for XAxis/YAxis/CartesianGrid/ReferenceLine. Only the data series component differs (Bar vs Line).
 
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| Django `ManyToManyField` with `through` | Django 4.2 built-in | Gift-to-Solicitor junction with `solicitor_amount` field | Standard Django pattern for M2M relationships with extra data. The `through` model stores the amount each solicitor is credited per gift. Cannot use plain M2M because we need the `solicitor_amount_cents` and `solicitor_name` fields on the junction. |
+---
 
-**Pattern:**
+## What NOT to Add
 
-```python
-class Gift(TimeStampedModel):
-    """One-time gift from Raiser's Edge."""
-    external_gift_id = models.CharField(max_length=100, unique=True)
-    donor_contact = models.ForeignKey('contacts.Contact', on_delete=models.CASCADE, related_name='gifts')
-    gift_date = models.DateField(null=True, blank=True)
-    gift_type = models.CharField(max_length=50, blank=True)
-    fund = models.ForeignKey('imports.Fund', on_delete=models.SET_NULL, null=True, blank=True)
-    fund_split_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    is_anonymous = models.BooleanField(default=False)
-    payment_type = models.CharField(max_length=50, blank=True)
-    payment_method = models.CharField(max_length=50, blank=True)
-    description = models.TextField(blank=True)  # "Gift Specific Attributes Prayer Requests Description"
-    last_changed_at = models.DateTimeField(null=True, blank=True)
-    import_batch = models.ForeignKey('imports.ImportBatch', on_delete=models.SET_NULL, null=True, blank=True)
+| Package | Why You Might Think You Need It | Why You Don't |
+|---------|-------------------------------|---------------|
+| `@radix-ui/react-toggle-group` | Chart toggle UI | Two buttons with `cn()` conditional classes. Only two options. Already have Button/icon components. |
+| `@radix-ui/react-switch` | Chart toggle | Semantically a switch is for on/off states, not mode selection between two visualization types. |
+| `react-select` or `downshift` | Missionary selector dropdown | `@radix-ui/react-select` v2.2.6 already installed, used for every dropdown in the app. |
+| `chart.js` or `victory` | Additional chart types | Recharts 3.6.0 already has BarChart, LineChart, PieChart (donut via innerRadius), AreaChart. |
+| `framer-motion` | Prayer session transitions | CSS transitions + Tailwind `transition-all` are sufficient for the calm, minimal prayer UI aesthetic. |
+| `django-guardian` or `django-rules` | Object-level permissions for supervisor | Queryset filtering in `get_queryset()` is the established pattern (25+ methods). Object-level permission packages add complexity for a problem already solved. |
+| `zustand` or `jotai` | Global state for selected missionary | nuqs URL params + React Query cache handle this with existing patterns. Selected missionary ID is URL state, not app state. |
+| `nivo` or `tremor` | Progress bar / metric cards | Radix Progress component + Card component already exist and match the design system. Adding a chart library for a progress bar is extreme overkill. |
+| New Django role/permission package | Mission Supervisor role | Django's `TextChoices` enum + DRF `BasePermission` subclasses + queryset filtering is the proven pattern used for 4 existing roles. |
 
-    # M2M through GiftCredit
-    solicitors = models.ManyToManyField('imports.Solicitor', through='GiftCredit', blank=True)
-
-
-class GiftCredit(TimeStampedModel):
-    """Junction: one gift credits one or more solicitors (missionaries)."""
-    gift = models.ForeignKey(Gift, on_delete=models.CASCADE, related_name='credits')
-    solicitor = models.ForeignKey('imports.Solicitor', on_delete=models.SET_NULL, null=True, blank=True)
-    solicitor_name = models.CharField(max_length=255)  # Original name from CSV (preserved even if solicitor deleted)
-    solicitor_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=['gift', 'solicitor_name'],
-                name='unique_credit_per_solicitor_per_gift'
-            )
-        ]
-```
-
-**Why `through` model instead of JSONField:**
-- Queryable: "Show all gifts credited to Solicitor X" is a single JOIN
-- Aggregatable: "Total amount credited to Solicitor X this year" uses Django ORM `Sum()`
-- Validated: `DecimalField` enforces numeric amounts, `UniqueConstraint` prevents duplicate credits
-- Consistent with existing patterns: the codebase uses ForeignKey relationships everywhere, not JSON blobs
-
-**Why `solicitor_name` stored alongside `solicitor` FK:**
-- RE CSV gives us a name string, not an ID
-- Solicitor record may not exist yet (import order: Constituents -> Solicitors -> Gifts)
-- If gift is imported before solicitor, we store the name and link later
-- Preserves original data even if Solicitor record is deleted
-
-**Querying pattern:**
-```python
-# All gifts credited to a specific solicitor
-Gift.objects.filter(credits__solicitor=solicitor_instance)
-
-# Total amount credited to solicitor this year
-from django.db.models import Sum
-GiftCredit.objects.filter(
-    solicitor=solicitor_instance,
-    gift__gift_date__year=2026
-).aggregate(total=Sum('solicitor_amount'))
-```
-
-**Confidence:** HIGH -- Django `through` model is a first-class ORM feature documented since Django 1.0. The pattern exactly matches the RE CSV structure where one Gift ID can have multiple rows with different Solicitor Names.
-
-### 6. Solicitor Model with User Auto-Linking -- Django model + normalized name matching (NO new dependency)
-
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| Django model with `normalized_name` | Django 4.2 built-in | Solicitor lookup table with auto-link to User | Missionaries are both User accounts and Solicitor entries in RE. Matching by normalized name (`lower().strip()`) auto-links Solicitor to User. Same pattern already used in MPD Smartsheet import (`apps/imports/mpd_services.py`). |
-
-**Pattern:**
-
-```python
-class Solicitor(TimeStampedModel):
-    """Fundraiser/missionary who receives gift credit from RE."""
-    name = models.CharField(max_length=255)
-    normalized_name = models.CharField(max_length=255, unique=True, db_index=True)
-    external_solicitor_id = models.CharField(max_length=100, blank=True, unique=True)
-
-    # Auto-linked to User account (if name matches)
-    user = models.OneToOneField(
-        'users.User', on_delete=models.SET_NULL,
-        null=True, blank=True, related_name='solicitor'
-    )
-
-    def save(self, *args, **kwargs):
-        self.normalized_name = self.name.lower().strip()
-        if not self.user:
-            self._try_link_user()
-        super().save(*args, **kwargs)
-
-    def _try_link_user(self):
-        """Attempt to match solicitor name to a User account."""
-        from apps.users.models import User
-        parts = self.normalized_name.split()
-        if len(parts) >= 2:
-            matches = User.objects.filter(
-                first_name__iexact=parts[0],
-                last_name__iexact=parts[-1],
-                is_active=True
-            )
-            if matches.count() == 1:
-                self.user = matches.first()
-            # If 0 or 2+ matches, leave user=None (admin resolves manually)
-```
-
-**Why OneToOneField (not ForeignKey):** Each User can only be one Solicitor, and each Solicitor maps to at most one User. The project already has the "duplicate names -> unmatched" pattern from MPD import (see Key Decisions in PROJECT.md).
-
-**Confidence:** HIGH -- follows existing MPD name-matching pattern.
+---
 
 ## Installation
 
 ### Backend
 
 ```bash
-# NO new Python packages needed for v2.0
-# hashlib, csv, and Django migrations are all stdlib/built-in
-#
-# Everything needed is already installed:
-# - Django 4.2.27 (migrations, ORM, through models)
-# - Python 3.12.3 (hashlib, csv)
-# - openpyxl 3.1.5 (already installed from v1.3 Smartsheet import)
+# NO new Python packages needed for v2.2
+# Django 4.2.28 handles: model changes, migrations, M2M, queryset filtering, permissions
+# DRF handles: serialization, view permissions, API responses
 ```
 
 ### Frontend
 
 ```bash
-# Drag-and-drop for dashboard tiles
-npm install @dnd-kit/core@6.3.1 @dnd-kit/sortable@10.0.0 @dnd-kit/utilities@3.2.2
+# NO new npm packages needed for v2.2
+# All features use already-installed packages:
+# - recharts 3.6.0 (bar, line, pie/donut charts)
+# - @radix-ui/react-progress 1.1.8 (progress bar)
+# - @radix-ui/react-select 2.2.6 (missionary selector)
+# - @radix-ui/react-checkbox 1.3.3 (journal checkbox)
+# - nuqs 2.8.8 (URL state for viewing_user)
+# - lucide-react 0.562.0 (icons for chart toggle)
 ```
 
-That is the ONLY new dependency for the entire v2.0 milestone.
+**Zero new dependencies for the entire v2.2 milestone.**
 
-## What NOT to Add
+---
 
-| Avoid | Why | Use Instead |
-|-------|-----|-------------|
-| `pandas` for CSV parsing | 50MB+ dependency, overkill for row-by-row CSV processing | Python stdlib `csv.DictReader` (already in use) |
-| `csv-parse` (Node) | The prompts reference Node.js csv-parse with `relax_quotes`. We are Django/Python, not Node. | Python `csv` module handles RE quoting correctly by default |
-| Third-party SHA256 library | `hashlib` is stdlib, C-implemented, no reason for external package | `hashlib.sha256()` |
-| `@dnd-kit/react` v0.3.2 | Pre-1.0, unstable API, missing "use client" for React 19, no sortable examples | `@dnd-kit/core` 6.3.1 + `@dnd-kit/sortable` 10.0.0 (stable) |
-| `react-beautiful-dnd` | Archived and deprecated by Atlassian since 2023 | `@dnd-kit` |
-| `@atlaskit/pragmatic-drag-and-drop` | Known bugs with sortable grids (issue #166), more boilerplate for grid sorting | `@dnd-kit/sortable` has native grid strategy |
-| `django-import-export` | Heavy, opinionated, admin-coupled. Our import pipeline is custom and works well. | Existing custom import service pattern |
-| `celery-results` for import tracking | We already have ImportRun model for audit trails | Existing ImportRun + new ImportBatch model |
-| User preferences model for tile order | Out of scope per PROJECT.md ("session-only, no persistence") | React `useState` |
-| `chardet` / `charset-normalizer` | RE exports are UTF-8 (possibly with BOM). `utf-8-sig` handles BOM. | `file.read().decode('utf-8-sig')` |
-| New prayer model library | Prayer Intentions are a simple model with ForeignKey to Contact | Django model + TextField |
-| `django-reversion` for migration rollback | Overkill. Keep old tables during v2.0, drop in v2.1. | Deferred table drops |
+## Integration Points
+
+### Role Propagation Path (Supervisor)
+
+Changes flow through these layers -- all existing, just need the new role value added:
+
+```
+1. Backend model    apps/users/models.py          Add SUPERVISOR to UserRole TextChoices
+2. Backend migration                              makemigrations (CharField choices, M2M table)
+3. Backend perms    apps/core/permissions.py       Update/add permission classes
+4. Backend views    apps/*/views.py               Add supervisor elif in get_queryset()
+5. Backend serial.  apps/users/serializers.py      Add supervised_users to admin serializer
+6. API response     /api/users/me/                 Returns role: "supervisor" (auto from choices)
+7. Frontend type    frontend/src/api/users.ts      Add "supervisor" to UserRole union
+8. Frontend type    frontend/src/api/auth.ts       Add "supervisor" to User.role type
+9. Frontend sidebar frontend/src/.../Sidebar.tsx   Update roleHierarchy, add supervisor access
+10. Frontend routes                               Update admin/analytics route guards
+```
+
+### Dashboard Selector Data Flow
+
+```
+Supervisor/Admin clicks missionary selector
+  -> nuqs updates URL: ?viewing_user=<uuid>
+  -> React Query key includes viewing_user: ['dashboard-summary', { viewing_user: uuid }]
+  -> API call: GET /api/dashboard/summary/?user_id=<uuid>
+  -> Backend validates: requesting user has permission to view target user
+  -> Response: dashboard data scoped to selected missionary
+  -> UI renders: selected missionary's dashboard with selector showing their name
+```
+
+### Journal Report Data Flow (no changes)
+
+```
+Existing endpoint: GET /api/journals/{id}/report/
+  -> Returns: journal metadata, summary stats (total contacts, stalled, stage distribution,
+              decisions with counts/amounts, goal progress, next steps)
+  -> Frontend rebuilds: 4 metric cards, progress bar, bar chart, donut chart
+  -> Removes: Pipeline Breakdown chart, extra decision column
+  -> Changes: Checkbox click creates stage event directly (no LogEventDialog)
+```
+
+---
 
 ## Alternatives Considered
 
 | Category | Chosen | Alternative | Why Not |
 |----------|--------|-------------|---------|
-| File dedup | SHA256 via `hashlib` | MD5 via `hashlib` | SHA256 is industry standard for content addressing. MD5 has known collisions. Marginal speed difference at 10MB. |
-| File dedup | SHA256 of file content | Filename + timestamp | Same file uploaded twice with different names would be missed. Content hash is the only reliable dedup. |
-| CSV parsing | Python `csv` stdlib | `pandas.read_csv` | pandas loads entire file into DataFrame (memory overhead), has complex dtype inference that can mangle IDs. `csv.DictReader` is simpler, streams row-by-row, gives raw strings. |
-| Data migration | New tables + RunPython copy | RenameModel + AlterField | Gift/RecurringGift have different schemas from Donation/Pledge. RenameModel only works for exact renames. We need to add M2M junction tables, new fields, and drop fields. |
-| Data migration | Keep old tables during v2.0 | Drop immediately | Safety net. If migration has bugs, old data is still accessible. Drop in v2.1 after validation. |
-| Dashboard DnD | `@dnd-kit/sortable` | CSS `order` property + buttons | Drag-and-drop is the expected UX for tile reordering. Up/down buttons feel dated. |
-| Dashboard DnD | Session-only state | localStorage persistence | Out of scope per PROJECT.md. Session-only avoids stale state bugs and keeps implementation simple. |
-| Gift credits | `through` model | JSONField on Gift | JSON is not queryable for "all gifts credited to Solicitor X", not aggregatable, not validated. |
-| Solicitor linking | Normalized name matching | Manual admin linking | Auto-matching handles 90%+ of cases. Admin can fix edge cases. Same pattern proven in MPD import. |
-| Import batch tracking | New ImportBatch model | Extend existing ImportRun | ImportRun is SPO-specific (type enum has FUNDS/ENTITIES/TRANSACTIONS/PLEDGES). ImportBatch needs RE-specific types (CONSTITUENT/SOLICITOR/GIFT/RECURRING_GIFT) and SHA256 dedup. Separate models avoid polluting existing system. |
+| Supervisor relationship | M2M on User ('self') | FK on User (supervisor_id) | FK limits to 1 supervisor per missionary. M2M allows multiple supervisors. |
+| Supervisor relationship | M2M on User ('self') | Separate SupervisorAssignment model | No metadata needed on the relationship. Django M2M join table is sufficient. |
+| Missionary selector state | nuqs URL param | React context/state | URL state is the app convention (filters, date ranges all use nuqs). Makes selection shareable and bookmarkable. |
+| Chart toggle UI | Button pair with cn() | @radix-ui/react-toggle-group | Not installed, would add a dependency for a 2-option toggle. Buttons are simpler. |
+| Chart toggle UI | Button pair with cn() | @radix-ui/react-tabs | Semantically wrong: tabs switch content panels, toggle switches visualization of same data. |
+| Journal progress bar | Radix Progress + composed label | Custom CSS-only progress bar | Radix Progress provides accessibility (role, aria-valuenow, etc.) for free. |
+| Journal progress bar | Radix Progress + composed label | Recharts RadialBar/Gauge | Overkill for a linear progress bar. Radix Progress is purpose-built. |
+| Permission scoping | Queryset filtering in views | django-guardian per-object permissions | Queryset filtering is the proven pattern across 25+ methods. Object-level permissions add a permissions table and middleware overhead for something already solved. |
 
-## Version Compatibility Matrix
+---
 
-| Package | Python | Django | React | Status |
-|---------|--------|--------|-------|--------|
-| `hashlib` (stdlib) | 3.12 built-in | N/A | N/A | Always available |
-| `csv` (stdlib) | 3.12 built-in | N/A | N/A | Always available |
-| Django migrations | N/A | 4.2 built-in | N/A | Always available |
-| `@dnd-kit/core` 6.3.1 | N/A | N/A | >=16.8.0 | Includes React 19 |
-| `@dnd-kit/sortable` 10.0.0 | N/A | N/A | >=16.8.0 | Includes React 19 |
-| `@dnd-kit/utilities` 3.2.2 | N/A | N/A | >=16.8.0 | Includes React 19 |
+## Confidence Assessment
 
-**All verified compatible with: Python 3.12.3 + Django 4.2.27 + React 19.2.0**
+| Area | Confidence | Reason |
+|------|------------|--------|
+| Zero new packages | HIGH | Verified every feature against installed packages and existing code patterns |
+| Recharts chart types | HIGH | BarChart, PieChart (donut), LineChart all actively used in production code files |
+| Radix Progress | HIGH | Component exists at `components/ui/progress.tsx`, installed at v1.1.8 |
+| Supervisor role via M2M | HIGH | Django `ManyToManyField('self')` is documented, queryset scoping proven across 25+ view methods |
+| Chart toggle pattern | HIGH | BarChart and LineChart share identical data shape and Recharts API for axes/grid/tooltips |
+| Begin Prayer expansion | HIGH | Existing `PrayerFocusMode.tsx` is 243 lines of complete focus mode -- only needs entry point |
+| Missionary selector | HIGH | Exact pattern (Radix Select + query param) already used for owner filter on contacts page |
 
-## Integration Points with Existing Code
-
-### Import Pipeline
-
-The existing import pipeline (`apps/imports/services.py`) follows a clear pattern:
-1. `parse_*_csv()` -- validate and parse CSV content
-2. `import_*()` -- upsert records to database
-3. Views call parse, then conditionally import
-
-The new RE import pipeline should follow the same pattern but add:
-- SHA256 check before parsing (via ImportBatch model)
-- Row grouping for gifts (group by Gift ID before processing)
-- GiftCredit creation in the import step
-
-### Contact Model
-
-The existing `Contact` model already has `external_id` (used for SPO entity imports). For RE imports, this same field stores the Constituent ID. No new field needed on Contact -- `external_id` is already the right field.
-
-### Dashboard
-
-The existing Dashboard has 8 tile components in `frontend/src/components/dashboard/`. Each is a self-contained component that receives data via props. Wrapping them in `SortableContext` + `useSortable` is additive -- no changes to individual tile components needed.
-
-### Contact Stats
-
-The existing `Contact.update_giving_stats()` method queries `self.donations.all()`. When migrating to Gift model, this needs to query `self.gifts.all()` instead. This is part of the data migration, not a stack addition.
+---
 
 ## Sources
 
-**SHA256 hashing:**
-- [Python hashlib documentation](https://docs.python.org/3/library/hashlib.html) -- Official stdlib docs
-- [hashlib file hashing pattern](https://realpython.com/ref/stdlib/hashlib/) -- Chunked vs buffered approach
-
-**CSV parsing:**
-- [Python csv module documentation](https://docs.python.org/3/library/csv.html) -- Dialect, quoting options, DictReader
-- [csv reader quoting issue](https://bugs.python.org/issue30034) -- Known edge cases (not applicable to RE format)
-
-**Django data migrations:**
-- [Django migration operations](https://docs.djangoproject.com/en/5.2/ref/migration-operations/) -- RunPython, SeparateDatabaseAndState
-- [Renaming models without heavy migrations](https://www.hacksoft.io/blog/renaming-models-in-django-without-heavy-data-migrations) -- SeparateDatabaseAndState pattern
-- [Django ManyToManyField through](https://docs.djangoproject.com/en/4.2/topics/db/examples/many_to_many/) -- Through model pattern
-
-**Drag-and-drop:**
-- [@dnd-kit/core on npm](https://www.npmjs.com/package/@dnd-kit/core) -- v6.3.1, peer deps verified
-- [@dnd-kit/sortable on npm](https://www.npmjs.com/package/@dnd-kit/sortable) -- v10.0.0, grid strategy
-- [@dnd-kit/react on npm](https://www.npmjs.com/package/@dnd-kit/react) -- v0.3.2 (NOT recommended, pre-1.0)
-- [dnd-kit docs: sortable](https://docs.dndkit.com/presets/sortable) -- SortableContext, useSortable, rectSortingStrategy
-- [React 19 dnd-kit compatibility](https://github.com/clauderic/dnd-kit/issues/1654) -- Issue on new @dnd-kit/react
-- [pragmatic-drag-and-drop sortable grid bug](https://github.com/atlassian/pragmatic-drag-and-drop/issues/166) -- Known reorder loop issue
-
-**Raiser's Edge CSV format:**
-- [Exporting Raisers Edge for CiviCRM](https://hq.megaphonetech.com/projects/commons/wiki/Exporting_Raisers_Edge_for_CiviCRM) -- RE export field reference
-- [RE NXT Gift Export Setup](https://support.givecampus.com/hc/en-us/articles/29093884332311-Raiser-s-Edge-NXT-Integration-Gift-Export-Setup-Management) -- Gift/recurring gift fields
-- Local: `prompts/CSV_import_system_2.md` -- Exact CSV headers from production RE exports
+- Recharts 3.0 migration guide: [GitHub Wiki](https://github.com/recharts/recharts/wiki/3.0-migration-guide)
+- Codebase analysis: `frontend/package.json` (all installed versions), `requirements/base.txt` (Python deps)
+- Existing donut chart: `frontend/src/components/dashboard/GivingSummaryCard.tsx` lines 80-94
+- Existing bar chart: `frontend/src/components/dashboard/MonthlyGiftsCard.tsx` lines 60-99
+- Existing line chart: `frontend/src/pages/admin/analytics/UserDetail.tsx` lines 248-280
+- Existing progress component: `frontend/src/components/ui/progress.tsx` (Radix-based)
+- Existing chart wrapper: `frontend/src/components/ui/chart.tsx` (shadcn/ui ChartContainer)
+- Permission patterns: `apps/core/permissions.py` (6 permission classes)
+- Queryset scoping: `apps/contacts/views.py` (10 methods), `apps/journals/views.py` (11 methods)
+- Role infrastructure: `apps/users/models.py` (UserRole TextChoices), `apps/users/serializers.py`
+- Frontend role types: `frontend/src/api/auth.ts` (User interface), `frontend/src/api/users.ts` (UserRole type)
+- Sidebar role gating: `frontend/src/components/layout/Sidebar.tsx` (roleHierarchy, requiredRole)
+- Feature specs: `prompts/mission_supervisor.md`, `prompts/journal_report.md`, `prompts/dashboard_modification.md`, `prompts/prayer_intentions.md`
+- Prayer focus mode: `frontend/src/pages/prayer/PrayerFocusMode.tsx` (243 lines, complete)
 
 ---
-*Stack research for: v2.0 RE Import Pipeline, Prayer Intentions, Dashboard Drag-and-Drop*
-*Researched: 2026-02-20*
-*Confidence: HIGH -- Only 1 new npm dependency needed (3 packages: @dnd-kit/core+sortable+utilities). Zero new Python dependencies. All peer deps verified via npm CLI.*
+*Stack research for: v2.2 UI Polish, Journal Report Rebuild & Mission Supervisor Role*
+*Researched: 2026-02-26*
+*Confidence: HIGH -- Zero new dependencies. All features use already-installed packages verified against source code.*

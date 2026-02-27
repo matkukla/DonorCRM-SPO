@@ -1,225 +1,198 @@
 # Project Research Summary
 
-**Project:** DonorCRM v2.0 — RE Import Pipeline, Prayer Intentions, Dashboard Drag-and-Drop
-**Domain:** Missionary CRM with Raiser's Edge integration, gift credit attribution, spiritual care tooling
-**Researched:** 2026-02-20
+**Project:** DonorCRM v2.2 — UI Polish, Journal Report Rebuild & Mission Supervisor Role
+**Domain:** Missionary donor CRM — role expansion, reporting rebuild, prayer workflow, UI refinement
+**Researched:** 2026-02-26
 **Confidence:** HIGH
 
 ## Executive Summary
 
-DonorCRM v2.0 introduces a Raiser's Edge CSV import pipeline alongside the existing SPO import system, adds a Prayer Intentions feature powered by gift descriptions, and makes dashboard tiles draggable. The central architectural decision — confirmed by full codebase analysis across 77+ dependent files — is to add Gift/RecurringGift/Solicitor/GiftCredit models alongside the existing Donation/Pledge models rather than replacing them. A rename or replacement would require coordinated changes in 35+ backend files and 36+ frontend files spanning 8 Django apps, with high regression risk and zero user-visible benefit. The dual-model approach keeps all existing functionality intact while the RE pipeline writes exclusively to the new models; contact stats are unified by updating the single `Contact.update_giving_stats()` method to query both sources.
+DonorCRM v2.2 is a focused internal improvement milestone on a mature Django + React codebase. The defining characteristic of this milestone is that every feature is an enhancement to existing infrastructure — no new dependencies, no new architectural patterns, no greenfield components. The five feature areas (Mission Supervisor role, journal report rebuild, Begin Prayer expansion, dashboard modifications, and UI polish) all operate within the established stack of Django 4.2 / DRF, React 19 / TypeScript, Recharts 3.6, Radix UI, TanStack Query, and nuqs URL state. The recommended approach is to ship low-risk UI polish first, then self-contained feature rebuilds, and tackle the Mission Supervisor role last given its cross-cutting scope.
 
-The recommended implementation sequence follows strict data dependency order: schema additions come first (additive-only migrations, no destructive changes), then the RE import backend (with SHA256 dedup and gift row grouping), then contact stat unification, then the import UI, then Prayer Intentions, and finally draggable dashboard tiles. This ordering reflects that the import pipeline is the primary data source for everything else — stats, prayers, and UI all depend on having imported data to work with. The only new frontend dependency for the entire milestone is `@dnd-kit/core` + `@dnd-kit/sortable` + `@dnd-kit/utilities` (3 packages totaling ~15KB); the backend requires zero new Python packages, leveraging stdlib `hashlib` and `csv` plus the existing Django migration framework.
+The key risk in this milestone is the Mission Supervisor role. Adding a new authorization tier — "sees assigned missionaries' data, not all data" — to a codebase built on a simple binary owner/admin model requires systematic changes across 40+ `get_queryset` methods and 11 admin analytics endpoints. The proven mitigation is to build a centralized `owner_scoped_filter()` Q helper in `apps/core/querysets.py` before touching any view, then mechanically refactor all views to use it. This makes supervisor scoping consistent by construction rather than relying on manually updating each view. The M2M relationship on User (`supervised_users = ManyToManyField('self', symmetrical=False)`) is the correct data model — it avoids cascade deletion issues that a FK approach would introduce and supports future multi-supervisor scenarios at zero additional cost.
 
-The primary risk for this milestone is the RE CSV parsing layer. Raiser's Edge exports present four distinct failure modes: Windows-1252 encoding (smart quotes, accented names), multi-row split gifts that naive parsers duplicate, unstable SHA256 hashes caused by BOM markers and line-ending variations, and date format ambiguity between MM/DD/YYYY and DD/MM/YYYY. Every one of these must be handled in the import utility layer before integration tests run with real RE data. The solicitor-to-user name matching pattern (normalized exact match with an unmatched queue for ambiguous cases) is already proven in the MPD import and must be replicated exactly — fuzzy matching is explicitly ruled out as too prone to false positives that silently credit gifts to wrong missionaries.
+All other features are lower-risk frontend component work against existing APIs. The journal report rebuild is the second-largest feature: a new aggregated backend endpoint (`GET /api/journals/analytics/report/?journal_id=X`) replacing four separate calls, and a new `JournalReport.tsx` component replacing four chart components. Begin Prayer is purely frontend — a new entry point that launches the existing `PrayerFocusMode`. Dashboard and UI polish changes are surgical frontend edits with zero backend impact.
 
 ## Key Findings
 
 ### Recommended Stack
 
-The v2.0 milestone requires minimal stack additions. The backend requires zero new Python packages: `hashlib` (stdlib, Python 3.12 built-in) handles SHA256 file deduplication, Python's `csv.DictReader` (already used across the existing import pipeline) handles RE CSV parsing correctly by default, and Django's migration framework handles the additive schema changes. The one encoding caution: all RE import views must use `file.read().decode('utf-8-sig')` rather than plain `utf-8` to strip the Windows BOM bytes that RE/Excel emit, then fall back to `windows-1252` if UTF-8 decoding fails entirely.
+Zero new dependencies are needed for all v2.2 features. Every capability required — bar charts, donut charts, progress bars, role-based routing, URL state management, drag-and-drop tiles — already exists in the installed packages. The installed stack is fully sufficient: Recharts 3.6.0 (BarChart, LineChart, PieChart/donut via `innerRadius`), `@radix-ui/react-progress` 1.1.8, `@radix-ui/react-select` 2.2.6, `nuqs` 2.8.8 for URL state, `lucide-react` for icons, and `@dnd-kit/core` + `@dnd-kit/sortable` for tile dragging.
 
-On the frontend, the only new dependency is the `@dnd-kit` family: `@dnd-kit/core@6.3.1`, `@dnd-kit/sortable@10.0.0`, `@dnd-kit/utilities@3.2.2`. All three have `react: ">=16.8.0"` peer dependencies, which React 19.2.0 satisfies without `--legacy-peer-deps`. The alternatives are explicitly excluded: `react-beautiful-dnd` is archived, `@dnd-kit/react` is pre-1.0 with an unstable API, `@atlaskit/pragmatic-drag-and-drop` has known grid sort bugs.
+**Core technologies (all pre-installed, zero new packages):**
+- Django 4.2 + DRF: M2M relationship for supervisor assignments, queryset scoping via Q helpers, permission classes, migrations
+- React 19 + TypeScript: All frontend feature components; no new patterns beyond what is already in use
+- Recharts 3.6.0: Bar, line, and donut (PieChart with `innerRadius`) charts — all three types verified in active production files
+- `@radix-ui/react-progress` 1.1.8: Goal progress bar in journal report — component exists at `components/ui/progress.tsx`
+- nuqs 2.8.8: URL state for missionary dashboard selector (`?viewing_user=<uuid>`) — follows existing filter bar convention across all pages
+- TanStack Query 5.90: Data fetching and cache invalidation for all new hooks; existing patterns reused
+- `@dnd-kit/sortable` 10.0.0: Dashboard tile reordering already works; cross-section drag requires merging SortableContexts
 
-**Core technologies:**
-- `hashlib` (Python stdlib): SHA256 content hashing for ImportBatch dedup — zero dependency, C-implemented, ~15ms for 10MB files
-- `csv.DictReader` (Python stdlib): RE CSV parsing — already in use throughout the codebase, handles RE quoting correctly by default
-- Django additive migrations (`CreateModel`, `AddField`): schema additions only, no data migrations needed since Gift/RecurringGift are new tables alongside existing ones
-- `@dnd-kit/core` + `@dnd-kit/sortable`: drag-and-drop dashboard tiles — React 19 compatible, native grid sorting strategy (`rectSortingStrategy`), keyboard accessible
-- Django `through` model (`GiftCredit`): many-to-many Gift-to-Solicitor with per-solicitor amounts — standard ORM pattern, queryable and aggregatable via Django ORM `Sum()`
+See `STACK.md` for feature-by-feature technology analysis with exact file and line references for every component.
 
 ### Expected Features
 
-**Must have (table stakes):**
-- RE CSV import pipeline supporting all 4 types (Constituent, Solicitor, Gift, Recurring Gift) with exact RE header matching
-- SHA256 file deduplication via ImportBatch model (UNIQUE on `import_type` + `sha256`, normalized before hashing)
-- Gift row grouping by Gift ID before processing (RE exports one row per solicitor credit, not one row per gift)
-- GiftCredit junction model for many-to-many Gift-to-Solicitor with per-solicitor credited amounts in cents
-- Merge-only contact updates from Constituent import (never overwrite existing data with empty RE fields)
-- Row-level error collection (continue on error, report all issues at end — never abort on first row failure)
-- Idempotent upserts via external IDs (`update_or_create` on `external_gift_id` / `external_constituent_id`)
-- PrayerIntention model with auto-creation from non-empty Gift description fields during import
-- Today's Focus view with daily prayer list (prioritize un-prayed, oldest, round-robin across contacts)
-- Manual prayer intention creation and "mark as prayed" action with `last_prayed_at` timestamp
-- Draggable dashboard tiles with session-only state (`useState` only — resets on refresh, no persistence)
-- Contact stat unification: `update_giving_stats()` queries both `self.donations` (existing) and `self.re_gifts` (new)
+**Must have (table stakes — UI polish, P1):**
+- Dashboard text cleanup: remove "2026 calendar year" from GivingSummaryCard, "Updated today" from MonthlyGiftsCard, "Recent Journal Activity" tile entirely
+- Rename "Prospect" to "Potential Donor" across ContactList, ContactForm, ContactDetail
+- Remove Fund and Description columns from gifts page; add Type column
+- Remove Fund column from pledges page
+- Remove Review Queue and heatmap from analytics dashboard
+- Audit and fix non-centered dialogs (audit Sheet vs Dialog usage before touching base component)
+- Dashboard gap/spacing reduction (reduce `gap-6` to `gap-4`, `space-y-8` to `space-y-6`)
 
-**Should have (differentiators):**
-- Prayer page with chapel-like UX — amber palette, serif headings, generous spacing, deliberately distinct from dense CRM screens
-- Solicitor-to-User auto-linking via normalized name matching (exact match only; ambiguous names go to unmatched queue for admin review)
-- Visual drag feedback (DragOverlay ghost) and smooth tile reorder animations via dnd-kit transforms
-- Import history view showing past ImportBatch records with status, row counts, and error logs
-- Prayer Focus Mode with keyboard navigation (spacebar to mark prayed, arrow keys to move through queue)
+**Must have (differentiators, P1):**
+- Mission Supervisor role: scoped read access to assigned missionaries' data across all endpoints and admin analytics
+- Journal report rebuild: 4 metric cards, goal progress bar, stage bar chart, decision donut chart, checkbox direct-check behavior
+- Dashboard bar/line chart toggle on MonthlyGiftsCard
 
-**Defer to v2.1+:**
-- Generic CSV import layer for contacts/donations (most users use RE imports; lower priority)
-- Persistent tile order (explicitly out of scope per PROJECT.md — session-only is the decision)
-- Prayer completion statistics ("you prayed for 12 people this week")
-- Old Donation/Pledge table cleanup (keep as read-only backup during v2.0; drop in v2.1 after validation)
-- `SolicitorAlias` table for manual admin linking of unmatched solicitors (admin resolves via UI in v2.1)
+**Should have (P2 — include if schedule permits):**
+- Begin Prayer dedicated session entry point on prayer page and enhanced completion flow
+- Dashboard cross-section tile dragging (flatten to single SortableContext)
+
+**Defer (v2.3+):**
+- Supervisor self-assignment capability — breaks admin control of org structure
+- Persistent dashboard tile order — requires user preferences model and migration; explicitly out of scope in PROJECT.md
+- Real-time prayer session sync — no WebSocket infrastructure; prayer is personal
+- Dynamic column visibility toggle — UI complexity without validated user need
+
+See `FEATURES.md` for complete dependency graph, impact matrix by file, and full anti-features analysis.
 
 ### Architecture Approach
 
-The architecture is a dual-model additive system: Gift/RecurringGift/Solicitor/GiftCredit are added alongside the existing Donation/Pledge models, writing to separate tables, with Contact acting as the unified stat aggregation layer. Two new Django apps are created (`apps.solicitors`, `apps.prayer`) while new gift/recurring gift models are added directly to existing `apps.donations` and `apps.pledges` modules to avoid circular imports. The import app is extended with parallel RE-specific files (`re_services.py`, `re_views.py`, `re_utils.py`) without touching the existing SPO pipeline. Approximately 35 existing backend files and 36 existing frontend files remain completely unchanged.
+The central architectural decision for v2.2 is the centralized `owner_scoped_filter()` Q helper in `apps/core/querysets.py`. This is the correct pattern because the current codebase has four distinct role-check patterns across 40+ `get_queryset` methods. Creating a single helper that returns a Q object (empty for admin/finance/read_only, owner-in-supervised-set for supervisor, owner-equals-user for staff) and refactoring all views to use it ensures the supervisor role gets consistent scoping without missed views. The journal report rebuild follows the same consolidation principle: replace four API calls and four chart components with one aggregated endpoint and one component.
 
 **Major components:**
-1. `apps.solicitors` (new app) — Solicitor model with `normalized_name` matching and `OneToOneField` User link; standalone app to avoid circular FK between donations and pledges
-2. `apps.prayer` (new app) — PrayerIntention model, Today's Focus API, mark-as-prayed; dedicated route `/prayer` with chapel-like UX separate from dense CRM screens
-3. `apps/imports/re_utils.py` (new file) — Shared parsing layer: `compute_import_hash()` (normalized, not raw bytes), `decode_csv_bytes()` (cascading UTF-8-sig > UTF-8 > Windows-1252), `parse_re_date()` (US formats only: `MM/DD/YYYY`, `YYYY-MM-DD`), `parse_currency()`
-4. `apps/imports/re_services.py` (new file) — RE import pipeline: constituent importer (merge-only updates), solicitor importer (normalized upsert), gift importer (group by Gift ID, upsert Gift + GiftCredits), recurring gift importer (same pattern)
-5. `apps/imports/re_views.py` (new file) — 4 import API endpoints + batch list/detail; all admin-only
-6. `apps/contacts/models.py` — Modified `update_giving_stats()` to query both `self.donations` and `self.re_gifts`; this is the only existing method that changes
-7. `Gift` + `GiftCredit` in `apps.donations` (new classes in existing file) — RE-specific gift with `fund_split_amount_cents` (integer cents, not decimal) and M2M solicitor credits via `through` model
-8. `RecurringGift` + `RecurringGiftCredit` in `apps.pledges` (new classes in existing file) — RE recurring gifts with installment fields; same pattern as Gift
-9. `ImportBatch` in `apps.imports` (new model in existing file) — parallel to existing ImportRun, with SHA256 dedup and 4-type status tracking (`constituent`, `solicitor`, `gift`, `recurring_gift`)
-10. `Dashboard.tsx` (modified) — wrapped in `DndContext` + `SortableContext` with `rectSortingStrategy`; individual tile components themselves unchanged
+1. `apps/core/querysets.py` (new file) — `owner_scoped_filter(user, owner_field='owner')` Q helper; used by all 40+ owner-scoped views across contacts, journals, gifts, tasks, prayers, and insights apps
+2. `User.supervised_users` M2M — self-referential `ManyToManyField('self', symmetrical=False)` mapping supervisors to assigned missionaries; creates `users_user_supervised_users` junction table automatically
+3. New `report` action on `JournalAnalyticsViewSet` — single aggregated endpoint `GET /api/journals/analytics/report/?journal_id=X` replacing four separate analytics calls
+4. `frontend/src/pages/journals/components/JournalReport.tsx` (new) — metrics, progress bar, Recharts bar and donut charts, conditional alert sections
+5. `frontend/src/components/dashboard/MissionarySelector.tsx` (new) — Radix Select dropdown for supervisor/admin to view a missionary's dashboard; uses nuqs `?viewing_user=<uuid>`
+6. `apps/dashboard/views.py` (modified) — `_get_viewable_user()` helper validates supervisor access to target user; passes target user to existing `get_dashboard_summary(user)` service (no service layer changes needed)
+
+See `ARCHITECTURE.md` for complete view inventory (40+ methods with exact file:line references), component boundary definitions, anti-patterns, and build order rationale within each phase.
 
 ### Critical Pitfalls
 
-1. **Replacing Donation with Gift (77+ dependent references)** — Do NOT rename or replace. Add Gift/RecurringGift as new models alongside existing ones. Django's `RenameModel` migration handles the DB table but not string-based `related_name`, signal senders, EventType enum values, or frontend API paths. ~35 backend + 36 frontend files would require coordinated changes with total regression risk on every existing feature.
+1. **Supervisor queryset scoping is inconsistent across 40+ views with 4 distinct patterns** — The codebase uses `== 'admin'`, `in ['admin', 'finance', 'read_only']`, `!= 'admin'`, and separate `_scope_*` helper functions. Adding `supervisor` without a centralized Q helper will leak all data or lock supervisors out entirely across different endpoints. Prevention: build `owner_scoped_filter()` first, then refactor all views before adding any supervisor-specific logic.
 
-2. **SHA256 hash instability from encoding variations** — Do NOT hash raw file bytes. Normalize first: decode with `utf-8-sig` (strips BOM), normalize line endings (`\r\n` -> `\n`), strip trailing whitespace, then hash the canonical form. The same logical CSV file produces different raw byte sequences based on whether it passed through Excel, Git, or a text editor. This produces false positives (same data flagged as new) and false negatives (duplicate data not detected).
+2. **Self-referential FK on User creates cascade deletion traps** — A supervisor FK (PROTECT) blocks deactivating supervisors; (SET_NULL) silently orphans missionaries with no supervisor scope. Prevention: use M2M (`ManyToManyField('self', symmetrical=False)`) — deactivation leaves M2M rows harmless and querysets naturally return an empty supervised set.
 
-3. **RE multi-row split gifts creating duplicate records** — Group all CSV rows by Gift ID using `defaultdict(list)` BEFORE creating any Gift records. RE exports one row per solicitor credit, not one row per gift. The naive "one row = one record" approach causes unique constraint violations on `external_gift_id` and inflates `gift_count` on contacts.
+3. **Frontend ProtectedRoute numeric hierarchy cannot express supervisor's mixed access model** — Supervisor needs admin-level page access (analytics dashboard) but not full admin access (user management). The current numeric hierarchy (admin:4, finance:3, staff:2, read_only:1) cannot encode this split. Prevention: replace with explicit per-route allowed-role arrays or capability maps; update `User` type in both `auth.ts` and `users.ts` (they are separate files with separate type definitions).
 
-4. **Windows-1252 encoding breaking the parser** — Use cascading decode: try `utf-8-sig` first (handles BOM), then `utf-8`, then fall back to `windows-1252`. RE is a Windows application; names with accents (José), smart quotes in notes, and em-dashes in addresses use byte values that are invalid UTF-8 and will raise `UnicodeDecodeError` if decoded as UTF-8.
+4. **Journal report requires a backend endpoint that does not currently exist** — The spec references `journalsApi.getReport(journalId)` but the backend only has separate analytics endpoints (decision-trends, stage-activity, pipeline-breakdown, next-steps-queue), not a per-journal aggregated report. Prevention: build the `JournalAnalyticsViewSet.report()` endpoint before or alongside the frontend component — never build frontend first against a missing API.
 
-5. **Contact stats not updating when Gift records are created** — Wire Gift `post_save`/`post_delete` signals in `donations/signals.py` from day one (Phase 1). The existing `update_giving_stats()` only queries `self.donations.all()`. Until updated to also query `self.re_gifts`, any Gift records created through the new pipeline will show $0 on the dashboard. During bulk imports, disable signals and recalculate stats once per affected contact at batch completion.
+5. **Checkbox "direct check" conflicts with event-sourced stage tracking** — Stage is determined by `JournalStageEvent` history (see `get_current_stage` in `contacts/serializers.py`), not a boolean field. "Checking" a stage must create a stage event silently. Prevention: optimistically check the UI, POST to existing `JournalStageEventListCreateView` in the background, revert on mutation failure with a toast error.
 
-6. **Solicitor false-matching crediting gifts to wrong missionaries** — Use exact normalized name matching only (lowercase, strip titles/suffixes/punctuation, handle "Last, First" RE format). When multiple users match or zero users match, send to unmatched queue for admin review. Never use fuzzy matching — a false positive silently inflates one missionary's support total while zeroing out another's, creating data integrity errors that are hard to detect and hard to undo.
+See `PITFALLS.md` for 14 pitfalls total with phase-specific warnings, exact code locations, and prevention strategies verified against the actual codebase.
 
 ## Implications for Roadmap
 
-Based on research, suggested phase structure:
+Based on combined research, the phase structure is driven by three principles: (1) zero-dependency changes first, (2) self-contained features second, and (3) cross-cutting model changes last. Phases 1-3 can be executed in parallel or any order. Phase 4 must be last because the Q helper refactor in Phase 4 touches view files that Phase 2 also modifies — serializing Phase 4 avoids merge conflicts.
 
-### Phase 1: Foundation Schema (Additive Models + Migrations)
+### Phase 1: UI Polish and Dashboard Modifications
 
-**Rationale:** All subsequent phases depend on new tables existing. Creating models before any import logic ensures clean dependency ordering and zero risk to existing functionality. All changes are additive: new tables via `CreateModel`, new nullable fields on Contact via `AddField`. No existing table structure changes.
+**Rationale:** Zero backend changes, zero risk, immediate user-visible improvements. All items are independent of each other and of all other phases. Parallelizable within the phase.
+**Delivers:** Cleaner dashboard text, corrected "Potential Donor" label, simplified gifts and pledges list pages, analytics UI trimmed of Review Queue and heatmap, fixed dialog centering, tighter dashboard gaps, bar/line chart toggle on MonthlyGiftsCard
+**Addresses:** All "table stakes" table stakes features plus the chart toggle differentiator (LOW implementation cost, MEDIUM+ user value across all items)
+**Avoids:** Pitfall 7 (remove column and its filter together, not column alone), Pitfall 10 (audit which flows use Sheet vs Dialog before touching base component — Sheet slides from side by design, Dialog centers), Pitfall 14 (remove analytics UI working backwards: sidebar link -> route -> component -> hook -> API client)
+**Research flag:** Standard patterns — skip `/gsd:research-phase`
 
-**Delivers:** Seven new Django models fully migrated — Gift, GiftCredit, RecurringGift, RecurringGiftCredit, Solicitor, PrayerIntention, ImportBatch. Four new Contact fields (`external_constituent_id`, `organization_name`, `address_line_2`, `re_last_changed_at`). Two new Django apps registered in settings (`apps.solicitors`, `apps.prayer`).
+### Phase 2: Journal Report Rebuild
 
-**Addresses:** RE import table stakes (models are the prerequisite), gift credit splitting (GiftCredit through model), prayer intentions (PrayerIntention model)
+**Rationale:** Self-contained new endpoint plus new component pair. No interaction with other v2.2 features. Build backend endpoint first within this phase — front-ending a missing API produces confusing empty/error state during development.
+**Delivers:** Rebuilt Reports tab with 4 metric cards, goal progress bar, stage bar chart (6 stages with specific hex colors), decision donut chart, conditional stalled/next-steps alert sections; checkbox direct-check behavior (auto-creates stage event without dialog); removal of old Pipeline Breakdown chart and ReportCharts.tsx components
+**Addresses:** "Journal report rebuild" and "stage checkbox direct-check" features (both P1, both on the journal detail page — coupling them in one phase avoids duplicate journal page testing rounds)
+**Avoids:** Pitfall 8 (build backend endpoint first), Pitfall 9 (checkboxes create stage events silently via optimistic updates, not a separate boolean field), Pitfall 12 (verify no other consumers of old chart components before deleting them — grep for all imports)
+**Research flag:** Standard patterns — skip `/gsd:research-phase`; all chart types already in active use in the codebase with verified Recharts 3.6.0 APIs
 
-**Avoids:** Pitfall #1 (no rename/replace of Donation — additive only), Pitfall #7 from PITFALLS.md (additive schema means no UUID conflicts, no GenericForeignKey migration needed)
+### Phase 3: Begin Prayer
 
-**Research flag:** Standard Django patterns — skip research-phase. `CreateModel` and `AddField` migrations are well-documented and already used throughout the codebase.
+**Rationale:** Pure frontend, smallest scope of all feature phases, uses existing backend endpoints entirely. No risk of interfering with other work.
+**Delivers:** Prominent "Begin Prayer" button on prayer page, wired to fetch today's focus intentions and open existing PrayerFocusMode; any UX enhancements to the focus session flow; enhanced completion summary
+**Addresses:** "Begin Prayer" P2 differentiator feature
+**Avoids:** Pitfall 11 (extend existing PrayerFocusMode — do not create a parallel fullscreen overlay with competing `window.keydown` handlers for Arrow, Space, Enter, P, Escape)
+**Research flag:** Standard patterns — skip `/gsd:research-phase`; existing `PrayerFocusMode.tsx` is 243 lines of complete implementation
 
-### Phase 2: RE Import Backend
+### Phase 4: Mission Supervisor Role
 
-**Rationale:** The import pipeline is the primary way data enters the new models. Building and testing this before any UI ensures the backend is solid before the frontend is built on top of it. Real RE CSV edge cases (encoding, split gifts, date formats) must be discovered in backend unit tests, not during UI integration testing.
-
-**Delivers:** `re_utils.py` (SHA256 normalized hashing, cascading encoding decode, RE-specific date parser, currency parser), `re_services.py` (constituent, solicitor, gift, recurring_gift importers with row grouping and merge-only updates), `re_views.py` (4 import endpoints + batch list/detail), URL routing in `imports/urls.py`. Fully tested with real RE CSV fixtures including split gifts, accented names, and BOM variants.
-
-**Uses:** Python `hashlib` (stdlib), Python `csv.DictReader` (with `utf-8-sig` + `windows-1252` fallback), Django ORM `update_or_create` for idempotent upserts
-
-**Avoids:** Pitfall #3 (normalized SHA256 before hashing), Pitfall #4 (cascading encoding detection), Pitfall #5 (gift row grouping before record creation), Pitfall #6 (exact normalized solicitor matching with unmatched queue), Pitfall #9 from PITFALLS.md (US-only date formats for RE imports)
-
-**Research flag:** Well-documented service layer patterns. However, validate with REAL RE CSV files before considering this phase complete — edge cases only manifest with actual production exports.
-
-### Phase 3: Contact Stat Unification
-
-**Rationale:** Dashboard and insights already read contact-level aggregate stats (`total_given`, `gift_count`, `last_gift_date`). By updating `update_giving_stats()` to query both Donation and Gift sources, the existing UI automatically reflects RE gift data without any frontend changes. This must come before the import UI so that when admins import their first RE file, the dashboard immediately shows correct numbers.
-
-**Delivers:** Modified `Contact.update_giving_stats()` querying both `self.donations` and `self.re_gifts`, merging results (sum totals, min of first dates, max of last dates). New Gift `post_save`/`post_delete` signals in `donations/signals.py`. Management command `recalculate_contact_stats` for post-import backfill. Tests verifying stats are correct with Donation-only, Gift-only, and combined data.
-
-**Avoids:** Pitfall #2 from PITFALLS.md (stats hardcoded to donations showing $0 after RE import), Pitfall #10 from PITFALLS.md (signal storms during bulk import — use `disable_donation_signals()` equivalent + batch recalc once per contact at end)
-
-**Research flag:** Standard pattern — skip research-phase. The existing `disable_donation_signals()` threading.local mechanism is the model to replicate for Gift signals. The stat merge logic is straightforward aggregate arithmetic.
-
-### Phase 4: RE Import UI (Frontend)
-
-**Rationale:** The stable backend from Phase 2 provides the API. Build the admin-facing import interface now. This is low-risk (new page, minimal changes to existing files) and delivers the complete import workflow end-to-end.
-
-**Delivers:** `REImport.tsx` page at `/admin/re-import` with 4 tabs (Constituent, Solicitor, Gift, Recurring Gift), file upload with drag-drop per tab, import result banners (success/error/already-processed), required header reference per import type, import order guidance (constituents before gifts), import history list showing past ImportBatch records. RE import tile added to `ImportCenter.tsx`. Route added to `App.tsx`.
-
-**Avoids:** Architecture anti-pattern #5 from ARCHITECTURE.md (UI built before backend is tested with real data)
-
-**Research flag:** Standard React + TanStack Query patterns — skip research-phase. File upload pattern already exists in the SPO import pages; extend that pattern.
-
-### Phase 5: Prayer Intentions
-
-**Rationale:** Prayer is a standalone feature with its own page, API, and UX philosophy. It depends on Gift import (Phase 2) for auto-creation from gift descriptions and on the PrayerIntention model (Phase 1). No dependencies on Phases 3 or 4 — can be parallelized with Phase 4 if capacity allows.
-
-**Delivers:** Backend prayer CRUD API (`/api/v1/prayer/intentions/`), Today's Focus endpoint, mark-as-prayed action. Post-import hook in `re_services.py` creating PrayerIntentions from non-empty Gift descriptions (deduplicated by `contact` + `text` to prevent re-import duplicates). `PrayerPage.tsx` at `/prayer` with chapel-like UX (amber palette, serif headings, calming design). Prayer nav item in `Sidebar.tsx`. Route in `App.tsx`.
-
-**Avoids:** Architecture anti-pattern #4 from ARCHITECTURE.md (prayer as a Contact tab — must be a dedicated route to preserve the chapel UX). UX pitfall of auto-creating prayer intentions from RE description codes rather than actual prayer text (filter: only auto-create when the description contains text that reads as a prayer request).
-
-**Research flag:** UX philosophy and verification checklist are detailed in `prompts/prayer_intentions.md`. Skip research-phase; follow the spec closely. The Today's Focus algorithm (prioritize un-prayed, oldest, round-robin) needs implementation but not research.
-
-### Phase 6: Dashboard Draggable Tiles
-
-**Rationale:** Fully independent of all other v2.0 work — no model dependencies, no data requirements. The lowest-risk phase: wrapping existing tile components in `SortableContext` is additive, and the individual tile components themselves need no changes. Placed last because it is UX polish rather than data infrastructure.
-
-**Delivers:** `DndContext` + `SortableContext` with `rectSortingStrategy` wrapping the existing dashboard grid. `useState` for tile order (session-only — resets on refresh, no persistence). `DragOverlay` for visual ghost feedback during drag. Drag handle indicator on tile headers to prevent accidental drags. `@dnd-kit/core@6.3.1` + `@dnd-kit/sortable@10.0.0` + `@dnd-kit/utilities@3.2.2` installed via npm.
-
-**Uses:** `@dnd-kit` family (the only new npm dependency for the entire v2.0 milestone)
-
-**Avoids:** Using archived `react-beautiful-dnd`, using pre-1.0 `@dnd-kit/react` (missing "use client" for React 19, no stable sortable example), adding localStorage persistence (explicitly out of scope per PROJECT.md)
-
-**Research flag:** Standard dnd-kit sortable grid pattern — skip research-phase. Docs at dndkit.com are comprehensive; `rectSortingStrategy` + `closestCenter` collision detection is the documented approach for grid reorder.
+**Rationale:** Largest scope, most files modified, requires a Django migration, and the Q helper refactor touches view files that Phase 2 also modifies. Must execute last. The Q helper and view refactor are the load-bearing foundation — execute them first within this phase before any permission or frontend work.
+**Delivers:** Supervisor role with scoped visibility across all data endpoints; supervisor assignment management API and admin UI; missionary dashboard selector for supervisor and admin users; supervisor access to admin analytics scoped to their assigned missionaries; frontend role hierarchy, sidebar navigation, and route guard updates
+**Addresses:** "Mission Supervisor role" high-value P1 differentiator
+**Build order within phase:** (1) User model + migration (SUPERVISOR choice + supervised_users M2M), (2) `owner_scoped_filter()` Q helper in `apps/core/querysets.py`, (3) refactor ALL 40+ views to use the helper, (4) `IsAdminOrSupervisor` permission class, (5) supervisor assignment management endpoint, (6) dashboard `user_id` param + `_get_viewable_user()`, (7) insights service scoping for supervisors, (8) frontend: User types in both `auth.ts` and `users.ts`, (9) frontend: role hierarchy replacement in `ProtectedRoute.tsx` and `Sidebar.tsx`, (10) frontend: `AdminUsers.tsx` role selector + assignment UI, (11) frontend: `MissionarySelector.tsx` component, (12) frontend: Dashboard wiring with nuqs `?viewing_user` param
+**Avoids:** Pitfall 1 (centralized Q helper before touching any view), Pitfall 2 (M2M not FK), Pitfall 3 (permission classes control access level; querysets control data scope — two separate concerns), Pitfall 4 (capability-based route guards, not numeric hierarchy), Pitfall 5 (`_get_viewable_user()` validates supervisor access before returning target user data)
+**Research flag:** Recommend `/gsd:research-phase` — the view inventory (40+ methods across 8 apps with 4 distinct patterns), insights service function scoping, and frontend role hierarchy replacement are complex enough to warrant a phase-level planning research pass before implementation begins
 
 ### Phase Ordering Rationale
 
-- **Models before everything:** All import logic, stats, and UI depend on tables existing — additive schema changes are safe to ship and cannot regress existing functionality
-- **Import backend before import UI:** Real RE CSV edge cases must be discovered in service layer unit tests before UI integration obscures root causes
-- **Stats unification before import UI:** The first admin import should immediately show correct dashboard numbers — discovering the stat bug after the UI ships creates a confusing "import worked but dashboard shows $0" failure mode
-- **Prayer and draggable tiles last:** Both are independent of the data pipeline and can slide without blocking the core RE import milestone if earlier phases encounter delays
-- **Prayer can parallelize with Phase 4:** Once Phase 1 and Phase 2 are complete, Prayer Intentions has no dependency on the import UI or stat unification
+- Phases 1-3 have zero inter-phase dependencies and can run in any order or in parallel across developers
+- Phase 4 modifies `apps/journals/views.py` (adding a `report` action), which Phase 2 also modifies — doing Phase 4 last eliminates merge conflicts
+- Within Phase 4, the Q helper and view refactor (steps 2-3) must precede all permission changes and all frontend work; the refactor is safe because it produces identical behavior for existing roles while adding the supervisor branch
+- The supervisor M2M migration (step 1 of Phase 4) is non-destructive: it adds a new choice string to an existing CharField (`max_length=20`, 'supervisor' is 10 chars) and creates one new junction table — no data transformation needed
 
 ### Research Flags
 
-**Needs additional research during planning:**
-- **Phase 2 RE import backend:** Validate actual RE CSV column ordering and real-world encoding behavior with production-exported files before finalizing header validation logic. The exact headers are specified in `prompts/CSV_import_system_2.md` but encoding and column ordering behavior vary by RE configuration and export method.
+Phases likely needing `/gsd:research-phase` during planning:
+- **Phase 4 (Mission Supervisor):** 40+ views across 8 apps with 4 distinct scoping patterns; insights service functions require parameter-threading for supervisor filtering; frontend role hierarchy replacement needs careful audit of all `ProtectedRoute` `requiredRole` props in `App.tsx` and all `canAccess` / `roleHierarchy` usages in `Sidebar.tsx`
 
-**Standard patterns (skip research-phase):**
-- **Phase 1** (Foundation Schema): Django `CreateModel` and `AddField` migrations are thoroughly documented; pattern is already used throughout the codebase
-- **Phase 3** (Contact Stat Unification): Pattern exactly mirrors the existing `update_giving_stats()` + signals architecture; extension, not new pattern
-- **Phase 4** (RE Import UI): Standard React file upload + TanStack Query patterns already in use in SPO import pages
-- **Phase 5** (Prayer Intentions): Feature spec detailed in `prompts/prayer_intentions.md`; UX philosophy is clear and actionable
-- **Phase 6** (Dashboard Draggable Tiles): dnd-kit sortable grid is a documented, straightforward integration with `rectSortingStrategy`
+Phases with standard patterns (skip research-phase):
+- **Phase 1 (UI Polish):** All changes are CSS values, label strings, and column array edits — no research needed
+- **Phase 2 (Journal Report):** Chart types already in active use; API aggregation follows existing analytics viewset pattern; checkbox behavior change follows existing mutation/optimistic update pattern
+- **Phase 3 (Begin Prayer):** Single component extension using existing backend — no research needed
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Only 1 new npm dependency (3 packages); all peer deps verified via npm CLI; Python additions are stdlib only with no version concerns |
-| Features | HIGH | Exact CSV headers confirmed from production RE exports in `prompts/CSV_import_system_2.md`; prayer feature spec from `prompts/prayer_intentions.md` |
-| Architecture | HIGH | Based on full codebase analysis of 35+ backend files and 36+ frontend files; dual-model additive decision is conclusive with quantified blast-radius |
-| Pitfalls | HIGH | Each pitfall verified against actual code paths (`apps/donations/signals.py`, `contacts/models.py:152-188`, etc.) and RE-specific external research on encoding/split-gift behavior |
+| Stack | HIGH | Verified every feature against actual installed package versions and existing code files with line references; confirmed zero new dependencies |
+| Features | HIGH | Features sourced directly from user spec files in `prompts/`; codebase impact verified by reading source files with exact file:line locations |
+| Architecture | HIGH | All patterns verified against actual view files; 40+ `get_queryset` methods inventoried and categorized; component boundaries confirmed by reading source |
+| Pitfalls | HIGH | 14 pitfalls identified from direct codebase analysis of the actual four distinct role-check patterns, the event-sourced stage tracking model, and the DndContext structure — not speculative |
 
-**Overall confidence:** HIGH
+**Overall confidence: HIGH**
+
+The high confidence across all areas reflects that this is a research milestone on an existing mature codebase, not a greenfield project. Research was conducted by reading actual source files rather than relying on external documentation.
 
 ### Gaps to Address
 
-- **SHA256 normalization with real RE files:** The normalized hashing strategy (strip BOM, normalize line endings, sort rows before hashing) is theoretically sound but should be validated against actual RE-exported CSV files in multiple conditions (direct RE export, via Excel, via email attachment) before the ImportBatch unique constraint is enforced. False positives (duplicate detection when the file is actually new) are more disruptive than false negatives.
+- **Dashboard "draggable anywhere" scope:** PITFALLS.md flags that true cross-section drag is significantly more complex than within-section reordering. The current three-SortableContext structure would require either flattening to a single array (losing distinct section grids) or adding cross-container drag logic with `useDroppable`. Clarify with the user during Phase 1 planning whether "drag anywhere" means cross-section or within-section before implementing.
 
-- **Solicitor name format from RE ("Last, First" vs "First Last"):** Research indicates RE may export `Smith, John` or `John Smith` depending on configuration and export template. The `parse_solicitor_name()` function handles both cases, but the actual format used by this specific RE installation should be confirmed with an admin before Phase 2 ships.
+- **Begin Prayer persistence decision:** FEATURES.md notes the decision between client-side-only prayer sessions vs. a `PrayerSession` model for server-side persistence. If the user wants sessions logged (e.g., "you prayed for 12 intentions on 2026-02-26"), a model + migration is needed. If a client-side completion summary is sufficient, no backend change is required. Clarify during Phase 3 planning.
 
-- **Prayer intention deduplication boundary:** The spec deduplicates by `(contact, text)` to prevent re-import duplicates. If the same prayer text appears across multiple gifts from the same donor, the dedup logic must decide whether to create one intention or multiple. Confirm the intended behavior with the product owner before building the post-import hook in `re_services.py`.
+- **Insights service scoping for supervisors:** The analytics service functions (`_scope_gifts`, `_scope_tasks` etc. in `apps/insights/services.py`) have their own role-check logic separate from the view-level Q helper pattern. The exact refactor approach — either extend helpers to accept a `user_ids` parameter, or thread the Q helper through — needs to be confirmed during Phase 4 planning.
 
-- **`external_id` vs `external_constituent_id` scoping:** The existing `external_id` on Contact is owner-scoped (unique per owner + external_id). The new `external_constituent_id` is globally unique. The Constituent importer must write to `external_constituent_id` only — confirm this does not conflict with any existing code that reads `external_id` expecting the RE constituent ID.
+- **Gift "Type" column source field:** PITFALLS.md flags that adding a `payment_type` field requires a migration with a careful default value (`blank=True, default=''`). Confirm whether this field already exists on the Gift model from RE import data (the RE import pipeline brings in a "Gift Type" column) or needs to be added fresh — check `apps/gifts/models.py` and the RE import serializer before Phase 1 implementation begins.
 
 ## Sources
 
-### Primary (HIGH confidence)
-- `prompts/CSV_import_system_1.md`, `prompts/CSV_import_system_2.md` — Exact RE CSV headers, model schemas, import logic (production specs)
-- `prompts/prayer_intentions.md` — Prayer UX philosophy and verification checklist
-- Codebase analysis: `apps/contacts/models.py:152-188`, `apps/donations/signals.py`, `apps/dashboard/services.py`, `apps/insights/services.py`, `apps/imports/services.py` — existing architecture patterns and dependency graph
-- npm CLI: `@dnd-kit/core@6.3.1`, `@dnd-kit/sortable@10.0.0` peer deps verified via `npm view`
-- Python 3.12 docs: `hashlib`, `csv` module — stdlib availability and behavior confirmed
+### Primary (HIGH confidence — direct codebase analysis)
+- `apps/users/models.py` — UserRole TextChoices, User model structure
+- `apps/core/permissions.py` — 6 permission classes
+- `apps/contacts/views.py`, `apps/journals/views.py`, `apps/gifts/views.py`, `apps/tasks/views.py`, `apps/prayers/views.py`, `apps/insights/views.py` — 40+ `get_queryset` methods, 4 distinct role-check patterns inventoried
+- `apps/dashboard/views.py`, `apps/dashboard/services.py` — DashboardView, `get_dashboard_summary` with user parameter
+- `apps/contacts/serializers.py` — event-sourced stage tracking via JournalStageEvent (`get_current_stage`)
+- `frontend/src/components/auth/ProtectedRoute.tsx` — numeric role hierarchy (admin:4, finance:3, staff:2, read_only:1)
+- `frontend/src/api/auth.ts`, `frontend/src/api/users.ts` — User type definitions with hardcoded role union
+- `frontend/src/pages/Dashboard.tsx` — 3 SortableContext zones, handleDragEnd, tile render logic
+- `frontend/src/pages/prayer/PrayerFocusMode.tsx` — 243 lines, keyboard handlers, fullscreen overlay
+- `frontend/src/components/dashboard/GivingSummaryCard.tsx` — donut chart pattern (lines 80-94)
+- `frontend/src/components/dashboard/MonthlyGiftsCard.tsx` — bar chart pattern (lines 60-99)
+- `frontend/src/components/ui/progress.tsx` — Radix Progress component
+- `frontend/src/components/ui/dialog.tsx` — Dialog centering via `translate-x[-50%] translate-y[-50%]`
+- `frontend/package.json` — Exact installed package versions confirmed
+- `requirements/base.txt` — Python package versions confirmed
 
-### Secondary (MEDIUM confidence)
-- [Blackbaud community: RENXT-I-8179](https://renxt.ideas.aha.io/ideas/RENXT-I-8179) — split gifts export to multiple rows per solicitor credit
-- [Arkus: Why RE Migrations are Difficult](https://www.arkusinc.com/archive/2020/its-not-just-your-org-why-raisers-edge-migrations-are-difficult) — gift complexity, denormalized exports, encoding
-- [devgem.io: SHA256 and line endings](https://www.devgem.io/posts/resolving-sha256-hash-mismatch-in-net-tests-line-endings-matter) — hash instability from CRLF vs LF normalization
-- [Wikipedia: Windows-1252](https://en.wikipedia.org/wiki/Windows-1252) — byte values for smart quotes, accented characters vs UTF-8
-- [HackSoft: Django model renaming](https://www.hacksoft.io/blog/renaming-models-in-django-without-heavy-data-migrations) — RenameModel limitations vs new model strategy
-- [dnd-kit docs: sortable](https://dndkit.com/presets/sortable) — SortableContext, useSortable, rectSortingStrategy
+### Primary (HIGH confidence — user spec documents)
+- `prompts/mission_supervisor.md` — Mission Supervisor role requirements and access model
+- `prompts/journal_report.md` — Detailed journal report component spec with API response shape
+- `prompts/dashboard_modification.md` — Dashboard change list
+- `prompts/prayer_intentions.md` — Begin Prayer feature requirements
 
-### Tertiary (LOW confidence — assumptions to validate)
-- RE exports in Windows-1252 by default (web research consensus; specific RE version or export template may differ)
-- Solicitor name format ("Last, First" vs "First Last") is installation-specific and not globally documented
+### Primary (HIGH confidence — planning documents)
+- `.planning/PROJECT.md` — Constraints, current state, out-of-scope items (persistent tile order explicitly excluded)
+- `.planning/EDGE_CASE_AUDIT.md` — Known journal system edge cases
+- `.planning/todos/pending/` — 9 pending todo files with feature specs
 
 ---
-*Research completed: 2026-02-20*
+*Research completed: 2026-02-26*
 *Ready for roadmap: yes*
