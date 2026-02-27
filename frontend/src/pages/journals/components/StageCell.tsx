@@ -1,7 +1,6 @@
 import * as React from "react"
 import { Check, Square } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
-import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import {
   Tooltip,
@@ -9,12 +8,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import type { StageEventSummary, PipelineStage } from "@/types/journals"
-import {
-  getFreshnessColor,
-  STAGE_LABELS,
-  checkStageTransition,
-} from "@/types/journals"
+import type { StageEventSummary, PipelineStage, StageEventType } from "@/types/journals"
+import { getFreshnessColor, STAGE_LABELS } from "@/types/journals"
+import { useCreateStageEvent } from "@/hooks/useJournals"
 
 /**
  * Get the highest pipeline stage that has events.
@@ -32,61 +28,81 @@ export function getHighestStageWithEvents(
   return null
 }
 
+/**
+ * Default event type for each stage when auto-creating via checkbox click.
+ * These are sensible defaults that create meaningful event records.
+ */
+function getDefaultEventType(stage: PipelineStage): StageEventType {
+  const defaults: Record<PipelineStage, StageEventType> = {
+    contact: 'call_logged',
+    meet: 'meeting_completed',
+    close: 'ask_made',
+    decision: 'decision_received',
+    thank: 'thank_you_sent',
+    next_steps: 'next_step_created',
+  }
+  return defaults[stage]
+}
+
 export interface StageCellProps {
   /** Contact ID for click handler */
   contactId: string
+  /** JournalContact ID (through-table), needed for creating stage events */
+  journalContactId: string
   /** Stage this cell represents */
   stage: PipelineStage
   /** Summary of events for this stage */
   eventSummary: StageEventSummary
   /** Click handler to open timeline drawer */
   onCellClick: (contactId: string, stage: PipelineStage) => void
-  /** Current highest stage for this contact (for transition warnings) */
+  /** Current highest stage for this contact */
   currentStage?: PipelineStage | null
 }
 
 /**
  * Memoized stage cell component for journal grid.
  *
- * Performance: Wrapped in React.memo with custom comparison to prevent
- * re-render cascade when other cells change. Only re-renders if this
- * cell's eventSummary changes.
+ * JRNL-08 behavior:
+ * - Unchecked stage (no events): Click immediately creates a stage event
+ *   with a default event type. No dialog, no confirmation.
+ * - Checked stage (has events): Click opens the EventTimelineDrawer for details.
+ * - Independent toggles: checking any stage does NOT auto-check others.
  *
- * From RESEARCH.md: "All function props must be wrapped in useCallback
- * with stable dependencies"
+ * Performance: Wrapped in React.memo with custom comparison to prevent
+ * re-render cascade when other cells change.
  */
 export const StageCell = React.memo<StageCellProps>(
-  ({ contactId, stage, eventSummary, onCellClick, currentStage }) => {
+  ({ contactId, journalContactId, stage, eventSummary, onCellClick }) => {
+    const { mutate: createEvent, isPending } = useCreateStageEvent()
+
     const handleClick = React.useCallback(() => {
-      // Check if this would be a non-sequential transition
-      // Per JRN-05: "System shows subtle warnings for non-sequential movement (no hard blocks)"
-      if (currentStage && stage !== currentStage) {
-        const transition = checkStageTransition(currentStage, stage)
-        if (!transition.isSequential) {
-          if (transition.isRevisiting) {
-            toast.warning("Revisiting stage", {
-              description: `Moving back to ${STAGE_LABELS[stage]}`,
-            })
-          } else if (transition.skippedStages.length > 0) {
-            toast.warning("Skipping stages", {
-              description: `Skipping: ${transition.skippedStages.join(", ")}`,
-            })
-          }
-        }
+      if (!eventSummary.has_events) {
+        // JRNL-08: Instant toggle -- auto-create stage event, no dialog
+        createEvent({
+          journal_contact: journalContactId,
+          stage,
+          event_type: getDefaultEventType(stage),
+        })
+      } else {
+        // Already has events -- open EventTimelineDrawer for details
+        onCellClick(contactId, stage)
       }
-      // Always proceed - no hard block (per JRN-05)
-      onCellClick(contactId, stage)
-    }, [contactId, stage, currentStage, onCellClick])
+    }, [contactId, journalContactId, stage, eventSummary.has_events, createEvent, onCellClick])
 
     // Empty state - no events logged for this stage
     if (!eventSummary.has_events) {
       return (
         <button
           onClick={handleClick}
-          className="h-10 w-10 flex items-center justify-center rounded hover:bg-muted/50 transition-colors"
-          aria-label={`${STAGE_LABELS[stage]} - No events`}
+          disabled={isPending}
+          className="h-10 w-10 flex items-center justify-center rounded hover:bg-muted/50 transition-colors disabled:opacity-50"
+          aria-label={`${STAGE_LABELS[stage]} - Click to mark complete`}
         >
-          <Square className="h-5 w-5 text-muted-foreground" />
+          {isPending ? (
+            <div className="h-5 w-5 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <Square className="h-5 w-5 text-muted-foreground" />
+          )}
         </button>
       )
     }
@@ -137,11 +153,12 @@ export const StageCell = React.memo<StageCellProps>(
       </TooltipProvider>
     )
   },
-  // Custom comparison: only re-render if eventSummary or currentStage changes
+  // Custom comparison: only re-render if relevant props change
   (prevProps, nextProps) => {
     return (
       prevProps.eventSummary === nextProps.eventSummary &&
       prevProps.contactId === nextProps.contactId &&
+      prevProps.journalContactId === nextProps.journalContactId &&
       prevProps.stage === nextProps.stage &&
       prevProps.onCellClick === nextProps.onCellClick &&
       prevProps.currentStage === nextProps.currentStage
