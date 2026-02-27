@@ -1,5 +1,5 @@
 import { format } from "date-fns"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useAdminStageContacts } from "@/hooks/useInsights"
 
@@ -25,14 +25,14 @@ export function FunnelDrilldownPanel({ open, stage, onClose }: FunnelDrilldownPa
   const stageLabel = stage ? STAGE_LABELS[stage] || stage : "Stage"
 
   return (
-    <Sheet open={open} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>Contacts in {stageLabel}</SheetTitle>
-          <SheetDescription>
+    <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Contacts in {stageLabel}</DialogTitle>
+          <DialogDescription>
             {data?.total_count || 0} contacts currently in this pipeline stage
-          </SheetDescription>
-        </SheetHeader>
+          </DialogDescription>
+        </DialogHeader>
 
         <div className="mt-6">
           {isLoading ? (
@@ -72,7 +72,7 @@ export function FunnelDrilldownPanel({ open, stage, onClose }: FunnelDrilldownPa
             </div>
           )}
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   )
 }

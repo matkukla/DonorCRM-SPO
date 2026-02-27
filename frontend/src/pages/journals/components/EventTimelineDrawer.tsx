@@ -1,12 +1,12 @@
 import * as React from "react"
 import { formatDistanceToNow, format } from "date-fns"
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet"
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useStageEventsInfinite } from "@/hooks/useJournals"
@@ -65,80 +65,82 @@ export function EventTimelineDrawer({
   const totalCount = data?.pages[0]?.count ?? 0
 
   return (
-    <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent side="right" className="w-full sm:w-[400px] overflow-y-auto">
-        <SheetHeader className="pb-4 border-b">
-          <div className="flex items-start justify-between">
-            <div>
-              <SheetTitle>
-                {stage ? STAGE_LABELS[stage] : "Events"} - {contactName}
-              </SheetTitle>
-              <SheetDescription>
-                {totalCount > 0
-                  ? `${totalCount} event${totalCount !== 1 ? "s" : ""} recorded`
-                  : "No events recorded yet"}
-              </SheetDescription>
-            </div>
-            <Button
-              size="sm"
-              onClick={() => setLogEventOpen(true)}
-              disabled={!journalContactId}
-            >
-              Log Event
-            </Button>
-          </div>
-        </SheetHeader>
-
-        <div className="mt-6 space-y-1">
-          {/* Loading state */}
-          {isLoading && (
-            <div className="flex items-center justify-center py-8 text-muted-foreground">
-              Loading events...
-            </div>
-          )}
-
-          {/* Error state */}
-          {isError && (
-            <div className="flex flex-col items-center justify-center py-8 text-destructive">
-              <p>Failed to load events</p>
-              <p className="text-sm text-muted-foreground">
-                {error instanceof Error ? error.message : "Unknown error"}
-              </p>
-            </div>
-          )}
-
-          {/* Empty state */}
-          {!isLoading && !isError && events.length === 0 && (
-            <div className="flex items-center justify-center py-8 text-muted-foreground">
-              No events recorded for this stage yet.
-            </div>
-          )}
-
-          {/* Event timeline */}
-          {events.map((event, index) => (
-            <EventCard
-              key={event.id}
-              event={event}
-              isFirst={index === 0}
-              isLast={index === events.length - 1 && !hasNextPage}
-            />
-          ))}
-
-          {/* Load more button */}
-          {hasNextPage && (
-            <div className="pt-4">
+    <>
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader className="pb-4 border-b">
+            <div className="flex items-start justify-between">
+              <div>
+                <DialogTitle>
+                  {stage ? STAGE_LABELS[stage] : "Events"} - {contactName}
+                </DialogTitle>
+                <DialogDescription>
+                  {totalCount > 0
+                    ? `${totalCount} event${totalCount !== 1 ? "s" : ""} recorded`
+                    : "No events recorded yet"}
+                </DialogDescription>
+              </div>
               <Button
-                onClick={() => fetchNextPage()}
-                disabled={isFetchingNextPage}
-                variant="outline"
-                className="w-full"
+                size="sm"
+                onClick={() => setLogEventOpen(true)}
+                disabled={!journalContactId}
               >
-                {isFetchingNextPage ? "Loading..." : "Load More"}
+                Log Event
               </Button>
             </div>
-          )}
-        </div>
-      </SheetContent>
+          </DialogHeader>
+
+          <div className="mt-6 space-y-1">
+            {/* Loading state */}
+            {isLoading && (
+              <div className="flex items-center justify-center py-8 text-muted-foreground">
+                Loading events...
+              </div>
+            )}
+
+            {/* Error state */}
+            {isError && (
+              <div className="flex flex-col items-center justify-center py-8 text-destructive">
+                <p>Failed to load events</p>
+                <p className="text-sm text-muted-foreground">
+                  {error instanceof Error ? error.message : "Unknown error"}
+                </p>
+              </div>
+            )}
+
+            {/* Empty state */}
+            {!isLoading && !isError && events.length === 0 && (
+              <div className="flex items-center justify-center py-8 text-muted-foreground">
+                No events recorded for this stage yet.
+              </div>
+            )}
+
+            {/* Event timeline */}
+            {events.map((event, index) => (
+              <EventCard
+                key={event.id}
+                event={event}
+                isFirst={index === 0}
+                isLast={index === events.length - 1 && !hasNextPage}
+              />
+            ))}
+
+            {/* Load more button */}
+            {hasNextPage && (
+              <div className="pt-4">
+                <Button
+                  onClick={() => fetchNextPage()}
+                  disabled={isFetchingNextPage}
+                  variant="outline"
+                  className="w-full"
+                >
+                  {isFetchingNextPage ? "Loading..." : "Load More"}
+                </Button>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <LogEventDialog
         open={logEventOpen}
@@ -146,7 +148,7 @@ export function EventTimelineDrawer({
         journalContactId={journalContactId || undefined}
         stage={stage || undefined}
       />
-    </Sheet>
+    </>
   )
 }
 
