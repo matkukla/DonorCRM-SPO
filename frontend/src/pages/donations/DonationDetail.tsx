@@ -2,12 +2,12 @@ import { useParams, useNavigate, Link } from "react-router-dom"
 import { useGift, useDeleteGift } from "@/hooks/useGifts"
 import { Button } from "@/components/ui/button"
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet"
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   Table,
   TableBody,
@@ -16,7 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Edit, Trash2, User, Calendar, FileText, Hash, DollarSign } from "lucide-react"
+import { Edit, Trash2, User, Calendar, FileText, Hash, DollarSign, CreditCard } from "lucide-react"
 import { formatLocalDate } from "@/lib/utils"
 
 function formatCurrency(amount: string | number): string {
@@ -61,8 +61,8 @@ export function DonationDetailPanel({ open, giftId, onClose }: DonationDetailPan
   }
 
   return (
-    <Sheet open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         {isLoading ? (
           <div className="space-y-6">
             <div className="h-16 bg-muted rounded animate-pulse" />
@@ -75,12 +75,12 @@ export function DonationDetailPanel({ open, giftId, onClose }: DonationDetailPan
           </div>
         ) : gift ? (
           <div className="space-y-6">
-            <SheetHeader>
-              <SheetTitle>{formatCurrency(gift.amount_dollars)}</SheetTitle>
-              <SheetDescription>
+            <DialogHeader>
+              <DialogTitle>{formatCurrency(gift.amount_dollars)}</DialogTitle>
+              <DialogDescription>
                 from {gift.donor_contact_name} on {formatLocalDate(gift.gift_date)}
-              </SheetDescription>
-            </SheetHeader>
+              </DialogDescription>
+            </DialogHeader>
 
             {/* Details */}
             <div className="space-y-4">
@@ -103,6 +103,13 @@ export function DonationDetailPanel({ open, giftId, onClose }: DonationDetailPan
                   <div>
                     <p className="text-sm text-muted-foreground">Date</p>
                     <p className="font-medium">{formatLocalDate(gift.gift_date, "long")}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <CreditCard className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Payment Type</p>
+                    <p className="font-medium">{gift.payment_type_display || "---"}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -194,8 +201,8 @@ export function DonationDetailPanel({ open, giftId, onClose }: DonationDetailPan
             </div>
           </div>
         ) : null}
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   )
 }
 
