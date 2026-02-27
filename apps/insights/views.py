@@ -27,7 +27,6 @@ from apps.insights.services import (
     get_user_journals,
     get_stage_contacts,
     get_user_drilldown,
-    get_activity_heatmap,
 )
 from apps.insights.serializers import (
     DashboardOverviewSerializer,
@@ -40,7 +39,6 @@ from apps.insights.serializers import (
     UserJournalsResponseSerializer,
     StageContactsResponseSerializer,
     UserDrilldownResponseSerializer,
-    ActivityHeatmapResponseSerializer,
 )
 
 
@@ -496,38 +494,4 @@ class UserDrilldownView(APIView):
             return Response(data, status=404)
 
         serializer = UserDrilldownResponseSerializer(data)
-        return Response(serializer.data)
-
-
-class ActivityHeatmapView(APIView):
-    """
-    GET: Get daily activity counts for heatmap visualization.
-    Admin-only endpoint.
-    """
-    permission_classes = [permissions.IsAuthenticated, IsAdmin]
-
-    @extend_schema(
-        tags=['insights'],
-        summary='Get activity heatmap (admin only)',
-        description='Daily activity counts for past 365 days (or custom date range) aggregating JournalStageEvents, Decisions, and Events.',
-        parameters=[
-            OpenApiParameter(name='date_from', description='Start date (YYYY-MM-DD, default: 365 days ago)', type=str),
-            OpenApiParameter(name='date_to', description='End date (YYYY-MM-DD, default: today)', type=str),
-        ],
-        responses={200: ActivityHeatmapResponseSerializer}
-    )
-    def get(self, request):
-        # Parse and validate date parameters
-        date_from = request.query_params.get('date_from')
-        date_to = request.query_params.get('date_to')
-
-        for param_name, param_val in [('date_from', date_from), ('date_to', date_to)]:
-            if param_val:
-                try:
-                    datetime.strptime(param_val, '%Y-%m-%d')
-                except ValueError:
-                    return Response({'detail': f'Invalid {param_name} format. Use YYYY-MM-DD.'}, status=400)
-
-        data = get_activity_heatmap(date_from=date_from, date_to=date_to)
-        serializer = ActivityHeatmapResponseSerializer(data)
         return Response(serializer.data)

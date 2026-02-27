@@ -6,7 +6,7 @@ from decimal import Decimal
 
 from dateutil.relativedelta import relativedelta
 from django.db.models import Count, Sum, Q, OuterRef, Subquery, Value, CharField, DecimalField, IntegerField
-from django.db.models.functions import TruncMonth, TruncYear, TruncDate, TruncWeek, Coalesce
+from django.db.models.functions import TruncMonth, TruncYear, TruncWeek, Coalesce
 from django.utils import timezone
 
 from apps.contacts.models import Contact, ContactStatus
@@ -1022,86 +1022,6 @@ def get_user_drilldown(user_id):
             }
             for j in recent_journals
         ]
-    }
-
-
-def get_activity_heatmap(date_from=None, date_to=None):
-    """
-    Get daily activity counts for heatmap visualization.
-    Aggregates JournalStageEvent, Decision, and Event models by date.
-    Target: <5 queries.
-
-    Args:
-        date_from: Start date (YYYY-MM-DD string) - defaults to 365 days ago
-        date_to: End date (YYYY-MM-DD string) - defaults to today
-
-    Returns:
-        Dictionary with 'activities' list of {date: "YYYY-MM-DD", count: N}
-    """
-    dt_from, dt_to = _parse_date_range(date_from, date_to)
-
-    # Default range: past 365 days
-    if not dt_from:
-        dt_from = timezone.now() - timedelta(days=365)
-    if not dt_to:
-        # Default to end of today (tomorrow's start)
-        dt_to = timezone.make_aware(
-            timezone.datetime.combine(
-                timezone.now().date() + timedelta(days=1),
-                timezone.datetime.min.time()
-            )
-        )
-
-    # Query each model and aggregate by date
-    stage_events_by_date = JournalStageEvent.objects.filter(
-        created_at__gte=dt_from,
-        created_at__lt=dt_to
-    ).annotate(
-        activity_date=TruncDate('created_at')
-    ).values('activity_date').annotate(
-        count=Count('id')
-    )
-
-    decisions_by_date = Decision.objects.filter(
-        created_at__gte=dt_from,
-        created_at__lt=dt_to
-    ).annotate(
-        activity_date=TruncDate('created_at')
-    ).values('activity_date').annotate(
-        count=Count('id')
-    )
-
-    events_by_date = Event.objects.filter(
-        created_at__gte=dt_from,
-        created_at__lt=dt_to
-    ).annotate(
-        activity_date=TruncDate('created_at')
-    ).values('activity_date').annotate(
-        count=Count('id')
-    )
-
-    # Combine counts by date
-    activity_map = {}
-    for item in stage_events_by_date:
-        activity_map[item['activity_date']] = activity_map.get(item['activity_date'], 0) + item['count']
-    for item in decisions_by_date:
-        activity_map[item['activity_date']] = activity_map.get(item['activity_date'], 0) + item['count']
-    for item in events_by_date:
-        activity_map[item['activity_date']] = activity_map.get(item['activity_date'], 0) + item['count']
-
-    # Build complete date list (fill gaps with 0)
-    result = []
-    current_date = dt_from.date()
-    end_date = dt_to.date()
-    while current_date < end_date:
-        result.append({
-            'date': current_date.isoformat(),
-            'count': activity_map.get(current_date, 0),
-        })
-        current_date += timedelta(days=1)
-
-    return {
-        'activities': result
     }
 
 
