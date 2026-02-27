@@ -18,23 +18,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-26)
 
 **Core value:** Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems, and leadership can proactively support their teams through cross-missionary analytics.
-**Current focus:** Phase 39 — Dashboard Modifications
+**Current focus:** Phase 40 — Journal Report & Grid Behavior
 
 ## Current Position
 
 Milestone: v2.2 UI Polish, Journal Report & Supervisor Role
-Phase: 39 of 42 (Dashboard Modifications)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-02-27 — Completed 39-01 (Dashboard Cleanup & Chart Toggle)
+Phase: 40 of 42 (Journal Report & Grid Behavior)
+Plan: 0 of ? in current phase
+Status: Phase 39 complete, ready for Phase 40
+Last activity: 2026-02-27 — Completed 39-02 (Flat Grid Restructure & Spacing)
 
 Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 107 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3 + 27 v2.0 + 3 v2.1)
-- Total phases: 37 complete, 5 planned (v2.2)
+- Total plans completed: 109 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3 + 27 v2.0 + 3 v2.1 + 2 v2.2)
+- Total phases: 39 complete, 3 planned (v2.2)
 - Total milestones: 6 shipped
 
 **By Milestone:**
@@ -52,6 +52,7 @@ Progress: [██████████] 100%
 | Phase 38 P02 | 3min | 2 tasks | 10 files |
 | Phase 38 P03 | 7min | 2 tasks | 12 files |
 | Phase 39 P01 | 4min | 2 tasks | 11 files |
+| Phase 39 P02 | 20min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -69,6 +70,9 @@ v2.2 decisions:
 - Removed @uiw/react-heat-map package to reduce bundle size (38-03)
 - Used localStorage for chart type persistence on MonthlyGiftsCard (39-01)
 - Removed JournalStageEvent import from dashboard services -- only used by removed function (39-01)
+- Read initial tile order from useAuth() user object to avoid extra API call (39-02)
+- Debounced save (1s) on drag end to avoid API spam during rapid rearrangements (39-02)
+- Used data-tile-id attribute for DragOverlay width measurement instead of ref forwarding (39-02)
 
 ### Research Flags
 
@@ -94,9 +98,9 @@ None active.
 ## Session Continuity
 
 Last session: 2026-02-27
-Stopped at: Completed 39-01-PLAN.md
-Resume: Continue with 39-02-PLAN.md
+Stopped at: Completed 39-02-PLAN.md (Phase 39 complete)
+Resume: Continue with Phase 40 (Journal Report & Grid Behavior)
 
 ---
 
-*Last updated: 2026-02-27 (Completed 39-01, dashboard cleanup & chart toggle)*
+*Last updated: 2026-02-27 (Completed 39-02, flat grid restructure & spacing)*

@@ -110,7 +110,7 @@ See milestones/v2.1-ROADMAP.md for complete phase details.
 **Milestone Goal:** Refine the UI across all major pages, rebuild the journal report component, add Begin Prayer flow, and introduce the Mission Supervisor role with scoped visibility.
 
 - [x] **Phase 38: UI Polish & List Page Cleanup** - Center dialogs, rename labels, and clean up list page columns across contacts, gifts, pledges, and analytics (completed 2026-02-27)
-- [ ] **Phase 39: Dashboard Modifications** - Remove stale text and tiles, tighten spacing, add chart toggle, and enable cross-section tile dragging
+- [x] **Phase 39: Dashboard Modifications** - Remove stale text and tiles, tighten spacing, add chart toggle, and enable cross-section tile dragging (completed 2026-02-27)
 - [ ] **Phase 40: Journal Report & Grid Behavior** - Rebuild journal report with new metrics/charts and make grid stage checkboxes directly clickable
 - [ ] **Phase 41: Begin Prayer** - Add a dedicated prayer session entry point that launches expanded Focus Mode
 - [ ] **Phase 42: Mission Supervisor Role** - New role with scoped visibility, assignment management, and missionary dashboard selector
@@ -147,8 +147,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 39-01-PLAN.md — Backend layout persistence + chart toggle + text/tile removals (DASH-01, DASH-04, DASH-05, DASH-06)
-- [ ] 39-02-PLAN.md — Flat grid restructure + spacing + backend persistence integration (DASH-02, DASH-03)
+- [x] 39-01-PLAN.md — Backend layout persistence + chart toggle + text/tile removals (DASH-01, DASH-04, DASH-05, DASH-06)
+- [x] 39-02-PLAN.md — Flat grid restructure + spacing + backend persistence integration (DASH-02, DASH-03)
 
 ### Phase 40: Journal Report & Grid Behavior
 **Goal**: Users get a rebuilt, actionable journal report and can advance contacts through pipeline stages with a single click
@@ -210,12 +210,12 @@ Phases execute in numeric order: 38 -> 39 -> 40 -> 41 -> 42
 | 27-36 | v2.0 | 27/27 | Complete | 2026-02-25 |
 | 37 | v2.1 | 3/3 | Complete | 2026-02-25 |
 | 38. UI Polish & List Page Cleanup | v2.2 | 3/3 | Complete | 2026-02-27 |
-| 39. Dashboard Modifications | 1/2 | In Progress|  | - |
+| 39. Dashboard Modifications | v2.2 | 2/2 | Complete | 2026-02-27 |
 | 40. Journal Report & Grid Behavior | v2.2 | 0/? | Not started | - |
 | 41. Begin Prayer | v2.2 | 0/? | Not started | - |
 | 42. Mission Supervisor Role | v2.2 | 0/? | Not started | - |
 
-**Total:** 6 milestones shipped, 110 plans executed across 38 phases. v2.2 in progress (5 phases, 26 requirements).
+**Total:** 6 milestones shipped, 112 plans executed across 39 phases. v2.2 in progress (5 phases, 26 requirements).
 
 ---
 
