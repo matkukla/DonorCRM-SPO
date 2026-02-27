@@ -12,7 +12,15 @@ import { ContactNameCell } from "./ContactNameCell"
 import { DecisionCell } from "./DecisionCell"
 import { NextStepsCell } from "./NextStepsCell"
 import type { JournalMember, PipelineStage, StageEventSummary } from "@/types/journals"
-import { PIPELINE_STAGES, STAGE_LABELS } from "@/types/journals"
+import { STAGE_LABELS } from "@/types/journals"
+
+/**
+ * Stage columns rendered as checkboxes in the grid, split around the Decision card.
+ * Excludes 'decision' -- that stage is replaced by the DecisionCell card
+ * positioned between Close and Thank per JRNL-07.
+ */
+const STAGES_BEFORE_DECISION: PipelineStage[] = ['contact', 'meet', 'close']
+const STAGES_AFTER_DECISION: PipelineStage[] = ['thank', 'next_steps']
 
 export interface JournalGridProps {
   /** Journal members to display as rows */
@@ -69,15 +77,15 @@ export function JournalGrid({
 
   return (
     <div className="relative w-full overflow-x-auto border rounded-lg">
-      <Table className="min-w-[1200px]" aria-label="Journal grid">
+      <Table className="min-w-[1100px]" aria-label="Journal grid">
         <TableHeader>
           <TableRow className="bg-background">
             {/* Intersection cell: sticky both directions, highest z-index */}
             <TableHead className="sticky top-0 left-0 z-30 bg-background min-w-[200px] w-[200px] border-r">
               Contact
             </TableHead>
-            {/* Stage header cells: sticky top only */}
-            {PIPELINE_STAGES.map((stage) => (
+            {/* Stage columns before Decision: contact, meet, close */}
+            {STAGES_BEFORE_DECISION.map((stage) => (
               <TableHead
                 key={stage}
                 className="sticky top-0 z-10 bg-background text-center min-w-[100px] w-[100px]"
@@ -85,11 +93,20 @@ export function JournalGrid({
                 {STAGE_LABELS[stage]}
               </TableHead>
             ))}
-            {/* Decision column */}
+            {/* Decision column (repositioned between Close and Thank) */}
             <TableHead className="sticky top-0 z-10 bg-background text-center min-w-[140px] w-[140px]">
               Decision
             </TableHead>
-            {/* Next Steps column */}
+            {/* Stage columns after Decision: thank, next_steps */}
+            {STAGES_AFTER_DECISION.map((stage) => (
+              <TableHead
+                key={stage}
+                className="sticky top-0 z-10 bg-background text-center min-w-[100px] w-[100px]"
+              >
+                {STAGE_LABELS[stage]}
+              </TableHead>
+            ))}
+            {/* Next Steps checklist column */}
             <TableHead className="sticky top-0 z-10 bg-background text-center min-w-[100px] w-[100px]">
               Next Steps
             </TableHead>
@@ -108,14 +125,15 @@ export function JournalGrid({
                     status={member.contact_status}
                   />
                 </TableCell>
-                {/* Stage cells: not sticky */}
-                {PIPELINE_STAGES.map((stage) => {
+                {/* Stage cells before Decision: contact, meet, close */}
+                {STAGES_BEFORE_DECISION.map((stage) => {
                   const eventSummary = getStageEventSummary(member, stage)
                   return (
                     <TableCell key={stage} className="p-2 min-w-[100px] w-[100px]">
                       <div className="flex items-center justify-center">
                         <StageCell
                           contactId={member.contact}
+                          journalContactId={member.id}
                           stage={stage}
                           eventSummary={eventSummary}
                           currentStage={currentStage}
@@ -125,7 +143,7 @@ export function JournalGrid({
                     </TableCell>
                   )
                 })}
-                {/* Decision cell */}
+                {/* Decision cell (repositioned between Close and Thank) */}
                 <TableCell className="p-2 min-w-[140px] w-[140px]">
                   <DecisionCell
                     decision={member.decision}
@@ -134,7 +152,25 @@ export function JournalGrid({
                     contactName={member.contact_name}
                   />
                 </TableCell>
-                {/* Next Steps cell */}
+                {/* Stage cells after Decision: thank, next_steps */}
+                {STAGES_AFTER_DECISION.map((stage) => {
+                  const eventSummary = getStageEventSummary(member, stage)
+                  return (
+                    <TableCell key={stage} className="p-2 min-w-[100px] w-[100px]">
+                      <div className="flex items-center justify-center">
+                        <StageCell
+                          contactId={member.contact}
+                          journalContactId={member.id}
+                          stage={stage}
+                          eventSummary={eventSummary}
+                          currentStage={currentStage}
+                          onCellClick={handleCellClick}
+                        />
+                      </div>
+                    </TableCell>
+                  )
+                })}
+                {/* Next Steps checklist cell */}
                 <TableCell className="p-2 min-w-[100px] w-[100px]">
                   <div className="flex items-center justify-center">
                     <NextStepsCell journalContactId={member.id} />
