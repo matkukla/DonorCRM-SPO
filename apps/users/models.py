@@ -56,6 +56,14 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
         help_text='Monthly support goal amount in dollars'
     )
 
+    # Dashboard preferences
+    dashboard_layout = models.JSONField(
+        'dashboard layout',
+        default=dict,
+        blank=True,
+        help_text='User dashboard tile ordering preferences'
+    )
+
     # Django auth fields
     is_staff = models.BooleanField(
         'staff status',
