@@ -4,7 +4,7 @@ import { ArrowLeft, UserPlus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useJournal, useJournalMembers } from "@/hooks/useJournals"
-import { JournalGrid, EventTimelineDrawer, JournalHeader, DecisionTrendsChart, StageActivityChart, PipelineBreakdownChart, NextStepsQueue, AddContactsDialog } from "./components"
+import { JournalGrid, EventTimelineDrawer, JournalHeader, JournalReport, AddContactsDialog } from "./components"
 import type { PipelineStage } from "@/types/journals"
 
 /**
@@ -146,12 +146,7 @@ export default function JournalDetail() {
         </TabsContent>
 
         <TabsContent value="report" className="mt-6">
-          <div className="grid gap-6 md:grid-cols-2">
-            <DecisionTrendsChart />
-            <PipelineBreakdownChart />
-            <StageActivityChart />
-            <NextStepsQueue />
-          </div>
+          <JournalReport journalId={id ?? ""} goalAmount={journal.goal_amount} />
         </TabsContent>
       </Tabs>
 
