@@ -2,10 +2,13 @@
 Views for Journal management.
 """
 from collections import defaultdict
+from datetime import timedelta
 
 from django.db import IntegrityError, transaction
-from django.db.models import Count, OuterRef, Prefetch, Subquery
+from django.db.models import Count, OuterRef, Prefetch, Subquery, Sum
 from django.db.models.functions import TruncMonth
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
 from rest_framework import filters, generics, permissions, status, viewsets
@@ -547,6 +550,102 @@ class JournalAnalyticsViewSet(viewsets.ViewSet):
             }
             for step in steps
         ])
+
+    @action(detail=False, methods=['get'], url_path='journal-report')
+    def journal_report(self, request):
+        """Single-journal report with metrics, stage distribution, decision status, and alerts."""
+        journal_id = request.query_params.get('journal_id')
+        if not journal_id:
+            return Response(
+                {'detail': 'journal_id is required'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        journal = get_object_or_404(Journal, pk=journal_id)
+
+        # Permission check: owner or admin
+        if not self._is_admin(request) and journal.owner != request.user:
+            return Response(
+                {'detail': 'You do not have permission to view this journal.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        date_from = request.query_params.get('date_from')
+        date_to = request.query_params.get('date_to')
+
+        # Base querysets scoped to journal
+        members = JournalContact.objects.filter(journal=journal)
+        decisions = Decision.objects.filter(journal_contact__journal=journal)
+        events = JournalStageEvent.objects.filter(journal_contact__journal=journal)
+        next_steps = NextStep.objects.filter(journal_contact__journal=journal)
+
+        # Date filtering for events and decisions only
+        if date_from:
+            events = events.filter(created_at__date__gte=date_from)
+            decisions = decisions.filter(created_at__date__gte=date_from)
+        if date_to:
+            events = events.filter(created_at__date__lte=date_to)
+            decisions = decisions.filter(created_at__date__lte=date_to)
+
+        # Metric cards
+        total_contacts = members.count()
+        with_decisions = (
+            decisions.exclude(status='declined')
+            .values('journal_contact')
+            .distinct()
+            .count()
+        )
+        confirmed_amount = (
+            decisions.filter(status='active').aggregate(total=Sum('amount'))['total'] or 0
+        )
+        pending_amount = (
+            decisions.filter(status='pending').aggregate(total=Sum('amount'))['total'] or 0
+        )
+
+        # Contacts by stage (bar chart data)
+        latest_stage = (
+            JournalStageEvent.objects.filter(journal_contact=OuterRef('pk'))
+            .order_by('-created_at')
+            .values('stage')[:1]
+        )
+        stage_distribution = (
+            members.annotate(current_stage=Subquery(latest_stage))
+            .values('current_stage')
+            .annotate(count=Count('id'))
+            .order_by('current_stage')
+        )
+        stage_distribution = [
+            {'stage': item['current_stage'] or 'none', 'count': item['count']}
+            for item in stage_distribution
+        ]
+
+        # Decision status distribution (donut chart data)
+        decision_status = list(
+            decisions.values('status').annotate(count=Count('id')).order_by('status')
+        )
+
+        # Alerts
+        stall_threshold = timezone.now() - timedelta(days=30)
+        stalled_count = members.exclude(
+            stage_events__created_at__gte=stall_threshold
+        ).count()
+        open_next_steps = next_steps.filter(completed=False).count()
+
+        return Response({
+            'metrics': {
+                'total_contacts': total_contacts,
+                'with_decisions': with_decisions,
+                'confirmed_amount': str(confirmed_amount),
+                'pending_amount': str(pending_amount),
+            },
+            'goal_amount': str(journal.goal_amount),
+            'stage_distribution': stage_distribution,
+            'decision_status': decision_status,
+            'alerts': {
+                'stalled_contacts': stalled_count,
+                'open_next_steps': open_next_steps,
+            },
+        })
 
     @action(detail=False, methods=['get'], url_path='admin-summary',
             permission_classes=[permissions.IsAuthenticated, IsAdmin])

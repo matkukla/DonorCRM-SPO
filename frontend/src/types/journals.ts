@@ -313,3 +313,20 @@ export interface NextStepsQueueItem {
   journal_name: string
   journal_contact_id: string
 }
+
+/** Journal report data from the journal-report endpoint */
+export interface JournalReportData {
+  metrics: {
+    total_contacts: number
+    with_decisions: number
+    confirmed_amount: string
+    pending_amount: string
+  }
+  goal_amount: string
+  stage_distribution: Array<{ stage: string | null; count: number }>
+  decision_status: Array<{ status: DecisionStatus; count: number }>
+  alerts: {
+    stalled_contacts: number
+    open_next_steps: number
+  }
+}
