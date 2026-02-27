@@ -9,12 +9,12 @@ Requirements for v2.2 milestone. Each maps to roadmap phases.
 
 ### Dashboard
 
-- [ ] **DASH-01**: User can toggle between bar chart and line graph on the Donations chart
+- [x] **DASH-01**: User can toggle between bar chart and line graph on the Donations chart
 - [ ] **DASH-02**: Dashboard tiles are draggable to any position (cross-section)
 - [ ] **DASH-03**: Dashboard gaps between tiles are visually tightened
-- [ ] **DASH-04**: "2026 calendar year" text is removed from Giving summary
-- [ ] **DASH-05**: "Updated today" text is removed from Monthly Gifts
-- [ ] **DASH-06**: "Recent Journal Activity" tile is removed from dashboard
+- [x] **DASH-04**: "2026 calendar year" text is removed from Giving summary
+- [x] **DASH-05**: "Updated today" text is removed from Monthly Gifts
+- [x] **DASH-06**: "Recent Journal Activity" tile is removed from dashboard
 
 ### UI Polish
 
@@ -95,12 +95,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UI-05 | Phase 38 | Complete |
 | ANLY-01 | Phase 38 | Complete |
 | ANLY-02 | Phase 38 | Complete |
-| DASH-01 | Phase 39 | Pending |
+| DASH-01 | Phase 39 | Complete |
 | DASH-02 | Phase 39 | Pending |
 | DASH-03 | Phase 39 | Pending |
-| DASH-04 | Phase 39 | Pending |
-| DASH-05 | Phase 39 | Pending |
-| DASH-06 | Phase 39 | Pending |
+| DASH-04 | Phase 39 | Complete |
+| DASH-05 | Phase 39 | Complete |
+| DASH-06 | Phase 39 | Complete |
 | JRNL-01 | Phase 40 | Pending |
 | JRNL-02 | Phase 40 | Pending |
 | JRNL-03 | Phase 40 | Pending |

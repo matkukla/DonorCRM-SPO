@@ -18,15 +18,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-26)
 
 **Core value:** Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems, and leadership can proactively support their teams through cross-missionary analytics.
-**Current focus:** Phase 38 — UI Polish & List Page Cleanup
+**Current focus:** Phase 39 — Dashboard Modifications
 
 ## Current Position
 
 Milestone: v2.2 UI Polish, Journal Report & Supervisor Role
-Phase: 38 of 42 (UI Polish & List Page Cleanup)
-Plan: 3 of 3 in current phase
-Status: Phase complete
-Last activity: 2026-02-27 — Completed 38-03 (Remove Review Queue + Activity Heatmap)
+Phase: 39 of 42 (Dashboard Modifications)
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-02-27 — Completed 39-01 (Dashboard Cleanup & Chart Toggle)
 
 Progress: [██████████] 100%
 
@@ -51,6 +51,7 @@ Progress: [██████████] 100%
 | Phase 38 P01 | 7min | 2 tasks | 10 files |
 | Phase 38 P02 | 3min | 2 tasks | 10 files |
 | Phase 38 P03 | 7min | 2 tasks | 12 files |
+| Phase 39 P01 | 4min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -66,6 +67,8 @@ v2.2 decisions:
 - Removed Fund filter from gifts list since Fund column was removed
 - Review Queue removal was already done in plan 02 commit; no duplicate commit needed (38-03)
 - Removed @uiw/react-heat-map package to reduce bundle size (38-03)
+- Used localStorage for chart type persistence on MonthlyGiftsCard (39-01)
+- Removed JournalStageEvent import from dashboard services -- only used by removed function (39-01)
 
 ### Research Flags
 
@@ -91,9 +94,9 @@ None active.
 ## Session Continuity
 
 Last session: 2026-02-27
-Stopped at: Completed 38-03-PLAN.md (Phase 38 complete)
-Resume: `/gsd:plan-phase 39`
+Stopped at: Completed 39-01-PLAN.md
+Resume: Continue with 39-02-PLAN.md
 
 ---
 
-*Last updated: 2026-02-27 (Completed 38-03, Phase 38 complete)*
+*Last updated: 2026-02-27 (Completed 39-01, dashboard cleanup & chart toggle)*
