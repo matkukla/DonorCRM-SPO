@@ -331,8 +331,10 @@ def get_dashboard_summary(user):
             ),
             date=F('gift_date'),
             contact_id=F('donor_contact_id'),
+            contact__first_name=F('donor_contact__first_name'),
+            contact__last_name=F('donor_contact__last_name'),
         ).values(
             'id', 'amount', 'date', 'contact_id',
-            'donor_contact__first_name', 'donor_contact__last_name'
+            'contact__first_name', 'contact__last_name'
         )),
     }
