@@ -11,7 +11,6 @@ from apps.dashboard.views import (
     MonthlyGiftsView,
     NeedsAttentionView,
     RecentGiftsView,
-    RecentJournalActivityView,
     SupportProgressView,
     ThankYouQueueView,
     WhatChangedView,
@@ -28,7 +27,6 @@ urlpatterns = [
     path('thank-you-queue/', ThankYouQueueView.as_view(), name='thank-you-queue'),
     path('support-progress/', SupportProgressView.as_view(), name='support-progress'),
     path('recent-gifts/', RecentGiftsView.as_view(), name='recent-gifts'),
-    path('journal-activity/', RecentJournalActivityView.as_view(), name='journal-activity'),
     path('giving-summary/', GivingSummaryView.as_view(), name='giving-summary'),
     path('monthly-gifts/', MonthlyGiftsView.as_view(), name='monthly-gifts'),
 ]

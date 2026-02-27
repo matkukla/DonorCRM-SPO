@@ -12,7 +12,6 @@ from django.db.models.functions import TruncMonth
 from apps.contacts.models import Contact
 from apps.events.models import Event
 from apps.gifts.models import Gift, RecurringGift, RecurringGiftFrequency, RecurringGiftStatus
-from apps.journals.models import JournalStageEvent
 from apps.tasks.models import Task, TaskStatus
 
 logger = logging.getLogger(__name__)
@@ -185,31 +184,6 @@ def get_recent_gifts(user, days=30, limit=10):
     return gifts.filter(gift_date__gte=start_date).select_related('donor_contact')[:limit]
 
 
-def get_recent_journal_activity(user, limit=8):
-    """Get recent journal stage events for dashboard widget."""
-    if user.role == 'admin':
-        qs = JournalStageEvent.objects.all()
-    else:
-        qs = JournalStageEvent.objects.filter(
-            journal_contact__journal__owner=user
-        )
-    qs = qs.select_related(
-        'journal_contact__contact',
-        'journal_contact__journal',
-    ).order_by('-created_at')[:limit]
-    return [{
-        'id': str(e.id),
-        'event_type': e.event_type,
-        'stage': e.stage,
-        'notes': e.notes or '',
-        'created_at': e.created_at.isoformat(),
-        'contact_name': e.journal_contact.contact.full_name,
-        'contact_id': str(e.journal_contact.contact.id),
-        'journal_name': e.journal_contact.journal.name,
-        'journal_id': str(e.journal_contact.journal.id),
-    } for e in qs]
-
-
 def get_giving_summary(user, year=None):
     """
     Calculate giving summary for the Given & Expecting widget.
@@ -361,5 +335,4 @@ def get_dashboard_summary(user):
             'id', 'amount', 'date', 'contact_id',
             'donor_contact__first_name', 'donor_contact__last_name'
         )),
-        'journal_activity': get_recent_journal_activity(user),
     }

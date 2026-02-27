@@ -132,7 +132,7 @@ export function GivingSummaryCard() {
 
         {/* Footer */}
         <p className="text-xs text-muted-foreground mt-4">
-          Updated today &middot; {data.year} calendar year
+          Updated today
         </p>
       </CardContent>
     </Card>
