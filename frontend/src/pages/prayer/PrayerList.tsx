@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { usePrayers, useUpdatePrayer, useTodaysFocus } from "@/hooks/usePrayers"
+import { usePrayers, useUpdatePrayer } from "@/hooks/usePrayers"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -23,6 +23,7 @@ import { TodaysFocus } from "./components/TodaysFocus"
 import { StatusBadge } from "./components/StatusBadge"
 import { PrayerIntentionPanel } from "./PrayerIntentionPanel"
 import { PrayerFocusMode } from "./PrayerFocusMode"
+import { BeginPrayerDialog } from "./components/BeginPrayerDialog"
 import type { PrayerIntention, PrayerIntentionStatus } from "@/api/prayers"
 
 const PAGE_SIZE = 20
@@ -32,6 +33,8 @@ export default function PrayerList() {
   const [panelOpen, setPanelOpen] = useState(false)
   const [selectedIntention, setSelectedIntention] = useState<PrayerIntention | undefined>()
   const [focusModeOpen, setFocusModeOpen] = useState(false)
+  const [beginPrayerDialogOpen, setBeginPrayerDialogOpen] = useState(false)
+  const [selectedIntentions, setSelectedIntentions] = useState<PrayerIntention[]>([])
 
   // Filter state
   const [statusFilter, setStatusFilter] = useState<string>("all")
@@ -50,7 +53,7 @@ export default function PrayerList() {
   if (searchQuery) params.search = searchQuery
 
   const { data, isLoading } = usePrayers(params)
-  const { data: todaysFocusData } = useTodaysFocus()
+  const { data: activeIntentionsData } = usePrayers({ status: "active", page_size: "1" })
   const updateMutation = useUpdatePrayer()
 
   const openCreate = () => {
@@ -123,6 +126,21 @@ export default function PrayerList() {
     )
   }
 
+  const handleBeginPrayer = () => {
+    if (!activeIntentionsData || activeIntentionsData.count === 0) {
+      setSelectedIntentions([])
+      setFocusModeOpen(true)
+      return
+    }
+    setBeginPrayerDialogOpen(true)
+  }
+
+  const handleStartPrayer = (intentions: PrayerIntention[]) => {
+    setSelectedIntentions(intentions)
+    setBeginPrayerDialogOpen(false)
+    setFocusModeOpen(true)
+  }
+
   const totalPages = data ? Math.ceil(data.count / PAGE_SIZE) : 1
 
   return (
@@ -139,7 +157,7 @@ export default function PrayerList() {
         </div>
 
         {/* Today's Focus */}
-        <TodaysFocus onStartFocusMode={() => setFocusModeOpen(true)} />
+        <TodaysFocus onBeginPrayer={handleBeginPrayer} />
 
         {/* Controls bar */}
         <div className="flex flex-wrap items-center gap-3">
@@ -296,7 +314,14 @@ export default function PrayerList() {
       <PrayerFocusMode
         open={focusModeOpen}
         onClose={() => setFocusModeOpen(false)}
-        intentions={todaysFocusData ?? []}
+        intentions={selectedIntentions}
+      />
+
+      {/* Begin Prayer selection dialog */}
+      <BeginPrayerDialog
+        open={beginPrayerDialogOpen}
+        onClose={() => setBeginPrayerDialogOpen(false)}
+        onStartPrayer={handleStartPrayer}
       />
 
       {/* Slide-in panel */}
