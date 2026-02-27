@@ -53,6 +53,7 @@ Progress: [██████████] 100%
 | Phase 38 P03 | 7min | 2 tasks | 12 files |
 | Phase 39 P01 | 4min | 2 tasks | 11 files |
 | Phase 39 P02 | 20min | 2 tasks | 10 files |
+| Phase 40 P01 | 3min | 2 tasks | 7 files |
 | Phase 40 P02 | 2min | 2 tasks | 2 files |
 
 ## Accumulated Context
@@ -74,6 +75,9 @@ v2.2 decisions:
 - Read initial tile order from useAuth() user object to avoid extra API call (39-02)
 - Debounced save (1s) on drag end to avoid API spam during rapid rearrangements (39-02)
 - Used data-tile-id attribute for DragOverlay width measurement instead of ref forwarding (39-02)
+- Single journal-report endpoint returns all report data in one response (40-01)
+- Date filtering applies only to events/decisions, not member count or next steps (40-01)
+- Removed all 4 old chart components, replaced with unified JournalReport (40-01)
 - Split PIPELINE_STAGES into STAGES_BEFORE_DECISION/STAGES_AFTER_DECISION for grid column reorder (40-02)
 - Removed transition warning toasts for independent stage toggles per JRNL-08 (40-02)
 - Default event types per stage for instant toggle: call_logged, meeting_completed, ask_made, etc. (40-02)
@@ -102,9 +106,9 @@ None active.
 ## Session Continuity
 
 Last session: 2026-02-27
-Stopped at: Completed 40-02-PLAN.md
-Resume: Continue with Phase 40 plan 01 (if not yet complete) or Phase 41
+Stopped at: Completed 40-01-PLAN.md (Phase 40 fully complete)
+Resume: Continue with Phase 41
 
 ---
 
-*Last updated: 2026-02-27 (Completed 40-02, grid column reorder & instant stage toggle)*
+*Last updated: 2026-02-27 (Completed 40-01, journal report rebuild; Phase 40 complete)*

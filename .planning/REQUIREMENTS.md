@@ -31,12 +31,12 @@ Requirements for v2.2 milestone. Each maps to roadmap phases.
 
 ### Journal
 
-- [ ] **JRNL-01**: Journal report displays 4 metric cards (Total Contacts, With Decisions, Confirmed $, Pending)
-- [ ] **JRNL-02**: Journal report displays goal progress bar with confirmed amount
-- [ ] **JRNL-03**: Journal report displays Contacts by Stage bar chart with stage colors
-- [ ] **JRNL-04**: Journal report displays Decision Status donut chart
-- [ ] **JRNL-05**: Journal report displays conditional stalled contacts and open next steps alerts
-- [ ] **JRNL-06**: Pipeline Breakdown is removed from journal reports
+- [x] **JRNL-01**: Journal report displays 4 metric cards (Total Contacts, With Decisions, Confirmed $, Pending)
+- [x] **JRNL-02**: Journal report displays goal progress bar with confirmed amount
+- [x] **JRNL-03**: Journal report displays Contacts by Stage bar chart with stage colors
+- [x] **JRNL-04**: Journal report displays Decision Status donut chart
+- [x] **JRNL-05**: Journal report displays conditional stalled contacts and open next steps alerts
+- [x] **JRNL-06**: Pipeline Breakdown is removed from journal reports
 - [x] **JRNL-07**: Decision column between Close and Thank supports adding a decision (not checkbox)
 - [x] **JRNL-08**: Clicking a stage checkbox directly checks it (auto-creates event) without dialog
 
@@ -101,12 +101,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DASH-04 | Phase 39 | Complete |
 | DASH-05 | Phase 39 | Complete |
 | DASH-06 | Phase 39 | Complete |
-| JRNL-01 | Phase 40 | Pending |
-| JRNL-02 | Phase 40 | Pending |
-| JRNL-03 | Phase 40 | Pending |
-| JRNL-04 | Phase 40 | Pending |
-| JRNL-05 | Phase 40 | Pending |
-| JRNL-06 | Phase 40 | Pending |
+| JRNL-01 | Phase 40 | Complete |
+| JRNL-02 | Phase 40 | Complete |
+| JRNL-03 | Phase 40 | Complete |
+| JRNL-04 | Phase 40 | Complete |
+| JRNL-05 | Phase 40 | Complete |
+| JRNL-06 | Phase 40 | Complete |
 | JRNL-07 | Phase 40 | Complete |
 | JRNL-08 | Phase 40 | Complete |
 | PRAY-01 | Phase 41 | Pending |
