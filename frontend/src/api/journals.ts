@@ -147,6 +147,14 @@ export async function createStageEvent(data: StageEventCreate): Promise<StageEve
   return response.data
 }
 
+/** Delete all stage events for a journal contact + stage combination */
+export async function deleteStageEventsByStage(journalContactId: string, stage: string): Promise<{ deleted: number }> {
+  const response = await apiClient.delete<{ deleted: number }>(
+    `/journals/stage-events/delete-by-stage/?journal_contact_id=${journalContactId}&stage=${stage}`
+  )
+  return response.data
+}
+
 /** Create a decision for a journal contact */
 export async function createDecision(data: DecisionCreate): Promise<DecisionDetail> {
   const response = await apiClient.post<DecisionDetail>('/journals/decisions/', data)

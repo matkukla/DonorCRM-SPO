@@ -13,6 +13,7 @@ import {
   getJournalMembers,
   getStageEvents,
   createStageEvent,
+  deleteStageEventsByStage,
   createDecision,
   updateDecision,
   deleteDecision,
@@ -192,6 +193,28 @@ export function useCreateStageEvent() {
         })
       }
       // Invalidate dashboard data so journal activity widget updates
+      queryClient.invalidateQueries({
+        queryKey: ["dashboard"],
+      })
+    },
+  })
+}
+
+/** Hook for deleting all stage events for a journal contact + stage */
+export function useDeleteStageEventsByStage() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ journalContactId, stage }: { journalContactId: string; stage: string }) =>
+      deleteStageEventsByStage(journalContactId, stage),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["stage-events", variables.journalContactId],
+      })
+      queryClient.invalidateQueries({
+        queryKey: ["journals"],
+        refetchType: "active",
+      })
       queryClient.invalidateQueries({
         queryKey: ["dashboard"],
       })
