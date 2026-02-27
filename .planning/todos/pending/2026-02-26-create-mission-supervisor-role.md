@@ -11,13 +11,19 @@ files:
 
 ## Problem
 
-The system needs a "Mission Supervisor" role for leadership who oversee missionaries. Current roles are: STAFF, ADMIN, FINANCE, READ_ONLY (defined in `UserRole` TextChoices at `models.py:13-20`). A supervisor role would allow cross-missionary visibility and team management capabilities.
+The system needs a "Mission Supervisor" role for leadership who oversee a subset of missionaries. Current roles are: STAFF, ADMIN, FINANCE, READ_ONLY (defined in `UserRole` TextChoices at `models.py:13-20`).
+
+Per spec (`prompts/mission_supervisor.md`):
+- Mission Supervisor has **same access as Admin** but can **only see missionaries assigned to them**
+- Admins can see **all** staff members
+- Both Supervisors and Admins should be able to **select a missionary and view their dashboard**
 
 ## Solution
 
-- Add `SUPERVISOR = 'supervisor', 'Mission Supervisor'` to `UserRole` TextChoices
-- Create migration for the new choice
-- Add `is_supervisor` property on the User model
-- Define supervisor-specific permissions (e.g., view all missionaries' contacts/journals, analytics access)
-- Update serializers, admin, and frontend role selectors
-- TBD: exact permission scope needs user specification
+- Add `SUPERVISOR = 'supervisor', 'Mission Supervisor'` to `UserRole` TextChoices + migration
+- Add `is_supervisor` property on User model
+- Add supervisor-missionary relationship (e.g., `supervisor` FK on User, or M2M `supervised_users`)
+- Scope supervisor queries to only return their assigned missionaries' data (contacts, journals, donations, etc.)
+- Add missionary selector UI for supervisors/admins to view a missionary's dashboard as them
+- Admins retain full visibility across all staff; supervisors see only their assigned subset
+- Update serializers, admin, permissions, and frontend role selectors
