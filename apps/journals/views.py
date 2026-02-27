@@ -186,6 +186,39 @@ class JournalStageEventListCreateView(generics.ListCreateAPIView):
         return JournalStageEventSerializer
 
 
+class JournalStageEventDeleteByStageView(generics.GenericAPIView):
+    """
+    DELETE: Delete all stage events for a journal contact + stage combination.
+    Used by the grid checkbox uncheck behavior.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request, *args, **kwargs):
+        journal_contact_id = request.query_params.get('journal_contact_id')
+        stage = request.query_params.get('stage')
+
+        if not journal_contact_id or not stage:
+            return Response(
+                {'detail': 'journal_contact_id and stage are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user = request.user
+        if user.role == 'admin':
+            qs = JournalStageEvent.objects.filter(
+                journal_contact_id=journal_contact_id, stage=stage
+            )
+        else:
+            qs = JournalStageEvent.objects.filter(
+                journal_contact_id=journal_contact_id,
+                stage=stage,
+                journal_contact__journal__owner=user,
+            )
+
+        count, _ = qs.delete()
+        return Response({'deleted': count}, status=status.HTTP_200_OK)
+
+
 class JournalContactListCreateView(generics.ListCreateAPIView):
     """
     GET: List journal contact memberships with search/filter

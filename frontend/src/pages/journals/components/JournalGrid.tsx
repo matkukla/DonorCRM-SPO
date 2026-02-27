@@ -20,7 +20,7 @@ import { STAGE_LABELS } from "@/types/journals"
  * positioned between Close and Thank per JRNL-07.
  */
 const STAGES_BEFORE_DECISION: PipelineStage[] = ['contact', 'meet', 'close']
-const STAGES_AFTER_DECISION: PipelineStage[] = ['thank', 'next_steps']
+const STAGES_AFTER_DECISION: PipelineStage[] = ['thank']
 
 export interface JournalGridProps {
   /** Journal members to display as rows */

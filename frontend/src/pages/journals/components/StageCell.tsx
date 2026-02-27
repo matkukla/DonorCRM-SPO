@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/tooltip"
 import type { StageEventSummary, PipelineStage, StageEventType } from "@/types/journals"
 import { getFreshnessColor, STAGE_LABELS } from "@/types/journals"
-import { useCreateStageEvent } from "@/hooks/useJournals"
+import { useCreateStageEvent, useDeleteStageEventsByStage } from "@/hooks/useJournals"
 
 /**
  * Get the highest pipeline stage that has events.
@@ -73,7 +73,9 @@ export interface StageCellProps {
  */
 export const StageCell = React.memo<StageCellProps>(
   ({ contactId, journalContactId, stage, eventSummary, onCellClick }) => {
-    const { mutate: createEvent, isPending } = useCreateStageEvent()
+    const { mutate: createEvent, isPending: isCreating } = useCreateStageEvent()
+    const { mutate: deleteEvents, isPending: isDeleting } = useDeleteStageEventsByStage()
+    const isPending = isCreating || isDeleting
 
     const handleClick = React.useCallback(() => {
       if (!eventSummary.has_events) {
@@ -84,10 +86,10 @@ export const StageCell = React.memo<StageCellProps>(
           event_type: getDefaultEventType(stage),
         })
       } else {
-        // Already has events -- open EventTimelineDrawer for details
-        onCellClick(contactId, stage)
+        // Has events -- uncheck by deleting all events for this stage
+        deleteEvents({ journalContactId, stage })
       }
-    }, [contactId, journalContactId, stage, eventSummary.has_events, createEvent, onCellClick])
+    }, [journalContactId, stage, eventSummary.has_events, createEvent, deleteEvents])
 
     // Empty state - no events logged for this stage
     if (!eventSummary.has_events) {
@@ -127,12 +129,17 @@ export const StageCell = React.memo<StageCellProps>(
           <TooltipTrigger asChild>
             <button
               onClick={handleClick}
-              className="h-10 w-10 flex items-center justify-center rounded hover:bg-muted/50 transition-colors"
-              aria-label={`${STAGE_LABELS[stage]} - ${eventSummary.event_count} events, last ${relativeTime}`}
+              disabled={isPending}
+              className="h-10 w-10 flex items-center justify-center rounded hover:bg-muted/50 transition-colors disabled:opacity-50"
+              aria-label={`${STAGE_LABELS[stage]} - Click to uncheck`}
             >
-              <Badge variant={freshnessColor} className="p-1">
-                <Check className="h-4 w-4" />
-              </Badge>
+              {isPending ? (
+                <div className="h-5 w-5 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Badge variant={freshnessColor} className="p-1">
+                  <Check className="h-4 w-4" />
+                </Badge>
+              )}
             </button>
           </TooltipTrigger>
           <TooltipContent side="top" className="max-w-xs">
