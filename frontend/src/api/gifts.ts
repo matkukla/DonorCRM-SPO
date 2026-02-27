@@ -4,6 +4,7 @@ import type { PaginatedResponse } from "./contacts"
 // Status and frequency enums for RecurringGift (RE-compatible extended set)
 export type RecurringGiftStatus = "active" | "held" | "completed" | "cancelled" | "terminated"
 export type RecurringGiftFrequency = "monthly" | "quarterly" | "semi_annually" | "annually" | "bimonthly" | "biweekly" | "weekly" | "irregular"
+export type GiftPaymentType = "credit_card" | "direct_deposit" | "check"
 
 export interface Gift {
   id: string
@@ -16,6 +17,8 @@ export interface Gift {
   amount_dollars: string  // Decimal from serializer
   gift_date: string
   description: string
+  payment_type: string
+  payment_type_display: string | null
   created_at: string
   updated_at: string
 }
@@ -38,6 +41,7 @@ export interface GiftCreate {
   amount_cents: number
   gift_date: string
   description?: string
+  payment_type?: string
   external_gift_id?: string
 }
 
@@ -77,6 +81,12 @@ export interface RecurringGiftCreate {
 export interface RecurringGiftUpdate extends Partial<RecurringGiftCreate> {}
 
 // Label maps
+export const giftPaymentTypeLabels: Record<string, string> = {
+  credit_card: "Credit Card",
+  direct_deposit: "Direct Deposit",
+  check: "Check",
+}
+
 export const recurringGiftStatusLabels: Record<RecurringGiftStatus, string> = {
   active: "Active",
   held: "Held",

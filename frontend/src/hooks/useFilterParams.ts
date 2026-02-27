@@ -105,6 +105,7 @@ export const giftFilterParsers = {
   search: parseAsString,
   donor_contact: parseAsString,
   fund: parseAsString,
+  payment_type: parseAsString,
   gift_date_after: parseAsString,
   gift_date_before: parseAsString,
   min_amount: parseAsString,

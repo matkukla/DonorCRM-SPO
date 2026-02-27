@@ -117,11 +117,6 @@ export default function PledgeList() {
       header: "Start Date",
       cell: ({ row }) => formatLocalDate(row.original.start_date),
     },
-    {
-      accessorKey: "fund_name",
-      header: "Fund",
-      cell: ({ row }) => row.original.fund_name || "---",
-    },
   ]
 
   const pageCount = data ? Math.ceil(data.count / PAGE_SIZE) : 1

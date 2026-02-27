@@ -6,7 +6,6 @@ import { giftPresets } from "@/lib/filter-presets"
 import { FilterBar } from "@/components/shared/FilterBar"
 import { useAuth } from "@/providers/AuthProvider"
 import { useUsers } from "@/hooks/useUsers"
-import { useFunds } from "@/hooks/useImports"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
 import { DataTable } from "@/components/shared/DataTable"
@@ -21,6 +20,7 @@ import {
 import { Plus, Search, Filter } from "lucide-react"
 import type { ColumnDef } from "@tanstack/react-table"
 import type { Gift } from "@/api/gifts"
+import { giftPaymentTypeLabels } from "@/api/gifts"
 import { formatLocalDate } from "@/lib/utils"
 import { DonationDetailPanel } from "./DonationDetail"
 
@@ -60,8 +60,7 @@ export default function DonationList() {
   const queryParams = { ...toQueryParams(), page_size: String(PAGE_SIZE) }
   const { data, isLoading } = useGifts(queryParams)
 
-  // Fetch funds for fund filter and users for admin owner filter
-  const { data: fundsData } = useFunds()
+  // Fetch users for admin owner filter
   const { data: usersData } = useUsers()
 
   const handleSearch = (e: React.FormEvent) => {
@@ -100,25 +99,13 @@ export default function DonationList() {
       cell: ({ row }) => formatLocalDate(row.original.gift_date),
     },
     {
-      accessorKey: "fund_name",
-      header: "Fund",
+      accessorKey: "payment_type_display",
+      header: "Type",
       cell: ({ row }) => (
         <span className="text-muted-foreground">
-          {row.original.fund_name || "\u2014"}
+          {row.original.payment_type_display || "---"}
         </span>
       ),
-    },
-    {
-      accessorKey: "description",
-      header: "Description",
-      cell: ({ row }) => {
-        const desc = row.original.description || ""
-        return (
-          <span className="text-muted-foreground" title={desc}>
-            {desc.length > 40 ? desc.slice(0, 40) + "\u2026" : desc || "\u2014"}
-          </span>
-        )
-      },
     },
   ]
 
@@ -153,12 +140,13 @@ export default function DonationList() {
               gift_date_before: "To",
               min_amount: "Min Amount",
               max_amount: "Max Amount",
-              fund: "Fund",
+              payment_type: "Type",
               owner: "Owner",
               donor_contact: "Donor",
             }}
             filterValueLabels={{
               ...(usersData ? { owner: Object.fromEntries(usersData.map((u) => [String(u.id), u.full_name])) } : {}),
+              payment_type: giftPaymentTypeLabels,
             }}
             presets={giftPresets}
             onApplyPreset={(preset) => setFilters({ ...preset.getParams(), page: 1 })}
@@ -213,29 +201,27 @@ export default function DonationList() {
               className="w-[100px]"
             />
 
-            {/* Fund dropdown */}
-            {fundsData && fundsData.length > 0 && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="secondary" size="sm" className="gap-2">
-                    <Filter className="h-4 w-4" />
-                    {filters.fund
-                      ? fundsData.find((f) => f.id === filters.fund)?.name || "Fund"
-                      : "All Funds"}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem onClick={() => setFilters({ fund: null, page: 1 })}>
-                    All Funds
+            {/* Payment type dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="secondary" size="sm" className="gap-2">
+                  <Filter className="h-4 w-4" />
+                  {filters.payment_type
+                    ? giftPaymentTypeLabels[filters.payment_type] || "Type"
+                    : "All Types"}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => setFilters({ payment_type: null, page: 1 })}>
+                  All Types
+                </DropdownMenuItem>
+                {Object.entries(giftPaymentTypeLabels).map(([value, label]) => (
+                  <DropdownMenuItem key={value} onClick={() => setFilters({ payment_type: value, page: 1 })}>
+                    {label}
                   </DropdownMenuItem>
-                  {fundsData.map((f) => (
-                    <DropdownMenuItem key={f.id} onClick={() => setFilters({ fund: f.id, page: 1 })}>
-                      {f.name}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             {/* Admin owner dropdown */}
             {isAdmin && usersData && (
@@ -276,7 +262,7 @@ export default function DonationList() {
             aria-label="Gifts"
           />
 
-          {/* Slide-in detail panel */}
+          {/* Detail panel */}
           <DonationDetailPanel
             open={!!selectedGiftId}
             giftId={selectedGiftId}

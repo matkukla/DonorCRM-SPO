@@ -2,11 +2,19 @@ import { useState, useEffect } from "react"
 import { useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { useGift, useCreateGift, useUpdateGift } from "@/hooks/useGifts"
 import { useSearchContacts } from "@/hooks/useContacts"
+import { giftPaymentTypeLabels } from "@/api/gifts"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowLeft, Search } from "lucide-react"
 
@@ -15,6 +23,7 @@ interface FormData {
   amount: string  // Dollar string the user types
   gift_date: string
   description: string
+  payment_type: string
 }
 
 export default function DonationForm() {
@@ -40,6 +49,7 @@ export default function DonationForm() {
     amount: "",
     gift_date: new Date().toISOString().split("T")[0],
     description: "",
+    payment_type: "",
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -51,6 +61,7 @@ export default function DonationForm() {
         amount: existingGift.amount_dollars,
         gift_date: existingGift.gift_date,
         description: existingGift.description || "",
+        payment_type: existingGift.payment_type || "",
       })
       setSelectedContact({
         id: existingGift.donor_contact,
@@ -115,6 +126,7 @@ export default function DonationForm() {
       amount_cents,
       gift_date: formData.gift_date,
       description: formData.description,
+      payment_type: formData.payment_type || undefined,
     }
 
     try {
@@ -232,7 +244,7 @@ export default function DonationForm() {
               <Card>
                 <CardHeader>
                   <CardTitle>Donation Details</CardTitle>
-                  <CardDescription>Amount and date of the donation</CardDescription>
+                  <CardDescription>Amount, date, and payment type</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
@@ -270,6 +282,27 @@ export default function DonationForm() {
                         <p className="text-sm text-destructive">{errors.gift_date}</p>
                       )}
                     </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="payment_type">Payment Type</Label>
+                    <Select
+                      value={formData.payment_type || "none"}
+                      onValueChange={(v) =>
+                        setFormData((prev) => ({ ...prev, payment_type: v === "none" ? "" : v }))
+                      }
+                    >
+                      <SelectTrigger id="payment_type">
+                        <SelectValue placeholder="Select payment type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">-- None --</SelectItem>
+                        {Object.entries(giftPaymentTypeLabels).map(([value, label]) => (
+                          <SelectItem key={value} value={value}>
+                            {label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </CardContent>
               </Card>
