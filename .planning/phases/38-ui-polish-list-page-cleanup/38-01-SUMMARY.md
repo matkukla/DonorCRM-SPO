@@ -125,6 +125,14 @@ None - no external service configuration required.
 - Gift detail opens as centered Dialog (consistent with other detail panels converted in 38-02)
 - Ready for 38-02 (already executed) and 38-03
 
+## Self-Check: PASSED
+
+- SUMMARY.md: FOUND
+- Commit c18f381: FOUND
+- All 11 modified files: FOUND
+- All 8 must_have truths verified: PASSED
+- TypeScript compilation: PASSED (no errors)
+
 ---
 *Phase: 38-ui-polish-list-page-cleanup*
 *Completed: 2026-02-27*
