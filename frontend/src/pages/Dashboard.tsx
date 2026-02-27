@@ -9,7 +9,6 @@ import { RecentDonations } from "@/components/dashboard/RecentDonations"
 import { NeedsAttention } from "@/components/dashboard/NeedsAttention"
 import { SupportProgress } from "@/components/dashboard/SupportProgress"
 import { LateDonations } from "@/components/dashboard/LateDonations"
-import { RecentJournalActivity } from "@/components/dashboard/RecentJournalActivity"
 import { GivingSummaryCard } from "@/components/dashboard/GivingSummaryCard"
 import { MonthlyGiftsCard } from "@/components/dashboard/MonthlyGiftsCard"
 import { SortableDashboardTile } from "@/components/dashboard/SortableDashboardTile"
@@ -32,7 +31,7 @@ function formatCurrency(amount: number): string {
 
 const DEFAULT_GIVING_ORDER = ["giving-summary", "monthly-gifts"] as const
 const DEFAULT_STATS_ORDER = ["thank-you", "recent-donations-stat", "active-pledges", "needs-attention-stat"] as const
-const DEFAULT_CONTENT_ORDER = ["needs-attention", "support-progress", "recent-donations", "journal-activity", "late-donations"] as const
+const DEFAULT_CONTENT_ORDER = ["needs-attention", "support-progress", "recent-donations", "late-donations"] as const
 
 export default function Dashboard() {
   const { user } = useAuth()
@@ -116,8 +115,6 @@ export default function Dashboard() {
         return <SupportProgress data={data?.support_progress || null} isLoading={isLoading} />
       case "recent-donations":
         return <RecentDonations donations={data?.recent_gifts || []} isLoading={isLoading} />
-      case "journal-activity":
-        return <RecentJournalActivity activities={data?.journal_activity || []} isLoading={isLoading} />
       case "late-donations":
         return <LateDonations donations={data?.late_donations || []} totalCount={data?.late_donations_count || 0} isLoading={isLoading} onQuickLog={(contactId) => setQuickLogContactId(contactId)} />
       default: return null
