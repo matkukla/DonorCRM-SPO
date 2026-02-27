@@ -196,9 +196,10 @@ export function PrayerIntentionPanel({
                             key={contact.id}
                             type="button"
                             className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors"
-                            onClick={() =>
+                            onMouseDown={(e) => {
+                              e.preventDefault()
                               selectContact(contact.id, contact.full_name)
-                            }
+                            }}
                           >
                             {contact.full_name}
                           </button>
