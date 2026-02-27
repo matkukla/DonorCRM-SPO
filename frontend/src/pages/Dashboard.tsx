@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { useAuth } from "@/providers/AuthProvider"
 import { markEventsSeen } from "@/api/dashboard"
 import { useDashboardSummary } from "@/hooks/useDashboard"
+import { useDashboardLayout } from "@/hooks/useDashboard"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
 import { StatCard } from "@/components/dashboard/StatCard"
@@ -29,9 +30,18 @@ function formatCurrency(amount: number): string {
   }).format(amount)
 }
 
-const DEFAULT_GIVING_ORDER = ["giving-summary", "monthly-gifts"] as const
-const DEFAULT_STATS_ORDER = ["thank-you", "recent-donations-stat", "active-pledges", "needs-attention-stat"] as const
-const DEFAULT_CONTENT_ORDER = ["needs-attention", "support-progress", "recent-donations", "late-donations"] as const
+const TILE_SIZES: Record<string, number> = {
+  "giving-summary": 2,
+  "monthly-gifts": 2,
+  "thank-you": 1,
+  "recent-donations-stat": 1,
+  "active-pledges": 1,
+  "needs-attention-stat": 1,
+  "needs-attention": 2,
+  "support-progress": 2,
+  "recent-donations": 2,
+  "late-donations": 2,
+}
 
 export default function Dashboard() {
   const { user } = useAuth()
@@ -39,10 +49,9 @@ export default function Dashboard() {
   const { data: mpdData, isLoading: mpdLoading } = useMPDMyData()
   const [quickLogContactId, setQuickLogContactId] = useState<string | null>(null)
 
-  const [givingOrder, setGivingOrder] = useState<string[]>([...DEFAULT_GIVING_ORDER])
-  const [statsOrder, setStatsOrder] = useState<string[]>([...DEFAULT_STATS_ORDER])
-  const [contentOrder, setContentOrder] = useState<string[]>([...DEFAULT_CONTENT_ORDER])
+  const { tileOrder, setTileOrder, resetToDefault } = useDashboardLayout()
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [dragWidth, setDragWidth] = useState<number>(0)
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -68,30 +77,21 @@ export default function Dashboard() {
   }, 0) || 0
 
   function handleDragStart(event: DragStartEvent) {
-    setActiveId(event.active.id as string)
+    const id = event.active.id as string
+    setActiveId(id)
+    const el = document.querySelector(`[data-tile-id="${id}"]`)
+    if (el) setDragWidth(el.getBoundingClientRect().width)
   }
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
     setActiveId(null)
-
     if (!over || active.id === over.id) return
-
-    // Try reorder in each section -- only the one containing the item will match
-    const tryReorder = (
-      order: string[],
-      setOrder: React.Dispatch<React.SetStateAction<string[]>>
-    ) => {
-      const oldIndex = order.indexOf(active.id as string)
-      const newIndex = order.indexOf(over.id as string)
-      if (oldIndex !== -1 && newIndex !== -1) {
-        setOrder(arrayMove(order, oldIndex, newIndex))
-      }
+    const oldIndex = tileOrder.indexOf(active.id as string)
+    const newIndex = tileOrder.indexOf(over.id as string)
+    if (oldIndex !== -1 && newIndex !== -1) {
+      setTileOrder(arrayMove(tileOrder, oldIndex, newIndex))
     }
-
-    tryReorder(givingOrder, setGivingOrder)
-    tryReorder(statsOrder, setStatsOrder)
-    tryReorder(contentOrder, setContentOrder)
   }
 
   function renderTileById(tileId: string): React.ReactNode {
@@ -124,7 +124,7 @@ export default function Dashboard() {
   return (
     <Section>
       <Container>
-        <div className="space-y-8">
+        <div className="space-y-4">
           {/* Header */}
           <div>
             <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
@@ -147,31 +147,34 @@ export default function Dashboard() {
             onDragEnd={handleDragEnd}
             onDragCancel={() => setActiveId(null)}
           >
-            {/* Giving Widgets */}
-            <SortableContext items={givingOrder} strategy={rectSortingStrategy}>
-              <div className="grid gap-6 lg:grid-cols-2">
-                {givingOrder.map((id) => (
-                  <SortableDashboardTile key={id} id={id}>
+            {/* Single flat grid -- all tiles in one sortable context */}
+            <SortableContext items={tileOrder} strategy={rectSortingStrategy}>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {tileOrder.map((id) => (
+                  <SortableDashboardTile
+                    key={id}
+                    id={id}
+                    className={TILE_SIZES[id] === 2 ? "col-span-2" : "col-span-1"}
+                  >
                     {renderTileById(id)}
                   </SortableDashboardTile>
                 ))}
               </div>
             </SortableContext>
 
-            {/* Stat Cards */}
-            <SortableContext items={statsOrder} strategy={rectSortingStrategy}>
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-                {statsOrder.map((id) => (
-                  <SortableDashboardTile key={id} id={id}>
-                    {renderTileById(id)}
-                  </SortableDashboardTile>
-                ))}
-              </div>
-            </SortableContext>
+            {/* Reset layout button */}
+            <div className="flex justify-end">
+              <button
+                onClick={resetToDefault}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Reset layout
+              </button>
+            </div>
 
             {/* MPD Section -- NOT draggable (Fragment children, conditional) */}
             {mpdLoading ? (
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-3 md:grid-cols-3">
                 {[...Array(3)].map((_, i) => (
                   <div key={i} className="h-24 bg-muted rounded-lg animate-pulse" />
                 ))}
@@ -179,7 +182,7 @@ export default function Dashboard() {
             ) : mpdData?.has_data ? (
               <div className="space-y-2">
                 <h2 className="text-lg font-semibold">MPD Financial Overview</h2>
-                <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-3 md:grid-cols-3">
                   <MPDStatsInline
                     currentMpdCap={mpdData.current_mpd_cap}
                     latestRollForwardBalance={mpdData.latest_roll_forward_balance}
@@ -189,21 +192,13 @@ export default function Dashboard() {
               </div>
             ) : null}
 
-            {/* Main Content -- flat grid, no left/right column split */}
-            <SortableContext items={contentOrder} strategy={rectSortingStrategy}>
-              <div className="grid gap-6 lg:grid-cols-2">
-                {contentOrder.map((id) => (
-                  <SortableDashboardTile key={id} id={id}>
-                    {renderTileById(id)}
-                  </SortableDashboardTile>
-                ))}
-              </div>
-            </SortableContext>
-
             {/* Ghost overlay -- semi-transparent copy follows cursor */}
             <DragOverlay>
               {activeId ? (
-                <div className="opacity-60 shadow-xl rounded-lg pointer-events-none">
+                <div
+                  className="opacity-60 shadow-xl rounded-lg pointer-events-none"
+                  style={{ width: dragWidth || undefined }}
+                >
                   {renderTileById(activeId)}
                 </div>
               ) : null}

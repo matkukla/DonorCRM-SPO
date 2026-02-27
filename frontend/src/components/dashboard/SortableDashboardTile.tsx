@@ -6,9 +6,10 @@ import { cn } from "@/lib/utils"
 interface SortableDashboardTileProps {
   id: string
   children: React.ReactNode
+  className?: string
 }
 
-export function SortableDashboardTile({ id, children }: SortableDashboardTileProps) {
+export function SortableDashboardTile({ id, children, className }: SortableDashboardTileProps) {
   const {
     attributes,
     listeners,
@@ -21,13 +22,15 @@ export function SortableDashboardTile({ id, children }: SortableDashboardTilePro
   return (
     <div
       ref={setNodeRef}
+      data-tile-id={id}
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
       }}
       className={cn(
         "group relative",
-        isDragging && "opacity-40 border-2 border-dashed border-border rounded-lg"
+        isDragging && "opacity-40 border-2 border-dashed border-border rounded-lg",
+        className
       )}
     >
       <button

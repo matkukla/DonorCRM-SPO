@@ -18,6 +18,7 @@ export interface User {
   role: "admin" | "staff" | "finance" | "read_only"
   is_active: boolean
   monthly_goal: string | null
+  dashboard_layout: { tile_order?: string[] } | null
 }
 
 /**

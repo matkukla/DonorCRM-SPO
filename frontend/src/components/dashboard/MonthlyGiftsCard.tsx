@@ -37,12 +37,12 @@ export function MonthlyGiftsCard() {
   if (isLoading) {
     return (
       <Card>
-        <CardHeader>
+        <CardHeader className="p-4">
           <div className="flex items-center justify-between">
             <CardTitle>Monthly Gifts</CardTitle>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4 pt-0 pb-4">
           <div className="min-h-[220px] bg-muted rounded animate-pulse" />
         </CardContent>
       </Card>
@@ -52,7 +52,7 @@ export function MonthlyGiftsCard() {
   if (!data || data.months.every((m) => m.total === 0)) {
     return (
       <Card>
-        <CardHeader>
+        <CardHeader className="p-4">
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>Monthly Gifts</CardTitle>
@@ -60,7 +60,7 @@ export function MonthlyGiftsCard() {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4 pt-0 pb-4">
           <p className="text-muted-foreground text-sm py-8 text-center">
             No donations recorded yet.
           </p>
@@ -71,7 +71,7 @@ export function MonthlyGiftsCard() {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="p-4">
         <div className="flex items-center justify-between">
           <div>
             <CardTitle>Monthly Gifts</CardTitle>
@@ -105,7 +105,7 @@ export function MonthlyGiftsCard() {
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-4 pt-0 pb-4">
         <div key={chartType} className="animate-in fade-in duration-300">
           <ChartContainer config={chartConfig} className="min-h-[220px] w-full">
             {chartType === "bar" ? (

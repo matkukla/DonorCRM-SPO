@@ -35,7 +35,7 @@ export function NeedsAttention({
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="p-4">
         <div className="flex items-center gap-2">
           <AlertTriangle className="h-5 w-5 text-amber-500 dark:text-amber-400" />
           <div>
@@ -44,7 +44,7 @@ export function NeedsAttention({
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-4 pt-0 pb-4">
         {isLoading ? (
           <div className="space-y-4">
             {[...Array(3)].map((_, i) => (
