@@ -119,7 +119,20 @@ Missionaries can manage donor relationships efficiently, with accurate data impo
 
 ### Active
 
-_No active milestone. Run `/gsd:new-milestone` to start the next one._
+## Current Milestone: v2.2 UI Polish, Journal Report & Supervisor Role
+
+**Goal:** Refine the UI across all major pages, rebuild the journal report component, add Begin Prayer flow, and introduce the Mission Supervisor role with scoped visibility.
+
+**Target features:**
+- Dashboard layout modifications (remove stale text, resize gaps, chart toggle, draggable anywhere)
+- Center all modal dialogs
+- Rebuild journal report component (new metrics, charts, checkbox behavior, remove pipeline breakdown)
+- Rename "Prospect" to "Potential Donor" on contacts page
+- Modify gifts page columns (remove Funds/Description, add Type column)
+- Remove Fund column from pledges page
+- Remove Review Queue and heat map from analytics dashboard
+- Add Begin Prayer feature (expand Focus Mode with dedicated prayer session view)
+- Create Mission Supervisor role (admin-assigned, scoped visibility, missionary dashboard selector)
 
 ### Out of Scope
 
@@ -201,4 +214,4 @@ _No active milestone. Run `/gsd:new-milestone` to start the next one._
 | django-csp 4.0 dict config format (v2.1) | CONTENT_SECURITY_POLICY dict with EXCLUDE_URL_PREFIXES | ✓ Good |
 
 ---
-*Last updated: 2026-02-25 after v2.1 shipped*
+*Last updated: 2026-02-26 after v2.2 milestone started*
