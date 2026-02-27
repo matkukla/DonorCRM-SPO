@@ -18,8 +18,8 @@ Requirements for v2.2 milestone. Each maps to roadmap phases.
 
 ### UI Polish
 
-- [ ] **UI-01**: All modal dialogs are centered on screen
-- [ ] **UI-02**: "Prospect" is renamed to "Potential Donor" on contacts page
+- [x] **UI-01**: All modal dialogs are centered on screen
+- [x] **UI-02**: "Prospect" is renamed to "Potential Donor" on contacts page
 - [ ] **UI-03**: Fund and Description columns are removed from gifts list page
 - [ ] **UI-04**: Type column (Credit Card / Direct Deposit / Check) is added to gifts list page
 - [ ] **UI-05**: Fund column is removed from pledges list page
@@ -88,8 +88,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| UI-01 | Phase 38 | Pending |
-| UI-02 | Phase 38 | Pending |
+| UI-01 | Phase 38 | Complete |
+| UI-02 | Phase 38 | Complete |
 | UI-03 | Phase 38 | Pending |
 | UI-04 | Phase 38 | Pending |
 | UI-05 | Phase 38 | Pending |
