@@ -1,910 +1,679 @@
-# Architecture Research: v1.3 Integration Architecture
+# Architecture Patterns: v2.2 Integration
 
-**Domain:** DonorCRM Milestone v1.3 -- Smartsheet Import, Comprehensive Filters, Quality Audit
-**Researched:** 2026-02-16
-**Confidence:** HIGH (based on complete codebase review of existing patterns)
+**Domain:** Mission Supervisor role, journal report rebuild, Begin Prayer, dashboard modifications
+**Researched:** 2026-02-26
+**Confidence:** HIGH -- all features integrate with well-established existing patterns
 
-**Note:** This supersedes SMARTSHEET_ARCHITECTURE.md with deeper integration analysis based on full codebase review.
+## Recommended Architecture
 
----
+v2.2 introduces five feature areas that touch different layers of the stack. The key architectural challenge is the Mission Supervisor role, which requires a new data relationship (supervisor-to-missionary assignment) and systematic queryset scoping changes across multiple apps. The other features are localized frontend component work that consumes existing APIs.
 
-## System Overview: What Changes vs What Stays
+### Feature Integration Map
 
-```
-EXISTING (UNCHANGED)                   NEW / MODIFIED
-===========================            ===========================
+| Feature | Backend Changes | Frontend Changes | Data Model Changes |
+|---------|----------------|------------------|--------------------|
+| Mission Supervisor role | New UserRole, supervisor M2M, queryset scoping across 8+ views, permission updates, assignment API | Role in auth types, sidebar nav, role selector UI, assignment management UI | `SUPERVISOR` in UserRole, `supervised_users` M2M on User |
+| Missionary dashboard selector | Add optional `user_id` param to DashboardView | New `MissionarySelector` component on Dashboard page | None |
+| Journal report rebuild | New dedicated report endpoint on JournalAnalyticsViewSet | Replace 4 chart components in Reports tab with single `JournalReport` component | None |
+| Begin Prayer | None (existing `focus/` and `prayed/` endpoints sufficient) | Expand `PrayerFocusMode.tsx` with Begin Prayer entry flow | None |
+| Dashboard modifications | None | Modify `Dashboard.tsx` and tile sub-components | None |
 
-Backend Django Apps                    Backend Changes
-+---------------------------+          +---------------------------+
-| imports/                  |          | imports/                  |
-|   models.py  (ImportRun,  |          |   services.py  +ADD:      |
-|   ImportRowError, Fund)   |          |     parse_smartsheet()    |
-|   services.py (CSV parse  |          |     auto_detect_mappings()|
-|     + import functions)   |          |   views.py  +ADD:         |
-|   views.py (per-type      |          |     SmartsheetUploadView  |
-|     import views)         |          |     SmartsheetImportView  |
-|   tasks.py (async)        |          |     FieldMetadataView     |
-+---------------------------+          +---------------------------+
-| contacts/views.py         |          | contacts/views.py MODIFY: |
-|   ContactListCreateView   |          |   Extend filterset_fields |
-|   (status, needs_thank_you|          |   (owner, date ranges,    |
-|    search, owner manual)  |          |    group via filterset)    |
-+---------------------------+          +---------------------------+
-| donations/views.py        |          | donations/views.py MODIFY:|
-|   DonationListCreateView  |          |   Add amount range,       |
-|   (type, method, thanked, |          |   fund, owner filters     |
-|    date range manual)     |          +---------------------------+
-+---------------------------+          | journals/views.py MODIFY: |
-| pledges/views.py          |          |   Add owner filter for    |
-|   PledgeListCreateView    |          |   admin, extend filterset |
-|   (status, freq, is_late) |          +---------------------------+
-+---------------------------+
+### Component Boundaries
 
-Frontend React                         Frontend Changes
-+---------------------------+          +---------------------------+
-| components/shared/        |          | components/shared/  +ADD: |
-|   DataTable.tsx            |          |   FilterBar.tsx           |
-+---------------------------+          |   ActiveFilters.tsx       |
-| components/imports/        |          +---------------------------+
-|   ImportCard.tsx            |          | components/imports/ +ADD: |
-|   ImportDialog.tsx          |          |   SmartsheetWizard.tsx   |
-|   SPOImportTile.tsx         |          |   ColumnMapper.tsx      |
-|   CSVPreviewTable.tsx       |          |   FieldMappingRow.tsx   |
-+---------------------------+          +---------------------------+
-| pages/contacts/            |          | pages/ MODIFY:           |
-|   ContactList.tsx           |          |   ContactList.tsx        |
-| pages/donations/           |          |   DonationList.tsx       |
-|   DonationList.tsx          |          |   JournalList.tsx        |
-| pages/pledges/             |          |   Transactions.tsx       |
-|   PledgeList.tsx            |          |   ImportCenter.tsx       |
-+---------------------------+          +---------------------------+
+| Component | Responsibility | Communicates With |
+|-----------|---------------|-------------------|
+| `User` model (extended) | Stores supervisor role + M2M assignment relationship | All owner-scoped views via queryset filtering |
+| `supervised_users` M2M | Maps supervisors to their assigned missionaries | `User` model, all scoped querysets |
+| `owner_scoped_filter()` helper | Returns Q object filtering data by user role + assignments | Contact, Gift, Journal, Prayer, Task, Dashboard, Insights views |
+| `JournalAnalyticsViewSet.report()` (new) | Aggregates per-journal report data (metrics, stage distribution, decisions) | Frontend `JournalReport` component |
+| `JournalReport.tsx` (new) | Renders key metrics, progress bar, charts, alerts | `useJournalReport` hook, Recharts |
+| `MissionarySelector` component (new) | Dropdown for supervisors/admins to pick a missionary | Dashboard page, users API |
+| `PrayerFocusMode.tsx` (modified) | Begin Prayer entry point and prayer session flow | `useTodaysFocus` hook, `useMarkPrayed` mutation |
+| `Dashboard.tsx` (modified) | Layout changes, tile removal, chart toggle | Existing tile components, dnd-kit |
+
+### Data Flow
+
+#### Mission Supervisor Queryset Scoping
+
+Current owner-scoping pattern (repeated across ~15 views):
+
+```python
+# Current pattern in contacts/views.py, journals/views.py, prayers/views.py, etc.
+def get_queryset(self):
+    user = self.request.user
+    if user.role in ['admin', 'finance', 'read_only']:
+        queryset = Model.objects.all()
+    else:
+        queryset = Model.objects.filter(owner=user)
+    return queryset
 ```
 
----
+New pattern adds supervisor scope:
 
-## Component Architecture: New vs Modified
+```python
+# Updated pattern
+def get_queryset(self):
+    user = self.request.user
+    if user.role == 'admin':
+        queryset = Model.objects.all()
+    elif user.role == 'supervisor':
+        supervised_ids = user.supervised_users.values_list('id', flat=True)
+        queryset = Model.objects.filter(
+            owner__in=[user.pk, *supervised_ids]
+        )
+    elif user.role in ['finance', 'read_only']:
+        queryset = Model.objects.all()
+    else:
+        queryset = Model.objects.filter(owner=user)
+    return queryset
+```
 
-### Backend -- NEW Components
+**Extract to reusable helper** to avoid duplicating this logic in 15+ places:
 
-| Component | File | Type | Responsibility |
-|-----------|------|------|----------------|
-| `SmartsheetUploadView` | `imports/views.py` | APIView | Accept Excel/CSV upload, parse headers, return headers + preview rows + auto-detected mappings |
-| `SmartsheetImportView` | `imports/views.py` | APIView | Accept file + confirmed column mapping, transform rows, delegate to existing import services |
-| `FieldMetadataView` | `imports/views.py` | APIView | Return available target fields and their metadata (required, type, validation) for mapping UI |
-| `parse_smartsheet_file()` | `imports/services.py` | Service function | Parse Excel (openpyxl) or CSV file, extract headers and preview rows |
-| `auto_detect_mappings()` | `imports/services.py` | Service function | Fuzzy-match uploaded headers to DonorCRM fields using difflib.SequenceMatcher |
-| `apply_column_mapping()` | `imports/services.py` | Service function | Transform Smartsheet rows to internal format using user-confirmed mapping |
+```python
+# apps/core/querysets.py (NEW FILE)
+from django.db.models import Q
 
-### Backend -- MODIFIED Components
 
-| Component | File | Modification | Risk |
-|-----------|------|-------------|------|
-| `ContactListCreateView` | `contacts/views.py` | Change `filterset_fields` from list to dict with lookup types; add `owner`, `created_at__gte/lte`, `last_gift_date__gte/lte`; remove manual `owner` and `group` filtering from `get_queryset()` and move to filterset | LOW -- existing filters preserved, made declarative |
-| `DonationListCreateView` | `donations/views.py` | Extend `filterset_fields` to dict with `amount__gte/lte`, `fund`; move manual `start_date`/`end_date`/`contact` filters into filterset | LOW -- replaces manual code with declarative equivalent |
-| `JournalListCreateView` | `journals/views.py` | Add `owner` filter (admin only); extend `filterset_fields` for `is_archived`, `owner` | LOW -- additive change |
-| `PledgeListCreateView` | `pledges/views.py` | Add `fund`, `contact__owner` (admin only) to filterset; add search fields | LOW -- additive change |
-| `ImportRun` model | `imports/models.py` | Add `import_source` CharField (choices: 'csv', 'smartsheet', default='csv') to distinguish import origins | LOW -- nullable/default field, no migration risk |
+def owner_scoped_filter(user, owner_field='owner'):
+    """
+    Return Q object for owner-scoped filtering.
 
-### Frontend -- NEW Components
+    - admin: no filter (sees all)
+    - supervisor: own data + assigned missionaries' data
+    - finance/read_only: no filter (sees all, write-gated by permissions)
+    - staff: own data only
+    """
+    if user.role in ['admin', 'finance', 'read_only']:
+        return Q()  # No filter -- sees everything
 
-| Component | File | Responsibility |
-|-----------|------|----------------|
-| `FilterBar` | `components/shared/FilterBar.tsx` | Reusable horizontal filter bar with composable child slots for search, dropdowns, date pickers, toggle buttons; manages URL param sync |
-| `ActiveFilters` | `components/shared/ActiveFilters.tsx` | Badge row showing currently active filters with clear-individual and clear-all actions |
-| `SmartsheetWizard` | `components/imports/SmartsheetWizard.tsx` | Multi-step dialog: (1) upload file, (2) map columns, (3) preview + validate, (4) confirm import |
-| `ColumnMapper` | `components/imports/ColumnMapper.tsx` | Column mapping interface: list of source columns with dropdown target selectors and confidence indicators |
-| `FieldMappingRow` | `components/imports/FieldMappingRow.tsx` | Single mapping row: source column name, target field Select, confidence badge (HIGH/MEDIUM/LOW) |
-| `useSmartsheetImport` | `hooks/useSmartsheetImport.ts` | React Query mutation hooks for upload and import steps |
-| Smartsheet API functions | `api/imports.ts` | New functions: `uploadSmartsheet()`, `importSmartsheet()`, `getFieldMetadata()` |
+    if user.role == 'supervisor':
+        supervised_ids = list(user.supervised_users.values_list('id', flat=True))
+        return Q(**{f'{owner_field}__in': [user.pk] + supervised_ids})
 
-### Frontend -- MODIFIED Components
+    # staff -- own data only
+    return Q(**{owner_field: user})
+```
 
-| Component | File | Modification | Scope |
-|-----------|------|-------------|-------|
-| `ContactList.tsx` | `pages/contacts/` | Replace inline filter Card with FilterBar component; add owner dropdown (admin only), date range pickers, group filter; add ActiveFilters badge row | MEDIUM -- restructure filter section, preserve DataTable usage |
-| `DonationList.tsx` | `pages/donations/` | Replace inline filter Card with FilterBar; add date range pickers, amount range inputs, payment method dropdown, fund filter | MEDIUM -- same restructure pattern |
-| `JournalList.tsx` | `pages/journals/` | Add FilterBar with owner filter (admin only), search, archived toggle; convert card grid to sortable list for filter integration | MEDIUM -- layout change from grid to list+filters |
-| `PledgeList.tsx` | `pages/pledges/` | Add FilterBar wrapping existing status/late filters; add frequency filter, fund filter, search | LOW -- wrap existing filters in FilterBar |
-| `Transactions.tsx` | `pages/insights/` | Replace inline filter Card with FilterBar; add donation type, payment method, thanked filters alongside existing date range | LOW -- additive |
-| `TaskList.tsx` | `pages/tasks/` | Wrap existing filters in FilterBar for visual consistency | LOW -- cosmetic wrap |
-| `ImportCenter.tsx` | `pages/admin/` | Add "Smartsheet Import" tile alongside SPO tiles; add new section header | LOW -- additive tile |
+This helper returns a `Q` object so views can compose it with existing filters:
 
----
+```python
+# Usage in any view
+def get_queryset(self):
+    return Contact.objects.filter(
+        owner_scoped_filter(self.request.user)
+    ).select_related('owner')
+```
 
-## Data Flow
+For models where ownership is indirect (e.g., PrayerIntention via `contact__owner`, JournalStageEvent via `journal_contact__journal__owner`), pass the `owner_field` parameter:
 
-### Smartsheet Import Flow (Two-Phase)
+```python
+# Prayer intentions -- ownership via contact__owner
+qs = PrayerIntention.objects.filter(
+    owner_scoped_filter(request.user, owner_field='contact__owner')
+)
+
+# Journal views -- ownership via journal.owner
+qs = Journal.objects.filter(
+    owner_scoped_filter(request.user)
+)
+
+# Journal stage events -- deep ownership chain
+qs = JournalStageEvent.objects.filter(
+    owner_scoped_filter(request.user, owner_field='journal_contact__journal__owner')
+)
+```
+
+#### Supervisor-Missionary Assignment Data Model
+
+Use M2M on User rather than FK because:
+1. A supervisor manages multiple missionaries (1-to-many on the supervisor side)
+2. A missionary could theoretically be assigned to multiple supervisors (unlikely now, but M2M is zero-cost for the single-supervisor case and prevents future migration)
+3. Self-referential M2M is cleaner than a separate junction model for this simple relationship
+
+```python
+# On User model
+supervised_users = models.ManyToManyField(
+    'self',
+    symmetrical=False,
+    related_name='supervisors',
+    blank=True,
+    help_text='Missionaries assigned to this supervisor'
+)
+```
+
+Key decisions:
+- `symmetrical=False` because the relationship is directional (supervisor -> missionary, not bidirectional)
+- `related_name='supervisors'` allows `user.supervisors.all()` to find who supervises a given missionary
+- The M2M table will be auto-generated as `users_user_supervised_users` by Django
+- Only users with `role='supervisor'` should have `supervised_users` populated; enforce at the application/API level, not the model level
+- Admin assignment UI manages the M2M; supervisors cannot self-assign
+
+#### Dashboard Selector Flow
 
 ```
-Phase 1: Upload + Header Extraction
-========================================
-User selects .xlsx or .csv file
-    |
-    v (multipart POST)
-SmartsheetUploadView.post()
-    |
-    +-> Validate file extension (.xlsx, .csv)
-    +-> Validate file size (<10MB)
-    +-> Detect format (magic bytes: PK = xlsx, else csv)
-    |
-    +-> If xlsx: openpyxl.load_workbook(read_only=True, data_only=True)
-    |   Extract ws[1] headers, first 5 data rows
-    |
-    +-> If csv: csv.DictReader with utf-8-sig encoding
-    |   Extract fieldnames, first 5 rows
-    |
-    +-> auto_detect_mappings(headers, import_type)
-    |   Fuzzy match each header to known field patterns
-    |   Return confidence: HIGH (>0.8), MEDIUM (>0.6), LOW
-    |
-    v
-Return JSON:
+Supervisor/Admin clicks "View as [Missionary]" dropdown
+  -> MissionarySelector dropdown renders
+     - For supervisors: populated from user.supervised_users
+     - For admins: populated from all staff users
+  -> Selection sets selectedUserId state
+  -> Dashboard API calls include ?user_id=<selectedUserId>
+  -> Backend validates permission, calls get_dashboard_summary(target_user)
+  -> Dashboard renders with missionary's data + "Viewing as X" banner
+  -> "View My Dashboard" button clears selection, returns to own view
+```
+
+Backend approach: Add optional `user_id` parameter to `DashboardView.get()`:
+
+```python
+# apps/dashboard/views.py -- modified DashboardView
+def get(self, request):
+    user_id = request.query_params.get('user_id')
+    if user_id:
+        target_user = self._get_viewable_user(request.user, user_id)
+        if target_user is None:
+            return Response({'detail': 'Not authorized to view this user.'}, status=403)
+        data = get_dashboard_summary(target_user)
+    else:
+        data = get_dashboard_summary(request.user)
+    return Response(data)
+
+def _get_viewable_user(self, requesting_user, target_user_id):
+    """Return target user if requesting user has permission to view their dashboard."""
+    if requesting_user.role == 'admin':
+        return User.objects.filter(pk=target_user_id, is_active=True).first()
+    elif requesting_user.role == 'supervisor':
+        return requesting_user.supervised_users.filter(pk=target_user_id, is_active=True).first()
+    return None
+```
+
+The existing `get_dashboard_summary(user)` already takes a user parameter and scopes all queries to that user. No changes needed to the service layer.
+
+#### Journal Report Data Flow
+
+```
+JournalDetail.tsx (Reports tab)
+  -> JournalReport component (NEW, replaces 4 chart components)
+  -> useJournalReport(journalId) hook (NEW)
+  -> GET /api/journals/analytics/report/?journal_id={id} (NEW endpoint)
+  -> Server aggregates: total contacts, decisions, stage distribution, goal progress
+  -> Returns single JournalReport response
+  -> Component renders: 4 metric cards, progress bar, 2 Recharts charts, conditional alerts
+```
+
+The current Reports tab uses 4 separate API calls (decision-trends, stage-activity, pipeline-breakdown, next-steps-queue) via individual hooks. The rebuild replaces this with a single aggregated endpoint. Benefits:
+1. Single network round-trip instead of 4
+2. Server computes derived metrics (response rate, goal progress) atomically
+3. Single loading/error state in the component
+
+New backend endpoint on `JournalAnalyticsViewSet`:
+
+```python
+@action(detail=False, methods=['get'], url_path='report')
+def report(self, request):
+    """Per-journal report data for the rebuilt Reports tab."""
+    journal_id = request.query_params.get('journal_id')
+    if not journal_id:
+        return Response({'detail': 'journal_id required'}, status=400)
+
+    # Validate ownership/access (reuses existing pattern)
+    try:
+        if self._is_admin(request):
+            journal = Journal.objects.get(pk=journal_id)
+        elif request.user.role == 'supervisor':
+            supervised_ids = request.user.supervised_users.values_list('id', flat=True)
+            journal = Journal.objects.get(pk=journal_id, owner__in=[request.user.pk, *supervised_ids])
+        else:
+            journal = Journal.objects.get(pk=journal_id, owner=request.user)
+    except Journal.DoesNotExist:
+        return Response({'detail': 'Not found'}, status=404)
+
+    # Build report data using existing ORM patterns
+    report_data = build_journal_report(journal)
+    return Response(report_data)
+```
+
+Response shape (matching spec from `prompts/journal_report.md`):
+
+```python
 {
-  headers: ["First Name", "Last Name", "Email", ...],
-  preview_rows: [{...}, {...}, ...],  // first 5 rows
-  suggested_mappings: {
-    "First Name": { field: "first_name", confidence: "HIGH" },
-    "E-mail": { field: "email", confidence: "MEDIUM" },
-    ...
-  }
-}
-
-Phase 2: Confirmed Import
-========================================
-User confirms/adjusts mappings in UI, re-sends SAME file
-    |
-    v (POST with file + mapping JSON)
-SmartsheetImportView.post()
-    |
-    +-> Parse file again (same logic as Phase 1)
-    +-> Apply column_mapping to transform rows
-    |   { "First Name": "first_name", "E-mail": "email", ... }
-    |
-    +-> For each row: remap source columns to target fields
-    +-> Validate formula injection (=, +, -, @ prefixes)
-    +-> Serialize transformed rows to CSV-format string
-    |
-    +-> Delegate to EXISTING parse function:
-    |   parse_contacts_csv(csv_string, user)
-    |   OR parse_donations_csv(csv_string, user)
-    |
-    +-> Delegate to EXISTING import function:
-    |   import_contacts(valid_records, user)
-    |   OR import_donations(valid_records)
-    |
-    +-> Create ImportRun with import_source='smartsheet'
-    |
-    v
-Return standard import result:
-{
-  created_count: N,
-  updated_count: N,
-  error_count: N,
-  errors: [...first 20...],
-  import_run_id: "uuid"
-}
-```
-
-**Key design decision:** The Smartsheet import transforms data INTO the existing CSV-compatible format, then delegates to existing parse/import functions. This avoids duplicating validation logic, error handling, and ImportRun audit trail creation. The file is re-uploaded in Phase 2 rather than using temp file storage -- this is simpler (no temp file management, cache TTL, cleanup) and Smartsheet files are typically <10MB so re-upload takes <2 seconds.
-
-### Filter State Flow (All List Pages)
-
-```
-URL (single source of truth)
-    |
-    v (useSearchParams reads)
-FilterBar component renders filter controls
-    |  initialized from URL params on mount
-    |
-    v (user changes filter)
-handleFilterChange()
-    |
-    +-> Update URL params via setSearchParams()
-    +-> Reset page to 1
-    |
-    v (URL change triggers re-render)
-useSearchParams re-reads params
-    |
-    v
-React Query hook called with new params
-    |
-    v (API request)
-GET /api/contacts/?status=donor&owner=123&created_at__gte=2025-01-01
-    |
-    v (DjangoFilterBackend)
-ContactListCreateView.get_queryset()
-    |
-    +-> Owner-scoping applied FIRST (non-admin sees only own)
-    +-> DjangoFilterBackend applies declared filters
-    +-> SearchFilter applies search across configured fields
-    +-> OrderingFilter applies sort
-    |
-    v
-Return paginated, filtered JSON
-    |
-    v
-DataTable renders filtered results
-ActiveFilters shows badges for active filters
-```
-
-**Critical constraint:** `get_queryset()` MUST scope by owner BEFORE DjangoFilterBackend runs. The existing pattern already does this correctly (line 55-63 in `contacts/views.py`). The `owner` filter parameter in filterset_fields is admin-only and lets admins filter within the "all contacts" queryset. A non-admin user sending `?owner=other_user_id` gets an empty result because DjangoFilterBackend filters are applied WITHIN the already-scoped queryset.
-
----
-
-## Reusable FilterBar Component Architecture
-
-### Design Principles
-
-1. **URL params as single source of truth** -- no separate useState for filter values
-2. **Composable** -- each filter is a child element that pages customize
-3. **Consistent** -- same visual treatment across all list pages
-4. **Backward compatible** -- existing filter behavior preserved, just unified UI
-
-### Component API
-
-```typescript
-// components/shared/FilterBar.tsx
-interface FilterBarProps {
-  children: React.ReactNode  // Filter control slots
-}
-
-// Usage in ContactList.tsx
-<FilterBar>
-  <FilterBar.Search
-    placeholder="Search by name or email..."
-    paramKey="search"
-  />
-  <FilterBar.Select
-    paramKey="status"
-    label="Status"
-    options={statusOptions}
-  />
-  <FilterBar.Select
-    paramKey="owner"
-    label="Assigned To"
-    options={userOptions}
-    adminOnly  // Only renders for admin users
-  />
-  <FilterBar.DateRange
-    paramKeyFrom="created_at__gte"
-    paramKeyTo="created_at__lte"
-    label="Created"
-  />
-  <FilterBar.Toggle
-    paramKey="needs_thank_you"
-    label="Needs Thank You"
-    icon={Heart}
-  />
-</FilterBar>
-<ActiveFilters />  // Shows badges for active filters
-```
-
-### Implementation Pattern
-
-```typescript
-// Each sub-component reads/writes URL params directly
-function FilterBarSearch({ paramKey, placeholder }: SearchProps) {
-  const [searchParams, setSearchParams] = useSearchParams()
-  const [inputValue, setInputValue] = useState(
-    searchParams.get(paramKey) || ""  // Initialize from URL
-  )
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    const params = new URLSearchParams(searchParams)
-    if (inputValue) {
-      params.set(paramKey, inputValue)
-    } else {
-      params.delete(paramKey)
+    "journal": {
+        "id": "uuid",
+        "name": "Spring 2026 Support Raising",
+        "goal_amount_cents": 500000,
+        "deadline": "2026-06-30",
+        "is_archived": False,
+    },
+    "summary": {
+        "total_contacts": 45,
+        "stalled_contacts": 3,
+        "stage_distribution": {
+            "contact": 10, "meet": 12, "close": 8,
+            "decision": 5, "thank": 7, "next_steps": 3
+        },
+        "decisions": {
+            "pending": 5,
+            "confirmed": 20,
+            "declined": 3,
+            "canceled": 1,
+            "confirmed_total_cents": 350000,
+            "confirmed_monthly_equivalent_cents": 29166,
+        },
+        "goal_progress_percent": 70.0,
+        "open_next_steps": 8,
+        "overdue_next_steps": 2,
     }
-    params.set("page", "1")
-    setSearchParams(params)
-  }
+}
+```
+
+#### Begin Prayer Flow
+
+```
+PrayerList page
+  -> "Begin Prayer" button (NEW, prominent placement above prayer list)
+  -> Fetches today's focus intentions via existing GET /api/prayers/focus/
+  -> Opens PrayerFocusMode with fetched intentions
+  -> User navigates through intentions, marking as prayed
+  -> Each "Mark as Prayed" calls existing POST /api/prayers/{id}/prayed/
+  -> Completion screen shows summary
+  -> Return to PrayerList with invalidated prayer queries
+```
+
+No backend changes needed. The existing `TodaysFocusView` and `MarkPrayedView` endpoints provide all required functionality. This is purely a frontend UX change -- adding a prominent "Begin Prayer" button that launches the existing `PrayerFocusMode`.
+
+## Patterns to Follow
+
+### Pattern 1: Centralized Owner Scoping via Q Helper
+
+**What:** Extract the repeated owner-scoping logic into `apps/core/querysets.py` with a `owner_scoped_filter()` function returning a `Q` object.
+
+**When:** Every view that currently has the `if user.role in ['admin', 'finance', 'read_only']` pattern.
+
+**Why:** Adding `supervisor` to 15+ views individually is error-prone. A central helper ensures consistency and makes future role changes one-line updates.
+
+**Example:**
+```python
+# apps/core/querysets.py
+from django.db.models import Q
+
+def owner_scoped_filter(user, owner_field='owner'):
+    if user.role in ['admin', 'finance', 'read_only']:
+        return Q()
+    if user.role == 'supervisor':
+        supervised_ids = list(user.supervised_users.values_list('id', flat=True))
+        return Q(**{f'{owner_field}__in': [user.pk] + supervised_ids})
+    return Q(**{owner_field: user})
+```
+
+### Pattern 2: Role Hierarchy Extension
+
+**What:** Add `supervisor` between `admin` and `finance` in the hierarchy.
+
+**When:** Frontend `ProtectedRoute`, sidebar `canAccess`, role selector dropdowns.
+
+**Current hierarchy:** `admin(4) > finance(3) > staff(2) > read_only(1)`
+
+**New hierarchy:** `admin(5) > supervisor(4) > finance(3) > staff(2) > read_only(1)`
+
+```typescript
+// Frontend role hierarchy (ProtectedRoute.tsx, Sidebar.tsx)
+const roleHierarchy: Record<string, number> = {
+  admin: 5,
+  supervisor: 4,
+  finance: 3,
+  staff: 2,
+  read_only: 1,
+}
+```
+
+```typescript
+// Frontend types (api/users.ts, api/auth.ts)
+export type UserRole = "admin" | "supervisor" | "staff" | "finance" | "read_only"
+
+export const userRoleLabels: Record<UserRole, string> = {
+  admin: "Administrator",
+  supervisor: "Mission Supervisor",
+  staff: "Staff",
+  finance: "Finance",
+  read_only: "Read Only",
+}
+```
+
+### Pattern 3: Conditional Dashboard Banner
+
+**What:** Show a "Viewing as [Missionary Name]" banner when supervisor/admin is viewing another user's dashboard, with a button to return to own view.
+
+**When:** Dashboard page has a selected user ID that differs from the logged-in user.
+
+```typescript
+// Dashboard.tsx
+function MissionarySelector({ selectedUserId, onSelect }: Props) {
+  const { user } = useAuth()
+  // For supervisors: fetch only their assigned users
+  // For admins: fetch all staff users
+  const { data: selectableUsers } = useSupervisedUsers()  // new hook
+
+  if (user?.role !== 'admin' && user?.role !== 'supervisor') return null
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2">
-      <Input value={inputValue} onChange={...} placeholder={placeholder} />
-      <Button type="submit" variant="secondary">Search</Button>
-    </form>
+    <div className="flex items-center gap-3">
+      <Select value={selectedUserId ?? ""} onValueChange={onSelect}>
+        <SelectTrigger><SelectValue placeholder="View missionary dashboard..." /></SelectTrigger>
+        <SelectContent>
+          {selectableUsers?.map(u => (
+            <SelectItem key={u.id} value={u.id}>{u.full_name}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {selectedUserId && (
+        <Button variant="ghost" onClick={() => onSelect(undefined)}>
+          View My Dashboard
+        </Button>
+      )}
+    </div>
   )
 }
 ```
 
-### Per-Page Filter Configurations
+### Pattern 4: Single Aggregated Report Endpoint
 
-| Page | Search | Status | Owner (admin) | Date Range | Type/Method | Amount | Toggle | Group |
-|------|--------|--------|--------------|------------|-------------|--------|--------|-------|
-| ContactList | name, email | contact status | yes | created_at, last_gift_date | -- | -- | needs_thank_you | group |
-| DonationList | donor name | -- | yes | date | donation_type, payment_method | amount range | thanked | -- |
-| PledgeList | donor name | pledge status | yes | -- | frequency | -- | is_late | fund |
-| JournalList | journal name | -- | yes | created_at | -- | -- | is_archived | -- |
-| TaskList | task title | task status | -- | -- | task_type, priority | -- | -- | -- |
-| Transactions | -- | -- | -- | date range | donation_type, payment_method | -- | thanked | -- |
+**What:** Replace 4 separate analytics API calls with one `GET /api/journals/analytics/report/?journal_id=X` endpoint.
 
----
+**When:** Journal Reports tab.
 
-## Backend Filter Architecture
+**Why:** Reduces network round-trips from 4 to 1. Server computes derived metrics atomically. Single loading/error state.
 
-### Current State Analysis
+### Pattern 5: Existing dnd-kit Tile System for Dashboard Changes
 
-The codebase uses three different filter patterns across list views:
+**What:** Dashboard tiles use `SortableDashboardTile` with `@dnd-kit/sortable` across three `SortableContext` zones (giving, stats, content). Modifications work within this system.
 
-1. **Declarative filterset_fields list (ContactList, DonationList, PledgeList):** `filterset_fields = ['status', 'needs_thank_you']` -- cleanest pattern
-2. **Manual get_queryset filtering (ContactList owner/group, DonationList date/contact):** Hand-written `if request.query_params.get('owner')` blocks
-3. **No filtering (JournalList):** Only search and ordering
+**How to remove a tile:** Remove its ID from the appropriate `DEFAULT_*_ORDER` array and its `case` in `renderTileById()`. Do NOT change the dnd-kit infrastructure.
 
-**Target state:** Migrate ALL filtering to declarative `filterset_fields` dict syntax. This eliminates manual query param parsing, provides automatic validation, and generates OpenAPI schema entries.
+**How to add chart toggle:** Add local state inside the tile's component (e.g., `MonthlyGiftsCard`), toggle between `<BarChart>` and `<LineChart>` from Recharts. The toggle control lives inside the card, not in the tile wrapper.
 
-### Migration: ContactListCreateView
-
-```python
-# BEFORE (contacts/views.py lines 49-75)
-class ContactListCreateView(generics.ListCreateAPIView):
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['first_name', 'last_name', 'email']
-    ordering_fields = ['last_name', 'first_name', 'created_at', 'last_gift_date', 'total_given']
-    ordering = ['last_name', 'first_name']
-    filterset_fields = ['status', 'needs_thank_you']  # Simple list
-
-    def get_queryset(self):
-        user = self.request.user
-        if user.role in ['admin', 'finance', 'read_only']:
-            queryset = Contact.objects.all()
-        else:
-            queryset = Contact.objects.filter(owner=user)
-
-        # MANUAL: owner filter for admin
-        owner_id = self.request.query_params.get('owner')
-        if owner_id and user.role == 'admin':
-            queryset = queryset.filter(owner_id=owner_id)
-
-        # MANUAL: group filter
-        group_id = self.request.query_params.get('group')
-        if group_id:
-            queryset = queryset.filter(groups__id=group_id)
-
-        return queryset.select_related('owner')
-
-
-# AFTER
-class ContactListCreateView(generics.ListCreateAPIView):
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['first_name', 'last_name', 'email']
-    ordering_fields = ['last_name', 'first_name', 'created_at', 'last_gift_date', 'total_given']
-    ordering = ['last_name', 'first_name']
-    filterset_fields = {
-        'status': ['exact'],
-        'needs_thank_you': ['exact'],
-        'owner': ['exact'],              # replaces manual owner filter
-        'groups': ['exact'],             # replaces manual group filter (M2M)
-        'created_at': ['gte', 'lte'],    # NEW: date range
-        'last_gift_date': ['gte', 'lte'],# NEW: date range
-    }
-
-    def get_queryset(self):
-        user = self.request.user
-        if user.role in ['admin', 'finance', 'read_only']:
-            queryset = Contact.objects.all()
-        else:
-            queryset = Contact.objects.filter(owner=user)
-        # Manual filters REMOVED -- now handled by filterset_fields
-        return queryset.select_related('owner')
-```
-
-**Security note:** The `owner` filter in filterset_fields does NOT create a permission bypass because `get_queryset()` already scopes to `owner=user` for non-admins. DjangoFilterBackend filters are applied WITHIN the queryset returned by `get_queryset()`, not in place of it.
-
-### Migration: DonationListCreateView
-
-```python
-# AFTER
-class DonationListCreateView(generics.ListCreateAPIView):
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    ordering_fields = ['date', 'amount', 'created_at']
-    ordering = ['-date']
-    filterset_fields = {
-        'donation_type': ['exact'],
-        'payment_method': ['exact'],
-        'thanked': ['exact'],
-        'date': ['gte', 'lte'],           # replaces manual start_date/end_date
-        'amount': ['gte', 'lte'],          # NEW: amount range
-        'contact': ['exact'],              # replaces manual contact filter
-        'fund': ['exact'],                 # NEW: fund filter
-        'contact__owner': ['exact'],       # NEW: admin filter by contact owner
-    }
-
-    def get_queryset(self):
-        user = self.request.user
-        if user.role in ['admin', 'finance', 'read_only']:
-            queryset = Donation.objects.all()
-        else:
-            queryset = Donation.objects.filter(contact__owner=user)
-        # Manual date/contact filters REMOVED
-        return queryset.select_related('contact', 'pledge')
-```
-
-**API param change:** Frontend currently sends `start_date` and `end_date`. After migration, params become `date__gte` and `date__lte`. The frontend hook must be updated to match. This is a breaking change for any bookmarked URLs with date filters -- acceptable because the old params will simply be ignored (no filter applied) rather than erroring.
-
----
-
-## Smartsheet Import: Integration with Existing Pipeline
-
-### Critical Design Decision: Transform, Don't Duplicate
-
-The existing import pipeline has separate parse functions per type, each with specific validation logic:
-
-- `parse_contacts_csv()` -- 80 lines of validation (required fields, email format, dedup, length limits)
-- `parse_donations_csv()` -- 130 lines of validation (amount parsing, date parsing, contact lookup, external_id dedup)
-- `parse_funds_csv()` -- 70 lines of validation (fund_id, name, status enum)
-- `parse_entities_csv()` -- 80 lines of validation (entity_id, name splitting, email format)
-- `parse_transactions_csv()` -- 110 lines of validation (FK batch validation, strict mode)
-- `parse_pledges_csv()` -- 130 lines of validation (FK validation, enum validation)
-
-The Smartsheet import MUST NOT duplicate these. Instead, it transforms uploaded data into the format these parsers expect, then calls them.
-
-### Import Type Detection
-
-The Smartsheet wizard limits import to contact and donation types (the most common Smartsheet use case). SPO-specific types (funds, entities, transactions, pledges) remain CSV-only because they have fixed column formats.
-
-```python
-SMARTSHEET_IMPORT_TYPES = {
-    'contacts': {
-        'target_fields': {
-            'first_name': {'required': True, 'type': 'text', 'max_length': 150},
-            'last_name': {'required': True, 'type': 'text', 'max_length': 150},
-            'email': {'required': False, 'type': 'email'},
-            'phone': {'required': False, 'type': 'text', 'max_length': 20},
-            'street_address': {'required': False, 'type': 'text', 'max_length': 255},
-            'city': {'required': False, 'type': 'text', 'max_length': 100},
-            'state': {'required': False, 'type': 'text', 'max_length': 50},
-            'postal_code': {'required': False, 'type': 'text', 'max_length': 20},
-            'country': {'required': False, 'type': 'text', 'max_length': 100},
-            'notes': {'required': False, 'type': 'text'},
-        },
-        'parse_function': 'parse_contacts_csv',
-    },
-    'donations': {
-        'target_fields': {
-            'contact_email': {'required': False, 'type': 'email', 'group': 'contact_id'},
-            'contact_first_name': {'required': False, 'type': 'text', 'group': 'contact_id'},
-            'contact_last_name': {'required': False, 'type': 'text', 'group': 'contact_id'},
-            'amount': {'required': True, 'type': 'decimal'},
-            'date': {'required': True, 'type': 'date'},
-            'donation_type': {'required': False, 'type': 'enum'},
-            'payment_method': {'required': False, 'type': 'enum'},
-            'external_id': {'required': False, 'type': 'text'},
-            'notes': {'required': False, 'type': 'text'},
-        },
-        'parse_function': 'parse_donations_csv',
-    },
-}
-```
-
-### File Format Handling
-
-```python
-import io
-import csv
-from openpyxl import load_workbook
-from openpyxl.utils.exceptions import InvalidFileException
-
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
-
-def parse_smartsheet_file(uploaded_file):
-    """
-    Parse uploaded file (Excel or CSV), return headers and preview rows.
-
-    Args:
-        uploaded_file: Django UploadedFile object
-
-    Returns:
-        dict with 'headers', 'preview_rows', 'row_count'
-
-    Raises:
-        ValidationError for invalid/unsupported files
-    """
-    # File size check
-    if uploaded_file.size > MAX_FILE_SIZE:
-        raise ValidationError(
-            f'File size ({uploaded_file.size // 1024 // 1024}MB) exceeds '
-            f'maximum of {MAX_FILE_SIZE // 1024 // 1024}MB.'
-        )
-
-    filename = uploaded_file.name.lower()
-    content = uploaded_file.read()
-
-    if filename.endswith('.xlsx'):
-        return _parse_excel(content)
-    elif filename.endswith('.csv'):
-        return _parse_csv(content)
-    else:
-        raise ValidationError(
-            'Unsupported file type. Please upload .xlsx or .csv files.'
-        )
-
-
-def _parse_excel(content: bytes) -> dict:
-    """Parse Excel file using openpyxl in read-only mode."""
-    try:
-        wb = load_workbook(
-            filename=io.BytesIO(content),
-            read_only=True,   # Memory-efficient streaming
-            data_only=True    # Read values, not formulas
-        )
-    except (InvalidFileException, Exception) as e:
-        raise ValidationError(f'Invalid Excel file: {str(e)}')
-
-    ws = wb.active
-    rows = list(ws.iter_rows(values_only=True))
-    wb.close()
-
-    if not rows:
-        raise ValidationError('File is empty.')
-
-    headers = [str(cell).strip() if cell is not None else '' for cell in rows[0]]
-    # Remove empty trailing headers
-    while headers and not headers[-1]:
-        headers.pop()
-
-    preview = rows[1:6]  # First 5 data rows
-
-    return {
-        'headers': headers,
-        'preview_rows': [
-            {headers[i]: (str(cell).strip() if cell is not None else '')
-             for i, cell in enumerate(row) if i < len(headers)}
-            for row in preview
-        ],
-        'row_count': len(rows) - 1,
-    }
-
-
-def _parse_csv(content: bytes) -> dict:
-    """Parse CSV file with BOM handling."""
-    try:
-        text = content.decode('utf-8-sig')
-    except UnicodeDecodeError:
-        raise ValidationError('File encoding error. Please use UTF-8.')
-
-    reader = csv.DictReader(io.StringIO(text))
-    if not reader.fieldnames:
-        raise ValidationError('CSV file is empty or has no headers.')
-
-    headers = list(reader.fieldnames)
-    preview = []
-    row_count = 0
-    for i, row in enumerate(reader):
-        row_count += 1
-        if i < 5:
-            preview.append(dict(row))
-
-    return {
-        'headers': headers,
-        'preview_rows': preview,
-        'row_count': row_count,
-    }
-```
-
-### Auto-Detection Algorithm
-
-```python
-from difflib import SequenceMatcher
-
-FIELD_PATTERNS = {
-    'first_name': ['first', 'fname', 'first name', 'firstname', 'given name'],
-    'last_name': ['last', 'lname', 'last name', 'lastname', 'surname', 'family name'],
-    'email': ['email', 'e-mail', 'email address', 'e mail'],
-    'phone': ['phone', 'telephone', 'mobile', 'cell', 'phone number', 'phone #'],
-    'street_address': ['address', 'street', 'street address', 'address line', 'mailing address'],
-    'city': ['city', 'town'],
-    'state': ['state', 'province', 'region', 'st'],
-    'postal_code': ['zip', 'postal', 'postal code', 'zipcode', 'zip code'],
-    'country': ['country', 'nation'],
-    'notes': ['notes', 'comments', 'remarks', 'memo'],
-    'amount': ['amount', 'gift', 'donation', 'gift amount', 'donation amount', 'total'],
-    'date': ['date', 'gift date', 'donation date', 'posted date', 'received date'],
-    'contact_email': ['donor email', 'contact email', 'giver email'],
-    'contact_first_name': ['donor first', 'contact first', 'giver first'],
-    'contact_last_name': ['donor last', 'contact last', 'giver last'],
-    'donation_type': ['type', 'gift type', 'donation type'],
-    'payment_method': ['method', 'payment', 'payment method', 'payment type'],
-    'external_id': ['id', 'external id', 'reference', 'ref', 'transaction id'],
-}
-
-
-def auto_detect_mappings(uploaded_headers, import_type):
-    """
-    Fuzzy match uploaded headers to DonorCRM fields.
-    Returns dict: { uploaded_header: { field, confidence } }
-    """
-    # Get valid target fields for this import type
-    valid_fields = set(SMARTSHEET_IMPORT_TYPES[import_type]['target_fields'].keys())
-
-    mappings = {}
-    used_fields = set()  # Prevent duplicate mappings
-
-    for header in uploaded_headers:
-        if not header.strip():
-            continue
-
-        header_lower = header.lower().strip()
-        best_match = None
-        best_score = 0
-
-        for field, patterns in FIELD_PATTERNS.items():
-            if field not in valid_fields or field in used_fields:
-                continue
-
-            for pattern in patterns:
-                # Exact match
-                if header_lower == pattern:
-                    best_score = 1.0
-                    best_match = field
-                    break
-
-                score = SequenceMatcher(None, header_lower, pattern).ratio()
-                if score > best_score:
-                    best_score = score
-                    best_match = field
-
-            if best_score == 1.0:
-                break
-
-        if best_match and best_score > 0.5:
-            confidence = 'HIGH' if best_score > 0.8 else 'MEDIUM' if best_score > 0.6 else 'LOW'
-            mappings[header] = {'field': best_match, 'confidence': confidence}
-            used_fields.add(best_match)
-        else:
-            mappings[header] = {'field': None, 'confidence': 'NONE'}
-
-    return mappings
-```
-
----
-
-## Quality Audit Architecture
-
-The quality audit is NOT a new feature -- it is a systematic review process applied to existing and newly-added code.
-
-### Audit Scope Matrix
-
-| Category | What to Check | Expected Output |
-|----------|--------------|-----------------|
-| Dark mode | Every page/component for hard-coded colors (`bg-white`, `text-gray-900`, `border-gray-200`) | Replace with semantic classes (`bg-card`, `text-foreground`, `border-border`) |
-| New component dark mode | SmartsheetWizard, ColumnMapper, FilterBar, ActiveFilters | Verify all use Tailwind semantic variables |
-| Import Center guidance card | `bg-blue-50 border-blue-200` on line 139 of ImportCenter.tsx | Add `dark:bg-blue-950 dark:border-blue-800` or use semantic |
-| Permission consistency | `ListAPIView` subclasses missing queryset scoping | Verify `get_queryset()` scopes by owner for non-admin |
-| Float arithmetic | `monthly_equivalent` property in Pledge model | Convert to Decimal math with `quantize()` |
-| N+1 queries | Filtered list views with related field access in serializers | Add `prefetch_related`/`select_related` |
-| Error handling | Consistent error response format across all import endpoints | Standardize error shape |
-
-### Dark Mode Audit Process
-
-1. Grep for hard-coded color classes across all frontend files
-2. For each match, determine if it needs a `dark:` variant or should be replaced with a semantic class
-3. Test each page with theme toggle to verify rendering
-
-**Pattern to search for:**
-
-```bash
-grep -rn "bg-white\|bg-gray-\|text-gray-\|border-gray-\|bg-blue-50\|bg-green-\|bg-red-\|bg-yellow-" frontend/src/
-```
-
-**Semantic replacements:**
-
-| Hard-coded | Semantic Alternative |
-|-----------|---------------------|
-| `bg-white` | `bg-background` or `bg-card` |
-| `text-gray-900` | `text-foreground` |
-| `text-gray-500` | `text-muted-foreground` |
-| `border-gray-200` | `border-border` |
-| `bg-gray-50` | `bg-muted` |
-| `bg-blue-50` | `bg-primary/10` or add `dark:bg-blue-950` |
-
-### Permission Audit Scope
-
-Review all `ListAPIView` and `ListCreateAPIView` subclasses:
-
-| View | Current Queryset Scoping | Issue |
-|------|-------------------------|-------|
-| `ContactListCreateView` | Scoped by owner in `get_queryset()` | OK |
-| `DonationListCreateView` | Scoped by `contact__owner` in `get_queryset()` | OK |
-| `PledgeListCreateView` | Scoped by `contact__owner` in `get_queryset()` | OK |
-| `JournalListCreateView` | Scoped by owner in `get_queryset()` | OK |
-| `ContactDonationsView` | Filters by contact_id but no owner check | REVIEW -- permission class `IsContactOwnerOrReadAccess` exists but is object-level |
-| `ContactPledgesView` | Same pattern | REVIEW |
-| `ContactTasksView` | Scoped by owner for non-admin | OK |
-
-### Tech Debt Items
-
-| Item | Location | Fix |
-|------|----------|-----|
-| `monthly_equivalent` float arithmetic | `pledges/models.py` | Use `Decimal` division with `quantize(Decimal('0.01'))` |
-| N+1 queries in JournalGrid | `journals/serializers.py:101-140` | Add `prefetch_related('stage_events', 'decisions')` |
-| Decision update race condition | `journals/serializers.py:295-332` | Add `select_for_update()` inside `transaction.atomic()` |
-| Cross-user contact access in stage events | `journals/serializers.py:218-234` | Add `owner=user` filter to Contact lookup |
-
----
-
-## Recommended Build Order
-
-```
-Phase 1: Backend Filter Infrastructure (2-3 days)
-    Migrate filterset_fields to dict syntax
-    Add new filter params
-    Remove manual filter code from get_queryset()
-    Update OpenAPI schema
-    Add filter-specific tests
-    |
-    v
-Phase 2: Smartsheet Backend (3-4 days)
-    Install openpyxl dependency
-    Build parse_smartsheet_file()
-    Build auto_detect_mappings()
-    Build apply_column_mapping()
-    Build SmartsheetUploadView + SmartsheetImportView
-    Add ImportRun.import_source field + migration
-    Test with real Excel/CSV files from multiple sources
-    |
-    v
-Phase 3: FilterBar Frontend + List Page Migrations (3-4 days)
-    Build FilterBar composable component
-    Build ActiveFilters badge component
-    Migrate ContactList.tsx to FilterBar
-    Migrate DonationList.tsx to FilterBar
-    Add filters to JournalList.tsx
-    Migrate PledgeList.tsx to FilterBar
-    Wrap TaskList.tsx in FilterBar
-    Update Transactions.tsx
-    Update React Query hooks with new param names
-    |
-    v
-Phase 4: Smartsheet Frontend Wizard (2-3 days)
-    Build FieldMappingRow component
-    Build ColumnMapper component
-    Build SmartsheetWizard multi-step dialog
-    Add SmartsheetImportTile to ImportCenter
-    Build useSmartsheetImport hook
-    Add API functions to imports.ts
-    |
-    v
-Phase 5: Quality Audit (2-3 days)
-    Dark mode grep + fix across all pages
-    Permission audit of list views
-    Fix monthly_equivalent Decimal arithmetic
-    Fix known N+1 queries
-    Fix known race conditions
-    Verify new features in dark mode
-    End-to-end testing
-```
-
-### Why This Order
-
-1. **Backend filters first** because they are the smallest backend change with the widest frontend impact -- once backend accepts filter params, all frontend filter work is unblocked
-2. **Smartsheet backend second** because openpyxl integration needs testing with real files before the wizard UI is built on top. File parsing edge cases surface here
-3. **FilterBar third** because it touches the most pages (6 list pages) and establishes the reusable pattern that the rest of the app follows
-4. **Smartsheet wizard fourth** because it is self-contained (only touches ImportCenter page) and depends on the backend being stable
-5. **Quality audit last** because it must review ALL new code from phases 1-4. Running it mid-development wastes effort on code that will change
-
----
-
-## Integration Points Summary
-
-### Smartsheet Import -- Touchpoints
-
-| Integration Point | Existing Code | How Smartsheet Connects | Code Modified? |
-|------------------|---------------|------------------------|----------------|
-| `parse_contacts_csv()` | `imports/services.py:95` | Smartsheet transforms to CSV-format string, calls this | NO |
-| `import_contacts()` | `imports/services.py:178` | Receives validated records from parse function | NO |
-| `parse_donations_csv()` | `imports/services.py:203` | Same transform-and-delegate pattern | NO |
-| `import_donations()` | `imports/services.py:338` | Receives validated records | NO |
-| `ImportRun` model | `imports/models.py:74` | New `import_source` field | YES (additive field) |
-| `ImportRowError` model | `imports/models.py:153` | Errors from parse functions use this automatically | NO |
-| `imports/urls.py` | `imports/urls.py` | New URL patterns for smartsheet endpoints | YES (additive) |
-| `ImportCenter.tsx` | `pages/admin/ImportCenter.tsx` | Add SmartsheetWizard trigger tile | YES (additive) |
-| `imports.ts` API | `api/imports.ts` | New functions added | YES (additive) |
-| `useImports.ts` hooks | `hooks/useImports.ts` | New hook added | YES (additive) |
-
-### Filter Integration -- Touchpoints
-
-| Integration Point | Existing Code | How Filters Connect | Code Modified? |
-|------------------|---------------|---------------------|----------------|
-| `ContactListCreateView` | `contacts/views.py:43` | filterset_fields list -> dict, remove manual filters | YES |
-| `DonationListCreateView` | `donations/views.py:35` | filterset_fields extended, remove manual filters | YES |
-| `PledgeListCreateView` | `pledges/views.py:18` | filterset_fields extended | YES (minor) |
-| `JournalListCreateView` | `journals/views.py:38` | Add filterset_fields | YES (additive) |
-| `ContactList.tsx` | `pages/contacts/ContactList.tsx:278-325` | Replace filter Card with FilterBar | YES |
-| `DonationList.tsx` | `pages/donations/DonationList.tsx:229-287` | Replace filter Card with FilterBar | YES |
-| `JournalList.tsx` | `pages/journals/JournalList.tsx` | Add FilterBar (currently has no filters) | YES |
-| `PledgeList.tsx` | `pages/pledges/PledgeList.tsx:264-295` | Wrap in FilterBar | YES (minor) |
-| `useContacts.ts` | `hooks/useContacts.ts` | Pass new filter params | YES (minor) |
-| `useDonations.ts` | `hooks/useDonations.ts` | Change param names (start_date -> date__gte) | YES |
-
----
+**How to make tiles "draggable anywhere":** Merge the three `SortableContext` zones into a single zone so tiles can move between sections. This changes the grid layout from three fixed grids to one unified grid.
 
 ## Anti-Patterns to Avoid
 
-### Anti-Pattern 1: Parallel Import Infrastructure
+### Anti-Pattern 1: Inline Role Checks in Every View
 
-**What people do:** Create separate `SmartsheetImportRun`, `SmartsheetRowError` models and duplicate validation in `parse_smartsheet_contacts()`.
+**What:** Adding `if user.role == 'supervisor'` individually to each of the 15+ views.
 
-**Why it's wrong:** Validation divergence. When `parse_contacts_csv()` gets a new rule, the Smartsheet version doesn't. Two code paths, two bug surfaces.
+**Why bad:** Inconsistent application, missed views, hard to audit, guaranteed bugs when a view is forgotten.
 
-**Do this instead:** Transform Smartsheet data to CSV format, call existing parse functions. One validation pipeline, two input formats.
+**Instead:** Use the centralized `owner_scoped_filter()` Q helper. Refactor existing views to use it as part of the supervisor work, then the supervisor behavior comes free in every view that uses the helper.
 
-### Anti-Pattern 2: Client-Side Filter State Separate from URL
+### Anti-Pattern 2: Separate Supervisor Permission Class Per View
 
-**What people do:** Store filter values in `useState`, update URL on "Apply" button click, read URL on mount. Three sources of truth.
+**What:** Creating `IsSupervisorOrAdmin` and adding it alongside existing permission classes on every view.
 
-**Why it's wrong:** Browser back button breaks. Bookmarks don't restore state. Race conditions between state and URL.
+**Why bad:** Supervisor access is about data scoping (queryset filtering), not about endpoint access. A supervisor should access the same endpoints as staff -- they just see more data.
 
-**Do this instead:** URL params are the ONLY source of truth. Read from `useSearchParams()`, write to `setSearchParams()`. Exception: search input text can use local state for keystroke buffering, synced to URL on submit.
+**Instead:** Keep existing permission classes (`IsAuthenticated`, `IsStaffOrAbove`, `IsAdmin`). Add `supervisor` to `IsStaffOrAbove`. The data scoping happens in `get_queryset()` via the Q helper, not in permission classes. Exception: Admin-only endpoints like admin analytics need a new check -- add `supervisor` to the allowed roles in `IsAdmin` or create `IsAdminOrSupervisor` for those specific endpoints.
 
-### Anti-Pattern 3: Monolithic FilterBar Component
+### Anti-Pattern 3: Duplicating Dashboard for Supervisor View
 
-**What people do:** Create one FilterBar with a config object listing all possible filters and conditional rendering logic.
+**What:** Creating a separate `SupervisorDashboard.tsx` component or API endpoint.
 
-**Why it's wrong:** Every page has different filters. Monolithic component becomes unwieldy, tightly coupled, hard to extend.
+**Why bad:** Code duplication, divergent behavior, double maintenance.
 
-**Do this instead:** FilterBar is a layout wrapper (Card with flex-wrap). Filter controls are composable children (FilterBar.Search, FilterBar.Select, etc.). Each page composes its own set.
+**Instead:** Reuse `Dashboard.tsx` and `DashboardView`. Add optional `user_id` parameter. The same component renders for all roles; supervisors/admins get an additional `MissionarySelector` dropdown.
 
-### Anti-Pattern 4: Complex UI Before Stable Backend
+### Anti-Pattern 4: Direct Checkbox Toggle Without Event Log
 
-**What people do:** Build polished drag-drop column mapping wizard before backend parsing is tested with real files.
+**What (from journal report spec):** "When a checkbox is clicked, the box should be checked directly instead of having to log an event."
 
-**Why it's wrong:** Backend limitations (encoding issues, empty cells, merged cells, formula cells) force UI redesign.
+**Why careful:** The current system logs stage events as append-only entries. Checkboxes in the grid represent "has this stage been completed" based on event history. Directly toggling without an event would break the audit trail.
 
-**Do this instead:** Build and test backend parsing thoroughly with real-world files first. Build simplest possible mapping UI (dropdown selects, not drag-drop).
+**Instead:** When a checkbox is clicked, auto-create a stage event behind the scenes (using the existing `createStageEvent` mutation). The UI should optimistically check the box via React Query's `onMutate`, but the backend still gets its event log entry. This preserves the audit trail while giving the user instant visual feedback.
 
-### Anti-Pattern 5: Quality Audit During Feature Development
+### Anti-Pattern 5: Building Report API from Scratch
 
-**What people do:** Audit dark mode while still building FilterBar, fix issues that get immediately broken by the next commit.
+**What:** Creating entirely new service functions for the journal report endpoint.
 
-**Why it's wrong:** Wasted effort. Catches issues in code that will change, misses issues in code not yet written.
+**Why bad:** The aggregation logic already exists in pieces across `JournalAnalyticsViewSet` methods.
 
-**Do this instead:** Complete all feature work, then run quality audit as a dedicated final pass.
+**Instead:** Extract and compose existing query patterns. The new report endpoint reuses the same ORM queries but returns them in a single response. Specifically:
+- Stage distribution: reuse the `pipeline_breakdown` subquery pattern (Subquery on JournalStageEvent ordered by `-created_at`)
+- Decision counts: simple aggregate on Decision model filtered by journal
+- Stalled contacts: reuse the 14-day stalled detection pattern from insights
+- Next steps: count from NextStep model filtered by journal
 
----
+## Integration Points: New vs Modified
+
+### New Files
+
+| File | Purpose |
+|------|---------|
+| `apps/core/querysets.py` | Centralized `owner_scoped_filter()` Q helper |
+| `frontend/src/pages/journals/components/JournalReport.tsx` | Rebuilt report component with metrics, progress bar, charts, alerts |
+| `frontend/src/components/dashboard/MissionarySelector.tsx` | User picker dropdown for supervisor/admin dashboard viewing |
+
+### Modified Files (Backend)
+
+| File | Change | Scope |
+|------|--------|-------|
+| `apps/users/models.py` | Add `SUPERVISOR` to UserRole, add `supervised_users` M2M, add `is_supervisor` property | Small (10-15 lines) |
+| `apps/users/serializers.py` | Add `supervised_users` field to UserSerializer, expose in CurrentUserSerializer | Small |
+| `apps/users/views.py` | New endpoint for managing supervisor assignments (add/remove assigned users) | Medium |
+| `apps/users/urls.py` | Route for supervisor assignment management | Small |
+| `apps/core/permissions.py` | Add `supervisor` to `IsStaffOrAbove`, consider `IsAdminOrSupervisor` for analytics | Small |
+| `apps/contacts/views.py` | Refactor 6 views to use `owner_scoped_filter()` | Medium (mechanical) |
+| `apps/journals/views.py` | Refactor 8 views to use `owner_scoped_filter()`, add `report` endpoint to viewset | Medium |
+| `apps/prayers/views.py` | Refactor `_owner_scoped_queryset()` to use Q helper | Small |
+| `apps/dashboard/views.py` | Add `user_id` parameter support to `DashboardView` | Small |
+| `apps/dashboard/services.py` | No change (already takes `user` parameter) | None |
+| `apps/insights/views.py` | Allow supervisors to access admin analytics endpoints, scope to their users | Medium |
+| `apps/gifts/views.py` | Refactor owner scoping to use Q helper | Small |
+| `apps/tasks/views.py` | Refactor owner scoping to use Q helper | Small |
+
+### Modified Files (Frontend)
+
+| File | Change | Scope |
+|------|--------|-------|
+| `frontend/src/api/auth.ts` | Add `supervisor` to `User.role` type | Small |
+| `frontend/src/api/users.ts` | Add `supervisor` to `UserRole`, add `supervised_users` field, add role label | Small |
+| `frontend/src/components/auth/ProtectedRoute.tsx` | Update role hierarchy (admin:5, supervisor:4, ...) | Small |
+| `frontend/src/components/layout/Sidebar.tsx` | Update role hierarchy, show Admin nav for supervisors | Small |
+| `frontend/src/pages/admin/AdminUsers.tsx` | Add `supervisor` to role selector, add supervisor assignment UI | Medium |
+| `frontend/src/pages/Dashboard.tsx` | Remove journal activity tile, add chart toggle, add MissionarySelector, remove text, adjust spacing | Medium |
+| `frontend/src/components/dashboard/GivingSummaryCard.tsx` | Remove "2026 calendar year" text | Small |
+| `frontend/src/components/dashboard/MonthlyGiftsCard.tsx` | Remove "Updated today" text, add bar/line toggle | Small |
+| `frontend/src/pages/journals/JournalDetail.tsx` | Replace 4 chart imports with single JournalReport, remove PipelineBreakdownChart | Small |
+| `frontend/src/pages/journals/components/ReportCharts.tsx` | Delete or gut (replaced by JournalReport.tsx) | Delete |
+| `frontend/src/pages/prayer/PrayerList.tsx` | Add "Begin Prayer" button | Small |
+| `frontend/src/pages/prayer/PrayerFocusMode.tsx` | Minor UX enhancements for Begin Prayer entry | Small |
+| `frontend/src/hooks/useJournals.ts` | Add `useJournalReport` hook | Small |
+| `frontend/src/hooks/useUsers.ts` | Add hooks for supervised users and assignment management | Small |
+| `frontend/src/App.tsx` | Update ProtectedRoute requiredRole for admin pages to allow supervisor | Small |
+
+### Migration
+
+One migration needed:
+```
+apps/users/migrations/XXXX_add_supervisor_role_and_m2m.py
+- Add 'supervisor' to UserRole choices
+- Add supervised_users M2M field
+```
+
+This is a non-destructive additive migration. No data transformation needed. The UserRole choices field is just a max_length CharField -- adding a new choice requires no schema change (the 'supervisor' string is 10 chars, within the existing `max_length=20`). The M2M creates a new junction table only.
+
+## Views Requiring Queryset Scoping Update
+
+Every view that currently performs owner scoping needs to support the supervisor role. Here is the complete inventory:
+
+### Direct `owner` field
+
+| View | File | Current Filter |
+|------|------|---------------|
+| `ContactListCreateView` | contacts/views.py:56 | `owner=user` |
+| `ContactDetailView` | contacts/views.py:93 | `owner=user` |
+| `ContactThankView` | contacts/views.py:120 | `owner=user` |
+| `ContactSearchView` | contacts/views.py:239 | `owner=user` |
+| `ContactEmailsView` | contacts/views.py:213 | `owner=user` |
+| `JournalListCreateView` | journals/views.py:65 | `owner=user` |
+| `JournalDetailView` | journals/views.py:121 | `owner=user` |
+
+### Indirect owner via `contact__owner`
+
+| View | File | Current Filter |
+|------|------|---------------|
+| `PrayerIntention views` | prayers/views.py:23 | `contact__owner=user` |
+| `ContactGiftsView` | contacts/views.py:147 | `donor_contact__owner=user` |
+| `ContactRecurringGiftsView` | contacts/views.py:170 | `donor_contact__owner=user` |
+| `ContactTasksView` | contacts/views.py:197 | `owner=user` (task owner) |
+| `ContactPrayerIntentionsView` | contacts/views.py:314 | `contact__owner=user` |
+
+### Indirect owner via `journal__owner`
+
+| View | File | Current Filter |
+|------|------|---------------|
+| `JournalStageEventListCreateView` | journals/views.py:166 | `journal_contact__journal__owner=user` |
+| `JournalContactListCreateView` | journals/views.py:219 | `journal__owner=user` |
+| `JournalContactDestroyView` | journals/views.py:263 | `journal__owner=user` |
+| `DecisionListCreateView` | journals/views.py:300 | `journal_contact__journal__owner=user` |
+| `DecisionDetailView` | journals/views.py:350 | `journal_contact__journal__owner=user` |
+| `DecisionHistoryListView` | journals/views.py:380 | `decision__journal_contact__journal__owner=user` |
+| `NextStepListCreateView` | journals/views.py:405 | `journal_contact__journal__owner=user` |
+| `NextStepDetailView` | journals/views.py:436 | `journal_contact__journal__owner=user` |
+| `JournalAnalyticsViewSet` (4 actions) | journals/views.py:456+ | `journal_contact__journal__owner=user` |
+| `ContactJournalsView` | contacts/views.py:294 | `journal__owner=user` |
+| `ContactJournalEventsView` | contacts/views.py:340 | `journal_contact__journal__owner=user` |
+
+### Dashboard services (function parameter, not queryset filter)
+
+| Function | File | Current Scoping |
+|----------|------|----------------|
+| `get_dashboard_summary()` | dashboard/services.py | Takes `user` param, scopes all sub-queries |
+| `get_giving_summary()` | dashboard/services.py | Takes `user` param |
+| `get_monthly_gifts()` | dashboard/services.py | Takes `user` param |
+| All other dashboard service functions | dashboard/services.py | Takes `user` param |
+
+Dashboard services already accept a user parameter. The supervisor dashboard selector only needs to pass the target user to these existing functions.
+
+### Admin analytics (currently admin-only)
+
+| View | File | Change Needed |
+|------|------|--------------|
+| `DashboardOverviewView` | insights/views.py:187 | Allow supervisor; scope to supervised users |
+| `StalledContactsView` | insights/views.py:221 | Allow supervisor; scope to supervised users |
+| `UserPerformanceView` | insights/views.py:271 | Allow supervisor; filter to supervised users |
+| `ConversionFunnelView` | insights/views.py:290 | Allow supervisor; scope to supervised users |
+| `TeamActivityView` | insights/views.py:324 | Allow supervisor; scope to supervised users |
+| `TeamTrendsView` | insights/views.py:360 | Allow supervisor; scope to supervised users |
+| `UserTrendsView` | insights/views.py:397 | Allow supervisor; validate target user is supervised |
+| `UserJournalsView` | insights/views.py:425 | Allow supervisor; validate target user is supervised |
+| `StageContactsView` | insights/views.py:451 | Allow supervisor; scope to supervised users |
+| `UserDrilldownView` | insights/views.py:484 | Allow supervisor; validate target user is supervised |
+| `ActivityHeatmapView` | insights/views.py:515 | Allow supervisor; scope to supervised users |
+
+These currently use `IsAdmin` permission class. To support supervisors:
+1. Replace `IsAdmin` with new `IsAdminOrSupervisor` permission class
+2. The service functions currently operate on ALL data (no user scoping). For supervisors, add user filtering to the service calls. The cleanest approach: pass a `user_ids` parameter to service functions that filters to only those users' data.
+
+## Suggested Build Order
+
+Build order is driven by dependencies. The supervisor role touches the most files but does NOT block the other features.
+
+### Phase 1: UI Polish (no backend changes, independent)
+
+All dashboard and UI modification tasks:
+
+1. Dashboard: remove "2026 calendar year" from GivingSummaryCard
+2. Dashboard: remove "Updated today" from MonthlyGiftsCard
+3. Dashboard: delete "Recent Journal Activity" tile (remove from `DEFAULT_CONTENT_ORDER` + `renderTileById`)
+4. Dashboard: add bar/line chart toggle to MonthlyGiftsCard
+5. Dashboard: adjust grid gaps (reduce `gap-6` to `gap-4` or similar)
+6. Dashboard: make tiles draggable across sections (merge SortableContexts)
+7. Rename "Prospect" to "Potential Donor" on contacts page
+8. Remove Fund column from pledges page
+9. Modify gifts page columns (remove Funds/Description, add Type)
+10. Center modal dialogs
+11. Remove Review Queue and heat map from analytics dashboard
+
+**Rationale:** Zero risk, zero backend dependency, quick wins.
+
+### Phase 2: Journal Report Rebuild (new component, new endpoint)
+
+1. Create journal report backend endpoint (`JournalAnalyticsViewSet.report()`) with service function
+2. Create `JournalReport.tsx` frontend component per spec
+3. Replace Reports tab content in `JournalDetail.tsx`
+4. Add `useJournalReport` hook
+5. Delete old `ReportCharts.tsx` components (or keep as reference)
+6. Implement checkbox direct-toggle behavior (auto-create stage event on click)
+
+**Rationale:** Self-contained. New endpoint + new component. No interaction with other v2.2 features.
+
+### Phase 3: Begin Prayer Feature (frontend only)
+
+1. Add prominent "Begin Prayer" button to `PrayerList.tsx`
+2. Wire button to fetch today's focus and open `PrayerFocusMode`
+3. Any UX enhancements to the focus mode flow
+
+**Rationale:** Pure frontend. Uses existing backend endpoints. Smallest scope.
+
+### Phase 4: Mission Supervisor Role (largest, most complex)
+
+1. Backend: Add SUPERVISOR role + M2M to User model + migration
+2. Backend: Create `owner_scoped_filter()` helper in `apps/core/querysets.py`
+3. Backend: Refactor ALL views to use the Q helper (see inventory above)
+4. Backend: Update `IsStaffOrAbove` to include supervisor
+5. Backend: Create `IsAdminOrSupervisor` for analytics endpoints
+6. Backend: Add supervisor assignment management endpoint
+7. Backend: Add `user_id` parameter to Dashboard API
+8. Backend: Scope admin analytics service functions for supervisor filtering
+9. Frontend: Update auth types, role hierarchy, sidebar nav
+10. Frontend: Add supervisor to AdminUsers role selector + role badge variant
+11. Frontend: Build supervisor assignment management UI in AdminUsers
+12. Frontend: Build MissionarySelector component
+13. Frontend: Wire Dashboard to use MissionarySelector + user_id param
+
+**Rationale:** Most files touched, most complex. The Q helper refactor (steps 2-3) is the foundation -- it makes supervisor scoping automatic in every view. The refactor of existing views to use the Q helper is safe because it preserves identical behavior for existing roles.
+
+**Phase ordering rationale:** Phases 1-3 can run in parallel or any order. Phase 4 must be last because the Q helper refactor in step 3 touches the same view files that Phase 2 may add an endpoint to. Doing Phase 4 last avoids merge conflicts.
 
 ## Scalability Considerations
 
-| Concern | Current Scale (200 users) | At 1000 users | At 5000 users |
-|---------|--------------------------|---------------|---------------|
-| Filter query performance | Fine with `select_related` | Add `prefetch_related` for M2M (groups) | Consider denormalized filter columns |
-| Smartsheet file parsing | Sync processing fine (<10MB) | Same | Add Celery task for >5MB files |
-| Import run history | Unbounded list, fine | Add pagination to LatestImportRunsView | Add archival/cleanup for old runs |
-| FilterBar URL param length | ~200 chars | Same | Same (URL limit is 2048 chars) |
-| Auto-detect mapping | O(n*m) fuzzy match, <100ms | Same | Same (bounded by column count) |
+| Concern | At 10-20 users | At 100 users | At 500 users |
+|---------|---------------|--------------|--------------|
+| M2M query for supervised_users | Negligible (5-15 supervised) | Still negligible | Still negligible |
+| `__in` filter with supervised IDs | Fast (small list) | Fast | Fast -- PostgreSQL handles IN with 100 IDs trivially |
+| Journal report aggregation | Fast (per-journal, bounded) | Same | Same -- bounded by journal member count, not total users |
+| Dashboard with user_id | Same as current | Same | Same -- just different user parameter |
+| Admin analytics for supervisor | One extra supervised_ids query | Same | Consider caching supervised_ids if >50 supervisors |
 
-**First bottleneck:** N+1 queries in filtered list views when serializers access related objects. Fix with `prefetch_related()`.
-
-**Second bottleneck:** Large Excel file parsing (>10MB). Fix with file size validation and async Celery processing.
-
----
+No scalability concerns for v2.2. The supervisor M2M adds one extra query per request (to fetch supervised IDs), which is negligible. The `owner_scoped_filter()` helper materializes the supervised_ids list once per request via `values_list('id', flat=True)`.
 
 ## Sources
 
-**Existing Codebase (primary source, HIGH confidence):**
-- `apps/imports/views.py` -- 780 lines, complete existing import pipeline
-- `apps/imports/services.py` -- 1364 lines, CSV parsing/validation/import
-- `apps/imports/models.py` -- ImportRun, ImportRowError, Fund models
-- `apps/contacts/views.py` -- ContactListCreateView with DjangoFilterBackend
-- `apps/donations/views.py` -- DonationListCreateView with manual filters
-- `apps/pledges/views.py` -- PledgeListCreateView with filterset_fields
-- `apps/journals/views.py` -- JournalListCreateView (minimal filtering)
-- `frontend/src/pages/contacts/ContactList.tsx` -- URL param filter pattern
-- `frontend/src/pages/donations/DonationList.tsx` -- Search + dropdown filter pattern
-- `frontend/src/pages/admin/ImportCenter.tsx` -- SPO import tile pattern
-- `frontend/src/components/shared/DataTable.tsx` -- Reusable table with pagination
-- `.planning/EDGE_CASE_AUDIT.md` -- Known issues (N+1, permissions, race conditions)
-
-**DRF Filtering (HIGH confidence):**
-- [DRF Filtering Documentation](https://www.django-rest-framework.org/api-guide/filtering/)
-- [django-filter Documentation](https://django-filter.readthedocs.io/en/stable/)
-
-**Excel Processing (MEDIUM confidence, needs verification with actual files):**
-- [openpyxl Documentation](https://openpyxl.readthedocs.io/en/stable/)
-- openpyxl `read_only=True` and `data_only=True` modes for memory-efficient processing
+- **Codebase analysis (HIGH confidence):**
+  - `apps/users/models.py` -- User model, UserRole TextChoices
+  - `apps/core/permissions.py` -- IsAdmin, IsStaffOrAbove, IsOwnerOrAdmin, IsContactOwnerOrReadAccess
+  - `apps/contacts/views.py` -- Owner scoping patterns across 6 views
+  - `apps/journals/views.py` -- Owner scoping patterns across 8+ views, JournalAnalyticsViewSet
+  - `apps/prayers/views.py` -- _owner_scoped_queryset helper, TodaysFocusView, MarkPrayedView
+  - `apps/dashboard/views.py` -- DashboardView with user parameter
+  - `apps/dashboard/services.py` -- get_dashboard_summary and related functions
+  - `apps/insights/views.py` -- 11 admin-only analytics endpoints
+  - `frontend/src/pages/Dashboard.tsx` -- dnd-kit tile system, SortableContext zones
+  - `frontend/src/pages/journals/JournalDetail.tsx` -- Reports tab with 4 chart components
+  - `frontend/src/pages/journals/components/ReportCharts.tsx` -- Current chart implementations
+  - `frontend/src/pages/prayer/PrayerFocusMode.tsx` -- Existing focus mode implementation
+  - `frontend/src/pages/admin/AdminUsers.tsx` -- User management with role selectors
+  - `frontend/src/components/auth/ProtectedRoute.tsx` -- Role hierarchy enforcement
+  - `frontend/src/components/layout/Sidebar.tsx` -- Role-based navigation
+  - `frontend/src/App.tsx` -- Route definitions with requiredRole guards
+  - `frontend/src/api/auth.ts`, `frontend/src/api/users.ts` -- TypeScript role types
+- **Spec documents (HIGH confidence):**
+  - `prompts/mission_supervisor.md` -- Supervisor role requirements
+  - `prompts/journal_report.md` -- Detailed report component spec
+  - `prompts/dashboard_modification.md` -- Dashboard change list
+- **Todo files (HIGH confidence):**
+  - `.planning/todos/pending/2026-02-26-create-mission-supervisor-role.md`
+  - `.planning/todos/pending/2026-02-26-rebuild-journal-report-component.md`
+  - `.planning/todos/pending/2026-02-26-add-begin-prayer-feature-to-prayer-request-page.md`
+  - `.planning/todos/pending/2026-02-26-modify-dashboard-layout-and-tile-content.md`
 
 ---
-*Architecture research for: DonorCRM v1.3 -- Smartsheet Import, Filters & Polish*
-*Researched: 2026-02-16*
+*Architecture research for: DonorCRM v2.2 -- Mission Supervisor, Journal Report, Begin Prayer & UI Polish*
+*Researched: 2026-02-26*

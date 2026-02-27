@@ -1,779 +1,310 @@
-# Pitfalls Research: v2.0 -- Model Replacement, RE Import, Data Migration
+# Domain Pitfalls: v2.2 -- Mission Supervisor Role, Journal Report Rebuild, Begin Prayer, UI Polish
 
-**Domain:** Replacing core data models (Donation->Gift, Pledge->RecurringGift) in a live app with 41+ dependent files, building Raiser's Edge CSV import pipeline, SHA256-based dedup, solicitor name matching, prayer intentions
-**Researched:** 2026-02-20
-**Confidence:** HIGH (verified against actual DonorCRM codebase with full dependency graph analysis)
+**Domain:** Adding supervisor role with scoped visibility to existing owner-scoped CRM, rebuilding chart-heavy report, expanding prayer session, and UI column/layout changes
+**Researched:** 2026-02-26
+**Confidence:** HIGH (verified against actual DonorCRM codebase -- all 40+ `get_queryset` methods, 6 permission classes, 4 role-check patterns, 3 DndContext sections, and the Radix Dialog component analyzed)
 
 ## Critical Pitfalls
 
-### Pitfall 1: Renaming Donation->Gift Breaks 77+ Dependent References Across 8 Apps
+Mistakes that cause data leaks, security bypasses, or full rewrites.
 
-**What goes wrong:**
-The `Donation` model is referenced by 36 frontend files and 41 backend files spanning 8 Django apps. Renaming it to `Gift` requires updating:
-- **Backend:** `apps/donations/models.py` (model + DonationType + PaymentMethod), `apps/donations/signals.py` (post_save/post_delete receivers), `apps/donations/serializers.py`, `apps/donations/views.py`, `apps/donations/filters.py`, `apps/donations/export_views.py`, `apps/donations/admin.py`, `apps/imports/services.py` (6 references to Donation model), `apps/dashboard/services.py` (9 references to Donation), `apps/insights/services.py` (12 references to Donation), `apps/events/models.py` (EventType.DONATION_RECEIVED), `apps/contacts/models.py` (Contact.update_giving_stats queries `self.donations.all()`), plus all test files
-- **Frontend:** `api/donations.ts` (Donation interface, DonationType, endpoints), `hooks/useDonations.ts`, `pages/donations/DonationList.tsx`, `pages/donations/DonationDetail.tsx`, `pages/donations/DonationForm.tsx`, `components/dashboard/RecentDonations.tsx`, `components/dashboard/LateDonations.tsx`, `components/dashboard/MonthlyGiftsCard.tsx`, `pages/insights/DonationsByMonthYear.tsx`, `pages/contacts/ContactDetail.tsx` (donations tab), `lib/filter-presets.ts`, `App.tsx` (routes), `components/layout/Sidebar.tsx` (navigation)
+### Pitfall 1: Supervisor Role Leaks Data Through Inconsistent Queryset Scoping
 
-If any reference is missed, the app crashes at runtime. Django migration will rename the table but string references in `related_name='donations'`, `db_table='donations'`, `EventType.DONATION_RECEIVED`, and frontend API paths will break silently.
+**What goes wrong:** The codebase has **four distinct role-check patterns** across 40+ `get_queryset` methods, and adding a `supervisor` role to `UserRole` TextChoices without updating every single one will either (a) leak all users' data to supervisors or (b) lock supervisors out of data entirely.
 
-**Why it happens:**
-Developers focus on the model rename and forget the cascading impact: related_names on ForeignKey fields, reverse relation usage in querysets (`self.donations.all()`), signal sender references, EventType enum values, API URL paths, React Query cache keys, and UI string labels. Django's `RenameModel` migration handles the database table and foreign key constraints but NOT string-based references.
+The patterns found in the actual codebase:
 
-**How to avoid:**
-Use a phased approach that avoids a "big bang" rename:
+| Pattern | Files Using It | Current Behavior |
+|---------|---------------|-----------------|
+| `if user.role == 'admin'` | journals/views.py (8 places), tasks/views.py (4), groups/views.py (3), events/views.py (1) | Only admin sees all; supervisor would see nothing |
+| `if user.role in ['admin', 'finance', 'read_only']` | contacts/views.py (5), gifts/views.py (4), prayers/views.py (1) | Finance and read_only see ALL data; supervisor would see nothing |
+| `if user.role != 'admin'` | journals/views.py (5 places) | Inverted check; supervisor filtered to own data only |
+| `_scope_gifts(user)` / `_scope_tasks(user)` | insights/services.py (helper functions) | Separate helper with its own role list |
 
-Phase A -- Create new Gift model alongside Donation:
-```python
-# apps/gifts/models.py (NEW app)
-class Gift(TimeStampedModel):
-    # Copy all fields from Donation
-    # Add new fields: credit_type, solicitor, prayer_description
-    contact = models.ForeignKey('contacts.Contact', related_name='gifts', ...)
-    # Keep external_id for RE import dedup
+If `supervisor` is simply added to `UserRole.choices` and only some views are updated, a supervisor would:
+- See **zero** journals, tasks, or groups (the `== 'admin'` pattern excludes them)
+- See **all** contacts, gifts, and prayers if added to the `in ['admin', ...]` list (because those lists show ALL data, not scoped data)
+- See **zero** insights data (the `_scope_*` helpers have hardcoded role strings)
+
+**Why it happens:** The "owner or admin" pattern was designed for a simple two-tier model. Supervisor is a third tier -- "sees some other users' data but not all" -- which none of the existing patterns support.
+
+**Consequences:** Data leaked to supervisors who should only see their assigned missionaries, or supervisors locked out and filing bug reports. Both are security issues in a system handling donor PII.
+
+**Prevention:**
+1. Create a single `get_visible_users(user)` helper that returns the set of User IDs a given user can see:
+   - Admin: all active users
+   - Supervisor: `user.supervised_users.all()` (their assigned missionaries)
+   - Everyone else: just `[user.id]`
+2. Create a `scope_by_owner(queryset, user, owner_field='owner')` helper that uses `get_visible_users`:
+   ```python
+   def scope_by_owner(queryset, user, owner_field='owner'):
+       if user.role == 'admin':
+           return queryset
+       visible = get_visible_users(user)
+       return queryset.filter(**{f'{owner_field}__in': visible})
+   ```
+3. Replace ALL 40+ `get_queryset` role checks with calls to this helper
+4. Add a regression test that creates a supervisor, assigns 2 of 5 missionaries, and asserts they see exactly those 2 missionaries' data across every endpoint
+
+**Detection:** Before shipping, run a script that greps for `user.role` across all `views.py` and `services.py` files. Any remaining hardcoded role check that does not go through the centralized helper is a leak.
+
+### Pitfall 2: Self-Referential User FK Creates Circular Dependency and Deletion Cascade
+
+**What goes wrong:** Adding a `supervisor` ForeignKey on User pointing to User (self-referential) introduces:
+1. **PROTECT cascade trap:** If using `on_delete=models.PROTECT` (matching the Contact.owner pattern), you cannot deactivate or delete a supervisor without first reassigning all their missionaries
+2. **SET_NULL data integrity issue:** If using `on_delete=models.SET_NULL`, deactivating a supervisor silently orphans all their missionaries, who then lose visibility from any supervisor
+3. **Admin assignment loop:** Nothing prevents assigning User A as supervisor of User B while User B supervises User A, or a user supervising themselves
+
+**Why it happens:** Self-referential ForeignKeys on User models are a known Django pitfall. The existing `User.destroy` method (line 49-54 of `apps/users/views.py`) simply sets `is_active = False` -- it does not check for downstream relationships.
+
+**Consequences:** Admin deactivates a supervisor and either hits a 500 error (PROTECT), or missionaries silently lose their supervisor scope and all supervisor-visible endpoints return empty.
+
+**Prevention:**
+- Use a **ManyToMany through table** instead of FK, so the relationship is independent of User lifecycle:
+  ```python
+  # On User model
+  supervised_users = models.ManyToManyField(
+      'self', symmetrical=False, blank=True,
+      related_name='supervisors'
+  )
+  ```
+- M2M is better than FK because: (a) no cascade issues on user deactivation, (b) supports future "multiple supervisors per missionary" without schema change, (c) assignment/unassignment is just `.add()/.remove()` with no migration needed
+- Add validation in the admin assignment endpoint: supervisor cannot supervise themselves, and cycles are prevented (a user cannot be both supervisor and supervised by the same person)
+- Add a Django admin inline for the M2M so administrators can manage assignments in the Django admin as fallback
+
+### Pitfall 3: Permission Classes Do Not Support "Same Access as Admin but Scoped"
+
+**What goes wrong:** The existing permission classes in `apps/core/permissions.py` are designed for binary access -- you are admin or you are not. The `IsAdmin` class (line 18-26) checks `role == 'admin'`. The `IsOwnerOrAdmin` class checks ownership OR admin. There is no "is supervisor and owns through relationship" permission.
+
+If the supervisor role is given `IsAdmin`-level permissions, they get unscoped full access. If not, they get staff-level "own data only" access. Neither is correct.
+
+**Why it happens:** The spec says "same access as admin but scoped." This is a fundamentally different authorization model -- it requires both permission-level access (can do CRUD on others' data) AND queryset-level scoping (but only for assigned missionaries). The existing permission classes only handle the first dimension.
+
+**Consequences:** Either supervisors can create/edit/delete contacts belonging to missionaries they do NOT supervise (security hole), or they are stuck with read-only access on their missionaries' data (broken feature).
+
+**Prevention:**
+- Keep the permission classes focused on **what operations are allowed** (CRUD vs read-only)
+- Handle **whose data is visible** entirely through queryset scoping (the `scope_by_owner` pattern from Pitfall 1)
+- Create `IsSupervisorOrAdmin` permission class for admin-level endpoints that supervisors also need:
+  ```python
+  class IsSupervisorOrAdmin(permissions.BasePermission):
+      def has_permission(self, request, view):
+          return request.user.role in ['admin', 'supervisor']
+  ```
+- Object-level permissions (like `IsOwnerOrAdmin.has_object_permission`) need updating to also check if the object's owner is in `get_visible_users(request.user)`
+- The `IsStaffOrAbove` class needs supervisor added to its allowed roles for write operations
+
+### Pitfall 4: Frontend `ProtectedRoute` Role Hierarchy Breaks with Supervisor
+
+**What goes wrong:** The `ProtectedRoute` component (line 23 of `ProtectedRoute.tsx`) uses a numeric role hierarchy:
+```typescript
+const roleHierarchy = { admin: 4, finance: 3, staff: 2, read_only: 1 }
 ```
 
-Phase B -- Data migration: copy Donation records to Gift records
-```python
-def forwards(apps, schema_editor):
-    Donation = apps.get_model('donations', 'Donation')
-    Gift = apps.get_model('gifts', 'Gift')
-    for donation in Donation.objects.all().iterator():
-        Gift.objects.create(
-            id=donation.id,  # Preserve UUIDs for FK references
-            contact=donation.contact,
-            amount=donation.amount,
-            date=donation.date,
-            # ... map all fields
-        )
+The supervisor role does not fit this linear hierarchy. A supervisor has admin-level page access but not admin-level data visibility. If supervisor is ranked at 4 (same as admin), they can access admin-only pages like User Management. If ranked at 3, they cannot access pages that require `admin` role.
+
+Additionally, the `User` type in `frontend/src/api/auth.ts` (line 18) hardcodes role as a union type:
+```typescript
+role: "admin" | "staff" | "finance" | "read_only"
 ```
 
-Phase C -- Update all dependent code to use Gift instead of Donation
-Phase D -- Drop Donation model (after verification period)
-
-Do NOT use Django's `RenameModel` migration because the model is not just being renamed -- it is gaining new fields (credit_type, solicitor FK, prayer_description) and the app name changes from `donations` to `gifts`.
-
-**Warning signs:**
-- Planning to do a single migration that renames Donation to Gift
-- Not running a full-text search for "donation" (case-insensitive) across the entire codebase
-- Not updating `related_name='donations'` on Contact FK
-- EventType.DONATION_RECEIVED left unchanged (should become GIFT_RECEIVED or kept for backward compat)
-- Frontend API paths `/api/donations/` changed without redirect handling
-
-**Phase to address:**
-Phase 1 (New models) -- Create Gift/RecurringGift models in a new app; Phase 2 (Data migration); Phase 3 (Update all dependent code); Phase 4 (Remove old models)
-
----
-
-### Pitfall 2: Contact.update_giving_stats() Hardcoded to Query self.donations.all()
-
-**What goes wrong:**
-`Contact.update_giving_stats()` (contacts/models.py:152-188) aggregates `self.donations.all()` to compute `total_given`, `gift_count`, `first_gift_date`, `last_gift_date`, and `last_gift_amount`. After the model rename, this reverse relation breaks. But even before the rename, if you create Gift records alongside existing Donation records during migration, the stats will be wrong because `update_giving_stats()` only queries the old `donations` relation and ignores the new `gifts` relation.
-
-During the transition period where both models exist, a gift recorded in the new Gift model will NOT update contact stats. The dashboard will show stale/incorrect totals. Missionaries will see wrong "Total Given" amounts.
-
-**Why it happens:**
-`update_giving_stats()` is called from `apps/donations/signals.py` on Donation post_save/post_delete. If new Gift records are created through a different signal path (or no signal at all), the contact stats never update. The method itself queries `self.donations.all()` (the reverse relation), which is specific to the Donation model's `related_name`.
-
-**How to avoid:**
-1. When creating the Gift model, immediately wire up equivalent signals:
-```python
-# apps/gifts/signals.py
-@receiver(post_save, sender=Gift)
-def update_contact_stats_on_gift_save(sender, instance, created, **kwargs):
-    instance.contact.update_giving_stats_from_gifts()
-```
-
-2. Update `Contact.update_giving_stats()` to query the active model:
-```python
-def update_giving_stats(self):
-    """Recalculate giving stats. Queries Gift model (v2.0+)."""
-    from apps.gifts.models import Gift
-    gifts = Gift.objects.filter(contact=self)
-    agg = gifts.aggregate(
-        total=models.Sum('amount'),
-        count=models.Count('id'),
-        first=models.Min('date'),
-        last=models.Max('date')
-    )
-    # ... same logic
-```
-
-3. During the dual-model transition, query BOTH:
-```python
-def update_giving_stats(self):
-    from django.db.models import Sum, Count, Min, Max
-    # Query both old and new models during transition
-    old_agg = self.donations.aggregate(...)
-    new_agg = self.gifts.aggregate(...)
-    # Combine: max of maxes, min of mins, sum of sums
-```
-
-**Warning signs:**
-- Contact "Total Given" showing $0 after importing gifts through the new model
-- Dashboard "Recent Gifts" widget empty while gift records exist
-- `needs_thank_you` flag never set for gifts created via Gift model
-- Event log missing "Gift Received" events
-
-**Phase to address:**
-Phase 1 (New models) -- signals and stat update must be wired before any Gift records are created
-
----
-
-### Pitfall 3: SHA256 Dedup Produces Different Hashes for Identical CSV Content
-
-**What goes wrong:**
-The v2.0 plan uses SHA256 hash of uploaded CSV file content for import deduplication (ImportBatch). A user uploads a Raiser's Edge CSV export, SHA256 is computed, stored, and subsequent uploads with the same hash are flagged as duplicates. However, the SAME logical CSV file can produce different SHA256 hashes due to:
-
-1. **BOM markers**: Windows applications (including Excel "Save as CSV") prepend UTF-8 BOM bytes `EF BB BF` to the file. The same content without BOM has a different hash. User exports from RE -> opens in Excel -> saves as CSV (adds BOM) -> uploads. Next time they export directly from RE (no BOM) -> upload -> different hash -> duplicate import.
-
-2. **Line endings**: RE on Windows exports with `\r\n` (CRLF). If the file passes through Git, email, or a text editor, line endings may change to `\n` (LF). Different bytes = different hash.
-
-3. **Trailing newline**: Some exports end with a trailing newline, some don't. One byte difference = completely different SHA256.
-
-4. **Re-encoding**: User opens CSV in Excel, makes no changes, saves. Excel re-encodes from Windows-1252 to UTF-8 (or vice versa). Smart quotes `\x93` `\x94` become `\xe2\x80\x9c` `\xe2\x80\x9d`. Different bytes = different hash.
-
-5. **Column reordering**: RE NXT's new "Single Row Query" feature may export columns in different order than the legacy export. Same data, different CSV, different hash.
-
-**Why it happens:**
-SHA256 operates on raw bytes, not semantic content. Developers test with the same file and dedup works. Real-world users transform files between exports and uploads in ways that change bytes without changing meaning.
-
-**How to avoid:**
-Do NOT hash the raw file bytes. Normalize content before hashing:
-
-```python
-import hashlib
-import csv
-import io
-
-def compute_import_hash(file_content: bytes) -> str:
-    """Compute SHA256 hash of normalized CSV content for dedup."""
-    # Step 1: Decode, handling BOM and encoding
-    try:
-        text = file_content.decode('utf-8-sig')  # Strips BOM
-    except UnicodeDecodeError:
-        text = file_content.decode('windows-1252')  # RE default encoding
-
-    # Step 2: Normalize line endings
-    text = text.replace('\r\n', '\n').replace('\r', '\n')
-
-    # Step 3: Strip trailing whitespace/newlines
-    text = text.strip()
-
-    # Step 4: Parse CSV and sort rows for column-order independence
-    reader = csv.reader(io.StringIO(text))
-    rows = list(reader)
-
-    if not rows:
-        return hashlib.sha256(b'').hexdigest()
-
-    # Step 5: Normalize: lowercase header, sort data rows by first column
-    headers = [h.strip().lower() for h in rows[0]]
-    data_rows = sorted(rows[1:], key=lambda r: r[0] if r else '')
-
-    # Step 6: Rebuild canonical CSV for hashing
-    canonical = '\n'.join(
-        ','.join(cell.strip() for cell in row)
-        for row in [headers] + data_rows
-    )
-
-    return hashlib.sha256(canonical.encode('utf-8')).hexdigest()
-```
-
-**Warning signs:**
-- Using `hashlib.sha256(file.read()).hexdigest()` directly on raw bytes
-- Dedup tests pass with identical files but fail when user re-saves the file
-- Users reporting "This file was already imported" when the file IS new (false positive from different file with same data)
-- Users importing the same data twice because the file was slightly modified (false negative)
-
-**Phase to address:**
-Phase 2 (Import pipeline) -- hashing strategy must be decided and tested before any import batch records are created
-
----
-
-### Pitfall 4: Raiser's Edge CSV Encoding: Windows-1252 Smart Quotes Break UTF-8 Parser
-
-**What goes wrong:**
-Raiser's Edge is a Windows application that exports CSV in Windows-1252 encoding. Names with accents (Jose -> Jose), notes with smart quotes ("thank you" with curly quotes), and em-dashes in addresses all use Windows-1252 byte values that are invalid UTF-8. Python's default `file.read().decode('utf-8')` raises `UnicodeDecodeError: 'utf-8' codec can't decode byte 0x92 in position N`. The entire import fails on the first non-ASCII character.
-
-The existing CSV parser in `apps/imports/services.py` line 120 uses `csv.DictReader(io.StringIO(file_content))` where `file_content` is already decoded as a string -- the encoding issue must be handled upstream during file reading.
-
-**Why it happens:**
-- RE exports in Windows-1252 by default (confirmed by web research, HIGH confidence)
-- The existing `parse_csv()` in `mpd_services.py:379-395` uses `file_bytes.decode('utf-8-sig')` -- this handles BOM but NOT Windows-1252
-- Python 3's `str` type is UTF-8 internally; Windows-1252 bytes like `0x92` (right single quote), `0x93`/`0x94` (left/right double quotes), `0x96` (en-dash), `0x97` (em-dash) are invalid in UTF-8
-- Developers test with ASCII-only data and never encounter the issue
-
-**How to avoid:**
-Use cascading encoding detection in the file reading layer:
-
-```python
-def decode_csv_bytes(file_bytes: bytes) -> str:
-    """Decode CSV file bytes with cascading encoding detection.
-
-    Priority: UTF-8 with BOM > UTF-8 > Windows-1252 (fallback)
-    """
-    # Try UTF-8 with BOM first (handles Excel "Save as UTF-8 CSV")
-    if file_bytes.startswith(b'\xef\xbb\xbf'):
-        return file_bytes.decode('utf-8-sig')
-
-    # Try UTF-8
-    try:
-        return file_bytes.decode('utf-8')
-    except UnicodeDecodeError:
-        pass
-
-    # Fallback to Windows-1252 (RE default)
-    return file_bytes.decode('windows-1252')
-```
-
-Apply this in EVERY CSV reading path, not just the new RE import. Update the existing `parse_csv()` in `mpd_services.py` too.
-
-**Warning signs:**
-- Import fails with "invalid start byte" on files containing accented names
-- `UnicodeDecodeError` in production logs
-- Import works in development (ASCII test data) but fails with real RE exports
-- Smart quotes appearing as `\x93` or `?` in imported notes
-
-**Phase to address:**
-Phase 2 (RE import pipeline) -- encoding handling must be the FIRST layer before any CSV parsing
-
----
-
-### Pitfall 5: Raiser's Edge Multi-Row Gift Splits Create Duplicate Gift Records
-
-**What goes wrong:**
-Raiser's Edge exports "split gifts" as multiple rows. A single $1000 gift split across two funds appears as:
-
-```csv
-Gift ID,Constituent ID,Amount,Fund,Date
-G-001,C-100,600.00,General Fund,01/15/2026
-G-001,C-100,400.00,Mission Fund,01/15/2026
-```
-
-If the import pipeline treats each row as a separate gift, the system records two gifts totaling $1000 instead of one $1000 gift with two fund splits. The contact's `total_given` becomes $1000 (correct) but `gift_count` becomes 2 (wrong). Worse, if the Gift model has a unique constraint on `external_id`, the second row fails because `G-001` already exists.
-
-This is the v2.0 "gift credit splitting" feature -- one gift credits multiple missionaries. But the CSV parser must understand that multiple rows with the same Gift ID represent splits of ONE gift, not separate gifts.
-
-**Why it happens:**
-RE exports gifts in a denormalized format. Each row represents a gift-fund combination, not a unique gift. The [Blackbaud community](https://renxt.ideas.aha.io/ideas/RENXT-I-8179) confirms that "split gifts would be exported to more than one row." The naive approach of "one row = one gift" does not work for RE data.
-
-**How to avoid:**
-Group rows by Gift ID before creating records:
-
-```python
-from itertools import groupby
-from operator import itemgetter
-
-def process_re_gifts(rows: list[dict]) -> list[dict]:
-    """Group RE gift rows by Gift ID, handling split gifts."""
-    # Sort by Gift ID for groupby
-    sorted_rows = sorted(rows, key=itemgetter('gift_id'))
-
-    gifts = []
-    for gift_id, group in groupby(sorted_rows, key=itemgetter('gift_id')):
-        split_rows = list(group)
-
-        if len(split_rows) == 1:
-            # Simple gift: one row = one gift
-            gifts.append(split_rows[0])
-        else:
-            # Split gift: multiple rows = one gift with credits
-            primary = split_rows[0].copy()
-            primary['amount'] = sum(Decimal(r['amount']) for r in split_rows)
-            primary['splits'] = [
-                {'fund': r['fund'], 'amount': r['amount']}
-                for r in split_rows
-            ]
-            gifts.append(primary)
-
-    return gifts
-```
-
-**Warning signs:**
-- `gift_count` on contacts is higher than expected after RE import
-- Unique constraint violation on Gift.external_id during import
-- Same gift appearing twice in the gifts list page
-- Gift amounts smaller than expected (individual split amounts instead of total)
-
-**Phase to address:**
-Phase 2 (RE import pipeline) -- gift row grouping must happen BEFORE validation/creation
-
----
-
-### Pitfall 6: Solicitor Name Matching Creates False Links to Wrong Missionaries
-
-**What goes wrong:**
-RE exports include a "Solicitor" field containing the missionary's name who is credited with the gift. The v2.0 plan auto-links solicitors to User accounts by name matching. Common false matches:
-
-1. **Common names**: "John Smith" in RE matches the wrong "John Smith" user (if org has two)
-2. **Name variations**: RE has "Jonathan Smith" but User account has "John Smith" (nickname)
-3. **Name format**: RE exports "Smith, John" (last, first) but matching expects "John Smith" (first last)
-4. **Middle names**: RE has "John A. Smith" but User has "John Smith"
-5. **Married name changes**: RE has "Jane Doe" but User account was updated to "Jane Smith"
-6. **Titles**: RE has "Dr. John Smith" but User has "John Smith"
-7. **Special characters**: RE has "O'Brien" but matching sees "O" and "Brien" after naive splitting
-
-A false solicitor link silently credits gifts to the wrong missionary. Their dashboard shows inflated giving totals. The correct missionary shows zero. This is a data integrity disaster that is hard to detect and harder to undo.
-
-**Why it happens:**
-The existing name matching pattern in `mpd_services.py:402-482` uses exact (first_name.lower(), last_name.lower()) matching. This works for MPD reports where names are controlled. RE data is messier: names come from external donor records, may include titles, middle names, suffixes, and formatting variations. Additionally, the MPD match handles duplicates correctly (skips to unmatched) but does not handle partial matches at all.
-
-**How to avoid:**
-1. Use the existing proven pattern: exact match with duplicate detection (from `mpd_services.py`)
-2. Add normalization before matching:
-```python
-import re
-
-def normalize_name(name: str) -> str:
-    """Normalize name for matching: strip titles, suffixes, punctuation."""
-    if not name:
-        return ''
-    name = name.strip().lower()
-    # Remove common titles
-    name = re.sub(r'^(mr|mrs|ms|dr|rev|pastor|sir)\.?\s+', '', name)
-    # Remove suffixes
-    name = re.sub(r'\s+(jr|sr|ii|iii|iv|phd|md|esq)\.?$', '', name)
-    # Remove punctuation (O'Brien -> obrien)
-    name = re.sub(r"['\-.]", '', name)
-    # Collapse whitespace
-    name = re.sub(r'\s+', ' ', name).strip()
-    return name
-```
-
-3. Handle "Last, First" format from RE:
-```python
-def parse_solicitor_name(raw_name: str) -> tuple[str, str]:
-    """Parse solicitor name from RE, handling 'Last, First' format."""
-    if ',' in raw_name:
-        parts = raw_name.split(',', 1)
-        return parts[1].strip(), parts[0].strip()  # first, last
-    parts = raw_name.strip().split()
-    if len(parts) >= 2:
-        return ' '.join(parts[:-1]), parts[-1]  # first (may include middle), last
-    return raw_name.strip(), ''
-```
-
-4. CRITICAL: When multiple users match, do NOT auto-link. Send to unmatched queue for admin resolution. This is the pattern already used in MPD matching and documented as a key decision in PROJECT.md: "Duplicate user names -> unmatched."
-
-5. Provide an admin UI to manually link unmatched solicitors to users. Store the manual link in a `SolicitorAlias` table for future auto-matching.
-
-**Warning signs:**
-- Using fuzzy matching (Levenshtein, Jaro-Winkler) instead of exact match with normalization
-- Setting fuzzy threshold below 90% to "catch more matches"
-- No duplicate detection -- silently picking the first match
-- Not handling "Last, First" name format from RE
-- No admin review queue for unmatched/ambiguous solicitors
-
-**Phase to address:**
-Phase 2 (RE import pipeline) -- solicitor matching must be built with the unmatched queue pattern from day one
-
----
-
-### Pitfall 7: Data Migration Breaks if Gift Model Uses Different PK Type or FK Structure
-
-**What goes wrong:**
-The existing Donation model uses UUID primary keys (from TimeStampedModel). The new Gift model also uses UUIDs. During data migration (Donation -> Gift), developers must preserve the original UUID so that:
-1. Events referencing the donation via GenericForeignKey still resolve
-2. ImportRun records that referenced donation counts still make sense
-3. Any external bookmarks or logs referencing the donation UUID still work
-
-If the migration creates NEW UUIDs for Gift records, the Event model's `object_id` (UUIDField) that pointed to Donation records now points to nothing. The "What Changed" dashboard widget shows broken references.
-
-Additionally, the Donation model has FK relationships:
-- `contact` FK (CASCADE) -- must be preserved
-- `pledge` FK (SET_NULL) -- must be converted to RecurringGift FK
-- `fund` FK (SET_NULL) -- must be preserved
-- `thanked_by` FK (SET_NULL) -- must be preserved
-
-The `pledge` FK is the dangerous one: it points to the old Pledge model, but Gift should point to RecurringGift. This FK target change cannot be done with a simple data copy.
-
-**Why it happens:**
-Developers think of data migration as "copy rows from table A to table B" but forget about:
-- GenericForeignKey references in the Event model (content_type + object_id)
-- Signal side effects during migration (post_save on Gift triggers contact stat update for EVERY migrated record)
-- The pledge->recurring_gift FK target change requiring a mapping table
-
-**How to avoid:**
-1. Preserve UUIDs during migration:
-```python
-def migrate_donations_to_gifts(apps, schema_editor):
-    Donation = apps.get_model('donations', 'Donation')
-    Gift = apps.get_model('gifts', 'Gift')
-
-    # Disable signals during bulk migration
-    from apps.gifts.signals import disable_gift_signals
-    disable_gift_signals()
-
-    for donation in Donation.objects.all().iterator(chunk_size=500):
-        Gift.objects.create(
-            id=donation.id,  # PRESERVE UUID
-            contact_id=donation.contact_id,
-            # ... other fields
-        )
-
-    enable_gift_signals()
-```
-
-2. Update GenericForeignKey content_type references:
-```python
-from django.contrib.contenttypes.models import ContentType
-
-def update_event_content_types(apps, schema_editor):
-    Event = apps.get_model('events', 'Event')
-    old_ct = ContentType.objects.get_for_model(Donation)
-    new_ct = ContentType.objects.get_for_model(Gift)
-    Event.objects.filter(content_type=old_ct).update(content_type=new_ct)
-```
-
-3. Disable signals during migration to prevent N contact stat recalculations
-4. Build Pledge->RecurringGift mapping BEFORE migrating gifts that reference pledges
-
-**Warning signs:**
-- Migration creates new UUIDs instead of preserving existing ones
-- Event log shows broken references after migration
-- Contact stats recalculate during migration (N+1 signals firing)
-- Migration takes 10+ minutes due to signal side effects
-- `pledge` FK on Gift records is NULL because the RecurringGift records don't exist yet
-
-**Phase to address:**
-Phase 3 (Data migration) -- must come AFTER both Gift and RecurringGift models exist
-
----
-
-### Pitfall 8: Dashboard and Insights Services Have 21+ Direct Donation/Pledge References
-
-**What goes wrong:**
-`apps/dashboard/services.py` imports and queries `Donation` 9 times and `Pledge` 12 times. `apps/insights/services.py` has `_scope_donations()`, `_scope_pledges()`, and 12+ functions querying these models with complex aggregations (TruncMonth, TruncWeek, Subquery annotations). After the rename, ALL of these must be updated atomically. If even one function still imports `from apps.donations.models import Donation`, the entire dashboard crashes.
-
-The frontend has matching complexity: `api/dashboard.ts` returns data shaped around the Donation/Pledge model (field names like `total_donations`, `late_pledges`, `pledge_count`). Renaming on the backend without updating the API response shape AND the frontend consumers breaks the dashboard completely.
-
-**Why it happens:**
-The dashboard and insights services were built to aggregate across Donation/Pledge models. They use the model classes directly in querysets, not through an abstraction layer. There is no service interface or repository pattern that could be swapped.
-
-**How to avoid:**
-1. Keep API response field names backward-compatible during transition. The API can return `total_donations` (not renamed to `total_gifts`) initially:
-```python
-# dashboard/services.py -- during transition
-def get_giving_summary(user, year=None):
-    # Query Gift model internally
-    from apps.gifts.models import Gift
-    gifts = Gift.objects.filter(contact__owner=user)
-    given = gifts.filter(date__year=year).aggregate(total=Sum('amount'))
-
-    # Return with old field names for API compatibility
-    return {
-        'given': given,  # field name unchanged
-        # ... other fields unchanged
+Adding `"supervisor"` requires updating this type AND the identical type in `frontend/src/api/users.ts` (line 6) AND the `userRoleLabels` record (line 45).
+
+**Why it happens:** Linear role hierarchies cannot express "same permissions as X but different data scope."
+
+**Consequences:** Supervisor either gets admin-only pages they should not have (user management, system settings) or gets blocked from pages they need (analytics dashboard, missionary dashboard viewer).
+
+**Prevention:**
+- Replace the numeric hierarchy with a **capability-based check** in `ProtectedRoute`:
+  ```typescript
+  const pageAccess: Record<string, string[]> = {
+    admin: ['admin', 'supervisor', 'finance', 'staff', 'read_only'],
+    finance: ['admin', 'supervisor', 'finance'],
+    // etc.
+  }
+  // Or better: check if user.role is in the allowed list for the route
+  ```
+- Update the `User` type in **both** `auth.ts` and `users.ts` -- they are separate interfaces and both need `"supervisor"` added
+- Update `userRoleLabels` in `users.ts` to include `supervisor: "Mission Supervisor"`
+- Do NOT simply add supervisor to the numeric hierarchy -- replace the hierarchy with explicit access lists
+
+## Moderate Pitfalls
+
+### Pitfall 5: Missionary Dashboard Selector Creates "Acting As" Security Surface
+
+**What goes wrong:** The spec requires supervisors and admins to "select a missionary and view their dashboard." This means the dashboard must accept a `?user_id=` parameter and fetch that user's data instead of the current user's data. Every dashboard API endpoint must then:
+1. Accept and validate the `user_id` parameter
+2. Verify the requesting user has permission to view that user's data
+3. Return data scoped to the target user, not the requesting user
+
+If the frontend passes `user_id` but the backend dashboard endpoint ignores it and returns `request.user`'s data, the feature silently fails. If the backend accepts `user_id` without validating supervisor access, any authenticated user can view anyone's dashboard.
+
+**What goes wrong specifically in this codebase:** The `CurrentUserView` (line 57-88 of `apps/users/views.py`) annotates `request.user.pk` directly. The `useDashboardSummary` hook likely hardcodes the current user. The entire dashboard API stack would need a "viewing as" concept threaded through.
+
+**Prevention:**
+- Add a `?viewing_as=<user_id>` query parameter to dashboard endpoints
+- Create a `get_target_user(request)` utility that:
+  - If `viewing_as` is absent, returns `request.user`
+  - If `viewing_as` is present, validates that `request.user` is admin or supervisor of that user
+  - Returns 403 if unauthorized
+- Pass the target user (not `request.user`) to all data-fetching functions
+- Frontend: add a user selector dropdown that only appears for admin/supervisor roles, and pass the selected user ID as a query parameter to all dashboard API calls
+- React Query key must include the selected user ID to avoid cache collisions between "my dashboard" and "viewing John's dashboard"
+
+### Pitfall 6: Cross-Section Drag in Dashboard Requires Single DndContext but Current Code Uses Three SortableContexts
+
+**What goes wrong:** The spec says "make tiles draggable anywhere." Currently the Dashboard has three separate `SortableContext` blocks (lines 154, 165, 196 of `Dashboard.tsx`) within one `DndContext`. The `handleDragEnd` function (line 76) only reorders within the same section (`tryReorder` checks if both `active.id` and `over.id` exist in the same array). Cross-section drag (e.g., moving a stat card into the content grid) would:
+1. Find `oldIndex` in one array but `newIndex === -1` in the same array
+2. Silently do nothing
+
+Making tiles "draggable anywhere" means merging all three `SortableContext` arrays into a single flat list, which breaks the grid layout (stat cards are in a 4-column grid, content tiles in a 2-column grid, giving widgets in a 2-column grid).
+
+**Prevention:**
+- Clarify the spec: "draggable anywhere" likely means "within each section" (reorder stat cards among themselves, reorder content tiles among themselves), NOT cross-section moves
+- If cross-section is truly desired, use a single flat array and a `renderTileById` function that maps tile IDs to grid positioning dynamically -- this is significantly more complex
+- The simpler interpretation: merge `givingOrder`, `statsOrder`, and `contentOrder` into one array but use CSS grid `grid-template-areas` to maintain the layout structure while allowing any-to-any reordering
+
+### Pitfall 7: Removing Columns from List Pages While API Still Returns Data Creates Inconsistency
+
+**What goes wrong:** The gifts page todo says "remove Funds column" and "remove Description column" but keep the data in the API. Meanwhile, a new "Type" column requires a model field addition. This creates three inconsistency risks:
+1. **Filter orphaning:** The Funds dropdown filter (lines 217-238 of `DonationList.tsx`) references the `fund` filter parameter. Removing the column but keeping the filter is confusing; removing the filter but keeping the API field means existing bookmarked URLs with `?fund=X` silently filter but show no fund column
+2. **Export inconsistency:** The CSV export endpoint still includes Fund and Description columns even though the UI does not show them. Users see data in exports that is not visible on the page.
+3. **Detail panel mismatch:** The `DonationDetailPanel` slide-in likely still shows Fund and Description. Removing from the list but not the detail creates a jarring inconsistency.
+
+**Prevention:**
+- Remove columns from the list page `columns` array only (not from the API serializer)
+- Also remove the Fund dropdown filter from the FilterBar children
+- Keep the data in the detail panel and CSV export (they are different contexts)
+- Add the new `payment_type` field as a model CharField with choices, migration, and serializer update BEFORE adding the frontend column
+- Handle the bookmarked URL case: `useFilterParams` will simply ignore unknown filter keys, so old `?fund=X` URLs will work but the filter will not display
+
+### Pitfall 8: Journal Report Rebuild Requires New Backend Endpoint That Does Not Exist
+
+**What goes wrong:** The journal report spec (in `prompts/journal_report.md`) references `journalsApi.getReport(journalId)` returning a `JournalReport` type with `summary.stageDistribution`, `summary.decisions`, `summary.goalProgressPercent`, etc. But the current backend has no `/journals/<id>/report/` endpoint. The existing `JournalAnalyticsViewSet` (in `apps/journals/views.py`) provides separate endpoints for `decision-trends`, `stage-activity`, `pipeline-breakdown`, and `next-steps-queue` -- but these are global analytics, not per-journal report data.
+
+If the frontend is built against the spec's expected API shape without first building the backend endpoint, the entire report component will show empty/error state.
+
+**Prevention:**
+- Build the backend `JournalReportView` endpoint first (or simultaneously), returning:
+  ```python
+  # GET /api/journals/<journal_id>/report/
+  {
+    "journal": { "id", "name", "goal_amount", "deadline", "status" },
+    "summary": {
+      "total_contacts": int,
+      "stalled_contacts": int,
+      "stage_distribution": { "contact": N, "meet": N, ... },
+      "decisions": { "pending": N, "confirmed": N, "declined": N, ... },
+      "goal_progress_percent": float,
+      "open_next_steps": int,
+      "overdue_next_steps": int
     }
-```
+  }
+  ```
+- The stage distribution query already exists in `pipeline_breakdown` -- just scope it to a single journal
+- Use `select_related`/`prefetch_related` to avoid N+1 (this is journal-report-specific, querying all contacts in one journal)
 
-2. Create a transition checklist of every function in both service files:
+### Pitfall 9: Checkbox "Direct Check" Behavior Conflicts with Event-Sourced Stage Tracking
 
-| Function | Model References | Update Strategy |
-|----------|-----------------|-----------------|
-| `get_recent_gifts()` | `Donation.objects` | Change to `Gift.objects` |
-| `get_giving_summary()` | `Donation.objects`, `Pledge.objects` | Change to `Gift.objects`, `RecurringGift.objects` |
-| `get_monthly_gifts()` | `Donation.objects` | Change to `Gift.objects` |
-| `get_needs_attention()` | `Pledge.objects` | Change to `RecurringGift.objects` |
-| `get_late_donations()` | `Pledge.objects` (confusing name!) | Change to `RecurringGift.objects`, rename function |
-| `get_support_progress()` | `Pledge.objects` | Change to `RecurringGift.objects` |
-| `_scope_donations()` | `Donation.objects` | Change to `Gift.objects` |
-| `_scope_pledges()` | `Pledge.objects` | Change to `RecurringGift.objects` |
-| `get_donations_by_month()` | `_scope_donations()` | Rename to `get_gifts_by_month()` |
-| `get_donations_by_year()` | `_scope_donations()` | Rename to `get_gifts_by_year()` |
-| `get_monthly_commitments()` | `_scope_pledges()` | Update scope function |
-| `get_late_donations()` (insights) | `_scope_pledges()` | Rename to `get_late_recurring_gifts()` |
-| `get_transactions()` | `Donation.objects` | Change to `Gift.objects` |
-| `get_dashboard_overview()` | `Donation.objects` | Change to `Gift.objects` |
-| `get_user_performance()` | `Donation.objects` (Subquery) | Change to `Gift.objects` |
-| `get_team_trends()` | `Donation.objects` | Change to `Gift.objects` |
-| `get_user_trends()` | `Donation.objects` | Change to `Gift.objects` |
+**What goes wrong:** The journal report spec says "whenever a checkbox is clicked, the box should be checked instead of having to log an event." But the journal grid's stage tracking is **event-sourced** -- a contact's current stage is determined by the most recent `JournalStageEvent` record (see `get_current_stage` in `ContactJournalMembershipSerializer`, lines 173-181 of `contacts/serializers.py`). There is no boolean "checked" field on `JournalContact`.
 
-3. Update all service functions in ONE phase, run the full test suite, then update the frontend
+"Clicking a checkbox" to check a stage means creating a `JournalStageEvent` behind the scenes. If the checkbox creates the event silently, the user loses the ability to add notes to the stage transition. If the checkbox sets a separate boolean field, the stage state diverges from the event log.
 
-**Warning signs:**
-- Updating models without updating service files
-- Dashboard showing zero/stale data after migration
-- `ImportError: cannot import name 'Donation' from 'apps.donations.models'`
-- Frontend showing "undefined" for gift-related fields
+**Prevention:**
+- Implement checkboxes as "instant stage event creation" -- clicking the checkbox POSTs a new `JournalStageEvent` with the stage value and empty notes
+- Do NOT add boolean stage fields to `JournalContact` -- this would create two sources of truth
+- Optimistically update the UI (mark checkbox checked immediately) and let the mutation create the event in the background
+- If the mutation fails, revert the checkbox state with a toast error
+- The existing `JournalStageEventListCreateView` endpoint already handles POST -- just call it from the checkbox click handler
 
-**Phase to address:**
-Phase 4 (Update dependent features) -- must be a comprehensive sweep, not piecemeal
+## Minor Pitfalls
 
----
+### Pitfall 10: Dialog Centering Is Already Correct in Component but Overridden by Consumer Usage
 
-### Pitfall 9: Raiser's Edge Date Format Ambiguity: MM/DD/YYYY vs DD/MM/YYYY
+**What goes wrong:** The `DialogContent` component (line 38-52 of `dialog.tsx`) already uses `fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%]` for centering. If dialogs appear off-center, the issue is NOT in the base component -- it is that some edit flows use the `Sheet` component (which slides from the side by design) instead of `Dialog`.
 
-**What goes wrong:**
-The existing `_parse_date()` in `services.py:81-100` tries multiple date formats in order: `['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%m-%d-%Y', '%d-%m-%Y']`. For the date "01/02/2026", it matches `%m/%d/%Y` first (January 2nd) but the RE export intended `%d/%m/%Y` (February 1st). Since RE is a US-centric application, `MM/DD/YYYY` is almost always correct, but organizations using RE internationally may have different locale settings.
+"Fixing" the Dialog component when Sheets are the actual problem would break existing centered dialogs. Changing Sheets to Dialogs requires different layout considerations (Sheets have scrollable content areas; Dialogs have max-height constraints).
 
-The ambiguity is undetectable for dates where both day and month are <= 12 (e.g., "06/07/2026" could be June 7 or July 6). For dates where day > 12 (e.g., "15/01/2026"), only one format works, so it resolves correctly. The silent misparse for ambiguous dates corrupts gift dates without any error.
+**Prevention:**
+- Audit every edit flow to determine which use Dialog vs Sheet
+- For flows that should be centered: switch from Sheet to Dialog
+- For the Sheet-to-Dialog conversion, ensure the content has `max-h-[85vh] overflow-y-auto` to handle long forms
+- Do NOT modify the base `dialog.tsx` component unless testing confirms it is actually mispositioned
 
-**Why it happens:**
-The format list tries `%m/%d/%Y` before `%d/%m/%Y`. For US-based RE installations, this is correct. But the function doesn't know the data source, so it cannot make an informed choice. RE exports do not include timezone or locale metadata in the CSV.
+### Pitfall 11: Begin Prayer Feature Must Not Break Existing Focus Mode Keyboard Handlers
 
-**How to avoid:**
-For RE-specific imports, enforce US date format and do NOT fall through to `%d/%m/%Y`:
+**What goes wrong:** The existing `PrayerFocusMode` (lines 56-86 of `PrayerFocusMode.tsx`) registers global keyboard event listeners for Arrow keys, Space, Enter, P, and Escape. If a new "Begin Prayer" feature adds its own component with different keyboard shortcuts, the handlers can conflict (both listening on the same `window` keydown event).
 
-```python
-RE_DATE_FORMATS = ['%Y-%m-%d', '%m/%d/%Y', '%m-%d-%Y']  # US formats only
+Additionally, the Focus Mode uses `fixed inset-0 z-50` (fullscreen overlay). If the new prayer session view also uses a fullscreen overlay, they can stack incorrectly.
 
-def parse_re_date(date_str: str) -> tuple:
-    """Parse date from Raiser's Edge export (US locale assumed)."""
-    if not date_str:
-        return None, 'Date is required'
+**Prevention:**
+- Build "Begin Prayer" as an extension of the existing Focus Mode, not a separate overlay
+- Reuse the existing keyboard handler infrastructure
+- If the prayer session has different stages (e.g., reading a scripture, then praying), use component state within the same fullscreen overlay rather than stacking overlays
 
-    cleaned = date_str.strip()
+### Pitfall 12: Removing Pipeline Breakdown from Journal Report Leaves Orphaned Backend Endpoint and Frontend Hook
 
-    for fmt in RE_DATE_FORMATS:
-        try:
-            return datetime.strptime(cleaned, fmt).date(), None
-        except ValueError:
-            continue
+**What goes wrong:** The `pipeline_breakdown` endpoint in `JournalAnalyticsViewSet` (line 499-518 of `journals/views.py`) and its corresponding frontend hook `usePipelineBreakdown` (referenced in `ReportCharts.tsx`) will become dead code after removal. The `PipelineBreakdownChart` component is exported but if only referenced in the report, removing the import leaves the component file as dead code.
 
-    return None, f'Invalid date: "{date_str}". Expected MM/DD/YYYY or YYYY-MM-DD format.'
-```
+**Prevention:**
+- Remove the frontend component and hook import
+- Do NOT remove the backend endpoint in this milestone -- it may be used by other consumers or can be removed in a cleanup phase
+- Search for all imports of `PipelineBreakdownChart` and `usePipelineBreakdown` to confirm no other pages use them before removal
 
-Keep the original `_parse_date()` with all formats for generic CSV imports. The RE parser should use the RE-specific date parser.
+### Pitfall 13: Adding `payment_type` Field to Gift Model Requires Default Value for Existing Records
 
-**Warning signs:**
-- Gift dates in January-December range that look plausible but are off by months
-- Users in non-US locales reporting "wrong dates" after import
-- No date format specification in the import UI
-- Reusing the generic `_parse_date()` for RE-specific imports
+**What goes wrong:** Adding a new `payment_type` CharField to the Gift model with choices `('credit_card', 'direct_deposit', 'check')` requires a default value for the migration. If the default is empty string, the column displays as blank for all historical gifts. If the default is a specific type, it misrepresents historical data.
 
-**Phase to address:**
-Phase 2 (RE import pipeline) -- RE-specific parsers should use US date formats only
+**Prevention:**
+- Add the field as `blank=True, default=''` so historical records show no type
+- Frontend displays empty type as a dash or "Unknown"
+- Do NOT set a default of `credit_card` -- existing imported data has no payment type information
+- Consider whether the field should be required on new gifts only (validate in serializer, not model)
 
----
+### Pitfall 14: Removing Review Queue and Heat Map Must Clean Up Sidebar, Routes, and API Hooks
 
-### Pitfall 10: Existing Donation Signals Fire During Gift Creation, Double-Counting Stats
+**What goes wrong:** The Review Queue and Activity Heat Map are referenced across multiple layers:
+- Sidebar navigation link
+- React Router route in App.tsx
+- API function in insights API client
+- React Query hook (e.g., `useReviewQueue`, `useActivityHeatmap`)
+- Backend view, URL, and service function
 
-**What goes wrong:**
-The existing `apps/donations/signals.py` has `post_save` and `post_delete` receivers on the Donation model. If the new Gift model inherits from the same base or if signals are registered with a broad sender, gift creation could trigger donation signals. More subtly: if Gift records are created in the same transaction as Donation deletions (during migration), the signal handlers interact:
+Removing the frontend component but leaving the route creates a blank page. Leaving the sidebar link creates a dead nav item. Leaving the hook creates unused imports that may cause build warnings.
 
-1. Donation signal fires `contact.update_giving_stats()` which queries `self.donations.all()`
-2. Gift signal fires `contact.update_giving_stats()` which queries `self.gifts.all()`
-3. During migration, both fire on the same contact, creating a race condition
+**Prevention:**
+- Work backwards from UI to API: Sidebar link -> Route -> Page component -> Hook -> API function
+- For backend: leave the endpoint in place (no harm, avoids migration) or mark as deprecated
+- Run `tsc --noEmit` after removal to catch any remaining TypeScript references
+- Test that navigating to the old URL does not crash (it should 404 or redirect)
 
-The existing signal disabling mechanism (`disable_donation_signals()` / `enable_donation_signals()` using threading.local) works but is NOT used in the data migration. Running the migration without disabling signals means N contacts get N stat recalculations, each taking a database query -- a 5000-record migration fires 5000 signal handlers, each running an aggregate query.
+## Phase-Specific Warnings
 
-**Why it happens:**
-Django signals fire automatically on model save/delete. The migration uses `Gift.objects.create()` which triggers `post_save`. Unless signals are explicitly disabled, every single created record triggers stat recalculation. The existing `disable_donation_signals()` mechanism only covers Donation signals, not Gift signals.
-
-**How to avoid:**
-1. Create an equivalent signal disabling mechanism for Gift:
-```python
-# gifts/signals.py
-_signal_state = threading.local()
-
-def disable_gift_signals():
-    _signal_state._skip_signals = True
-
-def enable_gift_signals():
-    _signal_state._skip_signals = False
-```
-
-2. In the data migration, disable BOTH signal sets:
-```python
-def migrate_donations_to_gifts(apps, schema_editor):
-    from apps.donations.signals import disable_donation_signals, enable_donation_signals
-    from apps.gifts.signals import disable_gift_signals, enable_gift_signals
-
-    disable_donation_signals()
-    disable_gift_signals()
-
-    try:
-        # Bulk migrate records
-        # ...
-        pass
-    finally:
-        enable_donation_signals()
-        enable_gift_signals()
-
-    # After migration, recalculate stats ONCE per affected contact
-    for contact in Contact.objects.filter(gifts__isnull=False).distinct():
-        contact.update_giving_stats()
-```
-
-3. Use `bulk_create()` where possible -- it does NOT trigger signals:
-```python
-# bulk_create skips signals entirely (Django behavior)
-Gift.objects.bulk_create(gift_objects, batch_size=500)
-# Then manually recalculate stats once
-```
-
-**Warning signs:**
-- Migration taking 10+ minutes for a few thousand records
-- Database CPU spike during migration
-- Contact stats being recalculated multiple times per contact
-- Post-migration stats showing double the actual total (if both old and new models are counted)
-
-**Phase to address:**
-Phase 3 (Data migration) -- signal management is a prerequisite for the migration script
-
----
-
-## Technical Debt Patterns
-
-Shortcuts that seem reasonable but create long-term problems.
-
-| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
-|----------|-------------------|----------------|-----------------|
-| Keeping both Donation and Gift models permanently | Avoids massive rename effort | Two parallel models, double maintenance, confusing codebase | Never; set a deadline to remove Donation model |
-| Hashing raw file bytes instead of normalized content | Simpler dedup code | False negatives (same data, different hash) and false positives | Never; normalize before hashing |
-| Using fuzzy matching for solicitor->user linking | Catches more matches | False positives silently credit gifts to wrong missionary | Never; use exact match with normalization + admin review queue |
-| Skipping GenericForeignKey content_type migration | Saves one migration step | Event log shows broken references for all historical donations | Never; content_type update is essential |
-| Not renaming API endpoints (/api/donations/ -> /api/gifts/) | Frontend works without changes | Confusing API inconsistency, new developers confused | Acceptable temporarily during transition; rename within same milestone |
-| Keeping EventType.DONATION_RECEIVED for Gift events | No event system changes needed | Confusing audit trail, grep for "donation" still finds event code | Acceptable; add GIFT_RECEIVED alias pointing to same value |
-| Not migrating existing Donation test data to Gift format | Tests pass against old model | New Gift-specific tests don't cover edge cases from old test data | Never; migrate test factories to Gift model |
-| Running migration without signal disabling | Simpler migration script | 5000x slower migration, possible race conditions | Never; always disable signals during bulk operations |
-
-## Integration Gotchas
-
-Common mistakes when connecting Raiser's Edge imports to existing infrastructure.
-
-| Integration | Common Mistake | Correct Approach |
-|-------------|----------------|------------------|
-| RE CSV encoding | Assuming UTF-8 | Cascading decode: UTF-8-sig -> UTF-8 -> Windows-1252 |
-| RE split gifts | One row = one gift | Group rows by Gift ID, sum split amounts |
-| RE solicitor names | Fuzzy matching | Exact match with normalization + "Last, First" format handling |
-| RE date formats | Using generic date parser with DD/MM fallback | RE-specific parser with US-only formats (MM/DD/YYYY) |
-| RE gift amounts | Treating amount string as-is | Strip `$`, `,`, handle `()` for negative amounts (existing `parse_currency` pattern) |
-| SHA256 dedup | Hash raw file bytes | Normalize (strip BOM, normalize line endings, sort rows) then hash |
-| Gift->Contact stats | Relying on Donation signals | Wire new Gift signals that call updated `update_giving_stats()` |
-| Gift->Event log | Not creating events for new Gift model | Register post_save signal on Gift that creates Event records |
-| GenericForeignKey | Forgetting content_type migration | Update Event.content_type from Donation CT to Gift CT |
-| DB migration | Creating records one-by-one | Use `bulk_create()` to skip signals, then recalculate stats once per contact |
-
-## Performance Traps
-
-Patterns that work at small scale but fail as usage grows.
-
-| Trap | Symptoms | Prevention | When It Breaks |
-|------|----------|------------|----------------|
-| Signal-per-record during migration | Migration takes 30+ minutes | Disable signals, use bulk_create, recalculate once | >500 donation records |
-| update_giving_stats called per gift during import | Import of 200 gifts takes 5 minutes | Collect affected contact IDs, update stats once per contact at end | >50 gifts per import |
-| SHA256 hash computation on large CSV | Slow upload response | Compute hash on first 10KB + file size for quick dedup check | >5MB files |
-| Contact.monthly_pledge_amount iterates pledges in Python | Slow with many pledges | Use DB annotation with Case/When for monthly_equivalent calculation | >20 active pledges per contact |
-| Not indexing Gift.external_id for RE dedup lookups | Full table scan on each import row | Ensure unique index on external_id (already exists on Donation, replicate on Gift) | >10,000 gift records |
-| Frontend re-renders entire gift list on stats update | UI flickers after import | Use React Query invalidation targeting specific query keys, not broad invalidation | >100 gifts displayed |
-
-## Security Mistakes
-
-Domain-specific security issues.
-
-| Mistake | Risk | Prevention |
-|---------|------|------------|
-| Auto-linking solicitor to user without admin review | Gifts credited to wrong missionary; inflated support totals affecting coaching decisions | Exact match only; ambiguous -> unmatched queue; admin confirms |
-| RE CSV formula injection in gift notes/descriptions | Data exfiltration when admin exports gifts to CSV | Apply FORMULA_PREFIXES check to ALL imported text fields including prayer_description |
-| Exposing solicitor User IDs in API responses | User enumeration via import API | Return solicitor name only, not internal user ID, in import results |
-| Not scoping Gift queries by owner | Same owner-scoping bugs as Donation model | Copy owner-scoping pattern from DonationListView.get_queryset() to GiftListView |
-| SHA256 hash stored in plaintext | Low risk, but hash reveals if two users imported same file | Acceptable; import dedup is not a security-sensitive feature |
-
-## UX Pitfalls
-
-Common user experience mistakes in model replacement and import.
-
-| Pitfall | User Impact | Better Approach |
-|---------|-------------|-----------------|
-| Renaming "Donations" to "Gifts" everywhere simultaneously | Users confused, can't find familiar features | Change labels gradually: sidebar first, then page titles, then field labels |
-| Import error: "Donation with ID X already exists" when user hasn't imported yet | Confusing error from old Donation data conflicting with new Gift dedup | Clear error message: "A gift record with this external ID was imported previously" |
-| No progress indicator during RE import with 1000+ rows | User thinks import is frozen, refreshes page, loses progress | Show progress: "Processing row 450 of 1,200..." |
-| Prayer intention auto-created with cryptic RE description | User sees "Prayer: GFT-2026-001 ANNUAL FUND" instead of meaningful text | Only auto-create prayer intentions when RE description field contains actual prayer text; require manual review |
-| Solicitor match report with no context | Admin sees "John Smith -> User #abc123" with no way to verify | Show matched gift count, total amount, and sample gift dates alongside each match |
-| Dashboard shows $0 during migration period | User panics thinking data was lost | Show banner: "System upgrade in progress. Data will be restored shortly." |
-
-## "Looks Done But Isn't" Checklist
-
-Things that appear complete but are missing critical pieces.
-
-- [ ] **Gift model created:** But Contact.update_giving_stats() still queries `self.donations.all()` -- stats show $0
-- [ ] **Data migration ran:** But Event.content_type not updated -- "What Changed" shows broken references
-- [ ] **RE import works:** But not tested with split gifts (multi-row), Windows-1252 encoding, or "Last, First" solicitor names
-- [ ] **SHA256 dedup works:** But not tested with BOM vs no-BOM, CRLF vs LF, or re-encoded files
-- [ ] **Solicitor matching works:** But no admin review UI for unmatched/ambiguous matches -- they silently drop
-- [ ] **API endpoints updated:** But React Query cache keys still reference old "donation" keys -- stale cache served
-- [ ] **Dashboard shows gifts:** But `get_late_donations()` still queries Pledge model instead of RecurringGift
-- [ ] **Sidebar renamed:** But browser bookmarks to `/donations` return 404 instead of redirecting to `/gifts`
-- [ ] **Gift signals working:** But migration script doesn't disable them -- migration runs 100x slower
-- [ ] **Import tests pass:** But only with ASCII data -- no tests with accented names (Jose), smart quotes, or em-dashes
-- [ ] **Prayer intentions created:** But no de-duplication -- re-importing same RE file creates duplicate prayer records
-- [ ] **Draggable tiles work:** But drag position resets on page navigation (session-only was spec, but user expects persistence)
-- [ ] **Export CSV updated:** But export still says "donation_type" in CSV header instead of "gift_type"
-
-## Recovery Strategies
-
-When pitfalls occur despite prevention, how to recover.
-
-| Pitfall | Recovery Cost | Recovery Steps |
-|---------|---------------|----------------|
-| Wrong solicitor auto-linking | HIGH | Identify affected gifts by import batch; unlink solicitor; recalculate missionary stats; admin manually re-links |
-| Duplicate gifts from split rows | MEDIUM | Query gifts with same external_id prefix; merge splits; recalculate contact stats |
-| Broken Event references after migration | MEDIUM | Run content_type update migration; re-validate Event.object_id points to existing Gift records |
-| Double-counted stats during migration | LOW | Run `contact.update_giving_stats()` for all contacts with gifts; one-time management command |
-| Wrong dates from DD/MM ambiguity | HIGH | Impossible to auto-fix -- must re-import with correct format; affected records need manual review |
-| SHA256 false negatives (same data imported twice) | MEDIUM | De-duplicate by external_id (more reliable); mark duplicates; recalculate stats |
-| Windows-1252 characters corrupted to UTF-8 mojibake | MEDIUM | Re-import with correct encoding; or data migration to fix known mojibake patterns (`Ã©` -> `e`) |
-| Migration signals causing stat recalculation storm | LOW | Kill migration, disable signals, restart migration, recalculate stats once at end |
-
-## Pitfall-to-Phase Mapping
-
-How roadmap phases should address these pitfalls.
-
-| Pitfall | Prevention Phase | Verification |
-|---------|------------------|--------------|
-| #1 77+ dependent references | Phase 1 (New models) + Phase 4 (Update dependents) | Full-text search for "Donation" and "Pledge" returns zero hits outside migration files |
-| #2 Contact stats hardcoded to donations | Phase 1 (New models) | Create a Gift, verify contact.total_given updates correctly |
-| #3 SHA256 hash instability | Phase 2 (Import pipeline) | Upload same CSV saved with/without BOM; verify same hash |
-| #4 Windows-1252 encoding | Phase 2 (Import pipeline) | Import CSV with accented name "Jose"; verify correct storage |
-| #5 Multi-row split gifts | Phase 2 (Import pipeline) | Import CSV with two rows sharing same Gift ID; verify one Gift created |
-| #6 Solicitor false matching | Phase 2 (Import pipeline) | Import with ambiguous name; verify sent to unmatched queue, not auto-linked |
-| #7 Migration UUID preservation | Phase 3 (Data migration) | Compare Gift.id with original Donation.id for migrated records; verify match |
-| #8 Dashboard 21+ references | Phase 4 (Update dependents) | Load every dashboard widget; load every insights page; verify no errors |
-| #9 RE date format ambiguity | Phase 2 (Import pipeline) | Import "01/02/2026"; verify parsed as January 2 (US format) |
-| #10 Signal storms during migration | Phase 3 (Data migration) | Time migration of 1000 records; verify < 60 seconds with signals disabled |
+| Phase Topic | Likely Pitfall | Mitigation |
+|-------------|---------------|------------|
+| Supervisor role (backend) | Pitfall 1 (queryset scoping), Pitfall 2 (self-referential FK), Pitfall 3 (permission classes) | Build centralized `scope_by_owner` helper FIRST, then update all 40+ views; use M2M not FK |
+| Supervisor role (frontend) | Pitfall 4 (role hierarchy), Pitfall 5 (dashboard selector) | Replace numeric hierarchy with capability map; thread `viewing_as` through all dashboard API calls |
+| Journal report rebuild | Pitfall 8 (missing backend), Pitfall 9 (checkbox vs events), Pitfall 12 (orphaned code) | Build backend endpoint first; checkboxes create events silently; clean up dead imports |
+| Dashboard modifications | Pitfall 6 (cross-section drag) | Clarify "draggable anywhere" scope; likely means within-section only |
+| UI polish (dialogs) | Pitfall 10 (Sheet vs Dialog confusion) | Audit which flows use Sheet vs Dialog before modifying base component |
+| UI polish (columns) | Pitfall 7 (filter/export inconsistency) | Remove column + filter together; keep data in API and exports |
+| Begin Prayer | Pitfall 11 (keyboard handler conflicts) | Extend existing Focus Mode; do not create parallel overlay |
+| Gift columns | Pitfall 13 (migration default) | Use `blank=True, default=''`; display empty as dash |
+| Analytics cleanup | Pitfall 14 (orphaned references) | Work backwards: sidebar -> route -> component -> hook -> API |
 
 ## Sources
 
-**Raiser's Edge CSV Quirks:**
-- [Introducing Single Row Query in Blackbaud RE NXT](https://community.blackbaud.com/discussion/84415/introducing-single-row-query-in-blackbaud-raiser-s-edge-nxt-a-smarter-way-to-export-your-data) -- split gift export behavior, denormalized data
-- [Export split gifts to multiple rows (Aha idea)](https://renxt.ideas.aha.io/ideas/RENXT-I-8179) -- confirmation that split gifts produce multi-row exports
-- [Why Raiser's Edge Migrations are Difficult (Arkus)](https://www.arkusinc.com/archive/2020/its-not-just-your-org-why-raisers-edge-migrations-are-difficult) -- gift complexity, adjustments, soft credits
-- [Exporting RE for CiviCRM (Palante Tech)](https://redmine.palantetech.coop/projects/commons/wiki/Exporting_Raiser's_Edge_for_CiviCRM) -- column group issues, denormalized exports
-
-**Encoding Issues:**
-- [Windows-1252 (Wikipedia)](https://en.wikipedia.org/wiki/Windows-1252) -- smart quotes byte values, differences from UTF-8
-- [How to Fix CSV Encoding Problems (CSV Viewer)](https://csv-viewer-online.com/blog/fix-csv-encoding-problems) -- cascading encoding detection strategy
-- [UTF-8 and Byte Order Marks (CryptoSys)](https://www.cryptosys.net/pki/utf8bom.html) -- BOM bytes silently changing hash values
-
-**SHA256 Dedup Edge Cases:**
-- [Resolving SHA256 Hash Mismatch: Line Endings Matter (devgem.io)](https://www.devgem.io/posts/resolving-sha256-hash-mismatch-in-net-tests-line-endings-matter) -- CRLF vs LF hash differences
-- [Byte Order Mark (Wikipedia)](https://en.wikipedia.org/wiki/Byte_order_mark) -- BOM as invisible hash-changing prefix
-- [Deduplication considerations (Relativity)](https://help.relativity.com/RelativityOne/Content/Relativity/Processing/Deduplication_considerations.htm) -- case sensitivity in hash-based dedup
-
-**Name Matching:**
-- [Common Mistakes in Fuzzy Data Matching (WinPure)](https://winpure.com/fuzzy-matching-common-mistakes/) -- threshold calibration, normalization skipping
-- [Fuzzy Matching 101 (Data Ladder)](https://dataladder.com/fuzzy-matching-101/) -- false positive management, confidence thresholds
-- [The Problem of Name Matching in Sanctions Screening (sanctions.io)](https://www.sanctions.io/blog/the-problem-of-name-matching-in-sanctions-screening) -- cultural name variations, transliteration
-
-**Django Model Migration:**
-- [Renaming models in Django without heavy data migrations (HackSoft)](https://www.hacksoft.io/blog/renaming-models-in-django-without-heavy-data-migrations) -- RenameModel vs new model strategy
-- [How to Move a Django Model to Another App (Real Python)](https://realpython.com/move-django-model/) -- SeparateDatabaseAndState, content type migration
-- [Django Ticket #23577 -- Rename operations should rename indexes](https://code.djangoproject.com/ticket/23577) -- index name conflicts on rename
-- [Django Ticket #27092 -- Creating and then renaming FK fails](https://code.djangoproject.com/ticket/27092) -- migration ordering issues
-
-**Existing Codebase (HIGH confidence):**
-- `apps/donations/models.py` -- Donation model with 7 fields, 4 indexes, FK to Contact/Pledge/Fund
-- `apps/pledges/models.py` -- Pledge model with status transitions, fulfillment tracking, monthly_equivalent
-- `apps/contacts/models.py:152-188` -- `update_giving_stats()` queries `self.donations.all()`
-- `apps/donations/signals.py` -- post_save/post_delete with threading-based disable mechanism
-- `apps/pledges/signals.py` -- pre_save/post_save for status change tracking
-- `apps/dashboard/services.py` -- 9 Donation references, 12 Pledge references across 10 functions
-- `apps/insights/services.py` -- 12+ Donation/Pledge references with complex aggregation queries
-- `apps/imports/services.py` -- existing CSV parsers, date/amount parsing, import infrastructure
-- `apps/imports/mpd_services.py:402-482` -- existing name matching pattern with duplicate detection
-- `apps/events/models.py` -- EventType.DONATION_RECEIVED, GenericForeignKey to any model
-
----
-*Pitfalls research for: DonorCRM v2.0 -- Model Replacement, RE Import, Data Migration*
-*Researched: 2026-02-20*
+- Direct codebase analysis of `/home/matkukla/projects/DonorCRM/apps/core/permissions.py` (6 permission classes)
+- Direct codebase analysis of all `get_queryset` methods across `contacts/views.py`, `journals/views.py`, `gifts/views.py`, `tasks/views.py`, `groups/views.py`, `events/views.py`, `prayers/views.py`, `imports/views.py`, `insights/services.py`
+- Direct codebase analysis of `apps/users/models.py` (UserRole TextChoices, User model)
+- Direct codebase analysis of `frontend/src/components/auth/ProtectedRoute.tsx` (role hierarchy)
+- Direct codebase analysis of `frontend/src/api/auth.ts` and `frontend/src/api/users.ts` (User type definitions)
+- Direct codebase analysis of `frontend/src/pages/Dashboard.tsx` (3 SortableContexts, DndContext)
+- Direct codebase analysis of `frontend/src/pages/donations/DonationList.tsx` (column definitions, filter bar)
+- Direct codebase analysis of `frontend/src/components/ui/dialog.tsx` (Radix Dialog positioning)
+- Direct codebase analysis of `frontend/src/pages/prayer/PrayerFocusMode.tsx` (keyboard handlers, overlay)
+- Direct codebase analysis of `frontend/src/pages/journals/components/ReportCharts.tsx` (chart components)
+- Direct codebase analysis of `apps/journals/views.py` (JournalAnalyticsViewSet endpoints)
+- Direct codebase analysis of `apps/contacts/serializers.py` (event-sourced stage tracking)
+- Spec files: `prompts/mission_supervisor.md`, `prompts/journal_report.md`, `prompts/dashboard_modification.md`
+- Todo files: all 9 pending todos in `.planning/todos/pending/`

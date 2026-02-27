@@ -1,405 +1,280 @@
-# Feature Landscape
+# Feature Research: v2.2 UI Polish, Journal Report, Mission Supervisor & Begin Prayer
 
-**Domain:** DonorCRM v2.0 -- RE Import, Gift Credits, Prayer Intentions, Draggable Dashboard
-**Researched:** 2026-02-20
-**Overall confidence:** HIGH (exact CSV headers, data model specs, and UX requirements confirmed via project prompts and external research)
+**Domain:** Donor CRM for missionaries -- UI refinement, role expansion, prayer workflow, report rebuild
+**Researched:** 2026-02-26
+**Confidence:** HIGH (all features are internal refinements of existing codebase; no new external dependencies)
 
----
+## Feature Landscape
 
-## 1. Raiser's Edge CSV Import Pipeline
+### Table Stakes (Users Expect These)
 
-### Context
-
-The existing SPO import system (Funds, Entities, Transactions, Pledges) is being **replaced** with a Raiser's Edge-compatible pipeline. The new system imports 4 CSV types that RE admins export daily (5 days/week). The exact CSV headers are fixed -- they come from Raiser's Edge and cannot be modified.
-
-### Table Stakes
-
-Features users (admins importing CSVs) absolutely expect.
+Features that address existing UX friction or complete partially-built capabilities. Missing these means the product feels unfinished.
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| 4 CSV type support (Constituent, Solicitor, Gift, Recurring Gift) | These are the exact exports RE produces | High | Each type has different headers, validation rules, and FK relationships |
-| Exact RE header matching | Headers come from RE exports, cannot be changed | Low | Must match exactly: "Constituent ID", "Gift Date", "Fund Split Amount", etc. |
-| SHA256 file deduplication (ImportBatch) | Admins upload daily; same file must not be re-imported | Med | UNIQUE(type, sha256) constraint prevents duplicate processing |
-| Row-level error collection (continue on error) | Admin needs to see ALL errors at once, not one-at-a-time | Med | Never stop on row error -- process all rows, collect errors, return report |
-| Import order enforcement (Constituents -> Solicitors -> Gifts -> Recurring Gifts) | Gifts reference Constituents by external ID; must exist first | Low | UI displays order, Gift import skips rows where Constituent ID is missing |
-| Gift row grouping by Gift ID | RE exports multiple rows per gift (one per solicitor credit) | High | Must GROUP by Gift ID, create one Gift record + multiple GiftCredit records |
-| Idempotent upserts via external IDs | Safe to run daily without duplicating data | Med | Match by externalGiftId/externalConstituentId, update if exists |
-| Import result reporting (created/updated/skipped/errors) | Admin needs to know what happened | Low | Return totals object + row-level errors with row numbers |
-| Already-processed detection | Re-uploading same file should tell admin it was already imported | Low | SHA256 match returns cached result with alreadyProcessed flag |
+| Center all modal dialogs | Dialogs should appear centered on screen. The `dialog.tsx` primitive already uses `left-[50%] top-[50%] translate-x/y-[-50%]` centering. Issue likely in custom dialog-like components or Sheet-based panels not using the standard Dialog primitive. | LOW | Audit all 7 DialogContent consumers across pages (AdminUsers, PrayerList, GroupList, AddContactsDialog, CreateJournalDialog, LogEventDialog, DecisionDialog). Verify each uses the standard `DialogContent` from `@/components/ui/dialog.tsx`. |
+| Rename "Prospect" to "Potential Donor" | Domain language mismatch -- missionaries don't think in sales terms like "prospect." Currently appears in 3 frontend files as display labels in `statusLabels` maps. | LOW | Frontend-only change: update `statusLabels` maps in ContactList.tsx (lines 32, 264), ContactForm.tsx (line 20), ContactDetail.tsx (line 43). Backend `ContactStatus.PROSPECT = 'prospect', 'Prospect'` display label can optionally change too (one migration). The stored value `'prospect'` stays unchanged. |
+| Remove Fund/Description columns from gifts page | Simplifies the gifts list view per user request. Columns defined at DonationList.tsx lines 102-122 (`fund_name` and `description`). | LOW | Delete 2 column definitions from `columns` array. Add a "Type" column if the Gift model has a `gift_type` field (it does -- from RE import `Gift Type` column). Keep fund filter in FilterBar (still useful for filtering even without column display). |
+| Remove Fund column from pledges page | Same simplification rationale. Pledges page has a fund column to remove. | LOW | Delete 1 column definition from pledges list page. |
+| Remove Review Queue and heatmap from analytics dashboard | User request. Review Queue endpoint (`ReviewQueueView`) and Activity Heatmap (`ActivityHeatmapView`) are both admin-only analytics features to be removed from the UI. | LOW | Remove `ActivityHeatmap` and `ReviewQueue`-related imports and JSX from `AdminAnalyticsDashboard.tsx`. Leave backend endpoints in place (non-breaking). Consider removing `@uiw/react-heat-map` from package.json if no other consumer exists. |
+| Dashboard text cleanup | Remove "2026 calendar year" from GivingSummaryCard footer (line 135), "Updated today" from MonthlyGiftsCard footer (line 104), and "Recent Journal Activity" tile entirely. | LOW | Delete specific footer text lines. Remove `RecentJournalActivity` from imports, `DEFAULT_CONTENT_ORDER`, and `renderTileById` switch case in Dashboard.tsx. Remove the `RecentJournalActivity` component import. |
+| Dashboard gap resizing | Large visual gaps between dashboard tile sections make the page feel sparse. Current spacing uses `gap-6` and `gap-8` with `space-y-8` between sections. | LOW | Reduce gap values (e.g., `gap-4` instead of `gap-6`, `space-y-6` instead of `space-y-8`). Purely CSS change. |
 
-### Differentiators
+### Differentiators (Competitive Advantage)
 
-Features that set the import apart from basic CSV upload.
+Features that set DonorCRM apart. These address the unique missionary fundraising and supervision workflow.
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| Prayer intention auto-creation from gift descriptions | RE "Gift Specific Attributes Prayer Requests Description" field creates PrayerIntention records automatically | Med | Unique to missionary CRM -- connects financial data to spiritual care |
-| Solicitor-to-User auto-linking | Match imported Solicitor names to existing User accounts (missionaries) | Med | normalizedName matching; enables gift credit attribution to actual users |
-| Merge-only updates (never overwrite with null) | Existing data preserved when RE export has empty fields | Low | Critical for maintaining manually-entered data alongside imports |
-| Generic CSV import layer (contacts, donations) | For orgs not using RE, or for manual data entry via CSV | Med | Separate from RE pipeline; user-scoped processing |
-
-### Anti-Features
-
-Features to explicitly NOT build for v2.0.
-
-| Anti-Feature | Why Avoid | What to Do Instead |
-|--------------|-----------|-------------------|
-| Import undo/rollback | Massive complexity, ImportBatch records are immutable | Admin re-uploads corrected file; SHA256 dedup prevents exact-file reprocessing |
-| Automated RE API connection | Requires Blackbaud API credentials, OAuth setup, rate limiting | Manual CSV upload is sufficient for daily workflow |
-| Column mapping UI for RE imports | RE headers are fixed and known; mapping adds unnecessary complexity | Validate exact headers, reject if missing |
-| Async/Celery import processing | Overkill for the file sizes being imported (<10MB, <5000 rows) | Synchronous processing with file size limit (10 MB) |
-| Import scheduling/cron | Admin manually exports from RE daily | Manual upload with Import Center UI |
-
-### Exact CSV Headers (from project specs -- HIGH confidence)
-
-**Constituent CSV:**
-- Constituent Date Last Changed, Constituent ID, First Name, Last Name, Organization Name, Address Line 1, Address Line 2, City, State, ZIP, Country, Phone, Email
-
-**Solicitor CSV:**
-- Name
-
-**Gift CSV:**
-- Gift ID, Gift Date Last Changed, Gift Date, Gift Type, Fund ID, Fund Split Amount, Constituent ID, Gift Is Anonymous, Solicitor Name, Solicitor Amount, Gift Payment Type, Gift Specific Attributes Prayer Requests Description
-
-**Recurring Gift CSV:**
-- Gift ID, Gift Date Last Changed, Gift Date, Gift Type, Gift First Installment Due, Last Installment/Payment Date Due, Gift Installment Frequency, Number of Installments Scheduled, Gift First Installment Due_1, Fund ID, Constituent ID, Gift Is Anonymous, Solicitor Name, Solicitor Amount, Gift Payment Type, Gift Status, Gift Status Date, Gift Specific Attributes Prayer Requests Description
-
----
-
-## 2. Gift Credit Splitting
-
-### Context
-
-In Raiser's Edge, one gift can credit multiple missionaries (solicitors). The RE CSV exports this as **multiple rows with the same Gift ID** but different Solicitor Name/Solicitor Amount values. This is the core data relationship that makes DonorCRM valuable for missionary organizations -- each missionary sees the gifts they are credited for, even when the donor gave to a shared fund.
-
-### Table Stakes
-
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| GiftCredit junction model (Gift <-> Solicitor many-to-many) | One gift credits multiple missionaries | Med | Fields: giftId, solicitorId, solicitorName, solicitorAmountCents |
-| RecurringGiftCredit (same pattern for recurring gifts) | Recurring gifts also have multiple solicitor credits | Med | Identical structure to GiftCredit but FK to RecurringGift |
-| Credit amounts in cents | Each solicitor's credited amount may differ from total gift amount | Low | e.g., $200 gift with $100 to Missionary A and $100 to Missionary B |
-| Display credits on gift detail | Missionary sees who else was credited for same gift | Low | List of solicitor names + amounts on gift detail view |
-| Per-missionary gift totals | Each missionary sees total gifts credited to them | Med | SUM(GiftCredit.solicitorAmountCents) WHERE solicitorId matches User |
-| Owner-scoped gift visibility | Missionaries see gifts credited to them, admin sees all | Med | Filter gifts through GiftCredit -> Solicitor -> User relationship |
-
-### Differentiators
-
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| Visual credit breakdown on gift card | Show "You: $100 / Total: $200" with proportional bar | Low | Makes split nature immediately clear |
-| Dashboard summary using credited amounts | Dashboard shows missionary's credited total, not raw gift total | Med | Must aggregate through GiftCredit, not Gift directly |
-| Solicitor-to-User auto-linking | Solicitor records auto-link to User accounts by normalized name matching | Med | Enables "my gifts" view without manual assignment |
-
-### Anti-Features
-
-| Anti-Feature | Why Avoid | What to Do Instead |
-|--------------|-----------|-------------------|
-| Manual credit splitting UI | Credits come from RE imports, not manual entry | Import-only creation; manual gifts use existing Donation model |
-| Percentage-based splits | RE provides absolute amounts per solicitor | Store cents, not percentages |
-| Credit editing | Would desync from RE data on next import | Credits are immutable once imported; re-import to update |
-
-### UI Display Pattern
-
-Based on nonprofit CRM research (Beacon CRM, Neon CRM, Salesforce NPSP), the standard pattern for displaying gift credits is:
-
-**Gift Detail View:**
-```
-Gift #G003 -- $200.00 -- 01/17/2024
-  Donor: John Smith
-  Fund: FUND002
-
-  Credit Split:
-  +---------------------+----------+
-  | Missionary          | Amount   |
-  +---------------------+----------+
-  | John Missionary     | $100.00  |
-  | Jane Evangelist     | $100.00  |
-  +---------------------+----------+
-```
-
-**Gift List View (per missionary):**
-- Show only gifts where the current user has a GiftCredit record
-- Display the solicitor amount (credited amount), not the total gift amount
-- Badge or indicator when gift is split across multiple missionaries
-
----
-
-## 3. Prayer Intentions
-
-### Context
-
-Missionaries are called to pray for their financial partners, not just ask them for money. The "Gift Specific Attributes Prayer Requests Description" field from RE imports contains prayer requests that donors submit with their gifts. This feature surfaces those requests and lets missionaries track their prayer life around donor relationships.
-
-### Table Stakes
-
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| PrayerIntention model tied to Contact | Each prayer intention belongs to a specific donor/contact | Low | Fields: contactId, text, source (manual/import), status |
-| Status tracking (active/prayed/answered) | Missionaries need to know what they have and have not prayed for | Low | Simple status field with transitions |
-| Auto-creation from RE gift descriptions | Import pipeline creates PrayerIntention from non-empty "Prayer Requests Description" | Med | During Gift/RecurringGift import, if description field is non-empty, create PrayerIntention |
-| Manual intention creation | Missionaries add prayer requests from conversations, not just imports | Low | Simple form: contact selector + text input |
-| Today's Focus view | Daily curated list of intentions to pray through | Med | Algorithm: prioritize un-prayed, oldest, round-robin across contacts |
-| "Mark as prayed" action | Track that missionary prayed for this intention today | Low | Updates lastPrayedAt timestamp, optimistic UI update |
-| Contact detail integration (Prayer tab) | See all prayer intentions for a specific contact | Low | New tab on contact detail page, list of intentions with status |
-
-### Differentiators
-
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| Focus Mode (guided prayer experience) | Immersive, one-at-a-time prayer walkthrough with keyboard shortcuts | Med | Full-screen card, arrow keys to navigate, spacebar to mark prayed |
-| Warm/calming visual design | Page should feel like a chapel, not a dashboard | Low | Amber palette, serif headings, generous spacing, minimal cognitive load |
-| Completion screen | After praying through Today's Focus, show count of prayers completed | Low | Motivational, not gamified -- "You prayed for 12 people today" |
-| Prayer history per contact | Timeline of when missionary prayed for each contact | Low | Uses lastPrayedAt timestamps to show prayer frequency |
-
-### Anti-Features
-
-| Anti-Feature | Why Avoid | What to Do Instead |
-|--------------|-----------|-------------------|
-| Prayer reminders/notifications | No email infrastructure; push notifications add complexity | Today's Focus page is the reminder -- open daily |
-| Prayer group sharing | Multi-user prayer lists add permission complexity | Each missionary manages their own prayer life |
-| Prayer request submission by donors | Would require donor-facing portal | Prayer data comes from RE imports or manual missionary entry |
-| Answered prayer analytics | Could feel like gamification of spiritual practice | Simple "answered" status is sufficient |
-| Expiration/archival automation | Prayer intentions should not expire automatically | Manual status changes only |
-
-### Common Patterns from Church CRM Research
-
-Based on research of Planning Center, Echo Prayer, ChurchCMS, Breeze, and iPrayerworks:
-
-1. **Status model**: Active -> Prayed -> Answered (with "Prayed" being repeatable, not terminal)
-2. **Source tracking**: Distinguish between imported requests and manually entered ones
-3. **Daily focus**: Curate a manageable subset of prayer intentions for daily use (not the full list)
-4. **Warm UI**: Every successful church prayer tool emphasizes calm, inviting design over data density
-5. **Contact linkage**: Prayer requests always tie to a person, enabling relational context
-
-### Data Flow: Import-to-Prayer Pipeline
-
-```
-RE Gift CSV -> Gift Import Service
-  -> If "Gift Specific Attributes Prayer Requests Description" is non-empty:
-    -> Find Contact by externalConstituentId
-    -> Create PrayerIntention(contact=contact, text=description, source='import')
-    -> Deduplicate by (contact, text) to avoid duplicates on re-import
-```
-
----
-
-## 4. Draggable Dashboard Tiles
-
-### Context
-
-The existing Dashboard has a fixed layout with hardcoded grid positions. v2.0 adds the ability for users to drag and reorder dashboard tiles to customize their view. Per PROJECT.md, this is **session-only with no persistence** -- tile order resets on page refresh.
-
-### Table Stakes
-
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| Drag-and-drop reorder of dashboard tiles | Users can arrange tiles to prioritize what matters to them | Med | Use dnd-kit with rectSortingStrategy for grid-based sorting |
-| Visual drag feedback (ghost/overlay) | User needs to see what they are dragging and where it will land | Low | DragOverlay component from dnd-kit |
-| Smooth animations on reorder | Tiles should animate to new positions, not jump | Low | Built into dnd-kit's transform/transition system |
-| Session-only state (no persistence) | Tile order resets on page refresh | Low | useState only -- no localStorage, no API call, no URL params |
-| Touch and pointer support | Works on both desktop mouse and mobile touch | Low | dnd-kit's PointerSensor and TouchSensor handle this |
-| Keyboard accessibility | Drag-and-drop should work with keyboard only | Low | dnd-kit has built-in KeyboardSensor with ARIA announcements |
-
-### Differentiators
-
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| Drag handle indicator | Small grip icon on tile header to indicate draggability | Low | Prevents accidental drags when clicking tile content |
-| Tile span awareness | Tiles that span 2 columns (e.g., GivingSummaryCard) should maintain their width during drag | Med | May need custom collision detection for mixed-size tiles |
-
-### Anti-Features
-
-| Anti-Feature | Why Avoid | What to Do Instead |
-|--------------|-----------|-------------------|
-| Persistent tile order (localStorage or API) | Adds complexity; PROJECT.md explicitly says session-only | Reset to default order on page refresh |
-| Tile resizing | react-grid-layout supports this but adds significant complexity | Fixed tile sizes, drag to reorder only |
-| Tile add/remove | Would require tile visibility preferences and persistence | All tiles always visible |
-| Multi-column drag (changing tile width) | Complex collision detection for variable-width items | Fixed column spans per tile |
-| Responsive breakpoint layouts | Would need separate layout configs per breakpoint | Keep existing responsive grid; drag only changes order within current breakpoint |
-
-### Library Choice: dnd-kit
-
-**Use `@dnd-kit/core` + `@dnd-kit/sortable` because:**
-
-1. Modern, lightweight, actively maintained (unlike react-beautiful-dnd which is deprecated)
-2. Built-in sortable preset with `rectSortingStrategy` for grids
-3. Keyboard + screen reader accessibility out of the box
-4. No jQuery or legacy dependencies
-5. Already the React ecosystem standard for drag-and-drop in 2025-2026
-
-**NOT react-grid-layout because:**
-- Includes resizing which we do not need and cannot easily disable
-- Heavier bundle size for features we will not use
-- Designed for persistent layout management, not session-only reorder
-
-### Implementation Pattern
-
-```tsx
-// Dashboard.tsx -- conceptual pattern
-const [tileOrder, setTileOrder] = useState([
-  'giving-summary', 'monthly-gifts', 'thank-you-queue',
-  'recent-donations', 'active-pledges', 'needs-attention',
-  'support-progress', 'journal-activity', 'late-donations',
-  'mpd-overview'
-]);
-
-// DndContext + SortableContext with rectSortingStrategy
-// Each tile wrapped in useSortable hook
-// onDragEnd -> arrayMove(tileOrder, oldIndex, newIndex)
-// State resets on page refresh (no persistence)
-```
-
-### Existing Dashboard Tiles to Make Draggable
-
-Based on the current Dashboard.tsx:
-
-| Tile | Current Grid Position | Spans |
-|------|----------------------|-------|
-| GivingSummaryCard | lg:grid-cols-2 (left) | Full width of column |
-| MonthlyGiftsCard | lg:grid-cols-2 (right) | Full width of column |
-| StatCard x4 | md:grid-cols-2 lg:grid-cols-4 | 1 column each |
-| MPDStatsInline | md:grid-cols-3 | 1 column each (3 cards) |
-| NeedsAttention | lg:grid-cols-2 (left) | Full width of column |
-| SupportProgress | lg:grid-cols-2 (left) | Full width of column |
-| RecentDonations | lg:grid-cols-2 (right) | Full width of column |
-| RecentJournalActivity | lg:grid-cols-2 (right) | Full width of column |
-| LateDonations | lg:grid-cols-2 (right) | Full width of column |
-
-**Simplification for v2.0:** Treat all tiles as equal-width items in a single sortable list. The existing CSS grid layout with `lg:grid-cols-2` naturally places items in two columns. Reordering changes which tiles appear in which column based on DOM order.
-
----
-
-## 5. Supporting Features (Data Migration and UI Rename)
-
-### Data Migration: Donations -> Gifts, Pledges -> RecurringGifts
-
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| Migrate existing Donation records to Gift model | Preserve all historical data | High | Map fields: amount, date, contact, external_id, fund, etc. |
-| Migrate existing Pledge records to RecurringGift model | Preserve pledge histories | High | Map fields: amount, frequency, status, contact, etc. |
-| Preserve denormalized Contact stats | total_given, gift_count, etc. must remain accurate | Med | Recalculate from new Gift model after migration |
-| Update all dashboard queries to use Gift model | Dashboard aggregations reference donations table | Med | Services.py functions must query Gift + GiftCredit instead of Donation |
-
-### UI Rename: "Donations" -> "Gifts", "Pledges" -> "Recurring Gifts"
-
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| Navigation label changes | Consistency with RE terminology | Low | Sidebar, breadcrumbs, page titles |
-| List page headers | "Gifts" instead of "Donations" | Low | Find-replace across page components |
-| Filter labels | Update all filter option labels | Low | FilterBar configurations |
-| CSV export headers | Export column names match new terminology | Low | Serializer field labels |
-
----
+| Mission Supervisor role with scoped visibility | Supervisors see only their assigned missionaries' data. Admins see all. Both can select a missionary and view their personal dashboard. Standard CRMs offer all-or-nothing admin access. This provides fine-grained organizational hierarchy support. | HIGH | See detailed breakdown in Technical Notes section below. Requires model changes (new role, M2M relationship), new permission class, modification of 13+ admin-only API endpoints, and frontend missionary selector. |
+| Begin Prayer dedicated session | Expands existing Focus Mode (PrayerFocusMode.tsx) into a richer guided prayer experience. Current Focus Mode is a carousel that steps through intentions with mark-as-prayed. "Begin Prayer" adds a dedicated entry point, session framing, and enhanced completion experience. | MEDIUM | Current PrayerFocusMode has: full-screen overlay, card carousel, keyboard navigation (arrows, P/Enter, Space, Esc), mark-as-prayed with auto-advance, completion screen with prayed count. "Begin Prayer" extends with: dedicated button in TodaysFocus component, optional session timer/duration, richer completion summary. Backend: no new models needed if session stats stay client-side; optional PrayerSession model for persistence. |
+| Journal report rebuild | Complete redesign of journal reporting with 4 metric cards, goal progress bar, stage bar chart, and decision donut chart. Replaces existing DecisionTrends, StageActivity, PipelineBreakdown, and NextStepsQueue charts. Detailed spec in prompts/journal_report.md. | MEDIUM | New `JournalReport.tsx` component using existing report API. Key sections: (1) 4 metric cards in 2x2/4x1 responsive grid -- Total Contacts, With Decisions (response rate), Confirmed ($ with goal %), Pending Decisions. (2) Goal progress bar with animated fill. (3) Contacts by Stage bar chart with specific hex colors per stage. (4) Decision Status donut chart (inner/outer radius). (5) Conditional alert sections for stalled contacts and open next steps. |
+| Stage checkbox direct-check behavior | Currently clicking an empty stage checkbox opens LogEventDialog for manual event logging. New behavior: clicking directly logs the event (marks stage as done) without dialog. Dialog accessible via other interaction for adding notes. | MEDIUM | Modify StageCell.tsx click handler to call stage event creation API directly instead of opening LogEventDialog. Requires a "quick log" API call (POST with minimal payload: stage, contact, journal). The existing `onCellClick` callback chain needs restructuring: quick-click = auto-log, some other gesture (e.g., clicking filled checkbox) = open timeline/dialog for notes. |
+| Dashboard chart toggle (bar vs line) | MonthlyGiftsCard currently shows only BarChart. Toggle lets users switch to LineChart for trend visualization. Standard pattern in analytics dashboards. | LOW | Add `chartType` state to MonthlyGiftsCard. Conditionally render Recharts `BarChart`/`Bar` or `LineChart`/`Line` component. Both use same data format (`months` array with `total` and `short_label` keys). Add small toggle button group (BarChart3/LineChart icons from lucide-react) in CardHeader. |
+| Dashboard drag anywhere (cross-section) | Current dashboard has 3 separate SortableContext sections (giving, stats, content) restricting drag to within each section. Users want to drag any tile to any position. | MEDIUM | Two approaches: (1) Flatten all tiles into single SortableContext with unified responsive grid -- simpler but loses distinct section layouts (2-col, 4-col, 2-col). (2) Keep sections but add cross-container drag logic with dnd-kit's `useDroppable` on each section. Approach 1 recommended: single flat list with responsive CSS grid, tiles self-size based on content. |
+
+### Anti-Features (Commonly Requested, Often Problematic)
+
+| Feature | Why Requested | Why Problematic | Alternative |
+|---------|---------------|-----------------|-------------|
+| Supervisor can edit missionary data | "Supervisors need to help fix data issues" | Breaks ownership model. Complex permission edge cases (who owns edits? audit trail confusion). Supervisor role is for VIEWING, not editing. | Supervisor views data read-only. Admin handles edits, or missionary fixes their own data. |
+| Persistent dashboard tile order | "I rearranged tiles and lost them on refresh" | Requires user preferences model, API endpoints, migration. Explicitly out of scope in PROJECT.md. | Keep session-only tile ordering. Minor annoyance vs. infrastructure cost. |
+| Real-time prayer session sync | "Multiple people praying for same intentions" | No WebSocket infrastructure. Prayer is personal. Multi-user sync adds complexity without value. | Client-side sessions. Last-prayed-at syncs via REST on completion. |
+| Supervisor self-assignment | "Let supervisors pick who they oversee" | Breaks admin control over org structure. Supervisors could access unauthorized data. | Admin-only assignment of missionaries to supervisors. |
+| Dynamic column visibility toggle | "Let users pick columns to show/hide" | UI complexity, state management, user confusion. Most users want same columns. | Curate correct defaults per page (the v2.2 column changes). Revisit if real need emerges. |
+| Backend-stored "Potential Donor" label | "Change the database value from 'prospect' to 'potential_donor'" | Requires data migration of all contacts with status='prospect', updates to serializers, API contract change, potential client breakage. | Change display label only (frontend maps + TextChoices display string). Keep `'prospect'` as stored value. |
 
 ## Feature Dependencies
 
 ```
-                    +-------------------+
-                    |  Contact Model    |
-                    |  (existing, add   |
-                    |  externalConstID) |
-                    +-------------------+
-                         |          |
-              +----------+          +----------+
-              |                                |
-     +--------v--------+             +--------v--------+
-     | Solicitor Model |             | PrayerIntention |
-     | (new)           |             | Model (new)     |
-     +---------+-------+             +-----------------+
-               |                              ^
-     +---------v-------+                      |
-     | Gift Model      |---------------------+
-     | (new)           |  auto-creates from
-     +---------+-------+  description field
-               |
-     +---------v-------+
-     | GiftCredit      |
-     | (new, junction) |
-     +-----------------+
+Mission Supervisor Role
+    |-- requires --> UserRole.SUPERVISOR addition (model + migration)
+    |-- requires --> User.supervised_missionaries M2M (model + migration)
+    |-- requires --> IsSupervisorOrAdmin permission class
+    |-- requires --> Scoped service functions (insights app, 13+ endpoints)
+    |-- requires --> Missionary selector UI (frontend dropdown)
+    |-- enables  --> "View as missionary" dashboard
 
-     RecurringGift + RecurringGiftCredit follow same pattern as Gift + GiftCredit
+Journal Report Rebuild
+    |-- requires --> Existing report API (already built)
+    |-- coupled with --> Stage checkbox behavior change (both are journal UX)
+    |-- independent of --> Mission Supervisor, Begin Prayer
 
-     Draggable Dashboard Tiles: No model dependencies. Frontend-only feature.
+Begin Prayer
+    |-- requires --> Existing PrayerFocusMode (already built)
+    |-- requires --> Existing prayer API (already built)
+    |-- independent of --> Journal Report, Mission Supervisor
+
+Dashboard Modifications (text, gaps, chart toggle, drag anywhere)
+    |-- requires --> Existing Dashboard.tsx (already built)
+    |-- independent of --> All other features
+
+UI Polish (dialog centering, column changes, label rename)
+    |-- independent of --> All other features
+    |-- parallelizable with --> Everything
 ```
 
-**Build order constraints:**
-1. **Contact model updates** (add externalConstituentId) must come first
-2. **Solicitor model** before Gift import (solicitors referenced in gift rows)
-3. **Gift + GiftCredit models** before Gift import service
-4. **RecurringGift + RecurringGiftCredit** before Recurring Gift import service
-5. **Import services** (Constituent -> Solicitor -> Gift -> Recurring Gift) in dependency order
-6. **Data migration** (Donation -> Gift, Pledge -> RecurringGift) after new models exist
-7. **PrayerIntention model** can be built in parallel with or after Gift import
-8. **Prayer auto-creation** requires Gift import service to be functional
-9. **Draggable dashboard** is fully independent -- can be built at any point
-10. **UI rename** should happen after data migration so old pages still work during transition
+### Dependency Notes
 
----
+- **Mission Supervisor requires model changes first:** M2M relationship and role choice must be migrated before permission classes or view changes can reference them. Backend before frontend.
+- **Journal report and checkbox behavior are coupled:** Both modify the journal detail page experience. Should be in same phase to avoid duplicate testing of journal page.
+- **UI Polish has zero dependencies:** All items (dialog centering, label rename, column removals, dashboard text cleanup) can be done in any order and in parallel with larger features.
+- **Begin Prayer extends but does not replace Focus Mode:** Current PrayerFocusMode is the base. Begin Prayer wraps it with session context. Backward-compatible enhancement.
+- **Dashboard modifications are self-contained:** Chart toggle, gap resizing, drag-anywhere, and text removal are all within Dashboard.tsx and its child components. No backend changes.
 
-## MVP Recommendation
+## Implementation Phases
 
-### Must Have (v2.0 Launch):
+### Phase 1: UI Polish (Low-Risk, Quick Wins)
 
-1. **New data models** (Solicitor, Gift, GiftCredit, RecurringGift, RecurringGiftCredit, ImportBatch, PrayerIntention) -- Foundation for everything else.
-2. **RE Import Pipeline** (all 4 types with row grouping and SHA256 dedup) -- Core value. Without it, no RE data enters the system.
-3. **Gift credit splitting** (display + per-missionary visibility) -- Meaningless to import gifts without proper credit attribution.
-4. **Data migration** (existing Donations -> Gifts, Pledges -> RecurringGifts) -- Existing data must be preserved.
-5. **UI updates** (rename Donations -> Gifts, Pledges -> Recurring Gifts, update all dependent features) -- Consistency with new model names.
-6. **Prayer Intentions** (model + auto-creation from imports + Today's Focus view + Contact tab) -- Unique differentiator.
-7. **Draggable dashboard tiles** (session-only with dnd-kit) -- Low complexity, high perceived polish.
+Simple frontend-only changes with no backend impact. Ship first.
 
-### Defer to v2.1:
+- [ ] Remove "2026 calendar year" text from GivingSummaryCard
+- [ ] Remove "Updated today" text from MonthlyGiftsCard
+- [ ] Remove "Recent Journal Activity" tile from Dashboard
+- [ ] Rename "Prospect" to "Potential Donor" in ContactList, ContactForm, ContactDetail
+- [ ] Remove Fund and Description columns from gifts page; add Type column
+- [ ] Remove Fund column from pledges page
+- [ ] Remove Review Queue and heatmap from analytics dashboard
+- [ ] Audit and fix any non-centered dialog usages
 
-- **Generic CSV import layer** (contacts, donations): Most users will use RE imports. Separate generic layer is lower priority.
-- **Focus Mode for prayer**: The Today's Focus list view is sufficient for launch. Full immersive Focus Mode with keyboard shortcuts is polish.
-- **Persistent tile order**: Explicitly out of scope per PROJECT.md. Session-only is the decision.
-- **Prayer completion statistics**: "You prayed for 12 people this week" -- nice but not launch-critical.
+### Phase 2: Dashboard Enhancements
 
----
+Moderate frontend changes to dashboard layout and interaction.
+
+- [ ] Add bar/line chart toggle to MonthlyGiftsCard
+- [ ] Reduce dashboard gap/spacing for tighter layout
+- [ ] Implement cross-section tile dragging (flatten to single SortableContext)
+
+### Phase 3: Journal Report Rebuild + Checkbox Behavior
+
+Complete replacement of journal report and grid interaction change. Coupled because both modify the journal detail page.
+
+- [ ] Create new JournalReport.tsx with 4 metric cards (Total Contacts, With Decisions, Confirmed $, Pending)
+- [ ] Add progress-toward-goal bar with animated fill
+- [ ] Add contacts-by-stage bar chart (6 stages, specific hex colors)
+- [ ] Add decision-status donut chart (pending/confirmed/declined/canceled)
+- [ ] Add conditional alert sections (stalled contacts, open next steps)
+- [ ] Remove PipelineBreakdown chart from report
+- [ ] Change stage checkbox click to directly log event (skip LogEventDialog)
+- [ ] Ensure dialog still accessible for adding notes (e.g., click filled checkbox)
+
+### Phase 4: Begin Prayer
+
+Enhancement to existing prayer feature.
+
+- [ ] Add "Begin Prayer" button/entry point to prayer page or TodaysFocus
+- [ ] Enhance PrayerFocusMode with session framing (optional timer/duration display)
+- [ ] Create richer completion summary (total time, per-intention breakdown)
+- [ ] Decide on persistence: client-side only vs. PrayerSession model
+
+### Phase 5: Mission Supervisor Role
+
+Highest complexity. Backend model changes, permission expansion, frontend.
+
+- [ ] Add `SUPERVISOR = 'supervisor', 'Supervisor'` to UserRole TextChoices + migration
+- [ ] Add `supervised_missionaries = models.ManyToManyField('self', symmetrical=False, related_name='supervisors', blank=True)` to User model + migration
+- [ ] Create `IsSupervisorOrAdmin` permission class that checks role and M2M assignment
+- [ ] Modify insights service functions to accept optional `user_ids` filter parameter for scoping queries to assigned missionaries only
+- [ ] Update all 13 admin-only views in insights app to use `IsSupervisorOrAdmin` and pass scoped user list to services
+- [ ] Add missionary selector dropdown to admin analytics dashboard (shared between supervisor and admin)
+- [ ] Add "view as missionary" to personal dashboard: load another user's dashboard data via `?user_id=` API parameter
+- [ ] Admin UI for assigning missionaries to supervisors (UserDetail or dedicated page)
+- [ ] Frontend route guard updates: supervisor can access /admin/analytics but not /admin (user management)
+
+## Feature Prioritization Matrix
+
+| Feature | User Value | Implementation Cost | Priority |
+|---------|------------|---------------------|----------|
+| Dashboard text cleanup | MEDIUM | LOW | P1 |
+| Rename Prospect to Potential Donor | MEDIUM | LOW | P1 |
+| Remove Fund/Description columns (gifts) | MEDIUM | LOW | P1 |
+| Remove Fund column (pledges) | LOW | LOW | P1 |
+| Remove Review Queue + heatmap (analytics) | MEDIUM | LOW | P1 |
+| Center dialogs | LOW | LOW | P1 |
+| Chart toggle (bar/line) | MEDIUM | LOW | P1 |
+| Dashboard gap resize | MEDIUM | LOW | P1 |
+| Dashboard drag anywhere | MEDIUM | MEDIUM | P2 |
+| Journal report rebuild | HIGH | MEDIUM | P1 |
+| Stage checkbox direct-check | HIGH | MEDIUM | P1 |
+| Begin Prayer session | MEDIUM | MEDIUM | P2 |
+| Mission Supervisor role | HIGH | HIGH | P1 |
+
+**Priority key:**
+- P1: Must have for v2.2 milestone
+- P2: Should have, include if schedule permits
+
+## Existing Code Impact Analysis
+
+### Backend Changes Required
+
+| Feature | Models | Views | Serializers | Permissions | Services | Migrations |
+|---------|--------|-------|-------------|-------------|----------|------------|
+| Mission Supervisor | User (role + M2M) | 13+ insights views | User serializer | New IsSupervisorOrAdmin | All insights services | Yes (2) |
+| Begin Prayer | Optional PrayerSession | Optional session endpoints | Optional | None | None | Optional |
+| Journal checkbox | None | None | None | None | None | None |
+| Rename Prospect label | ContactStatus display | None | None | None | None | Optional (1) |
+| All other UI polish | None | None | None | None | None | None |
+
+### Frontend Changes Required
+
+| Feature | Pages | Components | Hooks | API Client | Types |
+|---------|-------|------------|-------|------------|-------|
+| Dashboard mods | Dashboard.tsx | GivingSummaryCard, MonthlyGiftsCard, SortableDashboardTile | None | None | None |
+| Column removals | DonationList.tsx, PledgeList (pledges page) | None | None | None | None |
+| Dialog centering | Up to 7 dialog consumers | dialog.tsx (verify) | None | None | None |
+| Label rename | ContactList, ContactForm, ContactDetail | None | None | None | None |
+| Analytics removal | AdminAnalyticsDashboard.tsx | ActivityHeatmap, ReviewQueue refs | None | None | None |
+| Chart toggle | None | MonthlyGiftsCard.tsx | None | None | None |
+| Journal report | JournalDetail.tsx | New JournalReport.tsx, modify StageCell.tsx, remove old ReportCharts | useJournals hooks | journals.ts (maybe) | journal types |
+| Begin Prayer | PrayerList.tsx | New or modified PrayerFocusMode | usePrayers hooks | prayers.ts (optional) | prayer types |
+| Mission Supervisor | AdminAnalyticsDashboard.tsx, Dashboard.tsx | New MissionarySelector, route guards | useInsights, useUsers | insights.ts, users.ts | User types |
+
+## Technical Notes
+
+### Mission Supervisor -- Scoped Visibility Pattern
+
+The existing codebase uses role-based scoping in two patterns:
+
+**1. Service-level scoping** (e.g., `_scope_gifts(user)` in `apps/insights/services.py`):
+```python
+def _scope_gifts(user):
+    if user.role in ['admin', 'finance', 'read_only']:
+        return Gift.objects.all()
+    return Gift.objects.filter(donor_contact__owner=user)
+```
+This must be extended for SUPERVISOR: query all gifts where `donor_contact__owner__in=user.supervised_missionaries.all()`.
+
+**2. View-level permission** (`IsAdmin` in `apps/core/permissions.py`):
+```python
+class IsAdmin(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.role == 'admin'
+```
+Must become `IsSupervisorOrAdmin` checking `role in ['admin', 'supervisor']`. For supervisor, must also verify the requested user_id (if any) is in their supervised_missionaries set.
+
+**Why M2M not FK:** `supervised_missionaries = ManyToManyField('self', symmetrical=False)` because:
+- One supervisor oversees multiple missionaries (5-15 typical)
+- One missionary could have multiple supervisors (team lead + regional director)
+- symmetrical=False because A supervises B does not mean B supervises A
+- Admin assigns via M2M add/remove, clean Django admin integration
+
+**All 13 admin-only views that need modification:**
+1. DashboardOverviewView
+2. StalledContactsView
+3. UserPerformanceView
+4. ConversionFunnelView
+5. TeamActivityView
+6. TeamTrendsView
+7. UserTrendsView
+8. UserJournalsView
+9. StageContactsView
+10. UserDrilldownView
+11. ActivityHeatmapView (being removed from UI but endpoint stays)
+12. ReviewQueueView (being removed from UI but endpoint stays)
+13. CSV export views in `export_views.py`
+
+### Journal Report -- Checkbox Behavior Change
+
+**Current flow:** Click empty stage cell -> `onCellClick` fires -> Opens LogEventDialog -> User fills event type + notes -> API POST creates stage event -> Cell refreshes with checkmark.
+
+**Desired flow:** Click empty stage cell -> API POST auto-creates stage event with default type -> Cell refreshes with checkmark immediately. No dialog.
+
+Implementation: StageCell's `handleClick` calls a new "quick log" function that POSTs `{ stage, contact_id, journal_id, event_type: 'completed' }` directly. The existing `onCellClick` prop is repurposed or a new `onQuickLog` prop added. For adding notes after the fact, clicking a FILLED checkbox could open the EventTimelineDrawer where notes can be added to the existing event.
+
+### Dashboard Drag Anywhere -- Architecture Decision
+
+Current Dashboard.tsx structure:
+```tsx
+<DndContext>
+  <SortableContext items={givingOrder}>    {/* 2 items, lg:grid-cols-2 */}
+  <SortableContext items={statsOrder}>     {/* 4 items, lg:grid-cols-4 */}
+  {/* MPD section - NOT draggable */}
+  <SortableContext items={contentOrder}>   {/* 5 items, lg:grid-cols-2 */}
+</DndContext>
+```
+
+**Recommended approach:** Flatten into single SortableContext. Unified array of all tile IDs. Single responsive grid (e.g., `grid-cols-1 md:grid-cols-2 lg:grid-cols-4`). Each tile spans columns based on its type via `col-span-*` classes. This gives full drag freedom while maintaining visual hierarchy through CSS.
+
+**Alternative (if section separation is important):** Keep 3 SortableContexts but modify `handleDragEnd` to detect cross-section moves and transfer items between arrays. More complex, preserves distinct section grids.
+
+### "View as Missionary" Dashboard
+
+For supervisor/admin to see a missionary's personal dashboard:
+- Add `?user_id=<uuid>` query parameter to dashboard API endpoint
+- Backend: if requester is admin, return that user's data. If supervisor, verify user_id is in supervised_missionaries, then return that user's data. If staff, ignore parameter (own data only).
+- Frontend: missionary selector dropdown at top of Dashboard page (visible to admin/supervisor only). Selecting a missionary appends `?user_id=` to API calls.
+- All existing dashboard service functions (`get_dashboard_summary`, `get_donations_by_month`, etc.) already accept a `user` parameter -- just need to resolve the target user from the query param.
 
 ## Sources
 
-### Raiser's Edge CSV Format
-- [Exporting Raiser's Edge for CiviCRM (Megaphone)](https://hq.megaphonetech.com/projects/commons/wiki/Exporting_Raisers_Edge_for_CiviCRM) -- RE export structure, table relationships, CONSTIT_SOLICITORS table
-- [Split Gift Import (Blackbaud KB)](https://blackbaud.my.salesforce-sites.com/bbknowledge/articles/Article/38556) -- GSplitFund, GSplitAmt, GSplitCamp headers
-- [RE NXT Gift Export (GiveCampus)](https://support.givecampus.com/hc/en-us/articles/29093884332311-Raiser-s-Edge-NXT-Integration-Gift-Export-Setup-Management) -- Gift export field list
-- [Importing Recurring Gift Schedules (Omatic)](https://omaticsoftware.com/blog/importing-recurring-gift-schedules-to-the-raisers-edge/) -- Recurring gift field structure
-- [RE NXT Split Gift Export Ideas (Blackbaud)](https://renxt.ideas.aha.io/ideas/RENXT-I-8179) -- Split gift export to multiple rows behavior
-- [Split Gift Mapping (Zeidman/Importacular)](https://www.zeidman.info/docs/importacular-user-guide-3/import-to-gift/split-gift-mapping/) -- Split gift data model
-- [Fundraising Report Card RE Setup](https://fundraisingreportcard.com/help/raisers-edge/) -- Constituent ID, Gift Date, Gift Amount field names
-- [Recurring Gift Schedules (RE-Decoded)](https://www.re-decoded.com/2009/08/recurring-gift-schedules/) -- GIFT_fld_Installment_Frequency, GIFT_fld_Date_1st_Pay
-- Project prompts: `/prompts/CSV_import_system_1.md`, `/prompts/CSV_import_system_2.md` -- Exact CSV headers and data model specs (HIGH confidence)
-
-### Gift Credit Splitting
-- [Nonprofit Gift Coding: Solicitor Credit vs. Soft Credit (LinkedIn)](https://www.linkedin.com/pulse/nonprofit-gift-coding-solicitor-credit-vs-soft-rebel-saffold-iii) -- Hard/soft credit patterns in nonprofit CRMs
-- [Recording Soft Credits (Beacon CRM)](https://guide.beaconcrm.org/en/articles/6817580-recording-soft-credits) -- Split payment UI pattern
-- [Why You Should Use Soft Credits (Neon One)](https://neonone.com/resources/blog/soft-credits/) -- Soft credit reporting patterns
-- [RE NXT Solicitor Ideas (Blackbaud)](https://renxt.ideas.aha.io/ideas/NXT-I-42) -- Solicitor/Fundraiser type in RE
-- [Hard or Soft Credit (FreeLikeAPuppy)](https://www.freelikeapuppy.tech/post/hard-or-soft-credit-where-credit-is-due-part-1) -- Credit types explained
-- [Salesforce NPSP Soft Credits (Mirketa)](https://mirketa.com/unleashing-soft-credit-and-marketing-gift-in-nonprofit-cloud-a-revolutionary-approach-to-fundraising/) -- Salesforce soft credit model
-
-### Prayer Intentions
-- [Echo Prayer App](https://www.echoprayer.com/) -- Prayer status tracking, reminders, "mark as answered"
-- [iPrayerworks](https://iprayerworks.com/requests.cfm) -- Prayer request management for prayer teams
-- [ChurchSpring Prayer Tool](https://churchspring.com/prayer/) -- Prayer status updates, member profile integration
-- [Planning Center People](https://www.planningcenter.com/people) -- Prayer request via forms, workflow automation, note notifications
-- [Breeze ChMS Prayer Requests](https://support.breezechms.com/hc/en-us/articles/360019590934-Storing-Prayer-Requests) -- Prayer request storage patterns
-- [DonorElf](https://www.donorelf.com/) -- Missionary CRM with prayer partner tracking
-- [ChurchCMS E-Prayers](https://churchcms.app/features) -- Prayer request broadcast and community prayer
-- Project prompt: `/prompts/prayer_intentions.md` -- UX design philosophy and visual specs (HIGH confidence)
-
-### Draggable Dashboard Tiles
-- [dnd-kit Official Docs - Sortable](https://dndkit.com/presets/sortable) -- rectSortingStrategy, useSortable hook, closestCenter collision detection
-- [Top 5 Drag-and-Drop Libraries for React (2026)](https://puckeditor.com/blog/top-5-drag-and-drop-libraries-for-react) -- Library comparison, dnd-kit recommended
-- [Interactive Dashboards with React-Grid-Layout (ilert)](https://www.ilert.com/blog/building-interactive-dashboards-why-react-grid-layout-was-our-best-choice) -- Dashboard tile UX patterns, library evaluation criteria
-- [dnd-kit GitHub](https://github.com/clauderic/dnd-kit) -- Library features, accessibility, grid support
-- [Building Customizable Dashboard Widgets (AntStack)](https://medium.com/@antstack/building-customizable-dashboard-widgets-using-react-grid-layout-234f7857c124) -- Dashboard widget UX patterns
-- [Drag and Drop Dashboards with React DnD (Ensolvers)](https://www.ensolvers.com/post/drag-and-drop-dashboards-with-react-dnd) -- Dashboard drag-and-drop architecture
-- [The Ultimate Drag-and-Drop Toolkit: dnd-kit (BrightCoding)](http://www.blog.brightcoding.dev/2025/08/21/the-ultimate-drag-and-drop-toolkit-for-react-a-deep-dive-into-dnd-kit) -- Deep dive into dnd-kit API
+- Existing codebase analysis (all files cited inline) -- HIGH confidence
+- Feature specs from `prompts/mission_supervisor.md`, `prompts/journal_report.md`, `prompts/dashboard_modification.md` -- HIGH confidence (direct user requirements)
+- DonorCRM `.planning/PROJECT.md` for constraints, current state, out-of-scope items -- HIGH confidence
+- `.planning/codebase/ARCHITECTURE.md` for permission and scoping patterns -- HIGH confidence
+- `.planning/EDGE_CASE_AUDIT.md` for known journal system issues -- HIGH confidence
+- Existing component code: `dialog.tsx`, `PrayerFocusMode.tsx`, `StageCell.tsx`, `Dashboard.tsx`, `AdminAnalyticsDashboard.tsx`, `GivingSummaryCard.tsx`, `MonthlyGiftsCard.tsx`, `DonationList.tsx` -- HIGH confidence (direct source reading)
 
 ---
-*Feature landscape research for: DonorCRM v2.0*
-*Researched: 2026-02-20*
-*Confidence: HIGH (project prompts provide exact specs; external research validates patterns)*
+*Feature research for: DonorCRM v2.2 UI Polish, Journal Report, Mission Supervisor & Begin Prayer*
+*Researched: 2026-02-26*
+*Confidence: HIGH (all features reference existing codebase with exact file/line locations; specs from user prompts)*
