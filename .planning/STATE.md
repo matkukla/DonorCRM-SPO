@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: UI Polish, Journal Report & Supervisor Role
 status: unknown
-last_updated: "2026-02-27T19:14:22.819Z"
+last_updated: "2026-02-27T19:48:06.628Z"
 progress:
-  total_phases: 24
-  completed_phases: 24
-  total_plans: 71
-  completed_plans: 71
+  total_phases: 25
+  completed_phases: 25
+  total_plans: 73
+  completed_plans: 73
 ---
 
 # Project State
@@ -24,9 +24,9 @@ See: .planning/PROJECT.md (updated 2026-02-26)
 
 Milestone: v2.2 UI Polish, Journal Report & Supervisor Role
 Phase: 40 of 42 (Journal Report & Grid Behavior)
-Plan: 0 of ? in current phase
-Status: Phase 39 complete, ready for Phase 40
-Last activity: 2026-02-27 — Completed 39-02 (Flat Grid Restructure & Spacing)
+Plan: 2 of 2 in current phase
+Status: Plan 40-02 complete
+Last activity: 2026-02-27 — Completed 40-02 (Grid Column Reorder & Instant Stage Toggle)
 
 Progress: [██████████] 100%
 
@@ -53,6 +53,7 @@ Progress: [██████████] 100%
 | Phase 38 P03 | 7min | 2 tasks | 12 files |
 | Phase 39 P01 | 4min | 2 tasks | 11 files |
 | Phase 39 P02 | 20min | 2 tasks | 10 files |
+| Phase 40 P02 | 2min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -73,6 +74,9 @@ v2.2 decisions:
 - Read initial tile order from useAuth() user object to avoid extra API call (39-02)
 - Debounced save (1s) on drag end to avoid API spam during rapid rearrangements (39-02)
 - Used data-tile-id attribute for DragOverlay width measurement instead of ref forwarding (39-02)
+- Split PIPELINE_STAGES into STAGES_BEFORE_DECISION/STAGES_AFTER_DECISION for grid column reorder (40-02)
+- Removed transition warning toasts for independent stage toggles per JRNL-08 (40-02)
+- Default event types per stage for instant toggle: call_logged, meeting_completed, ask_made, etc. (40-02)
 
 ### Research Flags
 
@@ -98,9 +102,9 @@ None active.
 ## Session Continuity
 
 Last session: 2026-02-27
-Stopped at: Completed 39-02-PLAN.md (Phase 39 complete)
-Resume: Continue with Phase 40 (Journal Report & Grid Behavior)
+Stopped at: Completed 40-02-PLAN.md
+Resume: Continue with Phase 40 plan 01 (if not yet complete) or Phase 41
 
 ---
 
-*Last updated: 2026-02-27 (Completed 39-02, flat grid restructure & spacing)*
+*Last updated: 2026-02-27 (Completed 40-02, grid column reorder & instant stage toggle)*
