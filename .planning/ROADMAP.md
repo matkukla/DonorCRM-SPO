@@ -109,7 +109,7 @@ See milestones/v2.1-ROADMAP.md for complete phase details.
 
 **Milestone Goal:** Refine the UI across all major pages, rebuild the journal report component, add Begin Prayer flow, and introduce the Mission Supervisor role with scoped visibility.
 
-- [ ] **Phase 38: UI Polish & List Page Cleanup** - Center dialogs, rename labels, and clean up list page columns across contacts, gifts, pledges, and analytics
+- [x] **Phase 38: UI Polish & List Page Cleanup** - Center dialogs, rename labels, and clean up list page columns across contacts, gifts, pledges, and analytics (completed 2026-02-27)
 - [ ] **Phase 39: Dashboard Modifications** - Remove stale text and tiles, tighten spacing, add chart toggle, and enable cross-section tile dragging
 - [ ] **Phase 40: Journal Report & Grid Behavior** - Rebuild journal report with new metrics/charts and make grid stage checkboxes directly clickable
 - [ ] **Phase 41: Begin Prayer** - Add a dedicated prayer session entry point that launches expanded Focus Mode
@@ -208,7 +208,7 @@ Phases execute in numeric order: 38 -> 39 -> 40 -> 41 -> 42
 | 20-26 | v1.3 | 20/20 | Complete | 2026-02-19 |
 | 27-36 | v2.0 | 27/27 | Complete | 2026-02-25 |
 | 37 | v2.1 | 3/3 | Complete | 2026-02-25 |
-| 38. UI Polish & List Page Cleanup | 1/3 | In Progress|  | - |
+| 38. UI Polish & List Page Cleanup | 3/3 | Complete   | 2026-02-27 | - |
 | 39. Dashboard Modifications | v2.2 | 0/? | Not started | - |
 | 40. Journal Report & Grid Behavior | v2.2 | 0/? | Not started | - |
 | 41. Begin Prayer | v2.2 | 0/? | Not started | - |

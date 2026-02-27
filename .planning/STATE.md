@@ -24,11 +24,11 @@ See: .planning/PROJECT.md (updated 2026-02-26)
 
 Milestone: v2.2 UI Polish, Journal Report & Supervisor Role
 Phase: 38 of 42 (UI Polish & List Page Cleanup)
-Plan: 2 of 3 in current phase
-Status: Executing
-Last activity: 2026-02-27 — Completed 38-02 (Sheet-to-Dialog + Prospect rename)
+Plan: 3 of 3 in current phase
+Status: Phase complete
+Last activity: 2026-02-27 — Completed 38-03 (Remove Review Queue + Activity Heatmap)
 
-Progress: [██████░░░░] 66%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -48,7 +48,9 @@ Progress: [██████░░░░] 66%
 | v2.0 (Phases 27-36) | 27 | 10 | 46 |
 | v2.1 (Phase 37) | 3 | 1 | — |
 | v2.2 (Phases 38-42) | ? | 5 | 26 |
+| Phase 38 P01 | 7min | 2 tasks | 10 files |
 | Phase 38 P02 | 3min | 2 tasks | 10 files |
+| Phase 38 P03 | 7min | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -59,7 +61,11 @@ All decisions logged in PROJECT.md Key Decisions table.
 v2.2 decisions:
 - Dialog-first modal pattern: all overlays use centered Dialog with max-h-[80vh] and overflow-y-auto
 - EventTimelineDrawer: LogEventDialog moved outside Dialog as sibling wrapped in Fragment to avoid nested portal issues
-- DonationDetail.tsx Sheet import left as-is (out of scope for plan 02)
+- DonationDetail converted from Sheet to Dialog (38-01)
+- Used 'none' sentinel value for empty Radix UI Select options (payment_type)
+- Removed Fund filter from gifts list since Fund column was removed
+- Review Queue removal was already done in plan 02 commit; no duplicate commit needed (38-03)
+- Removed @uiw/react-heat-map package to reduce bundle size (38-03)
 
 ### Research Flags
 
@@ -85,9 +91,9 @@ None active.
 ## Session Continuity
 
 Last session: 2026-02-27
-Stopped at: Completed 38-02-PLAN.md
-Resume: `/gsd:execute-phase` for 38-03
+Stopped at: Completed 38-03-PLAN.md (Phase 38 complete)
+Resume: `/gsd:plan-phase 39`
 
 ---
 
-*Last updated: 2026-02-27 (Completed 38-02)*
+*Last updated: 2026-02-27 (Completed 38-03, Phase 38 complete)*

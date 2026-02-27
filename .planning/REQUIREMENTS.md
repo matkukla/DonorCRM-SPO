@@ -20,14 +20,14 @@ Requirements for v2.2 milestone. Each maps to roadmap phases.
 
 - [x] **UI-01**: All modal dialogs are centered on screen
 - [x] **UI-02**: "Prospect" is renamed to "Potential Donor" on contacts page
-- [ ] **UI-03**: Fund and Description columns are removed from gifts list page
-- [ ] **UI-04**: Type column (Credit Card / Direct Deposit / Check) is added to gifts list page
-- [ ] **UI-05**: Fund column is removed from pledges list page
+- [x] **UI-03**: Fund and Description columns are removed from gifts list page
+- [x] **UI-04**: Type column (Credit Card / Direct Deposit / Check) is added to gifts list page
+- [x] **UI-05**: Fund column is removed from pledges list page
 
 ### Analytics
 
-- [ ] **ANLY-01**: Review Queue is removed from the analytics dashboard
-- [ ] **ANLY-02**: Activity heat map is removed from the analytics dashboard
+- [x] **ANLY-01**: Review Queue is removed from the analytics dashboard
+- [x] **ANLY-02**: Activity heat map is removed from the analytics dashboard
 
 ### Journal
 
@@ -90,11 +90,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | UI-01 | Phase 38 | Complete |
 | UI-02 | Phase 38 | Complete |
-| UI-03 | Phase 38 | Pending |
-| UI-04 | Phase 38 | Pending |
-| UI-05 | Phase 38 | Pending |
-| ANLY-01 | Phase 38 | Pending |
-| ANLY-02 | Phase 38 | Pending |
+| UI-03 | Phase 38 | Complete |
+| UI-04 | Phase 38 | Complete |
+| UI-05 | Phase 38 | Complete |
+| ANLY-01 | Phase 38 | Complete |
+| ANLY-02 | Phase 38 | Complete |
 | DASH-01 | Phase 39 | Pending |
 | DASH-02 | Phase 39 | Pending |
 | DASH-03 | Phase 39 | Pending |
