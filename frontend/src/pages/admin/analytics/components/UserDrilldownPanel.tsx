@@ -1,11 +1,11 @@
 import { Link } from "react-router-dom"
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet"
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   Table,
   TableBody,
@@ -29,8 +29,8 @@ export function UserDrilldownPanel({ open, userId, onClose }: UserDrilldownPanel
   const { data, isLoading } = useAdminUserDrilldown(userId)
 
   return (
-    <Sheet open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+      <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
         {isLoading ? (
           <div className="space-y-6">
             <div className="h-16 bg-muted rounded animate-pulse" />
@@ -43,12 +43,12 @@ export function UserDrilldownPanel({ open, userId, onClose }: UserDrilldownPanel
           </div>
         ) : data ? (
           <div className="space-y-6">
-            <SheetHeader>
-              <SheetTitle>{data.user.name}</SheetTitle>
-              <SheetDescription>
+            <DialogHeader>
+              <DialogTitle>{data.user.name}</DialogTitle>
+              <DialogDescription>
                 {data.user.email} • {data.user.role}
-              </SheetDescription>
-            </SheetHeader>
+              </DialogDescription>
+            </DialogHeader>
 
             {/* Key Stats Grid */}
             <div className="space-y-4">
@@ -186,7 +186,7 @@ export function UserDrilldownPanel({ open, userId, onClose }: UserDrilldownPanel
             </div>
           </div>
         ) : null}
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   )
 }

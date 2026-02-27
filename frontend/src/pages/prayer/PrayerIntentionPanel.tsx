@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from "react"
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet"
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -124,19 +124,19 @@ export function PrayerIntentionPanel({
   const isPending = createMutation.isPending || updateMutation.isPending
 
   return (
-    <Sheet open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+      <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
         <form onSubmit={handleSubmit} className="space-y-6">
-          <SheetHeader>
-            <SheetTitle className="font-serif text-amber-900 dark:text-amber-100">
+          <DialogHeader>
+            <DialogTitle className="font-serif text-amber-900 dark:text-amber-100">
               {isEdit ? "Edit Prayer Intention" : "Add Prayer Intention"}
-            </SheetTitle>
-            <SheetDescription className="text-amber-700/80 dark:text-amber-400/60">
+            </DialogTitle>
+            <DialogDescription className="text-amber-700/80 dark:text-amber-400/60">
               {isEdit
                 ? "Update this prayer intention."
                 : "Create a new prayer intention for a contact."}
-            </SheetDescription>
-          </SheetHeader>
+            </DialogDescription>
+          </DialogHeader>
 
           {/* Title */}
           <div className="space-y-2">
@@ -257,7 +257,7 @@ export function PrayerIntentionPanel({
             )}
           </div>
         </form>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   )
 }
