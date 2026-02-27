@@ -31,7 +31,7 @@ function formatDate(dateStr: string | null): string {
 export function LateDonations({ donations, totalCount, isLoading, onQuickLog }: LateDonationsProps) {
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Clock className="h-5 w-5 text-destructive" />
@@ -47,7 +47,7 @@ export function LateDonations({ donations, totalCount, isLoading, onQuickLog }: 
           )}
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-4 pt-0 pb-4">
         {isLoading ? (
           <div className="space-y-3">
             {[...Array(3)].map((_, i) => (

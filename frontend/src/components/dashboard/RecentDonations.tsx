@@ -35,11 +35,11 @@ function formatDate(dateStr: string): string {
 export function RecentDonations({ donations, isLoading }: RecentDonationsProps) {
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="p-4">
         <CardTitle>Recent Donations</CardTitle>
         <CardDescription>Latest gifts received</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-4 pt-0 pb-4">
         {isLoading ? (
           <div className="space-y-3">
             {[...Array(5)].map((_, i) => (
