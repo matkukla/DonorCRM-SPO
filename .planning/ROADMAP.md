@@ -8,6 +8,7 @@
 - ✅ **v1.3 Smartsheet Import, Filters & Polish** -- Phases 20-26 (shipped 2026-02-19)
 - ✅ **v2.0 Import Revamp, Prayer Intentions & Dashboard Polish** -- Phases 27-36 (shipped 2026-02-25)
 - ✅ **v2.1 Security Hardening** -- Phase 37 (shipped 2026-02-25)
+- [ ] **v2.2 UI Polish, Journal Report & Supervisor Role** -- Phases 38-42 (in progress)
 
 ## Phases
 
@@ -104,7 +105,99 @@ See milestones/v2.1-ROADMAP.md for complete phase details.
 
 </details>
 
+### v2.2 UI Polish, Journal Report & Supervisor Role (In Progress)
+
+**Milestone Goal:** Refine the UI across all major pages, rebuild the journal report component, add Begin Prayer flow, and introduce the Mission Supervisor role with scoped visibility.
+
+- [ ] **Phase 38: UI Polish & List Page Cleanup** - Center dialogs, rename labels, and clean up list page columns across contacts, gifts, pledges, and analytics
+- [ ] **Phase 39: Dashboard Modifications** - Remove stale text and tiles, tighten spacing, add chart toggle, and enable cross-section tile dragging
+- [ ] **Phase 40: Journal Report & Grid Behavior** - Rebuild journal report with new metrics/charts and make grid stage checkboxes directly clickable
+- [ ] **Phase 41: Begin Prayer** - Add a dedicated prayer session entry point that launches expanded Focus Mode
+- [ ] **Phase 42: Mission Supervisor Role** - New role with scoped visibility, assignment management, and missionary dashboard selector
+
+## Phase Details
+
+### Phase 38: UI Polish & List Page Cleanup
+**Goal**: Users see a cleaner, more consistent UI across all list pages and modal dialogs
+**Depends on**: Nothing (first v2.2 phase)
+**Requirements**: UI-01, UI-02, UI-03, UI-04, UI-05, ANLY-01, ANLY-02
+**Success Criteria** (what must be TRUE):
+  1. Every modal dialog in the application opens centered on screen (not offset or side-sliding)
+  2. The contacts page displays "Potential Donor" everywhere that previously said "Prospect"
+  3. The gifts list page shows a Type column (Credit Card / Direct Deposit / Check) and no longer shows Fund or Description columns
+  4. The pledges list page no longer shows a Fund column
+  5. The analytics dashboard no longer shows the Review Queue section or the activity heat map
+**Plans**: TBD
+
+Plans:
+- [ ] 38-01: TBD
+- [ ] 38-02: TBD
+
+### Phase 39: Dashboard Modifications
+**Goal**: The missionary dashboard is visually tighter and more flexible with cleaner cards and full drag-and-drop control
+**Depends on**: Nothing (independent of Phase 38)
+**Requirements**: DASH-01, DASH-02, DASH-03, DASH-04, DASH-05, DASH-06
+**Success Criteria** (what must be TRUE):
+  1. User can toggle the Donations chart between bar chart and line graph views
+  2. User can drag any dashboard tile to any position across all sections (cross-section dragging works)
+  3. Dashboard tiles have visually reduced gaps between them compared to current layout
+  4. The Giving summary card no longer displays "2026 calendar year" text, and the Monthly Gifts card no longer displays "Updated today" text
+  5. The "Recent Journal Activity" tile is no longer visible on the dashboard
+**Plans**: TBD
+
+Plans:
+- [ ] 39-01: TBD
+
+### Phase 40: Journal Report & Grid Behavior
+**Goal**: Users get a rebuilt, actionable journal report and can advance contacts through pipeline stages with a single click
+**Depends on**: Nothing (independent of Phases 38-39)
+**Requirements**: JRNL-01, JRNL-02, JRNL-03, JRNL-04, JRNL-05, JRNL-06, JRNL-07, JRNL-08
+**Success Criteria** (what must be TRUE):
+  1. Journal report tab displays 4 metric cards (Total Contacts, With Decisions, Confirmed $, Pending), a goal progress bar, a Contacts by Stage bar chart, and a Decision Status donut chart
+  2. Journal report shows conditional alert sections for stalled contacts and open next steps when applicable
+  3. Pipeline Breakdown chart is no longer visible in journal reports
+  4. User can click a stage checkbox in the journal grid and it immediately checks (auto-creates a stage event) without opening a dialog
+  5. A Decision column exists between Close and Thank in the journal grid, and clicking it opens a decision creation flow (not a checkbox)
+**Plans**: TBD
+
+Plans:
+- [ ] 40-01: TBD
+- [ ] 40-02: TBD
+- [ ] 40-03: TBD
+
+### Phase 41: Begin Prayer
+**Goal**: Users can launch a dedicated prayer session directly from the Prayer Request page
+**Depends on**: Nothing (independent of all other phases)
+**Requirements**: PRAY-01
+**Success Criteria** (what must be TRUE):
+  1. The Prayer Request page displays a prominent "Begin Prayer" button
+  2. Clicking "Begin Prayer" launches the expanded Focus Mode with today's prayer intentions loaded
+**Plans**: TBD
+
+Plans:
+- [ ] 41-01: TBD
+
+### Phase 42: Mission Supervisor Role
+**Goal**: Organization leadership can assign supervisors to missionaries, and supervisors see only their assigned missionaries' data across the entire application
+**Depends on**: Phases 38-41 (execute last to avoid merge conflicts with Q helper refactor across 40+ views)
+**Requirements**: SUPV-01, SUPV-02, SUPV-03, SUPV-04
+**Success Criteria** (what must be TRUE):
+  1. Mission Supervisor exists as a selectable role in the system, and admin can assign it to a user
+  2. Admin can assign specific missionaries to a supervisor via the user management UI
+  3. A supervisor sees only their assigned missionaries' data on all pages (contacts, gifts, recurring gifts, tasks, journals, prayers, analytics)
+  4. Admin and supervisor can select a missionary from a dropdown and view that missionary's personal dashboard
+**Plans**: TBD
+
+Plans:
+- [ ] 42-01: TBD
+- [ ] 42-02: TBD
+- [ ] 42-03: TBD
+- [ ] 42-04: TBD
+
 ## Progress
+
+**Execution Order:**
+Phases execute in numeric order: 38 -> 39 -> 40 -> 41 -> 42
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -114,9 +207,14 @@ See milestones/v2.1-ROADMAP.md for complete phase details.
 | 20-26 | v1.3 | 20/20 | Complete | 2026-02-19 |
 | 27-36 | v2.0 | 27/27 | Complete | 2026-02-25 |
 | 37 | v2.1 | 3/3 | Complete | 2026-02-25 |
+| 38. UI Polish & List Page Cleanup | v2.2 | 0/? | Not started | - |
+| 39. Dashboard Modifications | v2.2 | 0/? | Not started | - |
+| 40. Journal Report & Grid Behavior | v2.2 | 0/? | Not started | - |
+| 41. Begin Prayer | v2.2 | 0/? | Not started | - |
+| 42. Mission Supervisor Role | v2.2 | 0/? | Not started | - |
 
-**Total:** 6 milestones shipped, 107 plans executed across 37 phases
+**Total:** 6 milestones shipped, 107 plans executed across 37 phases. v2.2 in progress (5 phases, 26 requirements).
 
 ---
 
-*Last updated: 2026-02-25 (v2.1 shipped)*
+*Last updated: 2026-02-26 (v2.2 roadmap created)*

@@ -78,7 +78,7 @@ Explicitly excluded. Documented to prevent scope creep.
 | Supervisor can edit missionary data | Breaks ownership model; supervisor role is view-only |
 | Supervisor self-assignment | Breaks admin control over org structure; security risk |
 | Dynamic column visibility toggle | Over-engineered for current needs; curate correct defaults instead |
-| Backend "prospect" → "potential_donor" value change | Display-only rename sufficient; data migration unnecessary |
+| Backend "prospect" -> "potential_donor" value change | Display-only rename sufficient; data migration unnecessary |
 | Real-time prayer session sync | No WebSocket infrastructure; prayer is personal |
 | Persistent dashboard tile order (backend) | Requires user preferences model; session-only sufficient |
 
@@ -88,38 +88,38 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DASH-01 | — | Pending |
-| DASH-02 | — | Pending |
-| DASH-03 | — | Pending |
-| DASH-04 | — | Pending |
-| DASH-05 | — | Pending |
-| DASH-06 | — | Pending |
-| UI-01 | — | Pending |
-| UI-02 | — | Pending |
-| UI-03 | — | Pending |
-| UI-04 | — | Pending |
-| UI-05 | — | Pending |
-| ANLY-01 | — | Pending |
-| ANLY-02 | — | Pending |
-| JRNL-01 | — | Pending |
-| JRNL-02 | — | Pending |
-| JRNL-03 | — | Pending |
-| JRNL-04 | — | Pending |
-| JRNL-05 | — | Pending |
-| JRNL-06 | — | Pending |
-| JRNL-07 | — | Pending |
-| JRNL-08 | — | Pending |
-| PRAY-01 | — | Pending |
-| SUPV-01 | — | Pending |
-| SUPV-02 | — | Pending |
-| SUPV-03 | — | Pending |
-| SUPV-04 | — | Pending |
+| UI-01 | Phase 38 | Pending |
+| UI-02 | Phase 38 | Pending |
+| UI-03 | Phase 38 | Pending |
+| UI-04 | Phase 38 | Pending |
+| UI-05 | Phase 38 | Pending |
+| ANLY-01 | Phase 38 | Pending |
+| ANLY-02 | Phase 38 | Pending |
+| DASH-01 | Phase 39 | Pending |
+| DASH-02 | Phase 39 | Pending |
+| DASH-03 | Phase 39 | Pending |
+| DASH-04 | Phase 39 | Pending |
+| DASH-05 | Phase 39 | Pending |
+| DASH-06 | Phase 39 | Pending |
+| JRNL-01 | Phase 40 | Pending |
+| JRNL-02 | Phase 40 | Pending |
+| JRNL-03 | Phase 40 | Pending |
+| JRNL-04 | Phase 40 | Pending |
+| JRNL-05 | Phase 40 | Pending |
+| JRNL-06 | Phase 40 | Pending |
+| JRNL-07 | Phase 40 | Pending |
+| JRNL-08 | Phase 40 | Pending |
+| PRAY-01 | Phase 41 | Pending |
+| SUPV-01 | Phase 42 | Pending |
+| SUPV-02 | Phase 42 | Pending |
+| SUPV-03 | Phase 42 | Pending |
+| SUPV-04 | Phase 42 | Pending |
 
 **Coverage:**
-- v2.2 requirements: 24 total
-- Mapped to phases: 0
-- Unmapped: 24 ⚠️
+- v2.2 requirements: 26 total
+- Mapped to phases: 26
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-26*
-*Last updated: 2026-02-26 after initial definition*
+*Last updated: 2026-02-26 after roadmap creation*
