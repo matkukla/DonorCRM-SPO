@@ -16,7 +16,8 @@ import { SortableDashboardTile } from "@/components/dashboard/SortableDashboardT
 import { LogEventDialog } from "@/pages/journals/components/LogEventDialog"
 import { useMPDMyData } from "@/hooks/useMPD"
 import { MPDStatsInline } from "@/components/mpd/MPDStatsInline"
-import { Users, DollarSign, FileText, CheckSquare } from "lucide-react"
+import { Users, DollarSign, FileText, CheckSquare, RotateCcw } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { DndContext, DragOverlay, closestCenter, PointerSensor, useSensor, useSensors } from "@dnd-kit/core"
 import type { DragStartEvent, DragEndEvent } from "@dnd-kit/core"
 import { SortableContext, arrayMove, rectSortingStrategy } from "@dnd-kit/sortable"
@@ -126,11 +127,22 @@ export default function Dashboard() {
       <Container>
         <div className="space-y-4">
           {/* Header */}
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
-            <p className="text-muted-foreground mt-1">
-              Welcome back, {user?.first_name || "User"}
-            </p>
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
+              <p className="text-muted-foreground mt-1">
+                Welcome back, {user?.first_name || "User"}
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={resetToDefault}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+              Reset layout
+            </Button>
           </div>
 
           {/* Error State */}
@@ -161,16 +173,6 @@ export default function Dashboard() {
                 ))}
               </div>
             </SortableContext>
-
-            {/* Reset layout button */}
-            <div className="flex justify-end">
-              <button
-                onClick={resetToDefault}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Reset layout
-              </button>
-            </div>
 
             {/* MPD Section -- NOT draggable (Fragment children, conditional) */}
             {mpdLoading ? (
