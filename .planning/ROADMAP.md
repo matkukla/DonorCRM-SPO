@@ -127,11 +127,12 @@ See milestones/v2.1-ROADMAP.md for complete phase details.
   3. The gifts list page shows a Type column (Credit Card / Direct Deposit / Check) and no longer shows Fund or Description columns
   4. The pledges list page no longer shows a Fund column
   5. The analytics dashboard no longer shows the Review Queue section or the activity heat map
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 38-01: TBD
-- [ ] 38-02: TBD
+- [ ] 38-01-PLAN.md — Gift payment_type field + list/detail column updates (UI-03, UI-04, UI-05)
+- [ ] 38-02-PLAN.md — Sheet-to-Dialog conversion + Prospect rename (UI-01, UI-02)
+- [ ] 38-03-PLAN.md — Analytics cleanup: Review Queue + Heatmap removal (ANLY-01, ANLY-02)
 
 ### Phase 39: Dashboard Modifications
 **Goal**: The missionary dashboard is visually tighter and more flexible with cleaner cards and full drag-and-drop control
