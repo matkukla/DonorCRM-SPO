@@ -19,7 +19,6 @@ import {
   TrendingUp,
   AlertCircle,
   ListTodo,
-  ClipboardCheck,
   Receipt,
 } from "lucide-react"
 import { useAuth } from "@/providers/AuthProvider"
@@ -48,7 +47,6 @@ const insightsItems: NavItem[] = [
   { label: "Monthly Commitments", href: "/insights/monthly-commitments", icon: <TrendingUp className="h-4 w-4" /> },
   { label: "Late Donations", href: "/insights/late-donations", icon: <AlertCircle className="h-4 w-4" /> },
   { label: "Follow-ups", href: "/insights/follow-ups", icon: <ListTodo className="h-4 w-4" /> },
-  { label: "Review Queue", href: "/insights/review-queue", icon: <ClipboardCheck className="h-4 w-4" />, requiredRole: "admin" },
   { label: "Transactions", href: "/insights/transactions", icon: <Receipt className="h-4 w-4" />, requiredRole: "admin" },
 ]
 

@@ -40,7 +40,7 @@ import type { PrayerIntention, PrayerIntentionStatus } from "@/api/prayers"
 import { formatLocalDate } from "@/lib/utils"
 
 const statusLabels: Record<ContactStatus, string> = {
-  prospect: "Prospect",
+  prospect: "Potential Donor",
   donor: "Donor",
   lapsed: "Lapsed",
   major_donor: "Major Donor",

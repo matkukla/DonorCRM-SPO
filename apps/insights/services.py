@@ -230,34 +230,6 @@ def get_follow_ups(user, limit=50):
     }
 
 
-def get_review_queue(user):
-    """
-    Get items pending admin review.
-    Admin-only endpoint.
-    """
-    # Placeholder for review queue items
-    # In a real implementation, this would query items flagged for review
-    # For now, we'll return contacts needing thank-you as a proxy
-    from apps.contacts.models import Contact
-
-    contacts_needing_thankyou = Contact.objects.filter(
-        needs_thank_you=True
-    ).order_by('-last_gift_date')[:50]
-
-    return {
-        'items': [{
-            'id': str(c.id),
-            'type': 'thank_you',
-            'title': f'Send thank you to {c.full_name}',
-            'contact_id': str(c.id),
-            'contact_name': c.full_name,
-            'last_gift_amount': float(c.last_gift_amount) if c.last_gift_amount else None,
-            'last_gift_date': c.last_gift_date.isoformat() if c.last_gift_date else None,
-        } for c in contacts_needing_thankyou],
-        'total_count': Contact.objects.filter(needs_thank_you=True).count(),
-    }
-
-
 def get_transactions(user, limit=100, offset=0, contact_id=None, date_from=None, date_to=None):
     """
     Get full transaction ledger (gifts).

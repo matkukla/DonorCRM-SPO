@@ -11,7 +11,6 @@ from apps.insights.views import (
     FollowUpsView,
     LateDonationsView,
     MonthlyCommitmentsView,
-    ReviewQueueView,
     StalledContactsView,
     TeamActivityView,
     TeamTrendsView,
@@ -36,7 +35,6 @@ urlpatterns = [
     path('monthly-commitments/', MonthlyCommitmentsView.as_view(), name='monthly-commitments'),
     path('late-donations/', LateDonationsView.as_view(), name='late-donations'),
     path('follow-ups/', FollowUpsView.as_view(), name='follow-ups'),
-    path('review-queue/', ReviewQueueView.as_view(), name='review-queue'),
     path('transactions/', TransactionsView.as_view(), name='transactions'),
 
     # Admin analytics endpoints (Phase 13)

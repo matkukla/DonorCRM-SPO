@@ -14,13 +14,14 @@ class GiftFilterSet(django_filters.FilterSet):
     gift_date_before = django_filters.DateFilter(field_name='gift_date', lookup_expr='lte')
     min_amount = django_filters.NumberFilter(method='filter_min_amount')
     max_amount = django_filters.NumberFilter(method='filter_max_amount')
+    payment_type = django_filters.CharFilter(field_name='payment_type')
     owner = django_filters.NumberFilter(field_name='donor_contact__owner')
 
     class Meta:
         model = Gift
         fields = [
             'donor_contact', 'fund', 'gift_date_after', 'gift_date_before',
-            'min_amount', 'max_amount', 'owner',
+            'min_amount', 'max_amount', 'payment_type', 'owner',
         ]
 
     def filter_min_amount(self, queryset, name, value):
