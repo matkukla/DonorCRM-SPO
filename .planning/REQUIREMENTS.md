@@ -42,7 +42,7 @@ Requirements for v2.2 milestone. Each maps to roadmap phases.
 
 ### Prayer
 
-- [ ] **PRAY-01**: Prayer Request page has a "Begin Prayer" button that launches expanded Focus Mode
+- [x] **PRAY-01**: Prayer Request page has a "Begin Prayer" button that launches expanded Focus Mode
 
 ### Supervisor
 
@@ -109,7 +109,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | JRNL-06 | Phase 40 | Complete |
 | JRNL-07 | Phase 40 | Complete |
 | JRNL-08 | Phase 40 | Complete |
-| PRAY-01 | Phase 41 | Pending |
+| PRAY-01 | Phase 41 | Complete |
 | SUPV-01 | Phase 42 | Pending |
 | SUPV-02 | Phase 42 | Pending |
 | SUPV-03 | Phase 42 | Pending |
