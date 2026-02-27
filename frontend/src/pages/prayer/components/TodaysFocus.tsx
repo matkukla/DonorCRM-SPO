@@ -5,10 +5,10 @@ import { Heart, Sparkles } from "lucide-react"
 import { StatusBadge } from "./StatusBadge"
 
 interface TodaysFocusProps {
-  onStartFocusMode: () => void
+  onBeginPrayer: () => void
 }
 
-export function TodaysFocus({ onStartFocusMode }: TodaysFocusProps) {
+export function TodaysFocus({ onBeginPrayer }: TodaysFocusProps) {
   const { data: intentions, isLoading } = useTodaysFocus()
 
   return (
@@ -20,17 +20,13 @@ export function TodaysFocus({ onStartFocusMode }: TodaysFocusProps) {
             Today's Focus
           </h2>
         </div>
-        {intentions && intentions.length > 0 && (
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={onStartFocusMode}
-            className="gap-1.5"
-          >
-            <Sparkles className="h-4 w-4" />
-            Enter Focus Mode
-          </Button>
-        )}
+        <Button
+          onClick={onBeginPrayer}
+          className="gap-1.5 bg-amber-600 hover:bg-amber-700 text-white dark:bg-amber-700 dark:hover:bg-amber-600"
+        >
+          <Sparkles className="h-4 w-4" />
+          Begin Prayer
+        </Button>
       </div>
 
       {isLoading ? (
