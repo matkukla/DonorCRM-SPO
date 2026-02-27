@@ -16,6 +16,7 @@ import type {
   StageActivityItem,
   PipelineBreakdownItem,
   NextStepsQueueItem,
+  JournalReportData,
 } from "@/types/journals"
 
 /** Paginated response from DRF */
@@ -236,6 +237,21 @@ export async function getPipelineBreakdown(): Promise<PipelineBreakdownItem[]> {
 export async function getNextStepsQueue(): Promise<NextStepsQueueItem[]> {
   const response = await apiClient.get<NextStepsQueueItem[]>(
     '/journals/analytics/next-steps-queue/'
+  )
+  return response.data
+}
+
+/** Get journal report data (scoped to single journal, with optional date range) */
+export async function getJournalReport(
+  journalId: string,
+  dateParams: { date_from?: string; date_to?: string } = {}
+): Promise<JournalReportData> {
+  const params = new URLSearchParams()
+  params.append('journal_id', journalId)
+  if (dateParams.date_from) params.append('date_from', dateParams.date_from)
+  if (dateParams.date_to) params.append('date_to', dateParams.date_to)
+  const response = await apiClient.get<JournalReportData>(
+    `/journals/analytics/journal-report/?${params.toString()}`
   )
   return response.data
 }

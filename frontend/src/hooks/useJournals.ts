@@ -25,6 +25,7 @@ import {
   getPipelineBreakdown,
   getNextStepsQueue,
   addContactToJournal,
+  getJournalReport,
 } from "@/api/journals"
 import type {
   JournalCreate,
@@ -491,6 +492,18 @@ export function useNextStepsQueue() {
     queryKey: ['journals', 'analytics', 'next-steps-queue'],
     queryFn: getNextStepsQueue,
     staleTime: 2 * 60 * 1000, // 2 minutes - more time-sensitive
+  })
+}
+
+/** Hook for fetching journal report data */
+export function useJournalReport(
+  journalId: string,
+  dateParams: Record<string, string> = {}
+) {
+  return useQuery({
+    queryKey: ["journals", journalId, "report", dateParams],
+    queryFn: () => getJournalReport(journalId, dateParams),
+    enabled: !!journalId,
   })
 }
 
