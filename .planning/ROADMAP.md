@@ -174,10 +174,10 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. The Prayer Request page displays a prominent "Begin Prayer" button
   2. Clicking "Begin Prayer" launches the expanded Focus Mode with today's prayer intentions loaded
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 41-01: TBD
+- [ ] 41-01-PLAN.md — Begin Prayer button + intention selection dialog + Focus Mode wiring (PRAY-01)
 
 ### Phase 42: Mission Supervisor Role
 **Goal**: Organization leadership can assign supervisors to missionaries, and supervisors see only their assigned missionaries' data across the entire application
