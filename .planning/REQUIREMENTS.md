@@ -37,8 +37,8 @@ Requirements for v2.2 milestone. Each maps to roadmap phases.
 - [ ] **JRNL-04**: Journal report displays Decision Status donut chart
 - [ ] **JRNL-05**: Journal report displays conditional stalled contacts and open next steps alerts
 - [ ] **JRNL-06**: Pipeline Breakdown is removed from journal reports
-- [ ] **JRNL-07**: Decision column between Close and Thank supports adding a decision (not checkbox)
-- [ ] **JRNL-08**: Clicking a stage checkbox directly checks it (auto-creates event) without dialog
+- [x] **JRNL-07**: Decision column between Close and Thank supports adding a decision (not checkbox)
+- [x] **JRNL-08**: Clicking a stage checkbox directly checks it (auto-creates event) without dialog
 
 ### Prayer
 
@@ -107,8 +107,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | JRNL-04 | Phase 40 | Pending |
 | JRNL-05 | Phase 40 | Pending |
 | JRNL-06 | Phase 40 | Pending |
-| JRNL-07 | Phase 40 | Pending |
-| JRNL-08 | Phase 40 | Pending |
+| JRNL-07 | Phase 40 | Complete |
+| JRNL-08 | Phase 40 | Complete |
 | PRAY-01 | Phase 41 | Pending |
 | SUPV-01 | Phase 42 | Pending |
 | SUPV-02 | Phase 42 | Pending |
