@@ -69,7 +69,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'first_name', 'last_name', 'phone',
-            'monthly_goal', 'email_notifications'
+            'monthly_goal', 'email_notifications', 'dashboard_layout'
         ]
 
 
@@ -137,7 +137,7 @@ class CurrentUserSerializer(serializers.ModelSerializer):
             'id', 'email', 'first_name', 'last_name', 'full_name',
             'phone', 'role', 'monthly_goal', 'email_notifications',
             'date_joined', 'last_login_at',
-            'contact_count', 'active_pledge_count'
+            'contact_count', 'active_pledge_count', 'dashboard_layout'
         ]
         read_only_fields = fields
 

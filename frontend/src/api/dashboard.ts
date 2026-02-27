@@ -203,3 +203,20 @@ export async function getMonthlyGifts(months = 12): Promise<MonthlyGiftsResponse
   })
   return response.data
 }
+
+/**
+ * Save dashboard layout preferences to user profile
+ */
+export async function saveDashboardLayout(tileOrder: string[]): Promise<void> {
+  await apiClient.patch("/users/me/", {
+    dashboard_layout: { tile_order: tileOrder }
+  })
+}
+
+/**
+ * Get dashboard layout preferences from user profile
+ */
+export async function getDashboardLayout(): Promise<{ tile_order?: string[] }> {
+  const response = await apiClient.get<{ dashboard_layout: { tile_order?: string[] } }>("/users/me/")
+  return response.data.dashboard_layout || {}
+}
