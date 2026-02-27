@@ -130,9 +130,9 @@ See milestones/v2.1-ROADMAP.md for complete phase details.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 38-01-PLAN.md — Gift payment_type field + list/detail column updates (UI-03, UI-04, UI-05)
-- [ ] 38-02-PLAN.md — Sheet-to-Dialog conversion + Prospect rename (UI-01, UI-02)
-- [ ] 38-03-PLAN.md — Analytics cleanup: Review Queue + Heatmap removal (ANLY-01, ANLY-02)
+- [x] 38-01-PLAN.md — Gift payment_type field + list/detail column updates (UI-03, UI-04, UI-05)
+- [x] 38-02-PLAN.md — Sheet-to-Dialog conversion + Prospect rename (UI-01, UI-02)
+- [x] 38-03-PLAN.md — Analytics cleanup: Review Queue + Heatmap removal (ANLY-01, ANLY-02)
 
 ### Phase 39: Dashboard Modifications
 **Goal**: The missionary dashboard is visually tighter and more flexible with cleaner cards and full drag-and-drop control
@@ -144,10 +144,11 @@ Plans:
   3. Dashboard tiles have visually reduced gaps between them compared to current layout
   4. The Giving summary card no longer displays "2026 calendar year" text, and the Monthly Gifts card no longer displays "Updated today" text
   5. The "Recent Journal Activity" tile is no longer visible on the dashboard
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 39-01: TBD
+- [ ] 39-01-PLAN.md — Backend layout persistence + chart toggle + text/tile removals (DASH-01, DASH-04, DASH-05, DASH-06)
+- [ ] 39-02-PLAN.md — Flat grid restructure + spacing + backend persistence integration (DASH-02, DASH-03)
 
 ### Phase 40: Journal Report & Grid Behavior
 **Goal**: Users get a rebuilt, actionable journal report and can advance contacts through pipeline stages with a single click
@@ -208,14 +209,14 @@ Phases execute in numeric order: 38 -> 39 -> 40 -> 41 -> 42
 | 20-26 | v1.3 | 20/20 | Complete | 2026-02-19 |
 | 27-36 | v2.0 | 27/27 | Complete | 2026-02-25 |
 | 37 | v2.1 | 3/3 | Complete | 2026-02-25 |
-| 38. UI Polish & List Page Cleanup | 3/3 | Complete    | 2026-02-27 | - |
-| 39. Dashboard Modifications | v2.2 | 0/? | Not started | - |
+| 38. UI Polish & List Page Cleanup | v2.2 | 3/3 | Complete | 2026-02-27 |
+| 39. Dashboard Modifications | v2.2 | 0/2 | Not started | - |
 | 40. Journal Report & Grid Behavior | v2.2 | 0/? | Not started | - |
 | 41. Begin Prayer | v2.2 | 0/? | Not started | - |
 | 42. Mission Supervisor Role | v2.2 | 0/? | Not started | - |
 
-**Total:** 6 milestones shipped, 107 plans executed across 37 phases. v2.2 in progress (5 phases, 26 requirements).
+**Total:** 6 milestones shipped, 110 plans executed across 38 phases. v2.2 in progress (5 phases, 26 requirements).
 
 ---
 
-*Last updated: 2026-02-26 (v2.2 roadmap created)*
+*Last updated: 2026-02-27 (Phase 39 plans created)*
