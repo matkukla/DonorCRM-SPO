@@ -49,7 +49,6 @@ const DonationsByMonthYear = React.lazy(() => import("@/pages/insights/Donations
 const MonthlyCommitments = React.lazy(() => import("@/pages/insights/MonthlyCommitments"))
 const LateDonations = React.lazy(() => import("@/pages/insights/LateDonations"))
 const FollowUps = React.lazy(() => import("@/pages/insights/FollowUps"))
-const ReviewQueue = React.lazy(() => import("@/pages/insights/ReviewQueue"))
 const Transactions = React.lazy(() => import("@/pages/insights/Transactions"))
 
 /**
@@ -127,7 +126,7 @@ function App() {
                 <Route path="/insights/monthly-commitments" element={<ProtectedPage><MonthlyCommitments /></ProtectedPage>} />
                 <Route path="/insights/late-donations" element={<ProtectedPage><LateDonations /></ProtectedPage>} />
                 <Route path="/insights/follow-ups" element={<ProtectedPage><FollowUps /></ProtectedPage>} />
-                <Route path="/insights/review-queue" element={<ProtectedPage requiredRole="admin"><ReviewQueue /></ProtectedPage>} />
+                <Route path="/insights/review-queue" element={<Navigate to="/admin/analytics/dashboard" replace />} />
                 <Route path="/insights/transactions" element={<ProtectedPage requiredRole="admin"><Transactions /></ProtectedPage>} />
 
                 <Route path="/settings" element={<ProtectedPage><Settings /></ProtectedPage>} />

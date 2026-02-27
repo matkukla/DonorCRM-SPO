@@ -17,7 +17,6 @@ from apps.insights.services import (
     get_follow_ups,
     get_late_donations,
     get_monthly_commitments,
-    get_review_queue,
     get_stalled_contacts,
     get_transactions,
     get_user_performance,
@@ -126,18 +125,6 @@ class FollowUpsView(APIView):
     def get(self, request):
         limit = get_safe_int_param(request, 'limit', default=50, min_val=1, max_val=500)
         return Response(get_follow_ups(request.user, limit=limit))
-
-
-class ReviewQueueView(APIView):
-    """
-    GET: Get items pending admin review.
-    Admin-only endpoint.
-    """
-    permission_classes = [permissions.IsAuthenticated, IsAdmin]
-
-    @extend_schema(tags=['insights'], summary='Get review queue (admin only)')
-    def get(self, request):
-        return Response(get_review_queue(request.user))
 
 
 class TransactionsView(APIView):

@@ -17,19 +17,23 @@ class GiftSerializer(serializers.ModelSerializer):
     fund_name = serializers.CharField(
         source='fund.name', read_only=True, default=None
     )
+    payment_type_display = serializers.SerializerMethodField()
 
     class Meta:
         model = Gift
         fields = [
             'id', 'donor_contact', 'donor_contact_name', 'fund', 'fund_name',
             'external_gift_id', 'amount_cents', 'amount_dollars',
-            'gift_date', 'description',
+            'gift_date', 'description', 'payment_type', 'payment_type_display',
             'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
     def get_donor_contact_name(self, obj):
         return obj.donor_contact.full_name if obj.donor_contact else None
+
+    def get_payment_type_display(self, obj):
+        return obj.get_payment_type_display() or None
 
 
 class GiftCreditReadSerializer(serializers.ModelSerializer):
@@ -68,7 +72,7 @@ class GiftCreateSerializer(serializers.ModelSerializer):
         model = Gift
         fields = [
             'id', 'donor_contact', 'fund', 'amount_cents',
-            'gift_date', 'description', 'external_gift_id',
+            'gift_date', 'description', 'payment_type', 'external_gift_id',
         ]
         read_only_fields = ['id']
 

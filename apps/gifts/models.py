@@ -16,6 +16,13 @@ from apps.core.models import TimeStampedModel
 # TextChoices enums
 # ---------------------------------------------------------------------------
 
+class PaymentType(models.TextChoices):
+    """Payment method for a gift."""
+    CREDIT_CARD = 'credit_card', 'Credit Card'
+    DIRECT_DEPOSIT = 'direct_deposit', 'Direct Deposit'
+    CHECK = 'check', 'Check'
+
+
 class RecurringGiftStatus(models.TextChoices):
     """Status of a recurring gift commitment."""
     ACTIVE = 'active', 'Active'
@@ -133,6 +140,13 @@ class Gift(TimeStampedModel):
     )
     gift_date = models.DateField('gift date', db_index=True)
     description = models.TextField('description', blank=True)
+    payment_type = models.CharField(
+        'payment type',
+        max_length=20,
+        choices=PaymentType.choices,
+        blank=True,
+        help_text='Payment method: Credit Card, Direct Deposit, or Check'
+    )
 
     class Meta:
         db_table = 'gifts'

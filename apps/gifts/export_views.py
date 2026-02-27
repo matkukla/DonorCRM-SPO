@@ -55,6 +55,7 @@ class GiftExportCSVView(APIView):
                 'Donor Name',
                 'Amount',
                 'Date',
+                'Payment Type',
                 'Fund',
                 'Description',
             ])
@@ -65,6 +66,7 @@ class GiftExportCSVView(APIView):
                     sanitize_csv_value(gift.donor_contact.full_name),
                     str(gift.amount_dollars),
                     gift.gift_date.isoformat(),
+                    gift.get_payment_type_display() or '',
                     sanitize_csv_value(gift.fund.name if gift.fund else ''),
                     sanitize_csv_value(gift.description or ''),
                 ])

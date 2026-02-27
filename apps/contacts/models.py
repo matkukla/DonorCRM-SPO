@@ -13,7 +13,7 @@ class ContactStatus(models.TextChoices):
     """
     Status of a contact in the fundraising pipeline.
     """
-    PROSPECT = 'prospect', 'Prospect'
+    PROSPECT = 'prospect', 'Potential Donor'
     ASKED = 'asked', 'Asked'
     DONOR = 'donor', 'Donor'
     LAPSED = 'lapsed', 'Lapsed'

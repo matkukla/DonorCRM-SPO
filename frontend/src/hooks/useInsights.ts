@@ -5,7 +5,6 @@ import {
   getFollowUps,
   getLateDonations,
   getMonthlyCommitments,
-  getReviewQueue,
   getTransactions,
   getAdminDashboardOverview,
   getAdminStalledContacts,
@@ -66,14 +65,6 @@ export function useFollowUps(limit = 50) {
   return useQuery({
     queryKey: ["insights", "follow-ups", limit],
     queryFn: () => getFollowUps(limit),
-    staleTime: STALE_TIME,
-  })
-}
-
-export function useReviewQueue() {
-  return useQuery({
-    queryKey: ["insights", "review-queue"],
-    queryFn: getReviewQueue,
     staleTime: STALE_TIME,
   })
 }

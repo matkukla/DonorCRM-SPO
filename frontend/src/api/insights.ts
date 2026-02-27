@@ -93,22 +93,6 @@ export interface FollowUpsResponse {
   overdue_count: number
 }
 
-// Review Queue
-export interface ReviewQueueItem {
-  id: string
-  type: string
-  title: string
-  contact_id: string
-  contact_name: string
-  last_gift_amount: number | null
-  last_gift_date: string | null
-}
-
-export interface ReviewQueueResponse {
-  items: ReviewQueueItem[]
-  total_count: number
-}
-
 // Transactions
 export interface TransactionItem {
   id: string
@@ -175,14 +159,6 @@ export async function getFollowUps(limit = 50): Promise<FollowUpsResponse> {
   const response = await apiClient.get<FollowUpsResponse>("/insights/follow-ups/", {
     params: { limit },
   })
-  return response.data
-}
-
-/**
- * Get review queue (admin only)
- */
-export async function getReviewQueue(): Promise<ReviewQueueResponse> {
-  const response = await apiClient.get<ReviewQueueResponse>("/insights/review-queue/")
   return response.data
 }
 

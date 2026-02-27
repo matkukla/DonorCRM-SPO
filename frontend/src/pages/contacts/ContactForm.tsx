@@ -17,7 +17,7 @@ import { ArrowLeft, ChevronDown } from "lucide-react"
 import type { ContactStatus, ContactCreate } from "@/api/contacts"
 
 const statusLabels: Record<ContactStatus, string> = {
-  prospect: "Prospect",
+  prospect: "Potential Donor",
   donor: "Donor",
   lapsed: "Lapsed",
   major_donor: "Major Donor",

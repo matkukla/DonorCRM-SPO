@@ -29,7 +29,7 @@ import type { ContactListItem, ContactStatus } from "@/api/contacts"
 const PAGE_SIZE = 20
 
 const statusLabels: Record<ContactStatus, string> = {
-  prospect: "Prospect",
+  prospect: "Potential Donor",
   donor: "Donor",
   lapsed: "Lapsed",
   major_donor: "Major Donor",
@@ -261,7 +261,7 @@ export default function ContactList() {
             }}
             filterValueLabels={{
               status: {
-                prospect: "Prospect",
+                prospect: "Potential Donor",
                 donor: "Donor",
                 lapsed: "Lapsed",
                 major_donor: "Major Donor",
