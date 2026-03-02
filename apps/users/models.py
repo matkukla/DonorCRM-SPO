@@ -18,6 +18,7 @@ class UserRole(models.TextChoices):
     ADMIN = 'admin', 'Admin'
     FINANCE = 'finance', 'Finance'
     READ_ONLY = 'read_only', 'Read Only'
+    MISSION_SUPERVISOR = 'mission_supervisor', 'Mission Supervisor'
 
 
 class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
@@ -41,10 +42,20 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
     # Role-based permissions
     role = models.CharField(
         'role',
-        max_length=20,
+        max_length=25,
         choices=UserRole.choices,
         default=UserRole.STAFF,
         db_index=True
+    )
+
+    # Supervisor relationship
+    supervisor = models.ForeignKey(
+        'self',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='supervised_users',
+        help_text='The supervisor assigned to this user (if any)'
     )
 
     # Support goal tracking for staff users
@@ -130,6 +141,11 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
         """Check if user has read-only role."""
         return self.role == UserRole.READ_ONLY
 
+    @property
+    def is_mission_supervisor(self):
+        """Check if user has mission supervisor role."""
+        return self.role == UserRole.MISSION_SUPERVISOR
+
     def can_manage_contact(self, contact):
         """Check if user can manage a given contact."""
         if self.is_admin:
@@ -140,4 +156,9 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
         """Check if user can view a given contact."""
         if self.role in [UserRole.ADMIN, UserRole.FINANCE, UserRole.READ_ONLY]:
             return True
+        if self.role == UserRole.MISSION_SUPERVISOR:
+            visible = self.supervised_users.filter(is_active=True).values_list('id', flat=True)
+            if contact.owner_id == self.id or contact.owner_id in visible:
+                return True
+            return False
         return contact.owner == self
