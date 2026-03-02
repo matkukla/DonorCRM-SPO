@@ -3,7 +3,7 @@
  */
 import { apiClient } from "./client"
 
-export type UserRole = "admin" | "staff" | "finance" | "read_only"
+export type UserRole = "admin" | "staff" | "finance" | "read_only" | "mission_supervisor"
 
 export interface User {
   id: string
@@ -18,6 +18,7 @@ export interface User {
   is_active: boolean
   date_joined: string
   last_login_at: string | null
+  supervisor: string | null
 }
 
 export interface UserCreate {
@@ -39,11 +40,13 @@ export interface UserUpdate {
   monthly_goal?: string
   email_notifications?: boolean
   is_active?: boolean
+  supervised_user_ids?: string[]
 }
 
 // Labels for display
 export const userRoleLabels: Record<UserRole, string> = {
   admin: "Administrator",
+  mission_supervisor: "Mission Supervisor",
   staff: "Staff",
   finance: "Finance",
   read_only: "Read Only",
