@@ -18,23 +18,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-26)
 
 **Core value:** Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems, and leadership can proactively support their teams through cross-missionary analytics.
-**Current focus:** Phase 41 — Begin Prayer
+**Current focus:** Phase 42 — Mission Supervisor Role
 
 ## Current Position
 
 Milestone: v2.2 UI Polish, Journal Report & Supervisor Role
-Phase: 41 of 42 (Begin Prayer)
-Plan: 1 of 1 in current phase
-Status: Plan 41-01 complete (Phase 41 complete)
-Last activity: 2026-02-27 — Completed 41-01 (Begin Prayer button & intention selection dialog)
+Phase: 42 of 42 (Mission Supervisor Role)
+Plan: 1 of 5 in current phase (42-01 complete)
+Status: Plan 42-01 complete
+Last activity: 2026-03-02 — Completed 42-01 (Backend role, permissions, and serializer infrastructure)
 
 Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 110 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3 + 27 v2.0 + 3 v2.1 + 3 v2.2)
-- Total phases: 40 complete, 2 planned (v2.2)
+- Total plans completed: 111 (24 v1.0 + 15 v1.1 + 18 v1.2 + 20 v1.3 + 27 v2.0 + 3 v2.1 + 4 v2.2)
+- Total phases: 41 complete, 1 in progress (v2.2)
 - Total milestones: 6 shipped
 
 **By Milestone:**
@@ -56,6 +56,7 @@ Progress: [██████████] 100%
 | Phase 40 P01 | 3min | 2 tasks | 7 files |
 | Phase 40 P02 | 2min | 2 tasks | 2 files |
 | Phase 41 P01 | 2min | 2 tasks | 3 files |
+| Phase 42 P01 | 3min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -84,6 +85,9 @@ v2.2 decisions:
 - Default event types per stage for instant toggle: call_logged, meeting_completed, ask_made, etc. (40-02)
 - Used page_size=1 lightweight query for active intention count check to decide dialog vs direct Focus Mode launch (41-01)
 - BeginPrayerDialog placed as sibling of PrayerFocusMode to avoid nested Radix portal issues (41-01)
+- supervisor FK as self-referencing with SET_NULL, not a separate model (42-01)
+- get_visible_user_ids returns None sentinel for all-access roles instead of querying all user IDs (42-01)
+- supervised_user_ids uses batch update (clear then assign) rather than incremental add/remove (42-01)
 
 ### Research Flags
 
@@ -108,10 +112,10 @@ None active.
 
 ## Session Continuity
 
-Last session: 2026-02-27
-Stopped at: Completed 41-01-PLAN.md (Phase 41 fully complete)
-Resume: Continue with Phase 42
+Last session: 2026-03-02
+Stopped at: Completed 42-01-PLAN.md
+Resume: Continue with 42-02-PLAN.md (View-Level Queryset Scoping)
 
 ---
 
-*Last updated: 2026-02-27 (Completed 41-01, Begin Prayer button & intention selection dialog; Phase 41 complete)*
+*Last updated: 2026-03-02 (Completed 42-01, Mission Supervisor backend role & permissions infrastructure)*

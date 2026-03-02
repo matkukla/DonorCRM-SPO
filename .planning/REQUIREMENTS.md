@@ -46,8 +46,8 @@ Requirements for v2.2 milestone. Each maps to roadmap phases.
 
 ### Supervisor
 
-- [ ] **SUPV-01**: Mission Supervisor role exists in the system (UserRole choice + migration)
-- [ ] **SUPV-02**: Admin can assign missionaries to a supervisor via management UI
+- [x] **SUPV-01**: Mission Supervisor role exists in the system (UserRole choice + migration)
+- [x] **SUPV-02**: Admin can assign missionaries to a supervisor via management UI
 - [ ] **SUPV-03**: Supervisor sees only their assigned missionaries' data across all pages
 - [ ] **SUPV-04**: Admin and Supervisor can select a missionary and view their dashboard
 
@@ -110,8 +110,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | JRNL-07 | Phase 40 | Complete |
 | JRNL-08 | Phase 40 | Complete |
 | PRAY-01 | Phase 41 | Complete |
-| SUPV-01 | Phase 42 | Pending |
-| SUPV-02 | Phase 42 | Pending |
+| SUPV-01 | Phase 42 | Complete |
+| SUPV-02 | Phase 42 | Complete |
 | SUPV-03 | Phase 42 | Pending |
 | SUPV-04 | Phase 42 | Pending |
 
