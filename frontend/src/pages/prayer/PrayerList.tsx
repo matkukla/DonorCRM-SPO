@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useAuth } from "@/providers/AuthProvider"
 import { usePrayers, useUpdatePrayer } from "@/hooks/usePrayers"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,6 +11,12 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -17,7 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Plus, Search, ChevronLeft, ChevronRight } from "lucide-react"
+import { Plus, Search, ChevronLeft, ChevronRight, Filter } from "lucide-react"
 import { formatLocalDate } from "@/lib/utils"
 import { TodaysFocus } from "./components/TodaysFocus"
 import { StatusBadge } from "./components/StatusBadge"
@@ -29,6 +36,20 @@ import type { PrayerIntention, PrayerIntentionStatus } from "@/api/prayers"
 const PAGE_SIZE = 20
 
 export default function PrayerList() {
+  const { user } = useAuth()
+  const canSeeOwner = user?.role === "admin" || user?.role === "mission_supervisor"
+  const ownerOptions = user?.role === "admin"
+    ? [] // admin sees all; no dropdown without usersData
+    : user?.role === "mission_supervisor"
+      ? [
+          { id: String(user.id), full_name: `${user.first_name} ${user.last_name}` },
+          ...(user.supervised_users?.map((u) => ({
+            id: String(u.id),
+            full_name: `${u.first_name} ${u.last_name}`,
+          })) || []),
+        ]
+      : []
+
   // Panel state
   const [panelOpen, setPanelOpen] = useState(false)
   const [selectedIntention, setSelectedIntention] = useState<PrayerIntention | undefined>()
@@ -41,6 +62,7 @@ export default function PrayerList() {
   const [searchQuery, setSearchQuery] = useState("")
   const [searchInput, setSearchInput] = useState("")
   const [page, setPage] = useState(1)
+  const [ownerFilter, setOwnerFilter] = useState<string | null>(null)
 
   // Answered note dialog state
   const [noteDialogOpen, setNoteDialogOpen] = useState(false)
@@ -51,6 +73,7 @@ export default function PrayerList() {
   const params: Record<string, string> = { page: String(page), page_size: String(PAGE_SIZE) }
   if (statusFilter !== "all") params.status = statusFilter
   if (searchQuery) params.search = searchQuery
+  if (ownerFilter) params.owner = ownerFilter
 
   const { data, isLoading } = usePrayers(params)
   const { data: activeIntentionsData } = usePrayers({ status: "active", page_size: "1" })
@@ -192,6 +215,30 @@ export default function PrayerList() {
               Search
             </Button>
           </form>
+
+          {/* Owner filter (supervisor) */}
+          {canSeeOwner && ownerOptions.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="secondary" size="sm" className="gap-2">
+                  <Filter className="h-4 w-4" />
+                  {ownerFilter
+                    ? ownerOptions.find((u) => u.id === ownerFilter)?.full_name || "Owner"
+                    : "All Owners"}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => { setOwnerFilter(null); setPage(1) }}>
+                  All Owners
+                </DropdownMenuItem>
+                {ownerOptions.map((u) => (
+                  <DropdownMenuItem key={u.id} onClick={() => { setOwnerFilter(u.id); setPage(1) }}>
+                    {u.full_name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
 
         {/* Table */}
@@ -221,6 +268,11 @@ export default function PrayerList() {
                     <th scope="col" className="text-left px-4 py-3 text-sm font-medium text-amber-800 dark:text-amber-300">
                       Status
                     </th>
+                    {canSeeOwner && (
+                      <th scope="col" className="text-left px-4 py-3 text-sm font-medium text-amber-800 dark:text-amber-300">
+                        Owner
+                      </th>
+                    )}
                     <th scope="col" className="text-left px-4 py-3 text-sm font-medium text-amber-800 dark:text-amber-300">
                       Created
                     </th>
@@ -261,6 +313,11 @@ export default function PrayerList() {
                           </SelectContent>
                         </Select>
                       </td>
+                      {canSeeOwner && (
+                        <td className="px-4 py-3 text-sm text-amber-700/80 dark:text-amber-400/60">
+                          {intention.owner_name}
+                        </td>
+                      )}
                       <td className="px-4 py-3 text-sm text-amber-700/80 dark:text-amber-400/60">
                         {formatLocalDate(intention.created_at)}
                       </td>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
 import { useNavigate, Link } from "react-router-dom"
+import { useAuth } from "@/providers/AuthProvider"
 import { useRecurringGifts } from "@/hooks/useGifts"
 import { useFilterParams, recurringGiftFilterParsers } from "@/hooks/useFilterParams"
 import { recurringGiftPresets } from "@/lib/filter-presets"
@@ -44,6 +45,19 @@ function formatCurrency(amount: string | number): string {
 
 export default function PledgeList() {
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const canSeeOwner = user?.role === "admin" || user?.role === "mission_supervisor"
+  const ownerOptions = user?.role === "admin"
+    ? [] // admin sees all; no dropdown without usersData
+    : user?.role === "mission_supervisor"
+      ? [
+          { id: String(user.id), full_name: `${user.first_name} ${user.last_name}` },
+          ...(user.supervised_users?.map((u) => ({
+            id: String(u.id),
+            full_name: `${u.first_name} ${u.last_name}`,
+          })) || []),
+        ]
+      : []
 
   const {
     filters,
@@ -117,6 +131,13 @@ export default function PledgeList() {
       header: "Start Date",
       cell: ({ row }) => formatLocalDate(row.original.start_date),
     },
+    ...(canSeeOwner ? [{
+      accessorKey: "owner_name" as const,
+      header: "Owner",
+      cell: ({ row }: { row: { original: RecurringGift } }) => (
+        <span className="text-muted-foreground">{row.original.owner_name}</span>
+      ),
+    }] : []),
   ]
 
   const pageCount = data ? Math.ceil(data.count / PAGE_SIZE) : 1
@@ -153,6 +174,7 @@ export default function PledgeList() {
             filterValueLabels={{
               status: recurringGiftStatusLabels,
               frequency: recurringGiftFrequencyLabels,
+              ...(ownerOptions.length > 0 ? { owner: Object.fromEntries(ownerOptions.map((u) => [u.id, u.full_name])) } : {}),
             }}
             presets={recurringGiftPresets}
             onApplyPreset={(preset) => setFilters({ ...preset.getParams(), page: 1 })}
@@ -214,6 +236,30 @@ export default function PledgeList() {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {/* Owner filter (supervisor) */}
+            {canSeeOwner && ownerOptions.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="secondary" size="sm" className="gap-2">
+                    <Filter className="h-4 w-4" />
+                    {filters.owner
+                      ? ownerOptions.find((u) => u.id === filters.owner)?.full_name || "Owner"
+                      : "All Owners"}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem onClick={() => setFilters({ owner: null, page: 1 })}>
+                    All Owners
+                  </DropdownMenuItem>
+                  {ownerOptions.map((u) => (
+                    <DropdownMenuItem key={u.id} onClick={() => setFilters({ owner: u.id, page: 1 })}>
+                      {u.full_name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </FilterBar>
 
           {/* Data Table */}

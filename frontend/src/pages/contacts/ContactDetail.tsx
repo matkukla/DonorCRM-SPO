@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
+import { useAuth } from "@/providers/AuthProvider"
 import { formatDistanceToNow } from "date-fns"
 import {
   useContact,
@@ -69,6 +70,7 @@ function formatCurrency(amount: string | number | null): string {
 export default function ContactDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { user } = useAuth()
 
   const { data: contact, isLoading, error } = useContact(id!)
   const { data: donations } = useContactDonations(id!)
@@ -101,6 +103,8 @@ export default function ContactDetail() {
     if (prayerFilter === "all") return prayers
     return prayers.filter((p) => p.status === prayerFilter)
   }, [contactPrayers, prayerFilter])
+
+  const isReadOnly = user?.role === "mission_supervisor" && contact?.owner !== undefined && String(contact?.owner) !== String(user?.id)
 
   const markThankedMutation = useMarkContactThanked()
   const deleteMutation = useDeleteContact()
@@ -176,30 +180,32 @@ export default function ContactDetail() {
                 Owner: {contact.owner_name}
               </p>
             </div>
-            <div className="flex gap-2">
-              {contact.needs_thank_you && (
+            {!isReadOnly && (
+              <div className="flex gap-2">
+                {contact.needs_thank_you && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => markThankedMutation.mutate(id!)}
+                    disabled={markThankedMutation.isPending}
+                  >
+                    <Heart className="h-4 w-4 mr-2" />
+                    Mark Thanked
+                  </Button>
+                )}
+                <Button variant="secondary" onClick={() => navigate(`/contacts/${id}/edit`)}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit
+                </Button>
                 <Button
                   variant="secondary"
-                  onClick={() => markThankedMutation.mutate(id!)}
-                  disabled={markThankedMutation.isPending}
+                  onClick={handleDelete}
+                  disabled={deleteMutation.isPending}
+                  className="text-destructive hover:text-destructive"
                 >
-                  <Heart className="h-4 w-4 mr-2" />
-                  Mark Thanked
+                  <Trash2 className="h-4 w-4" />
                 </Button>
-              )}
-              <Button variant="secondary" onClick={() => navigate(`/contacts/${id}/edit`)}>
-                <Edit className="h-4 w-4 mr-2" />
-                Edit
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={handleDelete}
-                disabled={deleteMutation.isPending}
-                className="text-destructive hover:text-destructive"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
+              </div>
+            )}
           </div>
 
           {/* Summary Cards */}
@@ -337,10 +343,12 @@ export default function ContactDetail() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle>Donation History</CardTitle>
-                  <Button size="sm" onClick={() => navigate(`/donations/new?contact=${id}`)}>
-                    <DollarSign className="h-4 w-4 mr-2" />
-                    Record Donation
-                  </Button>
+                  {!isReadOnly && (
+                    <Button size="sm" onClick={() => navigate(`/donations/new?contact=${id}`)}>
+                      <DollarSign className="h-4 w-4 mr-2" />
+                      Record Donation
+                    </Button>
+                  )}
                 </CardHeader>
                 <CardContent>
                   {donations?.length ? (
@@ -375,10 +383,12 @@ export default function ContactDetail() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle>Pledges</CardTitle>
-                  <Button size="sm" onClick={() => navigate(`/pledges/new?contact=${id}`)}>
-                    <FileText className="h-4 w-4 mr-2" />
-                    Create Pledge
-                  </Button>
+                  {!isReadOnly && (
+                    <Button size="sm" onClick={() => navigate(`/pledges/new?contact=${id}`)}>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Create Pledge
+                    </Button>
+                  )}
                 </CardHeader>
                 <CardContent>
                   {pledges?.length ? (
@@ -412,10 +422,12 @@ export default function ContactDetail() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle>Tasks</CardTitle>
-                  <Button size="sm" onClick={() => navigate(`/tasks/new?contact=${id}`)}>
-                    <CheckSquare className="h-4 w-4 mr-2" />
-                    Add Task
-                  </Button>
+                  {!isReadOnly && (
+                    <Button size="sm" onClick={() => navigate(`/tasks/new?contact=${id}`)}>
+                      <CheckSquare className="h-4 w-4 mr-2" />
+                      Add Task
+                    </Button>
+                  )}
                 </CardHeader>
                 <CardContent>
                   {tasks?.length ? (
@@ -467,17 +479,19 @@ export default function ContactDetail() {
                       ),
                     )}
                   </div>
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setEditingPrayer(undefined)
-                      setPrayerPanelOpen(true)
-                    }}
-                    className="gap-1.5"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add
-                  </Button>
+                  {!isReadOnly && (
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setEditingPrayer(undefined)
+                        setPrayerPanelOpen(true)
+                      }}
+                      className="gap-1.5"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add
+                    </Button>
+                  )}
                 </div>
 
                 {/* Prayer cards grid */}
@@ -524,10 +538,12 @@ export default function ContactDetail() {
                       Interaction timeline across all campaigns
                     </CardDescription>
                   </div>
-                  <Button size="sm" onClick={() => setLogEventOpen(true)}>
-                    <BookOpen className="h-4 w-4 mr-2" />
-                    Log Event
-                  </Button>
+                  {!isReadOnly && (
+                    <Button size="sm" onClick={() => setLogEventOpen(true)}>
+                      <BookOpen className="h-4 w-4 mr-2" />
+                      Log Event
+                    </Button>
+                  )}
                 </CardHeader>
                 <CardContent>
                   {journalEvents.length > 0 ? (
