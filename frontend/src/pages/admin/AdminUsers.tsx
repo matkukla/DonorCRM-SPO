@@ -30,14 +30,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Plus, MoreHorizontal, UserX, Edit, ChevronDown } from "lucide-react"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { Plus, MoreHorizontal, UserX, Edit, ChevronDown, Check, ChevronsUpDown, X } from "lucide-react"
 import { NavLink } from "react-router-dom"
 import { cn, formatLocalDate } from "@/lib/utils"
-import type { User, UserRole } from "@/api/users"
+import type { User, UserRole, UserUpdate } from "@/api/users"
 import { userRoleLabels } from "@/api/users"
 
 const roleVariants: Record<UserRole, "default" | "secondary" | "success" | "warning" | "info" | "destructive"> = {
   admin: "destructive",
+  mission_supervisor: "warning",
   staff: "default",
   finance: "info",
   read_only: "secondary",
@@ -71,6 +74,8 @@ export default function AdminUsers() {
   const [editLastName, setEditLastName] = useState("")
   const [editRole, setEditRole] = useState<UserRole>("staff")
   const [editError, setEditError] = useState("")
+  const [editSupervisedUserIds, setEditSupervisedUserIds] = useState<string[]>([])
+  const [missionaryPickerOpen, setMissionaryPickerOpen] = useState(false)
 
   const resetCreateForm = () => {
     setNewEmail("")
@@ -125,6 +130,10 @@ export default function AdminUsers() {
     setEditLastName(user.last_name)
     setEditRole(user.role)
     setEditError("")
+    // Find users supervised by this user
+    const supervised = users?.filter(u => u.supervisor === user.id).map(u => u.id) || []
+    setEditSupervisedUserIds(supervised)
+    setMissionaryPickerOpen(false)
   }
 
   const handleUpdate = async () => {
@@ -132,13 +141,18 @@ export default function AdminUsers() {
     setEditError("")
 
     try {
+      const data: UserUpdate = {
+        first_name: editFirstName,
+        last_name: editLastName,
+        role: editRole,
+      }
+      // Include supervised_user_ids when role is mission_supervisor
+      if (editRole === "mission_supervisor") {
+        data.supervised_user_ids = editSupervisedUserIds
+      }
       await updateMutation.mutateAsync({
         id: editingUser.id,
-        data: {
-          first_name: editFirstName,
-          last_name: editLastName,
-          role: editRole,
-        },
+        data,
       })
       setEditingUser(null)
     } catch {
@@ -337,6 +351,11 @@ export default function AdminUsers() {
                           <Badge variant={roleVariants[user.role]}>
                             {userRoleLabels[user.role]}
                           </Badge>
+                          {user.role === "mission_supervisor" && users && (
+                            <span className="ml-1 text-xs text-muted-foreground">
+                              ({users.filter(u => u.supervisor === user.id).length})
+                            </span>
+                          )}
                         </TableCell>
                         <TableCell>
                           {user.is_active ? (
@@ -436,6 +455,83 @@ export default function AdminUsers() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
+                {editRole === "mission_supervisor" && (() => {
+                  const availableUsers = users?.filter(u => u.id !== editingUser?.id && u.is_active) || []
+                  return (
+                    <div className="space-y-2">
+                      <Label>Assigned Missionaries</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Select missionaries this supervisor can view
+                      </p>
+                      <Popover open={missionaryPickerOpen} onOpenChange={setMissionaryPickerOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={missionaryPickerOpen}
+                            className="w-full justify-between font-normal"
+                          >
+                            {editSupervisedUserIds.length > 0
+                              ? `${editSupervisedUserIds.length} missionary${editSupervisedUserIds.length !== 1 ? "ies" : ""} selected`
+                              : "Select missionaries..."}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-full p-0" align="start">
+                          <Command>
+                            <CommandInput placeholder="Search missionaries..." />
+                            <CommandList>
+                              <CommandEmpty>No users found.</CommandEmpty>
+                              <CommandGroup>
+                                {availableUsers.map(u => (
+                                  <CommandItem
+                                    key={u.id}
+                                    value={`${u.full_name} ${u.email}`}
+                                    onSelect={() => {
+                                      setEditSupervisedUserIds(prev =>
+                                        prev.includes(u.id)
+                                          ? prev.filter(id => id !== u.id)
+                                          : [...prev, u.id]
+                                      )
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        editSupervisedUserIds.includes(u.id) ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    <span>{u.full_name}</span>
+                                    <span className="text-muted-foreground ml-auto text-xs">{u.email}</span>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                      {editSupervisedUserIds.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {editSupervisedUserIds.map(id => {
+                            const u = availableUsers.find(au => au.id === id)
+                            return u ? (
+                              <Badge key={id} variant="secondary" className="gap-1">
+                                {u.full_name}
+                                <button
+                                  type="button"
+                                  className="ml-1 rounded-full outline-none hover:bg-muted"
+                                  onClick={() => setEditSupervisedUserIds(prev => prev.filter(i => i !== id))}
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </Badge>
+                            ) : null
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
                 {editError && (
                   <p className="text-sm text-destructive">{editError}</p>
                 )}
