@@ -20,13 +20,15 @@ class JournalListSerializer(serializers.ModelSerializer):
     """
     Serializer for journal list view (minimal fields).
     """
+    owner_name = serializers.CharField(source='owner.full_name', read_only=True)
+
     class Meta:
         model = Journal
         fields = [
-            'id', 'name', 'goal_amount', 'deadline',
+            'id', 'owner', 'owner_name', 'name', 'goal_amount', 'deadline',
             'is_archived', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'is_archived']
+        read_only_fields = ['id', 'owner', 'created_at', 'updated_at', 'is_archived']
 
 
 class JournalDetailSerializer(serializers.ModelSerializer):
