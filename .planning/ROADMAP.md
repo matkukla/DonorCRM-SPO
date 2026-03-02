@@ -188,13 +188,13 @@ Plans:
   2. Admin can assign specific missionaries to a supervisor via the user management UI
   3. A supervisor sees only their assigned missionaries' data on all pages (contacts, gifts, recurring gifts, tasks, journals, prayers, analytics)
   4. Admin and supervisor can select a missionary from a dropdown and view that missionary's personal dashboard
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 42-01: TBD
-- [ ] 42-02: TBD
-- [ ] 42-03: TBD
-- [ ] 42-04: TBD
+- [ ] 42-01-PLAN.md — Backend foundation: UserRole + supervisor FK + migration + get_visible_user_ids() helper + permission class + serializer updates (SUPV-01, SUPV-02)
+- [ ] 42-02-PLAN.md — Backend view scoping: update all get_queryset() methods across 13 view/service files to use centralized helper (SUPV-03)
+- [ ] 42-03-PLAN.md — Frontend types + role hierarchy + admin missionary assignment UI (SUPV-01, SUPV-02)
+- [ ] 42-04-PLAN.md — Owner columns + owner filters + dashboard missionary selector + read-only gating (SUPV-03, SUPV-04)
 
 ## Progress
 
