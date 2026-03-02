@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: UI Polish, Journal Report & Supervisor Role
 status: unknown
-last_updated: "2026-02-27T20:41:06.722Z"
+last_updated: "2026-03-02T17:56:37.672Z"
 progress:
-  total_phases: 26
+  total_phases: 27
   completed_phases: 26
-  total_plans: 74
-  completed_plans: 74
+  total_plans: 79
+  completed_plans: 78
 ---
 
 # Project State
@@ -24,9 +24,9 @@ See: .planning/PROJECT.md (updated 2026-02-26)
 
 Milestone: v2.2 UI Polish, Journal Report & Supervisor Role
 Phase: 42 of 42 (Mission Supervisor Role)
-Plan: 3 of 5 in current phase (42-03 complete)
-Status: Plan 42-03 complete
-Last activity: 2026-03-02 — Completed 42-03 (Frontend types, role hierarchy, and missionary assignment UI)
+Plan: 4 of 5 in current phase (42-04 complete)
+Status: Plan 42-04 complete
+Last activity: 2026-03-02 — Completed 42-04 (Supervisor Dashboard)
 
 Progress: [██████████] 100%
 
@@ -59,6 +59,7 @@ Progress: [██████████] 100%
 | Phase 42 P01 | 3min | 2 tasks | 5 files |
 | Phase 42 P02 | 9min | 2 tasks | 13 files |
 | Phase 42 P03 | 4min | 2 tasks | 7 files |
+| Phase 42 P04 | 5min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -94,6 +95,8 @@ v2.2 decisions:
 - Events views only show user's own events, not supervised users' events -- events are personal notifications (42-02)
 - Installed cmdk manually since no components.json exists for shadcn CLI (42-03)
 - 5-level role hierarchy: admin(5), mission_supervisor(4), finance(3), staff(2), read_only(1) (42-03)
+- [Phase 42]: Admin sees all active users in selector; supervisor sees only supervised_users from auth context
+- [Phase 42]: Conditional DnD rendering (DndContext only when isDragEnabled) for clean view-only mode
 
 ### Research Flags
 
@@ -119,9 +122,9 @@ None active.
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Completed 42-03-PLAN.md
-Resume: Continue with 42-04-PLAN.md (Supervisor Dashboard)
+Stopped at: Completed 42-04-PLAN.md
+Resume: Continue with 42-05-PLAN.md (Final Integration)
 
 ---
 
-*Last updated: 2026-03-02 (Completed 42-02, View-Level Queryset Scoping)*
+*Last updated: 2026-03-02 (Completed 42-04, Supervisor Dashboard)*
