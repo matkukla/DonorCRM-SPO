@@ -24,9 +24,9 @@ See: .planning/PROJECT.md (updated 2026-02-26)
 
 Milestone: v2.2 UI Polish, Journal Report & Supervisor Role
 Phase: 42 of 42 (Mission Supervisor Role)
-Plan: 1 of 5 in current phase (42-01 complete)
-Status: Plan 42-01 complete
-Last activity: 2026-03-02 — Completed 42-01 (Backend role, permissions, and serializer infrastructure)
+Plan: 3 of 5 in current phase (42-03 complete)
+Status: Plan 42-03 complete
+Last activity: 2026-03-02 — Completed 42-03 (Frontend types, role hierarchy, and missionary assignment UI)
 
 Progress: [██████████] 100%
 
@@ -57,6 +57,7 @@ Progress: [██████████] 100%
 | Phase 40 P02 | 2min | 2 tasks | 2 files |
 | Phase 41 P01 | 2min | 2 tasks | 3 files |
 | Phase 42 P01 | 3min | 2 tasks | 5 files |
+| Phase 42 P03 | 4min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -88,6 +89,8 @@ v2.2 decisions:
 - supervisor FK as self-referencing with SET_NULL, not a separate model (42-01)
 - get_visible_user_ids returns None sentinel for all-access roles instead of querying all user IDs (42-01)
 - supervised_user_ids uses batch update (clear then assign) rather than incremental add/remove (42-01)
+- Installed cmdk manually since no components.json exists for shadcn CLI (42-03)
+- 5-level role hierarchy: admin(5), mission_supervisor(4), finance(3), staff(2), read_only(1) (42-03)
 
 ### Research Flags
 
@@ -113,9 +116,9 @@ None active.
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Completed 42-01-PLAN.md
-Resume: Continue with 42-02-PLAN.md (View-Level Queryset Scoping)
+Stopped at: Completed 42-03-PLAN.md
+Resume: Continue with 42-04-PLAN.md (Supervisor Dashboard)
 
 ---
 
-*Last updated: 2026-03-02 (Completed 42-01, Mission Supervisor backend role & permissions infrastructure)*
+*Last updated: 2026-03-02 (Completed 42-03, Frontend types, role hierarchy, and missionary assignment UI)*
