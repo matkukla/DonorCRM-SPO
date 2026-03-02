@@ -48,7 +48,7 @@ Requirements for v2.2 milestone. Each maps to roadmap phases.
 
 - [x] **SUPV-01**: Mission Supervisor role exists in the system (UserRole choice + migration)
 - [x] **SUPV-02**: Admin can assign missionaries to a supervisor via management UI
-- [ ] **SUPV-03**: Supervisor sees only their assigned missionaries' data across all pages
+- [x] **SUPV-03**: Supervisor sees only their assigned missionaries' data across all pages
 - [ ] **SUPV-04**: Admin and Supervisor can select a missionary and view their dashboard
 
 ## Future Requirements
@@ -112,7 +112,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PRAY-01 | Phase 41 | Complete |
 | SUPV-01 | Phase 42 | Complete |
 | SUPV-02 | Phase 42 | Complete |
-| SUPV-03 | Phase 42 | Pending |
+| SUPV-03 | Phase 42 | Complete |
 | SUPV-04 | Phase 42 | Pending |
 
 **Coverage:**
