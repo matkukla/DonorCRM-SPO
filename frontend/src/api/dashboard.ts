@@ -128,8 +128,9 @@ export async function markEventsSeen(): Promise<void> {
 /**
  * Get complete dashboard summary
  */
-export async function getDashboardSummary(): Promise<DashboardSummary> {
-  const response = await apiClient.get<DashboardSummary>("/dashboard/")
+export async function getDashboardSummary(userId?: string): Promise<DashboardSummary> {
+  const params = userId ? { user_id: userId } : undefined
+  const response = await apiClient.get<DashboardSummary>("/dashboard/", { params })
   return response.data
 }
 
@@ -174,9 +175,12 @@ export async function getNeedsAttention() {
 /**
  * Get giving summary (Given & Expecting widget)
  */
-export async function getGivingSummary(year?: number): Promise<GivingSummary> {
+export async function getGivingSummary(year?: number, userId?: string): Promise<GivingSummary> {
+  const params: Record<string, string | number> = {}
+  if (year) params.year = year
+  if (userId) params.user_id = userId
   const response = await apiClient.get<GivingSummary>("/dashboard/giving-summary/", {
-    params: year ? { year } : undefined,
+    params: Object.keys(params).length > 0 ? params : undefined,
   })
   return response.data
 }
@@ -184,9 +188,11 @@ export async function getGivingSummary(year?: number): Promise<GivingSummary> {
 /**
  * Get monthly gift totals for bar chart
  */
-export async function getMonthlyGifts(months = 12): Promise<MonthlyGiftsResponse> {
+export async function getMonthlyGifts(months = 12, userId?: string): Promise<MonthlyGiftsResponse> {
+  const params: Record<string, string | number> = { months }
+  if (userId) params.user_id = userId
   const response = await apiClient.get<MonthlyGiftsResponse>("/dashboard/monthly-gifts/", {
-    params: { months },
+    params,
   })
   return response.data
 }
@@ -205,5 +211,15 @@ export async function saveDashboardLayout(tileOrder: string[]): Promise<void> {
  */
 export async function getDashboardLayout(): Promise<{ tile_order?: string[] }> {
   const response = await apiClient.get<{ dashboard_layout: { tile_order?: string[] } }>("/users/me/")
+  return response.data.dashboard_layout || {}
+}
+
+/**
+ * Get another user's dashboard layout (for supervisor/admin viewing)
+ */
+export async function getUserDashboardLayout(userId: string): Promise<{ tile_order?: string[] }> {
+  const response = await apiClient.get<{ dashboard_layout: { tile_order?: string[] } }>(
+    `/dashboard/user/${userId}/layout/`
+  )
   return response.data.dashboard_layout || {}
 }

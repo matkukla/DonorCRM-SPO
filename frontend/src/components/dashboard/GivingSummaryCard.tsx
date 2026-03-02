@@ -18,8 +18,8 @@ function formatCurrency(amount: number): string {
   }).format(amount)
 }
 
-export function GivingSummaryCard() {
-  const { data, isLoading } = useGivingSummary()
+export function GivingSummaryCard({ userId }: { userId?: string }) {
+  const { data, isLoading } = useGivingSummary(undefined, userId)
 
   if (isLoading) {
     return (
