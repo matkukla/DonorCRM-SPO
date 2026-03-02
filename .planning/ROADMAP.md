@@ -113,7 +113,7 @@ See milestones/v2.1-ROADMAP.md for complete phase details.
 - [x] **Phase 39: Dashboard Modifications** - Remove stale text and tiles, tighten spacing, add chart toggle, and enable cross-section tile dragging (completed 2026-02-27)
 - [x] **Phase 40: Journal Report & Grid Behavior** - Rebuild journal report with new metrics/charts and make grid stage checkboxes directly clickable (completed 2026-02-27)
 - [x] **Phase 41: Begin Prayer** - Add a dedicated prayer session entry point that launches expanded Focus Mode (completed 2026-02-27)
-- [ ] **Phase 42: Mission Supervisor Role** - New role with scoped visibility, assignment management, and missionary dashboard selector
+- [x] **Phase 42: Mission Supervisor Role** - New role with scoped visibility, assignment management, and missionary dashboard selector (completed 2026-03-02)
 
 ## Phase Details
 
@@ -213,7 +213,7 @@ Phases execute in numeric order: 38 -> 39 -> 40 -> 41 -> 42
 | 39. Dashboard Modifications | v2.2 | Complete    | 2026-02-27 | 2026-02-27 |
 | 40. Journal Report & Grid Behavior | 2/2 | Complete    | 2026-02-27 | - |
 | 41. Begin Prayer | 1/1 | Complete    | 2026-02-27 | - |
-| 42. Mission Supervisor Role | 4/5 | In Progress|  | - |
+| 42. Mission Supervisor Role | 5/5 | Complete   | 2026-03-02 | - |
 
 **Total:** 6 milestones shipped, 112 plans executed across 39 phases. v2.2 in progress (5 phases, 26 requirements).
 
