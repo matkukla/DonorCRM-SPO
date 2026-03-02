@@ -57,6 +57,7 @@ Progress: [██████████] 100%
 | Phase 40 P02 | 2min | 2 tasks | 2 files |
 | Phase 41 P01 | 2min | 2 tasks | 3 files |
 | Phase 42 P01 | 3min | 2 tasks | 5 files |
+| Phase 42 P02 | 9min | 2 tasks | 13 files |
 | Phase 42 P03 | 4min | 2 tasks | 7 files |
 
 ## Accumulated Context
@@ -89,6 +90,8 @@ v2.2 decisions:
 - supervisor FK as self-referencing with SET_NULL, not a separate model (42-01)
 - get_visible_user_ids returns None sentinel for all-access roles instead of querying all user IDs (42-01)
 - supervised_user_ids uses batch update (clear then assign) rather than incremental add/remove (42-01)
+- JournalStageEventDeleteByStageView keeps admin-only write check for stage event deletion (42-02)
+- Events views only show user's own events, not supervised users' events -- events are personal notifications (42-02)
 - Installed cmdk manually since no components.json exists for shadcn CLI (42-03)
 - 5-level role hierarchy: admin(5), mission_supervisor(4), finance(3), staff(2), read_only(1) (42-03)
 
@@ -121,4 +124,4 @@ Resume: Continue with 42-04-PLAN.md (Supervisor Dashboard)
 
 ---
 
-*Last updated: 2026-03-02 (Completed 42-03, Frontend types, role hierarchy, and missionary assignment UI)*
+*Last updated: 2026-03-02 (Completed 42-02, View-Level Queryset Scoping)*
