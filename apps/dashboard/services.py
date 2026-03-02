@@ -10,6 +10,7 @@ from django.db.models import Case, Count, DecimalField, ExpressionWrapper, F, Q,
 from django.db.models.functions import TruncMonth
 
 from apps.contacts.models import Contact
+from apps.core.permissions import get_visible_user_ids
 from apps.events.models import Event
 from apps.gifts.models import Gift, RecurringGift, RecurringGiftFrequency, RecurringGiftStatus
 from apps.tasks.models import Task, TaskStatus
@@ -83,13 +84,13 @@ def get_needs_attention(user):
     """
     Get items requiring user action.
     """
-    # Get contacts for this user
-    if user.role == 'admin':
+    visible = get_visible_user_ids(user)
+    if visible is None:
         contacts = Contact.objects.all()
         tasks = Task.objects.all()
     else:
-        contacts = Contact.objects.filter(owner=user)
-        tasks = Task.objects.filter(owner=user)
+        contacts = Contact.objects.filter(owner_id__in=visible)
+        tasks = Task.objects.filter(owner_id__in=visible)
 
     today = date.today()
 
@@ -132,10 +133,11 @@ def get_thank_you_queue(user):
     """
     Get contacts needing thank-you acknowledgment.
     """
-    if user.role == 'admin':
+    visible = get_visible_user_ids(user)
+    if visible is None:
         contacts = Contact.objects.all()
     else:
-        contacts = Contact.objects.filter(owner=user)
+        contacts = Contact.objects.filter(owner_id__in=visible)
 
     return contacts.filter(needs_thank_you=True).select_related('owner')
 
@@ -146,10 +148,11 @@ def get_support_progress(user):
     Uses SQL aggregation with CASE/WHEN for frequency multipliers
     instead of loading all RecurringGifts into Python.
     """
-    if user.role == 'admin':
+    visible = get_visible_user_ids(user)
+    if visible is None:
         recurring_gifts = RecurringGift.objects.all()
     else:
-        recurring_gifts = RecurringGift.objects.filter(donor_contact__owner=user)
+        recurring_gifts = RecurringGift.objects.filter(donor_contact__owner_id__in=visible)
 
     # Get active recurring gifts
     active_recurring = recurring_gifts.filter(status=RecurringGiftStatus.ACTIVE)
@@ -176,10 +179,11 @@ def get_recent_gifts(user, days=30, limit=10):
     """
     start_date = date.today() - timedelta(days=days)
 
-    if user.role == 'admin':
+    visible = get_visible_user_ids(user)
+    if visible is None:
         gifts = Gift.objects.all()
     else:
-        gifts = Gift.objects.filter(donor_contact__owner=user)
+        gifts = Gift.objects.filter(donor_contact__owner_id__in=visible)
 
     return gifts.filter(gift_date__gte=start_date).select_related('donor_contact')[:limit]
 
@@ -195,12 +199,13 @@ def get_giving_summary(user, year=None):
     year_start = date(year, 1, 1)
     year_end = date(year, 12, 31)
 
-    if user.role in ['admin', 'finance', 'read_only']:
+    visible = get_visible_user_ids(user)
+    if visible is None:
         gifts = Gift.objects.all()
         recurring_gifts = RecurringGift.objects.all()
     else:
-        gifts = Gift.objects.filter(donor_contact__owner=user)
-        recurring_gifts = RecurringGift.objects.filter(donor_contact__owner=user)
+        gifts = Gift.objects.filter(donor_contact__owner_id__in=visible)
+        recurring_gifts = RecurringGift.objects.filter(donor_contact__owner_id__in=visible)
 
     # Given: sum of gifts this year (cents -> dollars)
     total_cents = gifts.filter(
@@ -244,10 +249,11 @@ def get_monthly_gifts(user, months=12):
     today = date.today()
     start_date = (today.replace(day=1) - relativedelta(months=months - 1))
 
-    if user.role in ['admin', 'finance', 'read_only']:
+    visible = get_visible_user_ids(user)
+    if visible is None:
         gifts = Gift.objects.all()
     else:
-        gifts = Gift.objects.filter(donor_contact__owner=user)
+        gifts = Gift.objects.filter(donor_contact__owner_id__in=visible)
 
     monthly_data = (
         gifts.filter(gift_date__gte=start_date)

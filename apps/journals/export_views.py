@@ -8,6 +8,7 @@ from rest_framework import permissions
 from rest_framework.views import APIView
 from django.http import StreamingHttpResponse
 
+from apps.core.permissions import get_visible_user_ids
 from apps.imports.services import sanitize_csv_value
 from apps.journals.filters import JournalFilterSet
 from apps.journals.models import Journal
@@ -30,10 +31,11 @@ class JournalExportCSVView(APIView):
         user = request.user
 
         # Same owner-scoping as JournalListCreateView
-        if user.role == 'admin':
+        visible = get_visible_user_ids(user)
+        if visible is None:
             queryset = Journal.objects.all()
         else:
-            queryset = Journal.objects.filter(owner=user)
+            queryset = Journal.objects.filter(owner_id__in=visible)
 
         # Exclude archived by default unless is_archived filter present
         if 'is_archived' not in request.query_params:

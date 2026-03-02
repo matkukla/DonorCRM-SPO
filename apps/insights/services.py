@@ -10,6 +10,7 @@ from django.db.models.functions import TruncMonth, TruncYear, TruncWeek, Coalesc
 from django.utils import timezone
 
 from apps.contacts.models import Contact, ContactStatus
+from apps.core.permissions import get_visible_user_ids
 from apps.events.models import Event
 from apps.gifts.models import Gift, RecurringGift, RecurringGiftStatus
 from apps.journals.models import Journal, JournalContact, JournalStageEvent, PipelineStage, Decision
@@ -36,23 +37,26 @@ def _parse_date_range(date_from=None, date_to=None):
 
 def _scope_gifts(user):
     """Return gift queryset scoped by user role."""
-    if user.role in ['admin', 'finance', 'read_only']:
+    visible = get_visible_user_ids(user)
+    if visible is None:
         return Gift.objects.all()
-    return Gift.objects.filter(donor_contact__owner=user)
+    return Gift.objects.filter(donor_contact__owner_id__in=visible)
 
 
 def _scope_recurring_gifts(user):
     """Return recurring gift queryset scoped by user role."""
-    if user.role in ['admin', 'finance', 'read_only']:
+    visible = get_visible_user_ids(user)
+    if visible is None:
         return RecurringGift.objects.all()
-    return RecurringGift.objects.filter(donor_contact__owner=user)
+    return RecurringGift.objects.filter(donor_contact__owner_id__in=visible)
 
 
 def _scope_tasks(user):
     """Return task queryset scoped by user role."""
-    if user.role == 'admin':
+    visible = get_visible_user_ids(user)
+    if visible is None:
         return Task.objects.all()
-    return Task.objects.filter(owner=user)
+    return Task.objects.filter(owner_id__in=visible)
 
 
 def get_donations_by_month(user, year=None):
