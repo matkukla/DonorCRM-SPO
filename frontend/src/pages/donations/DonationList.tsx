@@ -40,6 +40,7 @@ export default function DonationList() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const isAdmin = user?.role === "admin"
+  const canSeeOwner = user?.role === "admin" || user?.role === "mission_supervisor"
 
   const {
     filters,
@@ -60,8 +61,19 @@ export default function DonationList() {
   const queryParams = { ...toQueryParams(), page_size: String(PAGE_SIZE) }
   const { data, isLoading } = useGifts(queryParams)
 
-  // Fetch users for admin owner filter
+  // Fetch users for owner filter
   const { data: usersData } = useUsers()
+  const ownerOptions = user?.role === "admin"
+    ? (usersData || []).map((u) => ({ id: String(u.id), full_name: u.full_name }))
+    : user?.role === "mission_supervisor"
+      ? [
+          { id: String(user.id), full_name: `${user.first_name} ${user.last_name}` },
+          ...(user.supervised_users?.map((u) => ({
+            id: String(u.id),
+            full_name: `${u.first_name} ${u.last_name}`,
+          })) || []),
+        ]
+      : []
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -107,6 +119,13 @@ export default function DonationList() {
         </span>
       ),
     },
+    ...(canSeeOwner ? [{
+      accessorKey: "owner_name" as const,
+      header: "Owner",
+      cell: ({ row }: { row: { original: Gift } }) => (
+        <span className="text-muted-foreground">{row.original.owner_name}</span>
+      ),
+    }] : []),
   ]
 
   const pageCount = data ? Math.ceil(data.count / PAGE_SIZE) : 1
@@ -145,7 +164,7 @@ export default function DonationList() {
               donor_contact: "Donor",
             }}
             filterValueLabels={{
-              ...(usersData ? { owner: Object.fromEntries(usersData.map((u) => [String(u.id), u.full_name])) } : {}),
+              ...(ownerOptions.length > 0 ? { owner: Object.fromEntries(ownerOptions.map((u) => [u.id, u.full_name])) } : {}),
               payment_type: giftPaymentTypeLabels,
             }}
             presets={giftPresets}
@@ -223,14 +242,14 @@ export default function DonationList() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Admin owner dropdown */}
-            {isAdmin && usersData && (
+            {/* Owner dropdown (admin + supervisor) */}
+            {canSeeOwner && ownerOptions.length > 0 && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="secondary" size="sm" className="gap-2">
                     <Filter className="h-4 w-4" />
                     {filters.owner
-                      ? usersData.find((u) => String(u.id) === filters.owner)?.full_name || "Owner"
+                      ? ownerOptions.find((u) => u.id === filters.owner)?.full_name || "Owner"
                       : "All Owners"}
                   </Button>
                 </DropdownMenuTrigger>
@@ -238,8 +257,8 @@ export default function DonationList() {
                   <DropdownMenuItem onClick={() => setFilters({ owner: null, page: 1 })}>
                     All Owners
                   </DropdownMenuItem>
-                  {usersData.map((u) => (
-                    <DropdownMenuItem key={u.id} onClick={() => setFilters({ owner: String(u.id), page: 1 })}>
+                  {ownerOptions.map((u) => (
+                    <DropdownMenuItem key={u.id} onClick={() => setFilters({ owner: u.id, page: 1 })}>
                       {u.full_name}
                     </DropdownMenuItem>
                   ))}

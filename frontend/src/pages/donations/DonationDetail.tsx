@@ -1,4 +1,5 @@
 import { useParams, useNavigate, Link } from "react-router-dom"
+import { useAuth } from "@/providers/AuthProvider"
 import { useGift, useDeleteGift } from "@/hooks/useGifts"
 import { Button } from "@/components/ui/button"
 import {
@@ -48,8 +49,13 @@ interface DonationDetailPanelProps {
 
 export function DonationDetailPanel({ open, giftId, onClose }: DonationDetailPanelProps) {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const { data: gift, isLoading } = useGift(giftId)
   const deleteMutation = useDeleteGift()
+
+  // Read-only for supervisors viewing a missionary's gift
+  const currentUserName = user ? `${user.first_name} ${user.last_name}` : ""
+  const isReadOnly = user?.role === "mission_supervisor" && !!gift?.owner_name && gift.owner_name !== currentUserName
 
   const handleDelete = () => {
     if (!giftId) return
@@ -168,27 +174,29 @@ export function DonationDetailPanel({ open, giftId, onClose }: DonationDetailPan
             )}
 
             {/* Actions */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold">Actions</h3>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => navigate(`/donations/${giftId}/edit`)}
-                >
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleDelete}
-                  disabled={deleteMutation.isPending}
-                  className="text-destructive hover:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+            {!isReadOnly && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold">Actions</h3>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => navigate(`/donations/${giftId}/edit`)}
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleDelete}
+                    disabled={deleteMutation.isPending}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Timestamps */}
             <div className="pt-4 border-t">

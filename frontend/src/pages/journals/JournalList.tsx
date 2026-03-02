@@ -1,10 +1,17 @@
 import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
+import { useAuth } from "@/providers/AuthProvider"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { useJournals } from "@/hooks/useJournals"
 import { useFilterParams, journalFilterParsers } from "@/hooks/useFilterParams"
 import { journalPresets } from "@/lib/filter-presets"
@@ -14,6 +21,20 @@ import { CreateJournalDialog } from "./components"
 import { formatLocalDate } from "@/lib/utils"
 
 export default function JournalList() {
+  const { user } = useAuth()
+  const canSeeOwner = user?.role === "admin" || user?.role === "mission_supervisor"
+  const ownerOptions = user?.role === "admin"
+    ? [] // admin sees all; no dropdown needed without usersData
+    : user?.role === "mission_supervisor"
+      ? [
+          { id: String(user.id), full_name: `${user.first_name} ${user.last_name}` },
+          ...(user.supervised_users?.map((u) => ({
+            id: String(u.id),
+            full_name: `${u.first_name} ${u.last_name}`,
+          })) || []),
+        ]
+      : []
+
   const { filters, setFilters, clearAll, activeFilters, toQueryParams } =
     useFilterParams(journalFilterParsers)
 
@@ -62,6 +83,10 @@ export default function JournalList() {
               is_archived: "Archived",
               deadline_after: "Deadline From",
               deadline_before: "Deadline To",
+              owner: "Owner",
+            }}
+            filterValueLabels={{
+              ...(ownerOptions.length > 0 ? { owner: Object.fromEntries(ownerOptions.map((u) => [u.id, u.full_name])) } : {}),
             }}
             presets={journalPresets}
             onApplyPreset={(preset) => setFilters({ ...preset.getParams(), page: 1 })}
@@ -116,6 +141,30 @@ export default function JournalList() {
                 aria-label="Deadline to"
               />
             </div>
+
+            {/* Owner filter (supervisor) */}
+            {canSeeOwner && ownerOptions.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="secondary" size="sm" className="gap-2">
+                    <Filter className="h-4 w-4" />
+                    {filters.owner
+                      ? ownerOptions.find((u) => u.id === filters.owner)?.full_name || "Owner"
+                      : "All Owners"}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem onClick={() => setFilters({ owner: null, page: 1 })}>
+                    All Owners
+                  </DropdownMenuItem>
+                  {ownerOptions.map((u) => (
+                    <DropdownMenuItem key={u.id} onClick={() => setFilters({ owner: u.id, page: 1 })}>
+                      {u.full_name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </FilterBar>
 
           {error && (
@@ -149,9 +198,12 @@ export default function JournalList() {
                   </CardHeader>
                   <CardContent>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">
-                        Created {formatLocalDate(journal.created_at)}
-                      </span>
+                      <div className="text-sm text-muted-foreground">
+                        <span>Created {formatLocalDate(journal.created_at)}</span>
+                        {canSeeOwner && journal.owner_name && (
+                          <span className="block text-xs mt-0.5">Owner: {journal.owner_name}</span>
+                        )}
+                      </div>
                       <Link to={`/journals/${journal.id}`}>
                         <Button variant="ghost" size="sm">
                           View

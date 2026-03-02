@@ -1,4 +1,5 @@
 import { useNavigate, useSearchParams, Link } from "react-router-dom"
+import { useAuth } from "@/providers/AuthProvider"
 import { useTasks, useCompleteTask } from "@/hooks/useTasks"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
@@ -60,6 +61,19 @@ const typeIcons: Record<TaskType, React.ReactNode> = {
 
 export default function TaskList() {
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const canSeeOwner = user?.role === "admin" || user?.role === "mission_supervisor"
+  const ownerOptions = user?.role === "admin"
+    ? [] // admin can see all via usersData (not loaded here -- owner column always visible)
+    : user?.role === "mission_supervisor"
+      ? [
+          { id: String(user.id), full_name: `${user.first_name} ${user.last_name}` },
+          ...(user.supervised_users?.map((u) => ({
+            id: String(u.id),
+            full_name: `${u.first_name} ${u.last_name}`,
+          })) || []),
+        ]
+      : []
   const [searchParams, setSearchParams] = useSearchParams()
 
   const page = parseInt(searchParams.get("page") || "1", 10)
@@ -67,6 +81,7 @@ export default function TaskList() {
   const priority = searchParams.get("priority") as TaskPriority | undefined
   const taskType = searchParams.get("task_type") as TaskType | undefined
   const search = searchParams.get("search") || ""
+  const ownerFilter = searchParams.get("owner") || undefined
 
   const { data, isLoading } = useTasks({
     page,
@@ -75,6 +90,7 @@ export default function TaskList() {
     priority,
     task_type: taskType,
     search: search || undefined,
+    owner: ownerFilter,
   })
 
   const completeMutation = useCompleteTask()
@@ -129,6 +145,17 @@ export default function TaskList() {
   const handlePageChange = (newPage: number) => {
     const params = new URLSearchParams(searchParams)
     params.set("page", String(newPage + 1))
+    setSearchParams(params)
+  }
+
+  const handleOwnerFilter = (newOwner: string | null) => {
+    const params = new URLSearchParams(searchParams)
+    if (newOwner) {
+      params.set("owner", newOwner)
+    } else {
+      params.delete("owner")
+    }
+    params.set("page", "1")
     setSearchParams(params)
   }
 
@@ -195,54 +222,62 @@ export default function TaskList() {
         </span>
       ),
     },
-    {
-      accessorKey: "owner_name",
-      header: "Assigned To",
-      cell: ({ row }) => (
+    ...(canSeeOwner ? [{
+      accessorKey: "owner_name" as const,
+      header: "Owner",
+      cell: ({ row }: { row: { original: Task } }) => (
         <span className="text-muted-foreground">{row.original.owner_name}</span>
       ),
-    },
+    }] : []),
     {
       id: "actions",
-      cell: ({ row }) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Task actions">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation()
-                navigate(`/tasks/${row.original.id}`)
-              }}
-            >
-              View details
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation()
-                navigate(`/tasks/${row.original.id}/edit`)
-              }}
-            >
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            {row.original.status !== "completed" && row.original.status !== "cancelled" && (
+      cell: ({ row }) => {
+        const isOwnItem = String(row.original.owner) === String(user?.id)
+        const canEdit = user?.role === "admin" || isOwnItem
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Task actions">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
               <DropdownMenuItem
                 onClick={(e) => {
                   e.stopPropagation()
-                  handleComplete(row.original.id)
+                  navigate(`/tasks/${row.original.id}`)
                 }}
               >
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Mark Complete
+                View details
               </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ),
+              {canEdit && (
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    navigate(`/tasks/${row.original.id}/edit`)
+                  }}
+                >
+                  Edit
+                </DropdownMenuItem>
+              )}
+              {canEdit && row.original.status !== "completed" && row.original.status !== "cancelled" && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleComplete(row.original.id)
+                    }}
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Mark Complete
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )
+      },
     },
   ]
 
@@ -344,6 +379,30 @@ export default function TaskList() {
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
+
+              {/* Owner filter (supervisor) */}
+              {canSeeOwner && ownerOptions.length > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="secondary" className="gap-2">
+                      <Filter className="h-4 w-4" />
+                      {ownerFilter
+                        ? ownerOptions.find((u) => u.id === ownerFilter)?.full_name || "Owner"
+                        : "All Owners"}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => handleOwnerFilter(null)}>
+                      All Owners
+                    </DropdownMenuItem>
+                    {ownerOptions.map((u) => (
+                      <DropdownMenuItem key={u.id} onClick={() => handleOwnerFilter(u.id)}>
+                        {u.full_name}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           </Card>
 

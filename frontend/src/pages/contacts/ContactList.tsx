@@ -58,6 +58,7 @@ export default function ContactList() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const isAdmin = user?.role === "admin"
+  const canSeeOwner = user?.role === "admin" || user?.role === "mission_supervisor"
 
   const {
     filters,
@@ -79,6 +80,17 @@ export default function ContactList() {
 
   const markThankedMutation = useMarkContactThanked()
   const { data: usersData } = useUsers()
+  const ownerOptions = user?.role === "admin"
+    ? (usersData || []).map((u) => ({ id: String(u.id), full_name: u.full_name }))
+    : user?.role === "mission_supervisor"
+      ? [
+          { id: String(user.id), full_name: `${user.first_name} ${user.last_name}` },
+          ...(user.supervised_users?.map((u) => ({
+            id: String(u.id),
+            full_name: `${u.first_name} ${u.last_name}`,
+          })) || []),
+        ]
+      : []
   const [logEventContactId, setLogEventContactId] = useState<string | null>(null)
   const [isCopyingEmails, setIsCopyingEmails] = useState(false)
 
@@ -175,46 +187,59 @@ export default function ContactList() {
           </Badge>
         ),
     },
+    ...(canSeeOwner ? [{
+      accessorKey: "owner_name" as const,
+      header: "Owner",
+      cell: ({ row }: { row: { original: ContactListItem } }) => (
+        <span className="text-muted-foreground">{row.original.owner_name}</span>
+      ),
+    }] : []),
     {
       id: "actions",
-      cell: ({ row }) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Contact actions">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation()
-                navigate(`/contacts/${row.original.id}`)
-              }}
-            >
-              View details
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation()
-                setLogEventContactId(row.original.id)
-              }}
-            >
-              <BookOpen className="h-4 w-4 mr-2" />
-              Log Entry
-            </DropdownMenuItem>
-            {row.original.needs_thank_you && (
+      cell: ({ row }) => {
+        const isOwnItem = String(row.original.owner) === String(user?.id)
+        const canEdit = user?.role === "admin" || isOwnItem
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Contact actions">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
               <DropdownMenuItem
                 onClick={(e) => {
                   e.stopPropagation()
-                  markThankedMutation.mutate(row.original.id)
+                  navigate(`/contacts/${row.original.id}`)
                 }}
               >
-                Mark as thanked
+                View details
               </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ),
+              {canEdit && (
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setLogEventContactId(row.original.id)
+                  }}
+                >
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  Log Entry
+                </DropdownMenuItem>
+              )}
+              {canEdit && row.original.needs_thank_you && (
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    markThankedMutation.mutate(row.original.id)
+                  }}
+                >
+                  Mark as thanked
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )
+      },
     },
   ]
 
@@ -267,7 +292,7 @@ export default function ContactList() {
                 major_donor: "Major Donor",
                 deceased: "Deceased",
               },
-              ...(usersData ? { owner: Object.fromEntries(usersData.map((u) => [String(u.id), u.full_name])) } : {}),
+              ...(ownerOptions.length > 0 ? { owner: Object.fromEntries(ownerOptions.map((u) => [u.id, u.full_name])) } : {}),
             }}
             presets={contactPresets}
             onApplyPreset={(preset) => setFilters({ ...preset.getParams(), page: 1 })}
@@ -310,14 +335,14 @@ export default function ContactList() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Admin owner dropdown */}
-            {isAdmin && usersData && (
+            {/* Owner dropdown (admin + supervisor) */}
+            {canSeeOwner && ownerOptions.length > 0 && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="secondary" size="sm" className="gap-2">
                     <Filter className="h-4 w-4" />
                     {filters.owner
-                      ? usersData.find((u) => String(u.id) === filters.owner)?.full_name || "Owner"
+                      ? ownerOptions.find((u) => u.id === filters.owner)?.full_name || "Owner"
                       : "All Owners"}
                   </Button>
                 </DropdownMenuTrigger>
@@ -325,8 +350,8 @@ export default function ContactList() {
                   <DropdownMenuItem onClick={() => setFilters({ owner: null, page: 1 })}>
                     All Owners
                   </DropdownMenuItem>
-                  {usersData.map((u) => (
-                    <DropdownMenuItem key={u.id} onClick={() => setFilters({ owner: String(u.id), page: 1 })}>
+                  {ownerOptions.map((u) => (
+                    <DropdownMenuItem key={u.id} onClick={() => setFilters({ owner: u.id, page: 1 })}>
                       {u.full_name}
                     </DropdownMenuItem>
                   ))}

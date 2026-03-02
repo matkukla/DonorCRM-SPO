@@ -63,6 +63,7 @@ export interface TaskFilters {
   contact?: string
   search?: string
   ordering?: string
+  owner?: string
 }
 
 export interface PaginatedResponse<T> {
@@ -108,6 +109,7 @@ export async function getTasks(filters: TaskFilters = {}): Promise<PaginatedResp
   if (filters.contact) params.append("contact", filters.contact)
   if (filters.search) params.append("search", filters.search)
   if (filters.ordering) params.append("ordering", filters.ordering)
+  if (filters.owner) params.append("owner", filters.owner)
 
   const response = await apiClient.get(`/tasks/?${params.toString()}`)
   return response.data
