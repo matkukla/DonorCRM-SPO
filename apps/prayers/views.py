@@ -11,6 +11,7 @@ from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.core.permissions import get_visible_user_ids
 from apps.prayers.filters import PrayerIntentionFilterSet
 from apps.prayers.models import PrayerIntention
 from apps.prayers.serializers import PrayerIntentionSerializer
@@ -19,8 +20,9 @@ from apps.prayers.serializers import PrayerIntentionSerializer
 def _owner_scoped_queryset(user):
     """Return PrayerIntention queryset scoped by ownership."""
     qs = PrayerIntention.objects.select_related('contact').all()
-    if user.role not in ['admin', 'finance', 'read_only']:
-        qs = qs.filter(contact__owner=user)
+    visible = get_visible_user_ids(user)
+    if visible is not None:
+        qs = qs.filter(contact__owner_id__in=visible)
     return qs
 
 

@@ -8,6 +8,7 @@ from rest_framework.filters import OrderingFilter, SearchFilter
 
 from apps.gifts.filters import GiftFilterSet, RecurringGiftFilterSet
 from apps.gifts.models import Gift, RecurringGift
+from apps.core.permissions import IsSupervisorWriteRestricted, get_visible_user_ids
 from apps.gifts.serializers import (
     GiftCreateSerializer,
     GiftDetailSerializer,
@@ -36,8 +37,9 @@ class GiftListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         user = self.request.user
         qs = Gift.objects.select_related('donor_contact', 'fund').all()
-        if user.role not in ['admin', 'finance', 'read_only']:
-            qs = qs.filter(donor_contact__owner=user)
+        visible = get_visible_user_ids(user)
+        if visible is not None:
+            qs = qs.filter(donor_contact__owner_id__in=visible)
         return qs.order_by('-gift_date')
 
     def get_serializer_class(self):
@@ -58,15 +60,16 @@ class GiftDetailView(generics.RetrieveUpdateDestroyAPIView):
     PUT/PATCH: Update gift
     DELETE: Delete gift
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsSupervisorWriteRestricted]
 
     def get_queryset(self):
         user = self.request.user
         qs = Gift.objects.select_related('donor_contact', 'fund').prefetch_related(
             'credits__solicitor'
         ).all()
-        if user.role not in ['admin', 'finance', 'read_only']:
-            qs = qs.filter(donor_contact__owner=user)
+        visible = get_visible_user_ids(user)
+        if visible is not None:
+            qs = qs.filter(donor_contact__owner_id__in=visible)
         return qs
 
     def get_serializer_class(self):
@@ -94,8 +97,9 @@ class RecurringGiftListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         user = self.request.user
         qs = RecurringGift.objects.select_related('donor_contact', 'fund').all()
-        if user.role not in ['admin', 'finance', 'read_only']:
-            qs = qs.filter(donor_contact__owner=user)
+        visible = get_visible_user_ids(user)
+        if visible is not None:
+            qs = qs.filter(donor_contact__owner_id__in=visible)
         return qs.order_by('-start_date')
 
     def get_serializer_class(self):
@@ -117,11 +121,12 @@ class RecurringGiftDetailView(generics.RetrieveUpdateDestroyAPIView):
     DELETE: Delete recurring gift
     """
     serializer_class = RecurringGiftSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsSupervisorWriteRestricted]
 
     def get_queryset(self):
         user = self.request.user
         qs = RecurringGift.objects.select_related('donor_contact', 'fund').all()
-        if user.role not in ['admin', 'finance', 'read_only']:
-            qs = qs.filter(donor_contact__owner=user)
+        visible = get_visible_user_ids(user)
+        if visible is not None:
+            qs = qs.filter(donor_contact__owner_id__in=visible)
         return qs

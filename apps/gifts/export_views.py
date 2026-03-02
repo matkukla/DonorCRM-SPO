@@ -8,6 +8,7 @@ from django.http import StreamingHttpResponse
 from rest_framework import permissions
 from rest_framework.views import APIView
 
+from apps.core.permissions import get_visible_user_ids
 from apps.gifts.filters import GiftFilterSet, RecurringGiftFilterSet
 from apps.gifts.models import Gift, RecurringGift
 from apps.imports.services import sanitize_csv_value
@@ -30,15 +31,17 @@ class GiftExportCSVView(APIView):
         user = request.user
 
         # Same owner-scoping as GiftListCreateView
-        if user.role in ['admin', 'finance', 'read_only']:
+        visible = get_visible_user_ids(user)
+        if visible is None:
             queryset = Gift.objects.all()
         else:
-            queryset = Gift.objects.filter(donor_contact__owner=user)
+            queryset = Gift.objects.filter(donor_contact__owner_id__in=visible)
 
-        # Admin-only owner filter
+        # Admin/supervisor owner filter
         owner_id = request.query_params.get('owner')
-        if owner_id and user.role == 'admin':
-            queryset = queryset.filter(donor_contact__owner_id=owner_id)
+        if owner_id and user.role in ['admin', 'mission_supervisor']:
+            if visible is None or int(owner_id) in visible:
+                queryset = queryset.filter(donor_contact__owner_id=owner_id)
 
         # Apply FilterSet (same as list endpoint)
         filterset = GiftFilterSet(request.query_params, queryset=queryset)
@@ -87,15 +90,17 @@ class RecurringGiftExportCSVView(APIView):
         user = request.user
 
         # Same owner-scoping as RecurringGiftListCreateView
-        if user.role in ['admin', 'finance', 'read_only']:
+        visible = get_visible_user_ids(user)
+        if visible is None:
             queryset = RecurringGift.objects.all()
         else:
-            queryset = RecurringGift.objects.filter(donor_contact__owner=user)
+            queryset = RecurringGift.objects.filter(donor_contact__owner_id__in=visible)
 
-        # Admin-only owner filter
+        # Admin/supervisor owner filter
         owner_id = request.query_params.get('owner')
-        if owner_id and user.role == 'admin':
-            queryset = queryset.filter(donor_contact__owner_id=owner_id)
+        if owner_id and user.role in ['admin', 'mission_supervisor']:
+            if visible is None or int(owner_id) in visible:
+                queryset = queryset.filter(donor_contact__owner_id=owner_id)
 
         # Apply FilterSet (same as list endpoint)
         filterset = RecurringGiftFilterSet(request.query_params, queryset=queryset)

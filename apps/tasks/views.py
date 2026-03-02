@@ -8,7 +8,7 @@ from rest_framework import filters, generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.core.permissions import IsOwnerOrAdmin
+from apps.core.permissions import IsOwnerOrAdmin, IsSupervisorWriteRestricted, get_visible_user_ids
 from apps.core.utils import get_safe_int_param
 from apps.tasks.filters import TaskFilterSet
 from apps.tasks.models import Task, TaskStatus
@@ -30,12 +30,11 @@ class TaskListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         user = self.request.user
 
-        # Admin can see all tasks
-        if user.role == 'admin':
+        visible = get_visible_user_ids(user)
+        if visible is None:
             queryset = Task.objects.all()
         else:
-            # Others see only their own tasks
-            queryset = Task.objects.filter(owner=user)
+            queryset = Task.objects.filter(owner_id__in=visible)
 
         return queryset.select_related('owner', 'contact')
 
@@ -52,13 +51,14 @@ class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
     DELETE: Delete task
     """
     serializer_class = TaskSerializer
-    permission_classes = [permissions.IsAuthenticated, IsOwnerOrAdmin]
+    permission_classes = [permissions.IsAuthenticated, IsOwnerOrAdmin, IsSupervisorWriteRestricted]
 
     def get_queryset(self):
         user = self.request.user
-        if user.role == 'admin':
+        visible = get_visible_user_ids(user)
+        if visible is None:
             return Task.objects.all()
-        return Task.objects.filter(owner=user)
+        return Task.objects.filter(owner_id__in=visible)
 
 
 class TaskCompleteView(APIView):
@@ -70,10 +70,11 @@ class TaskCompleteView(APIView):
     def post(self, request, pk):
         user = request.user
         try:
-            if user.role == 'admin':
+            visible = get_visible_user_ids(user)
+            if visible is None:
                 task = Task.objects.get(pk=pk)
             else:
-                task = Task.objects.get(pk=pk, owner=user)
+                task = Task.objects.get(pk=pk, owner_id__in=visible)
         except Task.DoesNotExist:
             return Response(
                 {'detail': 'Task not found.'},
@@ -106,9 +107,10 @@ class OverdueTasksView(generics.ListAPIView):
             due_date__lt=today
         )
 
-        if user.role == 'admin':
-            return base_query
-        return base_query.filter(owner=user)
+        visible = get_visible_user_ids(user)
+        if visible is not None:
+            base_query = base_query.filter(owner_id__in=visible)
+        return base_query
 
 
 class UpcomingTasksView(generics.ListAPIView):
@@ -130,6 +132,7 @@ class UpcomingTasksView(generics.ListAPIView):
             due_date__lte=end_date
         )
 
-        if user.role == 'admin':
-            return base_query
-        return base_query.filter(owner=user)
+        visible = get_visible_user_ids(user)
+        if visible is not None:
+            base_query = base_query.filter(owner_id__in=visible)
+        return base_query
