@@ -11,6 +11,7 @@ from apps.users.models import User, UserRole
 class UserSerializer(serializers.ModelSerializer):
     """
     Serializer for User model (read operations).
+    Used only by admin-gated endpoints (UserListCreateView, UserDetailView).
     """
     full_name = serializers.CharField(read_only=True)
 
@@ -18,7 +19,7 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'id', 'email', 'first_name', 'last_name', 'full_name',
-            'phone', 'role', 'monthly_goal', 'email_notifications',
+            'phone', 'role', 'supervisor', 'monthly_goal', 'email_notifications',
             'is_active', 'date_joined', 'last_login_at'
         ]
         read_only_fields = ['id', 'date_joined', 'last_login_at']
@@ -77,12 +78,30 @@ class UserAdminUpdateSerializer(serializers.ModelSerializer):
     """
     Serializer for admin updating any user.
     """
+    supervised_user_ids = serializers.ListField(
+        child=serializers.UUIDField(),
+        write_only=True,
+        required=False,
+        help_text='List of user IDs to assign as supervised users'
+    )
+
     class Meta:
         model = User
         fields = [
             'first_name', 'last_name', 'phone', 'role',
-            'monthly_goal', 'email_notifications', 'is_active'
+            'monthly_goal', 'email_notifications', 'is_active',
+            'supervised_user_ids'
         ]
+
+    def update(self, instance, validated_data):
+        supervised_ids = validated_data.pop('supervised_user_ids', None)
+        instance = super().update(instance, validated_data)
+        if supervised_ids is not None:
+            # Clear existing supervised users (set their supervisor to None)
+            instance.supervised_users.update(supervisor=None)
+            # Assign new supervised users
+            User.objects.filter(id__in=supervised_ids, is_active=True).update(supervisor=instance)
+        return instance
 
 
 class PasswordChangeSerializer(serializers.Serializer):
@@ -130,6 +149,7 @@ class CurrentUserSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(read_only=True)
     contact_count = serializers.SerializerMethodField()
     active_pledge_count = serializers.SerializerMethodField()
+    supervised_users = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -137,7 +157,8 @@ class CurrentUserSerializer(serializers.ModelSerializer):
             'id', 'email', 'first_name', 'last_name', 'full_name',
             'phone', 'role', 'monthly_goal', 'email_notifications',
             'date_joined', 'last_login_at',
-            'contact_count', 'active_pledge_count', 'dashboard_layout'
+            'contact_count', 'active_pledge_count', 'dashboard_layout',
+            'supervised_users'
         ]
         read_only_fields = fields
 
@@ -161,3 +182,13 @@ class CurrentUserSerializer(serializers.ModelSerializer):
             donor_contact__owner=obj,
             status=RecurringGiftStatus.ACTIVE
         ).count()
+
+    def get_supervised_users(self, obj):
+        """Return list of supervised user summaries for supervisor/admin."""
+        if obj.role != 'mission_supervisor':
+            return []
+        return list(
+            obj.supervised_users.filter(is_active=True)
+            .values('id', 'first_name', 'last_name', 'email')
+            .order_by('last_name', 'first_name')
+        )

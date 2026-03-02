@@ -23,8 +23,10 @@ class UserListCreateView(generics.ListCreateAPIView):
     GET: List all users (admin only)
     POST: Create a new user (admin only)
     """
-    queryset = User.objects.all().order_by('-date_joined')
     permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    def get_queryset(self):
+        return User.objects.all().prefetch_related('supervised_users').order_by('-date_joined')
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -38,8 +40,10 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     PATCH/PUT: Update user (admin only)
     DELETE: Deactivate user (admin only)
     """
-    queryset = User.objects.all()
     permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    def get_queryset(self):
+        return User.objects.all().prefetch_related('supervised_users')
 
     def get_serializer_class(self):
         if self.request.method in ['PATCH', 'PUT']:

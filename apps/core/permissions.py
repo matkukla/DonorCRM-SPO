@@ -15,6 +15,26 @@ Write operations are gated by IsStaffOrAbove (excludes read_only).
 from rest_framework import permissions
 
 
+def get_visible_user_ids(user):
+    """Return set of user IDs whose data this user can see, or None for 'all'.
+
+    - Admin/Finance/ReadOnly: returns None (sentinel for 'all users')
+    - Mission Supervisor: returns {own_id} union {supervised user IDs}
+    - Staff: returns {own_id}
+    """
+    if user.role in ['admin', 'finance', 'read_only']:
+        return None
+    if user.role == 'mission_supervisor':
+        ids = set(
+            user.supervised_users
+            .filter(is_active=True)
+            .values_list('id', flat=True)
+        )
+        ids.add(user.id)
+        return ids
+    return {user.id}
+
+
 class IsAdmin(permissions.BasePermission):
     """
     Permission class that only allows Admin users.
@@ -50,7 +70,7 @@ class IsStaffOrAbove(permissions.BasePermission):
         if request.user.role == 'read_only':
             return request.method in permissions.SAFE_METHODS
 
-        return request.user.role in ['admin', 'finance', 'staff']
+        return request.user.role in ['admin', 'finance', 'staff', 'mission_supervisor']
 
 
 class IsOwnerOrAdmin(permissions.BasePermission):
@@ -121,3 +141,27 @@ class ReadOnlyOrAdmin(permissions.BasePermission):
             return True
 
         return request.method in permissions.SAFE_METHODS
+
+
+class IsSupervisorWriteRestricted(permissions.BasePermission):
+    """
+    Supervisor can read all visible data but only write to own data.
+    Admin bypasses entirely. Staff can only write own data (enforced by queryset).
+    """
+    def has_object_permission(self, request, view, obj):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        if request.user.role == 'admin':
+            return True
+        # For write operations, object must belong to requesting user
+        owner = getattr(obj, 'owner', None)
+        if owner is None:
+            # Try common relation patterns
+            contact = getattr(obj, 'contact', None) or getattr(obj, 'donor_contact', None)
+            if contact:
+                owner = getattr(contact, 'owner', None)
+        if owner is None:
+            journal = getattr(obj, 'journal', None)
+            if journal:
+                owner = getattr(journal, 'owner', None)
+        return owner == request.user if owner else True
