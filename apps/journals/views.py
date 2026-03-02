@@ -16,7 +16,7 @@ from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
-from apps.core.permissions import IsAdmin, IsOwnerOrAdmin
+from apps.core.permissions import IsAdmin, IsOwnerOrAdmin, IsSupervisorWriteRestricted, get_visible_user_ids
 from apps.journals.filters import JournalFilterSet
 from apps.journals.models import (
     Decision,
@@ -68,12 +68,11 @@ class JournalListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         user = self.request.user
 
-        # Admin sees all journals
-        if user.role == 'admin':
+        visible = get_visible_user_ids(user)
+        if visible is None:
             queryset = Journal.objects.all()
         else:
-            # Staff sees only their own journals
-            queryset = Journal.objects.filter(owner=user)
+            queryset = Journal.objects.filter(owner_id__in=visible)
 
         # Filter by archive status:
         # - is_archived=true  → show only archived
@@ -98,7 +97,7 @@ class JournalDetailView(generics.RetrieveUpdateDestroyAPIView):
     PATCH/PUT: Update journal
     DELETE: Archive journal (soft delete)
     """
-    permission_classes = [permissions.IsAuthenticated, IsOwnerOrAdmin]
+    permission_classes = [permissions.IsAuthenticated, IsOwnerOrAdmin, IsSupervisorWriteRestricted]
 
     @extend_schema(
         summary='Get journal details',
@@ -123,9 +122,10 @@ class JournalDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role == 'admin':
+        visible = get_visible_user_ids(user)
+        if visible is None:
             return Journal.objects.all().select_related('owner')
-        return Journal.objects.filter(owner=user).select_related('owner')
+        return Journal.objects.filter(owner_id__in=visible).select_related('owner')
 
     def get_serializer_class(self):
         return JournalDetailSerializer
@@ -161,13 +161,12 @@ class JournalStageEventListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         user = self.request.user
 
-        # Admin sees all stage events
-        if user.role == 'admin':
+        visible = get_visible_user_ids(user)
+        if visible is None:
             queryset = JournalStageEvent.objects.all()
         else:
-            # Staff sees stage events for their own journals
             queryset = JournalStageEvent.objects.filter(
-                journal_contact__journal__owner=user
+                journal_contact__journal__owner_id__in=visible
             )
 
         # Filter by journal_contact_id if provided
@@ -190,6 +189,7 @@ class JournalStageEventDeleteByStageView(generics.GenericAPIView):
     """
     DELETE: Delete all stage events for a journal contact + stage combination.
     Used by the grid checkbox uncheck behavior.
+    Supervisor cannot delete stage events for missionaries' journals (write restriction).
     """
     permission_classes = [permissions.IsAuthenticated]
 
@@ -204,6 +204,7 @@ class JournalStageEventDeleteByStageView(generics.GenericAPIView):
             )
 
         user = request.user
+        # Write operation: only allow on own journals (admin bypasses)
         if user.role == 'admin':
             qs = JournalStageEvent.objects.filter(
                 journal_contact_id=journal_contact_id, stage=stage
@@ -251,9 +252,10 @@ class JournalContactListCreateView(generics.ListCreateAPIView):
             )
         )
 
-        # Admin sees all, staff sees only their own journals
-        if user.role != 'admin':
-            queryset = queryset.filter(journal__owner=user)
+        # Scope by visible users
+        visible = get_visible_user_ids(user)
+        if visible is not None:
+            queryset = queryset.filter(journal__owner_id__in=visible)
 
         # Always exclude archived journals
         queryset = queryset.filter(journal__is_archived=False)
@@ -296,7 +298,7 @@ class JournalContactDestroyView(generics.DestroyAPIView):
         # Base queryset with optimized joins
         queryset = JournalContact.objects.select_related('journal', 'contact')
 
-        # Admin sees all, staff sees only their own journals
+        # Write operation: only allow on own journals (admin bypasses, supervisor restricted)
         if user.role != 'admin':
             queryset = queryset.filter(journal__owner=user)
 
@@ -333,9 +335,10 @@ class DecisionListCreateView(generics.ListCreateAPIView):
             'journal_contact__contact'
         )
 
-        # Admin sees all, staff sees only their own journals
-        if user.role != 'admin':
-            queryset = queryset.filter(journal_contact__journal__owner=user)
+        # Scope by visible users
+        visible = get_visible_user_ids(user)
+        if visible is not None:
+            queryset = queryset.filter(journal_contact__journal__owner_id__in=visible)
 
         # Filter by journal_contact_id if provided
         journal_contact_id = self.request.query_params.get('journal_contact_id')
@@ -372,7 +375,7 @@ class DecisionDetailView(generics.RetrieveUpdateAPIView):
     GET: Retrieve decision details
     PATCH/PUT: Update decision (creates history record)
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsSupervisorWriteRestricted]
     serializer_class = DecisionSerializer
 
     def get_queryset(self):
@@ -385,9 +388,10 @@ class DecisionDetailView(generics.RetrieveUpdateAPIView):
             'journal_contact__contact'
         )
 
-        # Admin sees all, staff sees only their own journals
-        if user.role != 'admin':
-            queryset = queryset.filter(journal_contact__journal__owner=user)
+        # Scope by visible users
+        visible = get_visible_user_ids(user)
+        if visible is not None:
+            queryset = queryset.filter(journal_contact__journal__owner_id__in=visible)
 
         return queryset
 
@@ -411,9 +415,10 @@ class DecisionHistoryListView(generics.ListAPIView):
             'changed_by'
         )
 
-        # Admin sees all, staff sees only their own journals
-        if user.role != 'admin':
-            queryset = queryset.filter(decision__journal_contact__journal__owner=user)
+        # Scope by visible users
+        visible = get_visible_user_ids(user)
+        if visible is not None:
+            queryset = queryset.filter(decision__journal_contact__journal__owner_id__in=visible)
 
         # Filter by decision_id if provided
         decision_id = self.request.query_params.get('decision_id')
@@ -440,10 +445,11 @@ class NextStepListCreateView(generics.ListCreateAPIView):
         """Filter to next steps in journals owned by user (or all for admin)."""
         user = self.request.user
 
-        if user.role == 'admin':
+        visible = get_visible_user_ids(user)
+        if visible is None:
             qs = NextStep.objects.all()
         else:
-            qs = NextStep.objects.filter(journal_contact__journal__owner=user)
+            qs = NextStep.objects.filter(journal_contact__journal__owner_id__in=visible)
 
         # Filter by journal_contact
         journal_contact_id = self.request.query_params.get('journal_contact')
@@ -464,17 +470,18 @@ class NextStepDetailView(generics.RetrieveUpdateDestroyAPIView):
     PATCH/PUT: Update next step (mark complete, edit, etc.)
     DELETE: Remove next step
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsSupervisorWriteRestricted]
     serializer_class = NextStepSerializer
 
     def get_queryset(self):
         """Filter to next steps in journals owned by user (or all for admin)."""
         user = self.request.user
 
-        if user.role == 'admin':
+        visible = get_visible_user_ids(user)
+        if visible is None:
             qs = NextStep.objects.all()
         else:
-            qs = NextStep.objects.filter(journal_contact__journal__owner=user)
+            qs = NextStep.objects.filter(journal_contact__journal__owner_id__in=visible)
 
         return qs.select_related('journal_contact__journal', 'journal_contact__contact')
 
@@ -485,14 +492,15 @@ class JournalAnalyticsViewSet(viewsets.ViewSet):
     """
     permission_classes = [permissions.IsAuthenticated]
 
-    def _is_admin(self, request):
-        return request.user.role == 'admin'
+    def _get_visible(self, request):
+        return get_visible_user_ids(request.user)
 
     @action(detail=False, methods=['get'], url_path='decision-trends')
     def decision_trends(self, request):
         """Decision counts over time (bar chart data)."""
-        qs = Decision.objects.all() if self._is_admin(request) else Decision.objects.filter(
-            journal_contact__journal__owner=request.user
+        visible = self._get_visible(request)
+        qs = Decision.objects.all() if visible is None else Decision.objects.filter(
+            journal_contact__journal__owner_id__in=visible
         )
         trends = qs.annotate(
             month=TruncMonth('created_at')
@@ -508,8 +516,9 @@ class JournalAnalyticsViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['get'], url_path='stage-activity')
     def stage_activity(self, request):
         """Event counts by stage over time (multi-line chart data)."""
-        qs = JournalStageEvent.objects.all() if self._is_admin(request) else JournalStageEvent.objects.filter(
-            journal_contact__journal__owner=request.user
+        visible = self._get_visible(request)
+        qs = JournalStageEvent.objects.all() if visible is None else JournalStageEvent.objects.filter(
+            journal_contact__journal__owner_id__in=visible
         )
         activity = qs.annotate(
             month=TruncMonth('created_at')
@@ -540,8 +549,9 @@ class JournalAnalyticsViewSet(viewsets.ViewSet):
             journal_contact=OuterRef('pk')
         ).order_by('-created_at').values('stage')[:1]
 
-        jc_qs = JournalContact.objects.all() if self._is_admin(request) else JournalContact.objects.filter(
-            journal__owner=request.user
+        visible = self._get_visible(request)
+        jc_qs = JournalContact.objects.all() if visible is None else JournalContact.objects.filter(
+            journal__owner_id__in=visible
         )
         breakdown = jc_qs.annotate(
             current_stage=Subquery(latest_stage)
@@ -559,8 +569,9 @@ class JournalAnalyticsViewSet(viewsets.ViewSet):
         """Upcoming next steps across all contacts (list data)."""
         from django.db.models import F
 
-        ns_qs = NextStep.objects.all() if self._is_admin(request) else NextStep.objects.filter(
-            journal_contact__journal__owner=request.user
+        visible = self._get_visible(request)
+        ns_qs = NextStep.objects.all() if visible is None else NextStep.objects.filter(
+            journal_contact__journal__owner_id__in=visible
         )
         steps = ns_qs.filter(
             completed=False
@@ -596,8 +607,9 @@ class JournalAnalyticsViewSet(viewsets.ViewSet):
 
         journal = get_object_or_404(Journal, pk=journal_id)
 
-        # Permission check: owner or admin
-        if not self._is_admin(request) and journal.owner != request.user:
+        # Permission check: owner, admin, or supervisor with visibility
+        visible = self._get_visible(request)
+        if visible is not None and journal.owner_id not in visible:
             return Response(
                 {'detail': 'You do not have permission to view this journal.'},
                 status=status.HTTP_403_FORBIDDEN,
