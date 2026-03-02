@@ -6,7 +6,7 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.core.permissions import IsOwnerOrAdmin
+from apps.core.permissions import IsOwnerOrAdmin, IsSupervisorWriteRestricted, get_visible_user_ids
 from apps.groups.models import Group
 from apps.groups.serializers import GroupCreateSerializer, GroupSerializer
 
@@ -20,12 +20,12 @@ class GroupListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        # Admins see all groups, others see own + shared groups
-        if user.role == 'admin':
+        visible = get_visible_user_ids(user)
+        if visible is None:
             queryset = Group.objects.all()
         else:
             queryset = Group.objects.filter(
-                Q(owner=user) | Q(owner__isnull=True)
+                Q(owner_id__in=visible) | Q(owner__isnull=True)
             )
         return queryset.annotate(
             annotated_contact_count=Count('contacts')
@@ -44,15 +44,16 @@ class GroupDetailView(generics.RetrieveUpdateDestroyAPIView):
     DELETE: Delete group (if not system group)
     """
     serializer_class = GroupSerializer
-    permission_classes = [permissions.IsAuthenticated, IsOwnerOrAdmin]
+    permission_classes = [permissions.IsAuthenticated, IsOwnerOrAdmin, IsSupervisorWriteRestricted]
 
     def get_queryset(self):
         user = self.request.user
-        if user.role == 'admin':
+        visible = get_visible_user_ids(user)
+        if visible is None:
             queryset = Group.objects.all()
         else:
             queryset = Group.objects.filter(
-                Q(owner=user) | Q(owner__isnull=True)
+                Q(owner_id__in=visible) | Q(owner__isnull=True)
             )
         return queryset.annotate(
             annotated_contact_count=Count('contacts')
@@ -78,11 +79,12 @@ class GroupContactsView(APIView):
 
     def get_group(self, pk):
         user = self.request.user
+        visible = get_visible_user_ids(user)
         try:
-            if user.role == 'admin':
+            if visible is None:
                 return Group.objects.get(pk=pk)
             return Group.objects.get(
-                Q(pk=pk) & (Q(owner=user) | Q(owner__isnull=True))
+                Q(pk=pk) & (Q(owner_id__in=visible) | Q(owner__isnull=True))
             )
         except Group.DoesNotExist:
             return None
@@ -153,12 +155,13 @@ class GroupContactEmailsView(APIView):
 
     def get(self, request, pk):
         user = request.user
+        visible = get_visible_user_ids(user)
         try:
-            if user.role == 'admin':
+            if visible is None:
                 group = Group.objects.get(pk=pk)
             else:
                 group = Group.objects.get(
-                    Q(pk=pk) & (Q(owner=user) | Q(owner__isnull=True))
+                    Q(pk=pk) & (Q(owner_id__in=visible) | Q(owner__isnull=True))
                 )
         except Group.DoesNotExist:
             return Response(

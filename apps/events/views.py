@@ -7,6 +7,7 @@ from rest_framework import filters, generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.core.permissions import get_visible_user_ids
 from apps.events.models import Event
 from apps.events.serializers import EventSerializer
 
@@ -25,8 +26,9 @@ class EventListView(generics.ListAPIView):
     def get_queryset(self):
         user = self.request.user
 
-        # Admin can see all events, others see only their own
-        if user.role == 'admin' and self.request.query_params.get('all'):
+        # Admin can see all events when ?all is passed, others see only their own
+        visible = get_visible_user_ids(user)
+        if visible is None and self.request.query_params.get('all'):
             return Event.objects.all()
 
         return Event.objects.filter(user=user).select_related('contact')
@@ -41,7 +43,8 @@ class EventDetailView(generics.RetrieveAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role == 'admin':
+        visible = get_visible_user_ids(user)
+        if visible is None:
             return Event.objects.all()
         return Event.objects.filter(user=user)
 

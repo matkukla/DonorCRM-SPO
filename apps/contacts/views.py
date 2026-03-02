@@ -18,7 +18,12 @@ from apps.contacts.serializers import (
     ContactJournalMembershipSerializer,
 )
 from apps.core.pagination import StandardPagination
-from apps.core.permissions import IsContactOwnerOrReadAccess, IsStaffOrAbove
+from apps.core.permissions import (
+    IsContactOwnerOrReadAccess,
+    IsStaffOrAbove,
+    IsSupervisorWriteRestricted,
+    get_visible_user_ids,
+)
 from apps.journals.models import JournalContact, JournalStageEvent
 
 
@@ -56,17 +61,17 @@ class ContactListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         user = self.request.user
 
-        # Admin and Finance can see all contacts
-        if user.role in ['admin', 'finance', 'read_only']:
+        visible = get_visible_user_ids(user)
+        if visible is None:
             queryset = Contact.objects.all()
         else:
-            # Staffs see only their own contacts
-            queryset = Contact.objects.filter(owner=user)
+            queryset = Contact.objects.filter(owner_id__in=visible)
 
-        # Optional owner filter for admin (intentionally NOT in FilterSet - security)
+        # Optional owner filter for admin/supervisor (intentionally NOT in FilterSet - security)
         owner_id = self.request.query_params.get('owner')
-        if owner_id and user.role == 'admin':
-            queryset = queryset.filter(owner_id=owner_id)
+        if owner_id and user.role in ['admin', 'mission_supervisor']:
+            if visible is None or int(owner_id) in visible:
+                queryset = queryset.filter(owner_id=owner_id)
 
         return queryset.select_related('owner')
 
@@ -88,13 +93,14 @@ class ContactDetailView(generics.RetrieveUpdateDestroyAPIView):
     PATCH/PUT: Update contact
     DELETE: Delete contact
     """
-    permission_classes = [permissions.IsAuthenticated, IsContactOwnerOrReadAccess]
+    permission_classes = [permissions.IsAuthenticated, IsContactOwnerOrReadAccess, IsSupervisorWriteRestricted]
 
     def get_queryset(self):
         user = self.request.user
-        if user.role in ['admin', 'finance', 'read_only']:
+        visible = get_visible_user_ids(user)
+        if visible is None:
             return Contact.objects.all()
-        return Contact.objects.filter(owner=user)
+        return Contact.objects.filter(owner_id__in=visible)
 
     def get_serializer_class(self):
         if self.request.method in ['PATCH', 'PUT']:
@@ -117,10 +123,11 @@ class ContactThankView(APIView):
     def post(self, request, pk):
         user = request.user
         try:
-            if user.role == 'admin':
+            visible = get_visible_user_ids(user)
+            if visible is None:
                 contact = Contact.objects.get(pk=pk)
             else:
-                contact = Contact.objects.get(pk=pk, owner=user)
+                contact = Contact.objects.get(pk=pk, owner_id__in=visible)
         except Contact.DoesNotExist:
             return Response(
                 {'detail': 'Contact not found.'},
@@ -143,10 +150,11 @@ class ContactGiftsView(generics.ListAPIView):
 
         contact_id = self.kwargs.get('pk')
         user = self.request.user
-        if user.role in ['admin', 'finance', 'read_only']:
+        visible = get_visible_user_ids(user)
+        if visible is None:
             return Gift.objects.filter(donor_contact_id=contact_id).order_by('-gift_date')
         return Gift.objects.filter(
-            donor_contact_id=contact_id, donor_contact__owner=user
+            donor_contact_id=contact_id, donor_contact__owner_id__in=visible
         ).order_by('-gift_date')
 
     def get_serializer_class(self):
@@ -166,10 +174,11 @@ class ContactRecurringGiftsView(generics.ListAPIView):
 
         contact_id = self.kwargs.get('pk')
         user = self.request.user
-        if user.role in ['admin', 'finance', 'read_only']:
+        visible = get_visible_user_ids(user)
+        if visible is None:
             return RecurringGift.objects.filter(donor_contact_id=contact_id).order_by('-start_date')
         return RecurringGift.objects.filter(
-            donor_contact_id=contact_id, donor_contact__owner=user
+            donor_contact_id=contact_id, donor_contact__owner_id__in=visible
         ).order_by('-start_date')
 
     def get_serializer_class(self):
@@ -192,9 +201,9 @@ class ContactTasksView(generics.ListAPIView):
 
         queryset = Task.objects.filter(contact_id=contact_id)
 
-        # Filter by owner unless admin
-        if user.role != 'admin':
-            queryset = queryset.filter(owner=user)
+        visible = get_visible_user_ids(user)
+        if visible is not None:
+            queryset = queryset.filter(owner_id__in=visible)
 
         return queryset.order_by('due_date')
 
@@ -211,10 +220,11 @@ class ContactEmailsView(APIView):
 
     def get(self, request):
         user = request.user
-        if user.role in ['admin', 'finance', 'read_only']:
+        visible = get_visible_user_ids(user)
+        if visible is None:
             queryset = Contact.objects.all()
         else:
-            queryset = Contact.objects.filter(owner=user)
+            queryset = Contact.objects.filter(owner_id__in=visible)
 
         emails = list(
             queryset.exclude(email__isnull=True).exclude(email='')
@@ -241,10 +251,11 @@ class ContactSearchView(generics.ListAPIView):
         user = self.request.user
         query = self.request.query_params.get('q', '')
 
-        if user.role in ['admin', 'finance', 'read_only']:
+        visible = get_visible_user_ids(user)
+        if visible is None:
             queryset = Contact.objects.all()
         else:
-            queryset = Contact.objects.filter(owner=user)
+            queryset = Contact.objects.filter(owner_id__in=visible)
 
         if query:
             queryset = queryset.filter(
@@ -290,9 +301,10 @@ class ContactJournalsView(generics.ListAPIView):
             )
         ).order_by('-created_at')
 
-        # Filter by ownership unless admin
-        if user.role not in ['admin', 'finance', 'read_only']:
-            memberships = memberships.filter(journal__owner=user)
+        # Filter by ownership using visibility helper
+        visible = get_visible_user_ids(user)
+        if visible is not None:
+            memberships = memberships.filter(journal__owner_id__in=visible)
 
         return memberships
 
@@ -312,8 +324,9 @@ class ContactPrayerIntentionsView(generics.ListAPIView):
         qs = PrayerIntention.objects.filter(
             contact_id=contact_id
         ).select_related('contact')
-        if user.role not in ['admin', 'finance', 'read_only']:
-            qs = qs.filter(contact__owner=user)
+        visible = get_visible_user_ids(user)
+        if visible is not None:
+            qs = qs.filter(contact__owner_id__in=visible)
         return qs.order_by('-created_at')
 
     def get_serializer_class(self):
@@ -337,8 +350,9 @@ class ContactJournalEventsView(generics.ListAPIView):
             'journal_contact__contact',
             'triggered_by',
         ).order_by('-created_at')
-        if user.role not in ['admin']:
-            qs = qs.filter(journal_contact__journal__owner=user)
+        visible = get_visible_user_ids(user)
+        if visible is not None:
+            qs = qs.filter(journal_contact__journal__owner_id__in=visible)
         return qs
 
     def list(self, request, *args, **kwargs):

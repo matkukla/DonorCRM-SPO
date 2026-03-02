@@ -10,6 +10,7 @@ from django.http import StreamingHttpResponse
 
 from apps.contacts.filters import ContactFilterSet
 from apps.contacts.models import Contact
+from apps.core.permissions import get_visible_user_ids
 from apps.imports.services import sanitize_csv_value
 
 
@@ -30,15 +31,17 @@ class ContactExportCSVView(APIView):
         user = request.user
 
         # Same owner-scoping as ContactListCreateView
-        if user.role in ['admin', 'finance', 'read_only']:
+        visible = get_visible_user_ids(user)
+        if visible is None:
             queryset = Contact.objects.all()
         else:
-            queryset = Contact.objects.filter(owner=user)
+            queryset = Contact.objects.filter(owner_id__in=visible)
 
-        # Admin-only owner filter (intentionally NOT in FilterSet - security)
+        # Admin/supervisor owner filter (intentionally NOT in FilterSet - security)
         owner_id = request.query_params.get('owner')
-        if owner_id and user.role == 'admin':
-            queryset = queryset.filter(owner_id=owner_id)
+        if owner_id and user.role in ['admin', 'mission_supervisor']:
+            if visible is None or int(owner_id) in visible:
+                queryset = queryset.filter(owner_id=owner_id)
 
         # Apply FilterSet (same as list endpoint)
         filterset = ContactFilterSet(request.query_params, queryset=queryset)

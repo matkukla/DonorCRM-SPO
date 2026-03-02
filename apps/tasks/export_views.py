@@ -8,6 +8,7 @@ from rest_framework import permissions
 from rest_framework.views import APIView
 from django.http import StreamingHttpResponse
 
+from apps.core.permissions import get_visible_user_ids
 from apps.imports.services import sanitize_csv_value
 from apps.tasks.filters import TaskFilterSet
 from apps.tasks.models import Task
@@ -30,10 +31,11 @@ class TaskExportCSVView(APIView):
         user = request.user
 
         # Same owner-scoping as TaskListCreateView
-        if user.role == 'admin':
+        visible = get_visible_user_ids(user)
+        if visible is None:
             queryset = Task.objects.all()
         else:
-            queryset = Task.objects.filter(owner=user)
+            queryset = Task.objects.filter(owner_id__in=visible)
 
         # Apply FilterSet (same as list endpoint)
         filterset = TaskFilterSet(request.query_params, queryset=queryset)
