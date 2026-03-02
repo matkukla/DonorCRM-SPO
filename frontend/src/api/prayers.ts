@@ -9,6 +9,7 @@ export interface PrayerIntention {
   id: string
   contact: string
   contact_name: string
+  owner_name: string | null
   title: string
   description: string
   status: PrayerIntentionStatus

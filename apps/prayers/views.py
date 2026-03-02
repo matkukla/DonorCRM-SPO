@@ -19,7 +19,7 @@ from apps.prayers.serializers import PrayerIntentionSerializer
 
 def _owner_scoped_queryset(user):
     """Return PrayerIntention queryset scoped by ownership."""
-    qs = PrayerIntention.objects.select_related('contact').all()
+    qs = PrayerIntention.objects.select_related('contact', 'contact__owner').all()
     visible = get_visible_user_ids(user)
     if visible is not None:
         qs = qs.filter(contact__owner_id__in=visible)
@@ -130,6 +130,6 @@ class TodaysFocusView(generics.ListAPIView):
         preserved = Case(
             *[When(pk=pk, then=Value(i)) for i, pk in enumerate(selected_pks)]
         )
-        return PrayerIntention.objects.select_related('contact').filter(
+        return PrayerIntention.objects.select_related('contact', 'contact__owner').filter(
             pk__in=selected_pks
         ).annotate(focus_order=preserved).order_by('focus_order')

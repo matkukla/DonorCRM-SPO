@@ -41,6 +41,8 @@ export type FreshnessColor = 'success' | 'warning' | 'orange' | 'destructive' | 
 /** Journal list item from API */
 export interface JournalListItem {
   id: string
+  owner: string
+  owner_name: string
   name: string
   description?: string
   goal_amount: string

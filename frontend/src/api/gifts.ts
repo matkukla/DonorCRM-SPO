@@ -10,6 +10,7 @@ export interface Gift {
   id: string
   donor_contact: string
   donor_contact_name: string
+  owner_name: string | null
   fund: string | null
   fund_name: string | null
   external_gift_id: string
@@ -51,6 +52,7 @@ export interface RecurringGift {
   id: string
   donor_contact: string
   donor_contact_name: string
+  owner_name: string | null
   fund: string | null
   fund_name: string | null
   external_gift_id: string

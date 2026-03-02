@@ -17,11 +17,12 @@ class PrayerIntentionSerializer(serializers.ModelSerializer):
     - archived: sets archived_at, clears answered_at
     """
     contact_name = serializers.CharField(source='contact.full_name', read_only=True)
+    owner_name = serializers.SerializerMethodField()
 
     class Meta:
         model = PrayerIntention
         fields = [
-            'id', 'contact', 'contact_name', 'title', 'description',
+            'id', 'contact', 'contact_name', 'owner_name', 'title', 'description',
             'status', 'last_prayed_at', 'answered_at', 'archived_at',
             'created_at', 'updated_at',
         ]
@@ -29,6 +30,13 @@ class PrayerIntentionSerializer(serializers.ModelSerializer):
             'id', 'answered_at', 'archived_at', 'last_prayed_at',
             'created_at', 'updated_at',
         ]
+
+    def get_owner_name(self, obj):
+        contact = getattr(obj, 'contact', None)
+        if contact:
+            owner = getattr(contact, 'owner', None)
+            return owner.full_name if owner else None
+        return None
 
     def update(self, instance, validated_data):
         new_status = validated_data.get('status')

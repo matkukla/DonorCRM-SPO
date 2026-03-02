@@ -98,6 +98,7 @@ export const pledgeFilterParsers = {
   ordering: parseAsString,
   amount_min: parseAsString,
   amount_max: parseAsString,
+  owner: parseAsString,
 }
 
 export const giftFilterParsers = {
@@ -134,6 +135,7 @@ export const taskFilterParsers = {
   due_date_after: parseAsString,
   due_date_before: parseAsString,
   ordering: parseAsString,
+  owner: parseAsString,
 }
 
 // Transactions page uses offset-based pagination (insights service)
@@ -150,4 +152,5 @@ export const journalFilterParsers = {
   deadline_after: parseAsString,
   deadline_before: parseAsString,
   ordering: parseAsString,
+  owner: parseAsString,
 }

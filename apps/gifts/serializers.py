@@ -14,6 +14,7 @@ class GiftSerializer(serializers.ModelSerializer):
         read_only=True, max_digits=12, decimal_places=2
     )
     donor_contact_name = serializers.SerializerMethodField()
+    owner_name = serializers.SerializerMethodField()
     fund_name = serializers.CharField(
         source='fund.name', read_only=True, default=None
     )
@@ -22,7 +23,8 @@ class GiftSerializer(serializers.ModelSerializer):
     class Meta:
         model = Gift
         fields = [
-            'id', 'donor_contact', 'donor_contact_name', 'fund', 'fund_name',
+            'id', 'donor_contact', 'donor_contact_name', 'owner_name',
+            'fund', 'fund_name',
             'external_gift_id', 'amount_cents', 'amount_dollars',
             'gift_date', 'description', 'payment_type', 'payment_type_display',
             'created_at', 'updated_at',
@@ -31,6 +33,13 @@ class GiftSerializer(serializers.ModelSerializer):
 
     def get_donor_contact_name(self, obj):
         return obj.donor_contact.full_name if obj.donor_contact else None
+
+    def get_owner_name(self, obj):
+        contact = getattr(obj, 'donor_contact', None)
+        if contact:
+            owner = getattr(contact, 'owner', None)
+            return owner.full_name if owner else None
+        return None
 
     def get_payment_type_display(self, obj):
         return obj.get_payment_type_display() or None
@@ -101,6 +110,7 @@ class RecurringGiftSerializer(serializers.ModelSerializer):
         read_only=True, max_digits=12, decimal_places=2
     )
     donor_contact_name = serializers.SerializerMethodField()
+    owner_name = serializers.SerializerMethodField()
     fund_name = serializers.CharField(
         source='fund.name', read_only=True, default=None
     )
@@ -108,7 +118,8 @@ class RecurringGiftSerializer(serializers.ModelSerializer):
     class Meta:
         model = RecurringGift
         fields = [
-            'id', 'donor_contact', 'donor_contact_name', 'fund', 'fund_name',
+            'id', 'donor_contact', 'donor_contact_name', 'owner_name',
+            'fund', 'fund_name',
             'external_gift_id', 'amount_cents', 'amount_dollars',
             'frequency', 'start_date', 'end_date', 'status',
             'monthly_equivalent', 'description',
@@ -118,6 +129,13 @@ class RecurringGiftSerializer(serializers.ModelSerializer):
 
     def get_donor_contact_name(self, obj):
         return obj.donor_contact.full_name if obj.donor_contact else None
+
+    def get_owner_name(self, obj):
+        contact = getattr(obj, 'donor_contact', None)
+        if contact:
+            owner = getattr(contact, 'owner', None)
+            return owner.full_name if owner else None
+        return None
 
 
 class RecurringGiftCreateSerializer(serializers.ModelSerializer):

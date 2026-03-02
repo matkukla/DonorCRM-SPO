@@ -36,7 +36,7 @@ class GiftListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        qs = Gift.objects.select_related('donor_contact', 'fund').all()
+        qs = Gift.objects.select_related('donor_contact', 'donor_contact__owner', 'fund').all()
         visible = get_visible_user_ids(user)
         if visible is not None:
             qs = qs.filter(donor_contact__owner_id__in=visible)
@@ -64,7 +64,7 @@ class GiftDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        qs = Gift.objects.select_related('donor_contact', 'fund').prefetch_related(
+        qs = Gift.objects.select_related('donor_contact', 'donor_contact__owner', 'fund').prefetch_related(
             'credits__solicitor'
         ).all()
         visible = get_visible_user_ids(user)
@@ -96,7 +96,7 @@ class RecurringGiftListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        qs = RecurringGift.objects.select_related('donor_contact', 'fund').all()
+        qs = RecurringGift.objects.select_related('donor_contact', 'donor_contact__owner', 'fund').all()
         visible = get_visible_user_ids(user)
         if visible is not None:
             qs = qs.filter(donor_contact__owner_id__in=visible)
@@ -125,7 +125,7 @@ class RecurringGiftDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        qs = RecurringGift.objects.select_related('donor_contact', 'fund').all()
+        qs = RecurringGift.objects.select_related('donor_contact', 'donor_contact__owner', 'fund').all()
         visible = get_visible_user_ids(user)
         if visible is not None:
             qs = qs.filter(donor_contact__owner_id__in=visible)
