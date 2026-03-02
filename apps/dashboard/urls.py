@@ -13,6 +13,7 @@ from apps.dashboard.views import (
     RecentGiftsView,
     SupportProgressView,
     ThankYouQueueView,
+    UserDashboardLayoutView,
     WhatChangedView,
 )
 
@@ -29,4 +30,5 @@ urlpatterns = [
     path('recent-gifts/', RecentGiftsView.as_view(), name='recent-gifts'),
     path('giving-summary/', GivingSummaryView.as_view(), name='giving-summary'),
     path('monthly-gifts/', MonthlyGiftsView.as_view(), name='monthly-gifts'),
+    path('user/<uuid:pk>/layout/', UserDashboardLayoutView.as_view(), name='user-dashboard-layout'),
 ]
