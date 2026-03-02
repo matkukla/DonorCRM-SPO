@@ -22,8 +22,8 @@ function formatCurrency(amount: number): string {
   }).format(amount)
 }
 
-export function MonthlyGiftsCard() {
-  const { data, isLoading } = useMonthlyGifts()
+export function MonthlyGiftsCard({ userId }: { userId?: string }) {
+  const { data, isLoading } = useMonthlyGifts(12, userId)
   const [chartType, setChartType] = useState<ChartType>(() => {
     const stored = localStorage.getItem("dashboard-chart-type")
     return stored === "line" ? "line" : "bar"
