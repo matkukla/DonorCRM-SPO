@@ -1,12 +1,17 @@
 """
 Views for Dashboard data.
 """
+import uuid
+
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework import permissions
+from rest_framework.exceptions import NotFound, PermissionDenied
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.core.permissions import get_visible_user_ids
 from apps.core.utils import get_safe_int_param, get_safe_year_param
+from apps.users.models import User
 
 from apps.dashboard.services import (
     get_dashboard_summary,
@@ -22,6 +27,30 @@ from apps.dashboard.services import (
 from apps.events.services import mark_events_as_not_new
 
 
+def _resolve_target_user(request):
+    """Resolve the target user for dashboard data.
+
+    If ?user_id= is provided and the requesting user has visibility,
+    return that user. Otherwise return the requesting user.
+    """
+    user = request.user
+    target_user_id = request.query_params.get('user_id')
+
+    if target_user_id and str(target_user_id) != str(user.id):
+        visible = get_visible_user_ids(user)
+        if visible is not None and uuid.UUID(target_user_id) not in visible:
+            raise PermissionDenied(
+                'You do not have permission to view this user\'s dashboard.'
+            )
+        target_user = User.objects.filter(
+            id=target_user_id, is_active=True
+        ).first()
+        if not target_user:
+            raise NotFound('User not found.')
+        return target_user
+    return user
+
+
 class DashboardView(APIView):
     """
     GET: Get complete dashboard data
@@ -30,8 +59,8 @@ class DashboardView(APIView):
 
     @extend_schema(tags=['dashboard'], summary='Get complete dashboard data')
     def get(self, request):
-        user = request.user
-        data = get_dashboard_summary(user)
+        target = _resolve_target_user(request)
+        data = get_dashboard_summary(target)
         return Response(data)
 
 
@@ -56,8 +85,8 @@ class WhatChangedView(APIView):
 
     @extend_schema(tags=['dashboard'], summary='Get changes since last login')
     def get(self, request):
-        user = request.user
-        data = get_what_changed(user)
+        target = _resolve_target_user(request)
+        data = get_what_changed(target)
 
         # Serialize events
         from apps.events.serializers import EventSerializer
@@ -74,8 +103,8 @@ class NeedsAttentionView(APIView):
 
     @extend_schema(tags=['dashboard'], summary='Get items needing attention')
     def get(self, request):
-        user = request.user
-        data = get_needs_attention(user)
+        target = _resolve_target_user(request)
+        data = get_needs_attention(target)
 
         # Serialize related objects
         from apps.tasks.serializers import TaskSerializer
@@ -101,10 +130,10 @@ class LateDonationsView(APIView):
         parameters=[OpenApiParameter(name='limit', description='Max results (default: 10)', type=int)]
     )
     def get(self, request):
-        user = request.user
+        target = _resolve_target_user(request)
         limit = get_safe_int_param(request, 'limit', default=10, min_val=1, max_val=100)
 
-        late_donations = get_late_donations(user, limit=limit)
+        late_donations = get_late_donations(target, limit=limit)
 
         return Response({
             'late_donations': late_donations,
@@ -120,8 +149,8 @@ class ThankYouQueueView(APIView):
 
     @extend_schema(tags=['dashboard'], summary='Get thank-you queue')
     def get(self, request):
-        user = request.user
-        contacts = get_thank_you_queue(user)
+        target = _resolve_target_user(request)
+        contacts = get_thank_you_queue(target)
 
         from apps.contacts.serializers import ContactListSerializer
         serializer = ContactListSerializer(contacts[:20], many=True)
@@ -140,8 +169,8 @@ class SupportProgressView(APIView):
 
     @extend_schema(tags=['dashboard'], summary='Get support progress toward goal')
     def get(self, request):
-        user = request.user
-        data = get_support_progress(user)
+        target = _resolve_target_user(request)
+        data = get_support_progress(target)
         return Response(data)
 
 
@@ -160,11 +189,11 @@ class RecentGiftsView(APIView):
         ]
     )
     def get(self, request):
-        user = request.user
+        target = _resolve_target_user(request)
         days = get_safe_int_param(request, 'days', default=30, min_val=1, max_val=365)
         limit = get_safe_int_param(request, 'limit', default=10, min_val=1, max_val=100)
 
-        gifts = get_recent_gifts(user, days=days, limit=limit)
+        gifts = get_recent_gifts(target, days=days, limit=limit)
 
         from apps.gifts.serializers import GiftSerializer
         serializer = GiftSerializer(gifts, many=True)
@@ -187,8 +216,9 @@ class GivingSummaryView(APIView):
         parameters=[OpenApiParameter(name='year', description='Calendar year (default: current)', type=int)]
     )
     def get(self, request):
+        target = _resolve_target_user(request)
         year = get_safe_year_param(request, 'year')
-        return Response(get_giving_summary(request.user, year=year))
+        return Response(get_giving_summary(target, year=year))
 
 
 class MonthlyGiftsView(APIView):
@@ -203,5 +233,21 @@ class MonthlyGiftsView(APIView):
         parameters=[OpenApiParameter(name='months', description='Number of months (default: 12)', type=int)]
     )
     def get(self, request):
+        target = _resolve_target_user(request)
         months = get_safe_int_param(request, 'months', default=12, min_val=1, max_val=60)
-        return Response(get_monthly_gifts(request.user, months=months))
+        return Response(get_monthly_gifts(target, months=months))
+
+
+class UserDashboardLayoutView(APIView):
+    """GET: Get a specific user's dashboard layout (for supervisor/admin viewing)."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(tags=['dashboard'], summary='Get user dashboard layout')
+    def get(self, request, pk):
+        visible = get_visible_user_ids(request.user)
+        if visible is not None and pk not in visible:
+            raise PermissionDenied('You do not have permission to view this user\'s dashboard.')
+        target = User.objects.filter(id=pk, is_active=True).first()
+        if not target:
+            raise NotFound('User not found.')
+        return Response({'dashboard_layout': target.dashboard_layout or {}})
