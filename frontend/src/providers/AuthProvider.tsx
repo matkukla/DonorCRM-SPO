@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from "rea
 import type { ReactNode } from "react"
 import { login as apiLogin, logout as apiLogout, getCurrentUser, hasStoredAuth } from "@/api/auth"
 import type { User, LoginCredentials } from "@/api/auth"
+import { queryClient } from "@/providers/QueryProvider"
 
 interface AuthContextType {
   user: User | null
@@ -46,6 +47,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setError(null)
     setIsLoading(true)
     try {
+      queryClient.clear()
       const loggedInUser = await apiLogin(credentials)
       setUser(loggedInUser)
     } catch (err) {
@@ -58,6 +60,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [])
 
   const logout = useCallback(() => {
+    queryClient.clear()
     apiLogout()
     setUser(null)
   }, [])
