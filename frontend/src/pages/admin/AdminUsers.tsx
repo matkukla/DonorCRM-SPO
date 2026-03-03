@@ -472,7 +472,7 @@ export default function AdminUsers() {
                             className="w-full justify-between font-normal"
                           >
                             {editSupervisedUserIds.length > 0
-                              ? `${editSupervisedUserIds.length} missionary${editSupervisedUserIds.length !== 1 ? "ies" : ""} selected`
+                              ? `${editSupervisedUserIds.length} ${editSupervisedUserIds.length !== 1 ? "missionaries" : "missionary"} selected`
                               : "Select missionaries..."}
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
