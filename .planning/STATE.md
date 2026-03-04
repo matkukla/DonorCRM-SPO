@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: UI Polish, Journal Report & Supervisor Role
 status: executing
-stopped_at: Completed 43-02-PLAN.md
-last_updated: "2026-03-04T21:57:01.540Z"
+stopped_at: Completed 43-03-PLAN.md
+last_updated: "2026-03-04T22:03:36.118Z"
 last_activity: "2026-03-04 — Starting Phase 43 (Roles Redesign: coach role, role renames, assignments page, team page)"
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 18
-  completed_plans: 15
+  completed_plans: 16
   percent: 100
 ---
 
@@ -111,6 +111,9 @@ v2.2 decisions:
 - [Phase 43]: supervised_users field name kept in CurrentUserSerializer — frontend consumes it for both supervisor and coach roles
 - [Phase 43]: Coach financial block uses get_queryset() none() for gifts (not 403) — empty list is correct UX
 - [Phase 43]: AssignmentsView: GET returns typed lists (missionaries/supervisors/coaches), PATCH accepts list with per-item error collection
+- [Phase 43-03]: visibleRoles array on NavItem for exact role match (vs hierarchy) — used for My Team (supervisor/coach only)
+- [Phase 43-03]: showFinancialTabs pattern hides Donations/Pledges tabs for coach viewing non-owned contacts
+- [Phase 43-03]: useAssignments/useUpdateAssignments hooks colocated in useUsers.ts
 
 ### Research Flags
 
@@ -135,8 +138,8 @@ None active.
 
 ## Session Continuity
 
-Last session: 2026-03-04T21:57:01.537Z
-Stopped at: Completed 43-02-PLAN.md
+Last session: 2026-03-04T22:03:28.779Z
+Stopped at: Completed 43-03-PLAN.md
 Resume: All phases complete. v2.2 milestone shipped.
 
 ---
