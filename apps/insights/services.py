@@ -489,7 +489,7 @@ def get_user_performance():
     ).values('journal_contact__contact').distinct()
 
     users = User.objects.filter(
-        role__in=['staff', 'admin']
+        role__in=['missionary', 'admin']
     ).annotate(
         total_contacts=Count('contacts', distinct=True),
         active_journals=Count(
