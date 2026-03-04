@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: UI Polish, Journal Report & Supervisor Role
 status: executing
-stopped_at: Completed 43-01-PLAN.md
-last_updated: "2026-03-04T21:52:35.212Z"
+stopped_at: Completed 43-02-PLAN.md
+last_updated: "2026-03-04T21:57:01.540Z"
 last_activity: "2026-03-04 — Starting Phase 43 (Roles Redesign: coach role, role renames, assignments page, team page)"
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 18
-  completed_plans: 14
+  completed_plans: 15
   percent: 100
 ---
 
@@ -65,6 +65,7 @@ Progress: [██████████] 100%
 | Phase 42 P04 | 5min | 2 tasks | 7 files |
 | Phase 42 P05 | 12min | 2 tasks | 21 files |
 | Phase 43 P1 | 3 | 6 tasks | 6 files |
+| Phase 43 P02 | 12 | 6 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -108,6 +109,8 @@ v2.2 decisions:
 - [Phase 43]: Atomic migration: RunPython data migration BEFORE AlterField to avoid constraint violations on existing role values
 - [Phase 43]: coach excluded from IsStaffOrAbove (no financial writes); is_financial_role() helper added to express exclusion explicitly
 - [Phase 43]: supervised_users field name kept in CurrentUserSerializer — frontend consumes it for both supervisor and coach roles
+- [Phase 43]: Coach financial block uses get_queryset() none() for gifts (not 403) — empty list is correct UX
+- [Phase 43]: AssignmentsView: GET returns typed lists (missionaries/supervisors/coaches), PATCH accepts list with per-item error collection
 
 ### Research Flags
 
@@ -132,8 +135,8 @@ None active.
 
 ## Session Continuity
 
-Last session: 2026-03-04T21:52:35.209Z
-Stopped at: Completed 43-01-PLAN.md
+Last session: 2026-03-04T21:57:01.537Z
+Stopped at: Completed 43-02-PLAN.md
 Resume: All phases complete. v2.2 milestone shipped.
 
 ---
