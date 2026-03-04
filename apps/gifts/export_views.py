@@ -42,7 +42,7 @@ class GiftExportCSVView(APIView):
 
         # Admin/supervisor owner filter
         owner_id = request.query_params.get('owner')
-        if owner_id and user.role in ['admin', 'mission_supervisor']:
+        if owner_id and user.role in ['admin', 'supervisor']:
             if visible is None or int(owner_id) in visible:
                 queryset = queryset.filter(donor_contact__owner_id=owner_id)
 
@@ -104,7 +104,7 @@ class RecurringGiftExportCSVView(APIView):
 
         # Admin/supervisor owner filter
         owner_id = request.query_params.get('owner')
-        if owner_id and user.role in ['admin', 'mission_supervisor']:
+        if owner_id and user.role in ['admin', 'supervisor']:
             if visible is None or int(owner_id) in visible:
                 queryset = queryset.filter(donor_contact__owner_id=owner_id)
 
