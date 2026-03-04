@@ -8,7 +8,7 @@ from rest_framework import permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.core.permissions import IsAdmin, IsFinanceOrAdmin
+from apps.core.permissions import IsAdmin, IsFinanceOrAdmin, is_financial_role
 from apps.core.utils import get_safe_int_param, get_safe_year_param
 from apps.insights.services import (
     get_dashboard_overview,
@@ -56,6 +56,8 @@ class DonationsByMonthView(APIView):
         ]
     )
     def get(self, request):
+        if not is_financial_role(request.user):
+            return Response({'detail': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
         year = get_safe_year_param(request, 'year')
         return Response(get_donations_by_month(request.user, year=year))
 
@@ -74,6 +76,8 @@ class DonationsByYearView(APIView):
         ]
     )
     def get(self, request):
+        if not is_financial_role(request.user):
+            return Response({'detail': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
         years = get_safe_int_param(request, 'years', default=5, min_val=1, max_val=50)
         return Response(get_donations_by_year(request.user, years=years))
 
@@ -86,6 +90,8 @@ class MonthlyCommitmentsView(APIView):
 
     @extend_schema(tags=['insights'], summary='Get monthly commitments')
     def get(self, request):
+        if not is_financial_role(request.user):
+            return Response({'detail': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
         return Response(get_monthly_commitments(request.user))
 
 
@@ -103,6 +109,8 @@ class LateDonationsView(APIView):
         ]
     )
     def get(self, request):
+        if not is_financial_role(request.user):
+            return Response({'detail': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
         limit = get_safe_int_param(request, 'limit', default=50, min_val=1, max_val=500)
         return Response(get_late_donations(request.user, limit=limit))
 
