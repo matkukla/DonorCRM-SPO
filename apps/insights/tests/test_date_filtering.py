@@ -23,7 +23,7 @@ class TestDashboardOverviewDateFiltering:
     def test_date_from_filters_contacts(self, admin_client):
         """Create contacts on different dates, verify date_from filters correctly."""
         client, admin_user = admin_client
-        staff = UserFactory(role='staff')
+        staff = UserFactory(role='missionary')
 
         # Create old contact (10 days ago)
         old_date = timezone.now() - timedelta(days=10)
@@ -46,7 +46,7 @@ class TestDashboardOverviewDateFiltering:
     def test_date_to_filters_contacts(self, admin_client):
         """Create contacts on different dates, verify date_to filters correctly."""
         client, admin_user = admin_client
-        staff = UserFactory(role='staff')
+        staff = UserFactory(role='missionary')
 
         # Create old contact (10 days ago)
         old_date = timezone.now() - timedelta(days=10)
@@ -69,7 +69,7 @@ class TestDashboardOverviewDateFiltering:
     def test_date_range_filters_donations(self, admin_client):
         """Create gifts on different dates, verify date range filters correctly."""
         client, admin_user = admin_client
-        staff = UserFactory(role='staff')
+        staff = UserFactory(role='missionary')
         contact = ContactFactory(owner=staff)
 
         # Create old gift (20 days ago)
@@ -119,7 +119,7 @@ class TestStalledContactsDateFiltering:
     def test_date_to_affects_stalled_calculation(self, admin_client):
         """Verify that date_to is used as 'now' for stalled calculation."""
         client, admin_user = admin_client
-        staff = UserFactory(role='staff')
+        staff = UserFactory(role='missionary')
         contact = ContactFactory(owner=staff)
 
         # Create journal and add contact
@@ -161,7 +161,7 @@ class TestTeamActivityDateFiltering:
     def test_date_range_filters_events(self, admin_client):
         """Create events on different dates, verify date range filters correctly."""
         client, admin_user = admin_client
-        staff = UserFactory(role='staff')
+        staff = UserFactory(role='missionary')
 
         # Create old event (20 days ago)
         old_date = timezone.now() - timedelta(days=20)
@@ -233,7 +233,7 @@ class TestActivityHeatmap:
     def test_aggregates_multiple_activity_types(self, admin_client):
         """Create stage event, decision, and event on same day, verify count is aggregated."""
         client, admin_user = admin_client
-        staff = UserFactory(role='staff')
+        staff = UserFactory(role='missionary')
         contact = ContactFactory(owner=staff)
 
         # Create journal and add contact

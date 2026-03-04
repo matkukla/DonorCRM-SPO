@@ -22,7 +22,7 @@ class TestUserTrends:
     def test_admin_can_access(self, admin_client):
         """Admin can access user trends endpoint."""
         client, admin_user = admin_client
-        staff = UserFactory(role='staff')
+        staff = UserFactory(role='missionary')
         response = client.get(f'/api/v1/insights/admin/user-trends/?user_id={staff.id}')
         assert response.status_code == status.HTTP_200_OK
         assert 'trends' in response.data
@@ -44,7 +44,7 @@ class TestUserTrends:
     def test_returns_trend_data_structure(self, admin_client):
         """Verify trend data structure is correct."""
         client, admin_user = admin_client
-        staff = UserFactory(role='staff')
+        staff = UserFactory(role='missionary')
         response = client.get(f'/api/v1/insights/admin/user-trends/?user_id={staff.id}')
         assert response.status_code == status.HTTP_200_OK
         assert response.data['weeks'] == 12  # default
@@ -62,7 +62,7 @@ class TestUserTrends:
     def test_custom_weeks_parameter(self, admin_client):
         """Test custom weeks parameter."""
         client, admin_user = admin_client
-        staff = UserFactory(role='staff')
+        staff = UserFactory(role='missionary')
         response = client.get(f'/api/v1/insights/admin/user-trends/?user_id={staff.id}&weeks=8')
         assert response.status_code == status.HTTP_200_OK
         assert response.data['weeks'] == 8
@@ -75,7 +75,7 @@ class TestUserJournals:
     def test_admin_can_access(self, admin_client):
         """Admin can access user journals endpoint."""
         client, admin_user = admin_client
-        staff = UserFactory(role='staff')
+        staff = UserFactory(role='missionary')
         response = client.get(f'/api/v1/insights/admin/user-journals/?user_id={staff.id}')
         assert response.status_code == status.HTTP_200_OK
         assert 'journals' in response.data
@@ -96,7 +96,7 @@ class TestUserJournals:
     def test_returns_journals_for_user(self, admin_client):
         """Create a journal owned by a staff user, verify it appears in response."""
         client, admin_user = admin_client
-        staff = UserFactory(role='staff')
+        staff = UserFactory(role='missionary')
 
         # Create a journal for the staff user
         journal = Journal.objects.create(

@@ -32,7 +32,7 @@ class ContactJournalsAPITests(APITestCase):
             password='password123',
             first_name='Owner',
             last_name='User',
-            role='staff'
+            role='missionary'
         )
 
         # Create contact
@@ -193,7 +193,7 @@ class ContactJournalsAPITests(APITestCase):
             password='password123',
             first_name='Other',
             last_name='User',
-            role='staff'
+            role='missionary'
         )
 
         other_journal = Journal.objects.create(

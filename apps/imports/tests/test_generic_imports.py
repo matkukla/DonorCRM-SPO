@@ -30,7 +30,7 @@ class GenericContactImportTests(TestCase):
             password='testpass123',
             first_name='Staff',
             last_name='User',
-            role=UserRole.STAFF,
+            role=UserRole.MISSIONARY,
         )
 
     def test_generic_contact_import_creates_new_contacts(self):
@@ -199,7 +199,7 @@ class GenericDonationImportTests(TestCase):
             password='testpass123',
             first_name='Staff',
             last_name='User',
-            role=UserRole.STAFF,
+            role=UserRole.MISSIONARY,
         )
         self.contact = Contact.objects.create(
             owner=self.user,
@@ -278,7 +278,7 @@ class GenericImportAPITests(TestCase):
             password='testpass123',
             first_name='Staff',
             last_name='User',
-            role=UserRole.STAFF,
+            role=UserRole.MISSIONARY,
         )
         self.admin_user = User.objects.create_user(
             email='admin@test.com',

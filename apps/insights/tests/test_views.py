@@ -41,7 +41,7 @@ class TestAdminDashboardOverview:
 
     def test_returns_correct_counts(self, admin_client):
         client, admin_user = admin_client
-        staff = UserFactory(role='staff')
+        staff = UserFactory(role='missionary')
         ContactFactory.create_batch(3, owner=staff)
         ContactFactory.create_batch(2, owner=admin_user)
 
@@ -90,7 +90,7 @@ class TestStalledContacts:
         """Create a contact, add to a journal (JournalContact), do NOT create any JournalStageEvent.
         Verify days_stalled is an integer >= 0, not None."""
         client, admin_user = admin_client
-        staff = UserFactory(role='staff')
+        staff = UserFactory(role='missionary')
         contact = ContactFactory(owner=staff)
         # Add to journal but create no stage events
         journal = Journal.objects.create(
@@ -150,7 +150,7 @@ class TestUserPerformance:
 
     def test_returns_user_metrics(self, admin_client):
         client, admin_user = admin_client
-        staff = UserFactory(role='staff')
+        staff = UserFactory(role='missionary')
         ContactFactory.create_batch(3, owner=staff)
 
         response = client.get('/api/v1/insights/admin/user-performance/')
@@ -170,7 +170,7 @@ class TestUserPerformance:
     def test_includes_conversion_rate(self, admin_client):
         """conversion_rate is returned per user (Phase 14 success criteria #3)."""
         client, admin_user = admin_client
-        staff = UserFactory(role='staff')
+        staff = UserFactory(role='missionary')
         contact = ContactFactory(owner=staff)
         # Create journal, journal_contact, and decision to get non-zero conversion rate
         journal = Journal.objects.create(

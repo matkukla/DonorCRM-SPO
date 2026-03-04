@@ -94,7 +94,7 @@ class Command(BaseCommand):
             defaults={
                 'first_name': 'Sarah',
                 'last_name': 'Smith',
-                'role': UserRole.STAFF,
+                'role': UserRole.MISSIONARY,
                 'monthly_goal': Decimal('5000.00'),
                 'is_active': True,
             }

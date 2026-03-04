@@ -173,7 +173,7 @@ class TestPermissionBoundaries:
         contact_id = response.data['id']
 
         # Create another user and authenticate as them
-        user2 = user_factory(role='staff')
+        user2 = user_factory(role='missionary')
         client.force_authenticate(user=user2)
 
         # User 2 tries to access User 1's contact
