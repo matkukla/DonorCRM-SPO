@@ -26,7 +26,7 @@ class UserListCreateView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated, IsAdmin]
 
     def get_queryset(self):
-        return User.objects.all().prefetch_related('supervised_users').order_by('-date_joined')
+        return User.objects.all().prefetch_related('supervised_users', 'coached_users').order_by('-date_joined')
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -43,7 +43,7 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticated, IsAdmin]
 
     def get_queryset(self):
-        return User.objects.all().prefetch_related('supervised_users')
+        return User.objects.all().prefetch_related('supervised_users', 'coached_users')
 
     def get_serializer_class(self):
         if self.request.method in ['PATCH', 'PUT']:
