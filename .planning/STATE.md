@@ -1,14 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
+milestone: v2.2
 milestone_name: UI Polish, Journal Report & Supervisor Role
-status: unknown
-last_updated: "2026-03-02T18:52:53.834Z"
+status: executing
+stopped_at: Completed 43-01-PLAN.md
+last_updated: "2026-03-04T21:52:35.212Z"
+last_activity: "2026-03-04 — Starting Phase 43 (Roles Redesign: coach role, role renames, assignments page, team page)"
 progress:
-  total_phases: 27
-  completed_phases: 27
-  total_plans: 79
-  completed_plans: 79
+  total_phases: 6
+  completed_phases: 5
+  total_plans: 18
+  completed_plans: 14
+  percent: 100
 ---
 
 # Project State
@@ -18,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-26)
 
 **Core value:** Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems, and leadership can proactively support their teams through cross-missionary analytics.
-**Current focus:** Phase 42 — Mission Supervisor Role
+**Current focus:** Phase 43 — Roles Redesign
 
 ## Current Position
 
 Milestone: v2.2 UI Polish, Journal Report & Supervisor Role
-Phase: 42 of 42 (Mission Supervisor Role)
-Plan: 5 of 5 in current phase (42-05 complete -- PHASE COMPLETE)
-Status: Phase 42 complete
-Last activity: 2026-03-02 — Completed 42-05 (Supervisor List Pages & Read-Only UI)
+Phase: 43 of 43 (Roles Redesign)
+Plan: 0 of 5 in current phase (starting execution)
+Status: Phase 43 in progress
+Last activity: 2026-03-04 — Starting Phase 43 (Roles Redesign: coach role, role renames, assignments page, team page)
 
 Progress: [██████████] 100%
 
@@ -61,6 +64,7 @@ Progress: [██████████] 100%
 | Phase 42 P03 | 4min | 2 tasks | 7 files |
 | Phase 42 P04 | 5min | 2 tasks | 7 files |
 | Phase 42 P05 | 12min | 2 tasks | 21 files |
+| Phase 43 P1 | 3 | 6 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -101,6 +105,9 @@ v2.2 decisions:
 - Supervisor owner filter uses supervised_users from auth context, not admin-only useUsers() (42-05)
 - GiftDetail read-only check uses owner_name string comparison since gift detail lacks direct owner_id (42-05)
 - Backend filter sets for tasks, journals, prayers now accept owner query parameter (42-05)
+- [Phase 43]: Atomic migration: RunPython data migration BEFORE AlterField to avoid constraint violations on existing role values
+- [Phase 43]: coach excluded from IsStaffOrAbove (no financial writes); is_financial_role() helper added to express exclusion explicitly
+- [Phase 43]: supervised_users field name kept in CurrentUserSerializer — frontend consumes it for both supervisor and coach roles
 
 ### Research Flags
 
@@ -125,8 +132,8 @@ None active.
 
 ## Session Continuity
 
-Last session: 2026-03-02
-Stopped at: Completed 42-05-PLAN.md (Phase 42 complete)
+Last session: 2026-03-04T21:52:35.209Z
+Stopped at: Completed 43-01-PLAN.md
 Resume: All phases complete. v2.2 milestone shipped.
 
 ---
