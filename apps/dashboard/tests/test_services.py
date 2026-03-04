@@ -53,7 +53,7 @@ class TestGetNeedsAttention:
 
     def test_get_needs_attention_late_pledges_always_zero(self):
         """Test that late_pledge_count is always 0 (RecurringGift has no is_late)."""
-        user = UserFactory(role='staff')
+        user = UserFactory(role='missionary')
 
         result = get_needs_attention(user)
 
@@ -61,7 +61,7 @@ class TestGetNeedsAttention:
 
     def test_get_needs_attention_overdue_tasks(self):
         """Test getting needs attention with overdue tasks."""
-        user = UserFactory(role='staff')
+        user = UserFactory(role='missionary')
         OverdueTaskFactory(owner=user)
 
         result = get_needs_attention(user)
@@ -70,7 +70,7 @@ class TestGetNeedsAttention:
 
     def test_get_needs_attention_thank_you_needed(self):
         """Test getting needs attention with thank-you needed."""
-        user = UserFactory(role='staff')
+        user = UserFactory(role='missionary')
         ContactFactory(owner=user, needs_thank_you=True)
 
         result = get_needs_attention(user)
@@ -84,7 +84,7 @@ class TestGetLateDonations:
 
     def test_get_late_donations_returns_empty(self):
         """Test that get_late_donations always returns empty list (RecurringGift has no is_late)."""
-        user = UserFactory(role='staff')
+        user = UserFactory(role='missionary')
 
         result = get_late_donations(user)
 
@@ -97,7 +97,7 @@ class TestGetThankYouQueue:
 
     def test_get_thank_you_queue(self):
         """Test getting thank you queue."""
-        user = UserFactory(role='staff')
+        user = UserFactory(role='missionary')
         ContactFactory.create_batch(2, owner=user, needs_thank_you=True)
         ContactFactory(owner=user, needs_thank_you=False)
 
@@ -112,7 +112,7 @@ class TestGetSupportProgress:
 
     def test_get_support_progress(self):
         """Test getting support progress with RecurringGift."""
-        user = UserFactory(role='staff', monthly_goal=Decimal('5000.00'))
+        user = UserFactory(role='missionary', monthly_goal=Decimal('5000.00'))
         contact = ContactFactory(owner=user)
 
         # Create $100/month recurring gift (10000 cents)
@@ -133,7 +133,7 @@ class TestGetRecentGifts:
 
     def test_get_recent_gifts(self):
         """Test getting recent gifts."""
-        user = UserFactory(role='staff')
+        user = UserFactory(role='missionary')
         contact = ContactFactory(owner=user)
 
         # Recent gift
@@ -153,7 +153,7 @@ class TestGetDashboardSummary:
 
     def test_get_dashboard_summary(self):
         """Test getting complete dashboard summary."""
-        user = UserFactory(role='staff', monthly_goal=Decimal('3000.00'))
+        user = UserFactory(role='missionary', monthly_goal=Decimal('3000.00'))
 
         result = get_dashboard_summary(user)
 
@@ -168,7 +168,7 @@ class TestGetDashboardSummary:
         """Test that dashboard summary returns JSON-serializable data."""
         import json
 
-        user = UserFactory(role='staff')
+        user = UserFactory(role='missionary')
 
         result = get_dashboard_summary(user)
 

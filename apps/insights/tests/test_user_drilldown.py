@@ -33,7 +33,7 @@ class UserDrilldownViewTest(TestCase):
         self.missionary = User.objects.create_user(
             email='missionary@test.com',
             password='testpass123',
-            role='staff',
+            role='missionary',
             first_name='Missionary',
             last_name='Smith',
         )
@@ -42,7 +42,7 @@ class UserDrilldownViewTest(TestCase):
         self.staff = User.objects.create_user(
             email='staff@test.com',
             password='testpass123',
-            role='staff',
+            role='missionary',
             first_name='Staff',
             last_name='Member',
         )

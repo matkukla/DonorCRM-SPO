@@ -100,7 +100,7 @@ class TestTeamTrendsView:
     def test_counts_decisions_by_week(self, admin_client):
         """Decisions are counted in the correct week."""
         client, admin_user = admin_client
-        staff = UserFactory(role='staff')
+        staff = UserFactory(role='missionary')
         contact = ContactFactory(owner=staff)
         contact2 = ContactFactory(owner=staff)
 
@@ -149,7 +149,7 @@ class TestTeamTrendsView:
     def test_counts_donations_by_week(self, admin_client):
         """Gifts are counted in the correct week."""
         client, admin_user = admin_client
-        staff = UserFactory(role='staff')
+        staff = UserFactory(role='missionary')
         contact = ContactFactory(owner=staff)
 
         # Create gifts in current week
@@ -167,7 +167,7 @@ class TestTeamTrendsView:
     def test_counts_stage_progressions_by_week(self, admin_client):
         """JournalStageEvents are counted in the correct week."""
         client, admin_user = admin_client
-        staff = UserFactory(role='staff')
+        staff = UserFactory(role='missionary')
         contact = ContactFactory(owner=staff)
 
         # Create journal and journal_contact

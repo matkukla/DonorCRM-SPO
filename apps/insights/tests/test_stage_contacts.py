@@ -32,7 +32,7 @@ class TestStageContacts(TestCase):
             password='testpass123',
             first_name='Staff',
             last_name='User',
-            role='staff'
+            role='missionary'
         )
 
         # Create contacts

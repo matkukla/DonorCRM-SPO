@@ -17,7 +17,7 @@ class TestUserModel:
         user = UserFactory()
         assert user.id is not None
         assert user.email is not None
-        assert user.role == UserRole.STAFF
+        assert user.role == UserRole.MISSIONARY
         assert user.is_active is True
         assert user.is_staff is False
 
@@ -41,7 +41,7 @@ class TestUserModel:
 
     def test_role_properties(self):
         """Test role checking properties."""
-        staff = UserFactory(role=UserRole.STAFF)
+        staff = UserFactory(role=UserRole.MISSIONARY)
         admin = UserFactory(role=UserRole.ADMIN)
         finance = UserFactory(role=UserRole.FINANCE)
         readonly = UserFactory(role=UserRole.READ_ONLY)

@@ -57,7 +57,7 @@ class TestStalledContactsCSVExport:
     def test_csv_contains_data_rows(self, admin_client):
         """Create stalled contacts and verify they appear in CSV."""
         client, admin_user = admin_client
-        staff = UserFactory(role='staff')
+        staff = UserFactory(role='missionary')
         contact = ContactFactory(owner=staff)
 
         # Create journal and add contact
@@ -112,7 +112,7 @@ class TestStalledContactsCSVExport:
     def test_date_range_filters_csv_data(self, admin_client):
         """Verify date range parameters filter CSV data."""
         client, admin_user = admin_client
-        staff = UserFactory(role='staff')
+        staff = UserFactory(role='missionary')
 
         # Create two contacts with different activity dates
         contact1 = ContactFactory(owner=staff)
@@ -203,7 +203,7 @@ class TestTeamActivityCSVExport:
     def test_csv_contains_data_rows(self, admin_client):
         """Create events and verify they appear in CSV."""
         client, admin_user = admin_client
-        staff = UserFactory(role='staff')
+        staff = UserFactory(role='missionary')
 
         # Create an event
         Event.objects.create(
@@ -247,7 +247,7 @@ class TestTeamActivityCSVExport:
     def test_limit_parameter_works(self, admin_client):
         """Verify limit parameter restricts number of rows."""
         client, admin_user = admin_client
-        staff = UserFactory(role='staff')
+        staff = UserFactory(role='missionary')
 
         # Create multiple events
         for i in range(10):

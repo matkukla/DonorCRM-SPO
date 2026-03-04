@@ -51,8 +51,8 @@ class UserManager(BaseUserManager):
         return self.filter(is_active=True)
 
     def staff_users(self):
-        """Return active staff users."""
-        return self.active().filter(role='staff')
+        """Return active missionary users."""
+        return self.active().filter(role='missionary')
 
     def admins(self):
         """Return active admin users."""

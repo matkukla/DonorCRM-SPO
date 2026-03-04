@@ -84,23 +84,35 @@ class UserAdminUpdateSerializer(serializers.ModelSerializer):
         required=False,
         help_text='List of user IDs to assign as supervised users'
     )
+    coached_user_ids = serializers.ListField(
+        child=serializers.UUIDField(),
+        write_only=True,
+        required=False,
+        help_text='List of user IDs to assign as coached users'
+    )
 
     class Meta:
         model = User
         fields = [
             'first_name', 'last_name', 'phone', 'role',
             'monthly_goal', 'email_notifications', 'is_active',
-            'supervised_user_ids'
+            'supervised_user_ids', 'coached_user_ids'
         ]
 
     def update(self, instance, validated_data):
         supervised_ids = validated_data.pop('supervised_user_ids', None)
+        coached_ids = validated_data.pop('coached_user_ids', None)
         instance = super().update(instance, validated_data)
         if supervised_ids is not None:
             # Clear existing supervised users (set their supervisor to None)
             instance.supervised_users.update(supervisor=None)
             # Assign new supervised users
             User.objects.filter(id__in=supervised_ids, is_active=True).update(supervisor=instance)
+        if coached_ids is not None:
+            # Clear existing coached users (set their coach to None)
+            instance.coached_users.update(coach=None)
+            # Assign new coached users
+            User.objects.filter(id__in=coached_ids, is_active=True).update(coach=instance)
         return instance
 
 

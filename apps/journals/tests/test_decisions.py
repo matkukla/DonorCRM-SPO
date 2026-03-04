@@ -34,14 +34,14 @@ class DecisionAPITests(APITestCase):
             password='password123',
             first_name='User',
             last_name='A',
-            role='staff'
+            role='missionary'
         )
         self.user_b = User.objects.create_user(
             email='userb@example.com',
             password='password123',
             first_name='User',
             last_name='B',
-            role='staff'
+            role='missionary'
         )
 
         # Create journal owned by user_a
@@ -340,7 +340,7 @@ class DecisionHistoryTests(APITestCase):
             password='password123',
             first_name='User',
             last_name='A',
-            role='staff'
+            role='missionary'
         )
 
         # Create journal owned by user_a
