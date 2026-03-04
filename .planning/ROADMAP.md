@@ -235,7 +235,7 @@ Phases execute in numeric order: 38 -> 39 -> 40 -> 41 -> 42
 | 40. Journal Report & Grid Behavior | 2/2 | Complete    | 2026-02-27 | - |
 | 41. Begin Prayer | 1/1 | Complete    | 2026-02-27 | - |
 | 42. Mission Supervisor Role | 5/5 | Complete    | 2026-03-02 | - |
-| 43. Roles Redesign | 2/5 | In Progress|  | - |
+| 43. Roles Redesign | 3/5 | In Progress|  | - |
 
 **Total:** 6 milestones shipped, 112 plans executed across 42 phases. v2.2 in progress (6 phases, 31 requirements).
 
