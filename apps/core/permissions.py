@@ -2,15 +2,17 @@
 Custom permission classes for role-based access control.
 
 Access Control Matrix:
-  admin      - Full access to all resources (all CRUD, all users' data)
-  finance    - Read access to all resources; write access to own data only
-  staff      - Full CRUD on own resources only
-  read_only  - Read access to own resources only (safe HTTP methods)
+  admin       - Full access to all resources (all CRUD, all users' data)
+  finance     - Read access to all resources; write access to own data only
+  missionary  - Full CRUD on own resources only
+  read_only   - Read access to own resources only (safe HTTP methods)
+  supervisor  - Read/write own data + read supervised missionaries' data
+  coach       - Read/write own data + read coached users' data (no financial data)
 
 Owner scoping in views uses two patterns:
   - Multi-role check: role in ['admin', 'finance', 'read_only'] -> see all
   - Single-role check: role == 'admin' -> see all (admin-only endpoints)
-Write operations are gated by IsStaffOrAbove (excludes read_only).
+Write operations are gated by IsStaffOrAbove (excludes read_only and coach).
 """
 from rest_framework import permissions
 
@@ -19,12 +21,13 @@ def get_visible_user_ids(user):
     """Return set of user IDs whose data this user can see, or None for 'all'.
 
     - Admin/Finance/ReadOnly: returns None (sentinel for 'all users')
-    - Mission Supervisor: returns {own_id} union {supervised user IDs}
-    - Staff: returns {own_id}
+    - Supervisor: returns {own_id} union {supervised user IDs}
+    - Coach: returns {own_id} union {coached user IDs}
+    - Missionary: returns {own_id}
     """
     if user.role in ['admin', 'finance', 'read_only']:
         return None
-    if user.role == 'mission_supervisor':
+    if user.role == 'supervisor':
         ids = set(
             user.supervised_users
             .filter(is_active=True)
@@ -32,7 +35,20 @@ def get_visible_user_ids(user):
         )
         ids.add(user.id)
         return ids
+    if user.role == 'coach':
+        ids = set(
+            user.coached_users
+            .filter(is_active=True)
+            .values_list('id', flat=True)
+        )
+        ids.add(user.id)
+        return ids
     return {user.id}
+
+
+def is_financial_role(user):
+    """Returns True if user can see financial data. Coach is excluded."""
+    return user.role in ['admin', 'finance', 'read_only', 'supervisor', 'missionary']
 
 
 class IsAdmin(permissions.BasePermission):
@@ -59,8 +75,8 @@ class IsFinanceOrAdmin(permissions.BasePermission):
 
 class IsStaffOrAbove(permissions.BasePermission):
     """
-    Permission class that allows Staff, Finance, or Admin users.
-    Excludes read-only users from write operations.
+    Permission class that allows Missionary, Finance, Supervisor, or Admin users.
+    Excludes read-only and coach users from write operations.
     """
     def has_permission(self, request, view):
         if not request.user.is_authenticated:
@@ -70,7 +86,7 @@ class IsStaffOrAbove(permissions.BasePermission):
         if request.user.role == 'read_only':
             return request.method in permissions.SAFE_METHODS
 
-        return request.user.role in ['admin', 'finance', 'staff', 'mission_supervisor']
+        return request.user.role in ['admin', 'finance', 'missionary', 'supervisor']
 
 
 class IsOwnerOrAdmin(permissions.BasePermission):
