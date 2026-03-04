@@ -36,6 +36,8 @@ class GiftListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
+        if user.role == 'coach':
+            return Gift.objects.none()
         qs = Gift.objects.select_related('donor_contact', 'donor_contact__owner', 'fund').all()
         visible = get_visible_user_ids(user)
         if visible is not None:
@@ -64,6 +66,8 @@ class GiftDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         user = self.request.user
+        if user.role == 'coach':
+            return Gift.objects.none()
         qs = Gift.objects.select_related('donor_contact', 'donor_contact__owner', 'fund').prefetch_related(
             'credits__solicitor'
         ).all()
@@ -96,6 +100,8 @@ class RecurringGiftListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
+        if user.role == 'coach':
+            return RecurringGift.objects.none()
         qs = RecurringGift.objects.select_related('donor_contact', 'donor_contact__owner', 'fund').all()
         visible = get_visible_user_ids(user)
         if visible is not None:
@@ -125,6 +131,8 @@ class RecurringGiftDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         user = self.request.user
+        if user.role == 'coach':
+            return RecurringGift.objects.none()
         qs = RecurringGift.objects.select_related('donor_contact', 'donor_contact__owner', 'fund').all()
         visible = get_visible_user_ids(user)
         if visible is not None:
