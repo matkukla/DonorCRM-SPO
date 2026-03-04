@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: UI Polish, Journal Report & Supervisor Role
 status: executing
-stopped_at: Completed 43-03-PLAN.md
-last_updated: "2026-03-04T22:03:36.118Z"
+stopped_at: Completed 43-04-PLAN.md
+last_updated: "2026-03-04T22:06:28.678Z"
 last_activity: "2026-03-04 — Starting Phase 43 (Roles Redesign: coach role, role renames, assignments page, team page)"
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 18
-  completed_plans: 16
+  completed_plans: 17
   percent: 100
 ---
 
@@ -66,6 +66,7 @@ Progress: [██████████] 100%
 | Phase 42 P05 | 12min | 2 tasks | 21 files |
 | Phase 43 P1 | 3 | 6 tasks | 6 files |
 | Phase 43 P02 | 12 | 6 tasks | 8 files |
+| Phase 43 P4 | 65s | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -114,6 +115,7 @@ v2.2 decisions:
 - [Phase 43-03]: visibleRoles array on NavItem for exact role match (vs hierarchy) — used for My Team (supervisor/coach only)
 - [Phase 43-03]: showFinancialTabs pattern hides Donations/Pledges tabs for coach viewing non-owned contacts
 - [Phase 43-03]: useAssignments/useUpdateAssignments hooks colocated in useUsers.ts
+- [Phase 43]: Map<string, assignment> initialized from API on first load; dirty Set tracks changed IDs for diff-based save
 
 ### Research Flags
 
@@ -138,8 +140,8 @@ None active.
 
 ## Session Continuity
 
-Last session: 2026-03-04T22:03:28.779Z
-Stopped at: Completed 43-03-PLAN.md
+Last session: 2026-03-04T22:06:28.674Z
+Stopped at: Completed 43-04-PLAN.md
 Resume: All phases complete. v2.2 milestone shipped.
 
 ---
