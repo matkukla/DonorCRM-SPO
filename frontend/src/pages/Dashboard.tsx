@@ -17,15 +17,12 @@ import { SortableDashboardTile } from "@/components/dashboard/SortableDashboardT
 import { LogEventDialog } from "@/pages/journals/components/LogEventDialog"
 import { useMPDMyData } from "@/hooks/useMPD"
 import { MPDStatsInline } from "@/components/mpd/MPDStatsInline"
-import { Users, DollarSign, FileText, CheckSquare, RotateCcw, ChevronDown, Info } from "lucide-react"
+import { Users, DollarSign, FileText, CheckSquare, RotateCcw, ChevronDown, Check, Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { cn } from "@/lib/utils"
 import { DndContext, DragOverlay, closestCenter, MouseSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core"
 import type { DragStartEvent, DragEndEvent } from "@dnd-kit/core"
 import { SortableContext, arrayMove, rectSortingStrategy } from "@dnd-kit/sortable"
@@ -70,6 +67,7 @@ export default function Dashboard() {
   const { data: mpdData, isLoading: mpdLoading } = useMPDMyData()
   const [quickLogContactId, setQuickLogContactId] = useState<string | null>(null)
 
+  const [viewingPickerOpen, setViewingPickerOpen] = useState(false)
   const { tileOrder, setTileOrder, resetToDefault, isDragEnabled } = useDashboardLayout(effectiveUserId)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [dragWidth, setDragWidth] = useState<number>(0)
@@ -237,24 +235,41 @@ export default function Dashboard() {
           {isSupervisorOrAdmin && missionaryOptions.length > 0 && (
             <div className="flex items-center gap-3">
               <Label className="text-sm font-medium whitespace-nowrap">Viewing:</Label>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+              <Popover open={viewingPickerOpen} onOpenChange={setViewingPickerOpen}>
+                <PopoverTrigger asChild>
                   <Button variant="secondary" size="sm" className="gap-2">
                     {isViewingOther ? selectedUserName : "My Dashboard"}
                     <ChevronDown className="h-4 w-4" />
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="max-h-72 overflow-y-auto">
-                  <DropdownMenuItem onClick={() => setSelectedUserId(null)}>
-                    My Dashboard
-                  </DropdownMenuItem>
-                  {missionaryOptions.map((u) => (
-                    <DropdownMenuItem key={u.id} onClick={() => setSelectedUserId(u.id)}>
-                      {u.first_name} {u.last_name}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                </PopoverTrigger>
+                <PopoverContent className="w-56 p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search..." />
+                    <CommandList>
+                      <CommandEmpty>No results found.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          value="my-dashboard"
+                          onSelect={() => { setSelectedUserId(null); setViewingPickerOpen(false) }}
+                        >
+                          <Check className={cn("mr-2 h-4 w-4", !isViewingOther ? "opacity-100" : "opacity-0")} />
+                          My Dashboard
+                        </CommandItem>
+                        {missionaryOptions.map((u) => (
+                          <CommandItem
+                            key={u.id}
+                            value={`${u.first_name} ${u.last_name} ${u.email}`}
+                            onSelect={() => { setSelectedUserId(u.id); setViewingPickerOpen(false) }}
+                          >
+                            <Check className={cn("mr-2 h-4 w-4", selectedUserId === u.id ? "opacity-100" : "opacity-0")} />
+                            {u.first_name} {u.last_name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
           )}
 
