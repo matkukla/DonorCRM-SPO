@@ -19,7 +19,7 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'id', 'email', 'first_name', 'last_name', 'full_name',
-            'phone', 'role', 'supervisor', 'monthly_goal', 'email_notifications',
+            'phone', 'role', 'supervisor', 'coach_id', 'monthly_goal', 'email_notifications',
             'is_active', 'date_joined', 'last_login_at'
         ]
         read_only_fields = ['id', 'date_joined', 'last_login_at']
@@ -184,11 +184,14 @@ class CurrentUserSerializer(serializers.ModelSerializer):
         ).count()
 
     def get_supervised_users(self, obj):
-        """Return list of supervised user summaries for supervisor/admin."""
-        if obj.role != 'mission_supervisor':
+        """Return list of supervised/coached user summaries for supervisor or coach."""
+        if obj.role == 'supervisor':
+            qs = obj.supervised_users.filter(is_active=True)
+        elif obj.role == 'coach':
+            qs = obj.coached_users.filter(is_active=True)
+        else:
             return []
         return list(
-            obj.supervised_users.filter(is_active=True)
-            .values('id', 'first_name', 'last_name', 'email')
+            qs.values('id', 'first_name', 'last_name', 'email')
             .order_by('last_name', 'first_name')
         )
