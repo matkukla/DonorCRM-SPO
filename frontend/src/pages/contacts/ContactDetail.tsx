@@ -104,7 +104,9 @@ export default function ContactDetail() {
     return prayers.filter((p) => p.status === prayerFilter)
   }, [contactPrayers, prayerFilter])
 
-  const isReadOnly = user?.role === "mission_supervisor" && contact?.owner !== undefined && String(contact?.owner) !== String(user?.id)
+  const isCoach = user?.role === "coach"
+  const showFinancialTabs = !isCoach || String(contact?.owner) === String(user?.id)
+  const isReadOnly = (user?.role === "supervisor" || user?.role === "coach") && contact?.owner !== undefined && String(contact?.owner) !== String(user?.id)
 
   const markThankedMutation = useMarkContactThanked()
   const deleteMutation = useDeleteContact()
@@ -252,12 +254,16 @@ export default function ContactDetail() {
             <TabsList>
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="journal">Journal</TabsTrigger>
-              <TabsTrigger value="donations">
-                Donations ({donations?.length || 0})
-              </TabsTrigger>
-              <TabsTrigger value="pledges">
-                Pledges ({pledges?.length || 0})
-              </TabsTrigger>
+              {showFinancialTabs && (
+                <TabsTrigger value="donations">
+                  Donations ({donations?.length || 0})
+                </TabsTrigger>
+              )}
+              {showFinancialTabs && (
+                <TabsTrigger value="pledges">
+                  Pledges ({pledges?.length || 0})
+                </TabsTrigger>
+              )}
               <TabsTrigger value="tasks">
                 Tasks ({tasks?.length || 0})
               </TabsTrigger>

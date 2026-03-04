@@ -62,10 +62,10 @@ const typeIcons: Record<TaskType, React.ReactNode> = {
 export default function TaskList() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const canSeeOwner = user?.role === "admin" || user?.role === "mission_supervisor"
+  const canSeeOwner = user?.role === "admin" || user?.role === "supervisor" || user?.role === "coach"
   const ownerOptions = user?.role === "admin"
     ? [] // admin can see all via usersData (not loaded here -- owner column always visible)
-    : user?.role === "mission_supervisor"
+    : (user?.role === "supervisor" || user?.role === "coach")
       ? [
           { id: String(user.id), full_name: `${user.first_name} ${user.last_name}` },
           ...(user.supervised_users?.map((u) => ({

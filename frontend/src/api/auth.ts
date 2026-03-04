@@ -15,11 +15,12 @@ export interface User {
   email: string
   first_name: string
   last_name: string
-  role: "admin" | "staff" | "finance" | "read_only" | "mission_supervisor"
+  role: "admin" | "missionary" | "finance" | "read_only" | "supervisor" | "coach"
   is_active: boolean
   monthly_goal: string | null
   dashboard_layout: { tile_order?: string[] } | null
   supervised_users?: Array<{ id: string; first_name: string; last_name: string; email: string }>
+  coach: string | null
 }
 
 /**

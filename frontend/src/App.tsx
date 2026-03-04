@@ -39,6 +39,9 @@ const JournalDetail = React.lazy(() => import("@/pages/journals/JournalDetail"))
 const ImportExport = React.lazy(() => import("@/pages/imports/ImportExport"))
 const AdminAnalyticsDashboard = React.lazy(() => import("@/pages/admin/analytics/AdminAnalyticsDashboard"))
 const PrayerList = React.lazy(() => import("@/pages/prayer/PrayerList"))
+const AdminAssignments = React.lazy(() => import("@/pages/admin/AdminAssignments"))
+const TeamPage = React.lazy(() => import("@/pages/team/TeamPage"))
+const MissionaryProfilePage = React.lazy(() => import("@/pages/team/MissionaryProfilePage"))
 
 // Lazy-loaded admin analytics sub-pages (recharts, data tables)
 const StalledContacts = React.lazy(() => import("@/pages/admin/analytics/StalledContacts"))
@@ -66,7 +69,7 @@ function PageLoadingFallback() {
  * Wrap a page with protected route and app layout.
  * Suspense boundary is inside the layout so sidebar stays visible during chunk loading.
  */
-function ProtectedPage({ children, requiredRole }: { children: React.ReactNode; requiredRole?: "admin" | "staff" | "finance" | "read_only" }) {
+function ProtectedPage({ children, requiredRole }: { children: React.ReactNode; requiredRole?: "admin" | "missionary" | "finance" | "read_only" | "supervisor" | "coach" }) {
   return (
     <ProtectedRoute requiredRole={requiredRole}>
       <AppLayout>
@@ -99,24 +102,24 @@ function App() {
                 {/* Protected routes with app layout */}
                 <Route path="/" element={<ProtectedPage><Dashboard /></ProtectedPage>} />
                 <Route path="/contacts" element={<ProtectedPage><ContactList /></ProtectedPage>} />
-                <Route path="/contacts/new" element={<ProtectedPage requiredRole="staff"><ContactForm /></ProtectedPage>} />
+                <Route path="/contacts/new" element={<ProtectedPage requiredRole="missionary"><ContactForm /></ProtectedPage>} />
                 <Route path="/contacts/:id" element={<ProtectedPage><ContactDetail /></ProtectedPage>} />
-                <Route path="/contacts/:id/edit" element={<ProtectedPage requiredRole="staff"><ContactForm /></ProtectedPage>} />
+                <Route path="/contacts/:id/edit" element={<ProtectedPage requiredRole="missionary"><ContactForm /></ProtectedPage>} />
                 <Route path="/donations" element={<ProtectedPage><DonationList /></ProtectedPage>} />
-                <Route path="/donations/new" element={<ProtectedPage requiredRole="staff"><DonationForm /></ProtectedPage>} />
+                <Route path="/donations/new" element={<ProtectedPage requiredRole="missionary"><DonationForm /></ProtectedPage>} />
                 <Route path="/donations/:id" element={<ProtectedPage><DonationDetail /></ProtectedPage>} />
-                <Route path="/donations/:id/edit" element={<ProtectedPage requiredRole="staff"><DonationForm /></ProtectedPage>} />
+                <Route path="/donations/:id/edit" element={<ProtectedPage requiredRole="missionary"><DonationForm /></ProtectedPage>} />
                 <Route path="/pledges" element={<ProtectedPage><PledgeList /></ProtectedPage>} />
-                <Route path="/pledges/new" element={<ProtectedPage requiredRole="staff"><PledgeForm /></ProtectedPage>} />
+                <Route path="/pledges/new" element={<ProtectedPage requiredRole="missionary"><PledgeForm /></ProtectedPage>} />
                 <Route path="/pledges/:id" element={<ProtectedPage><PledgeDetail /></ProtectedPage>} />
-                <Route path="/pledges/:id/edit" element={<ProtectedPage requiredRole="staff"><PledgeForm /></ProtectedPage>} />
+                <Route path="/pledges/:id/edit" element={<ProtectedPage requiredRole="missionary"><PledgeForm /></ProtectedPage>} />
                 <Route path="/tasks" element={<ProtectedPage><TaskList /></ProtectedPage>} />
-                <Route path="/tasks/new" element={<ProtectedPage requiredRole="staff"><TaskForm /></ProtectedPage>} />
+                <Route path="/tasks/new" element={<ProtectedPage requiredRole="missionary"><TaskForm /></ProtectedPage>} />
                 <Route path="/tasks/:id" element={<ProtectedPage><TaskDetail /></ProtectedPage>} />
-                <Route path="/tasks/:id/edit" element={<ProtectedPage requiredRole="staff"><TaskForm /></ProtectedPage>} />
+                <Route path="/tasks/:id/edit" element={<ProtectedPage requiredRole="missionary"><TaskForm /></ProtectedPage>} />
                 <Route path="/groups" element={<ProtectedPage><GroupList /></ProtectedPage>} />
                 <Route path="/groups/:id" element={<ProtectedPage><GroupDetail /></ProtectedPage>} />
-                <Route path="/groups/:id/edit" element={<ProtectedPage requiredRole="staff"><GroupForm /></ProtectedPage>} />
+                <Route path="/groups/:id/edit" element={<ProtectedPage requiredRole="missionary"><GroupForm /></ProtectedPage>} />
                 <Route path="/journals" element={<ProtectedPage><JournalList /></ProtectedPage>} />
                 <Route path="/journals/:id" element={<ProtectedPage><JournalDetail /></ProtectedPage>} />
                 <Route path="/prayer" element={<ProtectedPage><PrayerList /></ProtectedPage>} />
@@ -131,11 +134,14 @@ function App() {
 
                 <Route path="/settings" element={<ProtectedPage><Settings /></ProtectedPage>} />
                 <Route path="/admin" element={<ProtectedPage requiredRole="admin"><AdminUsers /></ProtectedPage>} />
+                <Route path="/admin/assignments" element={<ProtectedPage requiredRole="admin"><AdminAssignments /></ProtectedPage>} />
                 <Route path="/admin/analytics" element={<Navigate to="/admin/analytics/dashboard" replace />} />
                 <Route path="/admin/analytics/dashboard" element={<ProtectedPage requiredRole="admin"><AdminAnalyticsDashboard /></ProtectedPage>} />
                 <Route path="/admin/analytics/stalled" element={<ProtectedPage requiredRole="admin"><StalledContacts /></ProtectedPage>} />
                 <Route path="/admin/analytics/users/:id" element={<ProtectedPage requiredRole="admin"><UserDetail /></ProtectedPage>} />
-                <Route path="/import-export" element={<ProtectedPage requiredRole="staff"><ImportExport /></ProtectedPage>} />
+                <Route path="/team" element={<ProtectedPage requiredRole="missionary"><TeamPage /></ProtectedPage>} />
+                <Route path="/team/:userId" element={<ProtectedPage requiredRole="missionary"><MissionaryProfilePage /></ProtectedPage>} />
+                <Route path="/import-export" element={<ProtectedPage requiredRole="missionary"><ImportExport /></ProtectedPage>} />
 
                 {/* Catch-all redirect */}
                 <Route path="*" element={<Navigate to="/" replace />} />

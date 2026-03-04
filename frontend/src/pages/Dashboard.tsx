@@ -54,7 +54,7 @@ const TILE_SIZES: Record<string, number> = {
 
 export default function Dashboard() {
   const { user } = useAuth()
-  const isSupervisorOrAdmin = user?.role === "admin" || user?.role === "mission_supervisor"
+  const isSupervisorOrAdmin = user?.role === "admin" || user?.role === "supervisor" || user?.role === "coach"
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const isViewingOther = selectedUserId !== null && selectedUserId !== user?.id
   const effectiveUserId = selectedUserId || undefined
