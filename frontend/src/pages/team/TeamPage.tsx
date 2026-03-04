@@ -1,66 +1,98 @@
-import { useNavigate } from "react-router-dom"
+import { useState } from "react"
+import { Link } from "react-router-dom"
 import { useAuth } from "@/providers/AuthProvider"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Mail, ChevronRight } from "lucide-react"
+import { Search } from "lucide-react"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 
 export default function TeamPage() {
   const { user } = useAuth()
-  const navigate = useNavigate()
+  const [search, setSearch] = useState("")
 
   const teamMembers = user?.supervised_users || []
+
+  const filtered = teamMembers.filter((m) => {
+    const fullName = `${m.first_name} ${m.last_name}`.toLowerCase()
+    const q = search.toLowerCase()
+    return fullName.includes(q) || m.email.toLowerCase().includes(q)
+  })
+
+  const subtitle =
+    user?.role === "coach"
+      ? "Your coachees"
+      : "Missionaries under your supervision"
 
   return (
     <Section>
       <Container>
         <div className="space-y-6">
+          {/* Header */}
           <div>
             <h1 className="text-3xl font-semibold tracking-tight">My Team</h1>
-            <p className="text-muted-foreground mt-1">
-              View and support the missionaries in your team
-            </p>
+            <p className="text-muted-foreground mt-1">{subtitle}</p>
           </div>
 
-          {teamMembers.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {teamMembers.map((member) => (
-                <Card
-                  key={member.id}
-                  className="cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => navigate(`/team/${member.id}`)}
-                >
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg">
-                        {member.first_name} {member.last_name}
-                      </CardTitle>
-                      <Badge variant="secondary">Missionary</Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Mail className="h-4 w-4" />
-                        {member.email}
-                      </div>
-                      <Button variant="ghost" size="sm">
-                        View
-                        <ChevronRight className="h-4 w-4 ml-1" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+          {/* Search */}
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search missionaries..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+
+          {/* Table or empty state */}
+          {teamMembers.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              No missionaries assigned yet.
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              No missionaries match your search.
             </div>
           ) : (
-            <Card>
-              <CardContent className="py-8 text-center text-muted-foreground">
-                No team members assigned yet.
-              </CardContent>
-            </Card>
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map((missionary) => (
+                    <TableRow key={missionary.id}>
+                      <TableCell className="font-medium">
+                        {missionary.first_name} {missionary.last_name}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {missionary.email}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="outline" size="sm" asChild>
+                          <Link to={`/team/${missionary.id}`}>
+                            View Profile &rarr;
+                          </Link>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </div>
       </Container>
