@@ -4,7 +4,7 @@ CSV export views for Gift and RecurringGift with FilterSet-based filtering.
 import csv
 from datetime import datetime
 
-from django.http import StreamingHttpResponse
+from django.http import HttpResponseForbidden, StreamingHttpResponse
 from rest_framework import permissions
 from rest_framework.views import APIView
 
@@ -28,6 +28,9 @@ class GiftExportCSVView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
+        if request.user.role == 'coach':
+            return HttpResponseForbidden('Coaches cannot access financial exports')
+
         user = request.user
 
         # Same owner-scoping as GiftListCreateView
@@ -87,6 +90,9 @@ class RecurringGiftExportCSVView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
+        if request.user.role == 'coach':
+            return HttpResponseForbidden('Coaches cannot access financial exports')
+
         user = request.user
 
         # Same owner-scoping as RecurringGiftListCreateView
