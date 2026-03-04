@@ -6,7 +6,7 @@ import type { ReactNode } from "react"
 
 interface ProtectedRouteProps {
   children: ReactNode
-  requiredRole?: "admin" | "staff" | "finance" | "read_only" | "mission_supervisor"
+  requiredRole?: "admin" | "missionary" | "finance" | "read_only" | "supervisor" | "coach"
 }
 
 /**
@@ -20,7 +20,7 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
 
   useEffect(() => {
     if (requiredRole && user) {
-      const roleHierarchy: Record<string, number> = { admin: 5, mission_supervisor: 4, finance: 3, staff: 2, read_only: 1 }
+      const roleHierarchy: Record<string, number> = { admin: 5, supervisor: 4, coach: 3, finance: 3, missionary: 2, read_only: 1 }
       const userLevel = roleHierarchy[user.role]
       const requiredLevel = roleHierarchy[requiredRole]
       if (userLevel < requiredLevel && !toastShown.current) {
@@ -46,7 +46,7 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
 
   // Redirect to home if insufficient role
   if (requiredRole && user) {
-    const roleHierarchy: Record<string, number> = { admin: 5, mission_supervisor: 4, finance: 3, staff: 2, read_only: 1 }
+    const roleHierarchy: Record<string, number> = { admin: 5, supervisor: 4, coach: 3, finance: 3, missionary: 2, read_only: 1 }
     const userLevel = roleHierarchy[user.role]
     const requiredLevel = roleHierarchy[requiredRole]
 

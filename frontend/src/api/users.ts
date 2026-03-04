@@ -3,7 +3,7 @@
  */
 import { apiClient } from "./client"
 
-export type UserRole = "admin" | "staff" | "finance" | "read_only" | "mission_supervisor"
+export type UserRole = "admin" | "missionary" | "finance" | "read_only" | "supervisor" | "coach"
 
 export interface User {
   id: string
@@ -19,6 +19,7 @@ export interface User {
   date_joined: string
   last_login_at: string | null
   supervisor: string | null
+  coach: string | null
 }
 
 export interface UserCreate {
@@ -41,15 +42,37 @@ export interface UserUpdate {
   email_notifications?: boolean
   is_active?: boolean
   supervised_user_ids?: string[]
+  coached_user_ids?: string[]
 }
 
 // Labels for display
 export const userRoleLabels: Record<UserRole, string> = {
   admin: "Administrator",
-  mission_supervisor: "Mission Supervisor",
-  staff: "Staff",
+  supervisor: "Supervisor",
+  missionary: "Missionary",
   finance: "Finance",
   read_only: "Read Only",
+  coach: "Coach",
+}
+
+export interface MissionaryAssignment {
+  id: string
+  email: string
+  full_name: string
+  supervisor_id: string | null
+  coach_id: string | null
+}
+
+export interface AssignmentsData {
+  missionaries: MissionaryAssignment[]
+  supervisors: { id: string; first_name: string; last_name: string; email: string }[]
+  coaches: { id: string; first_name: string; last_name: string; email: string }[]
+}
+
+export interface AssignmentUpdate {
+  missionary_id: string
+  supervisor_id: string | null
+  coach_id: string | null
 }
 
 // API functions
@@ -76,4 +99,14 @@ export async function updateUser(id: string, data: UserUpdate): Promise<User> {
 
 export async function deactivateUser(id: string): Promise<void> {
   await apiClient.delete(`/users/${id}/`)
+}
+
+export async function getAssignments(): Promise<AssignmentsData> {
+  const response = await apiClient.get('/users/admin/assignments/')
+  return response.data
+}
+
+export async function updateAssignments(assignments: AssignmentUpdate[]): Promise<{ updated: number; errors: unknown[] }> {
+  const response = await apiClient.patch('/users/admin/assignments/', { assignments })
+  return response.data
 }

@@ -53,9 +53,9 @@ export function DonationDetailPanel({ open, giftId, onClose }: DonationDetailPan
   const { data: gift, isLoading } = useGift(giftId)
   const deleteMutation = useDeleteGift()
 
-  // Read-only for supervisors viewing a missionary's gift
+  // Read-only for supervisors/coaches viewing a missionary's gift
   const currentUserName = user ? `${user.first_name} ${user.last_name}` : ""
-  const isReadOnly = user?.role === "mission_supervisor" && !!gift?.owner_name && gift.owner_name !== currentUserName
+  const isReadOnly = (user?.role === "supervisor" || user?.role === "coach") && !!gift?.owner_name && gift.owner_name !== currentUserName
 
   const handleDelete = () => {
     if (!giftId) return

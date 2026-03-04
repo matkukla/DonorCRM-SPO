@@ -28,7 +28,8 @@ interface NavItem {
   label: string
   href: string
   icon: React.ReactNode
-  requiredRole?: "admin" | "staff" | "finance" | "read_only" | "mission_supervisor"
+  requiredRole?: "admin" | "missionary" | "finance" | "read_only" | "supervisor" | "coach"
+  visibleRoles?: string[]
 }
 
 const navItems: NavItem[] = [
@@ -40,6 +41,7 @@ const navItems: NavItem[] = [
   { label: "Groups", href: "/groups", icon: <UsersRound className="h-5 w-5" /> },
   { label: "Journals", href: "/journals", icon: <BookOpen className="h-5 w-5" /> },
   { label: "Prayer", href: "/prayer", icon: <Heart className="h-5 w-5" /> },
+  { label: "My Team", href: "/team", icon: <Users className="h-5 w-5" />, visibleRoles: ["supervisor", "coach"] },
 ]
 
 const insightsItems: NavItem[] = [
@@ -89,9 +91,13 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
   }, [isInsightsActive, isInsightsOpen])
 
   const canAccess = (item: NavItem) => {
-    if (!item.requiredRole) return true
     if (!user) return false
-    const roleHierarchy: Record<string, number> = { admin: 5, mission_supervisor: 4, finance: 3, staff: 2, read_only: 1 }
+    // visibleRoles takes priority: exact role match required
+    if (item.visibleRoles) {
+      return item.visibleRoles.includes(user.role)
+    }
+    if (!item.requiredRole) return true
+    const roleHierarchy: Record<string, number> = { admin: 5, supervisor: 4, coach: 3, finance: 3, missionary: 2, read_only: 1 }
     return roleHierarchy[user.role] >= roleHierarchy[item.requiredRole]
   }
 
@@ -107,7 +113,7 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4">
         <ul className="space-y-1 px-3">
-          {navItems.map((item) => (
+          {navItems.filter(canAccess).map((item) => (
             <li key={item.href}>
               <NavLink
                 to={item.href}

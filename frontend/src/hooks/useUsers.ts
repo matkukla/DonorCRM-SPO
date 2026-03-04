@@ -5,8 +5,10 @@ import {
   createUser,
   updateUser,
   deactivateUser,
+  getAssignments,
+  updateAssignments,
 } from "@/api/users"
-import type { UserCreate, UserUpdate } from "@/api/users"
+import type { UserCreate, UserUpdate, AssignmentUpdate } from "@/api/users"
 
 export function useUsers() {
   return useQuery({
@@ -53,6 +55,23 @@ export function useDeactivateUser() {
     mutationFn: (id: string) => deactivateUser(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["users"] })
+    },
+  })
+}
+
+export function useAssignments() {
+  return useQuery({
+    queryKey: ['assignments'],
+    queryFn: getAssignments,
+  })
+}
+
+export function useUpdateAssignments() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (assignments: AssignmentUpdate[]) => updateAssignments(assignments),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['assignments'] })
     },
   })
 }

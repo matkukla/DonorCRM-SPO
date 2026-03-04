@@ -40,10 +40,11 @@ import { userRoleLabels } from "@/api/users"
 
 const roleVariants: Record<UserRole, "default" | "secondary" | "success" | "warning" | "info" | "destructive"> = {
   admin: "destructive",
-  mission_supervisor: "warning",
-  staff: "default",
+  supervisor: "warning",
+  missionary: "default",
   finance: "info",
   read_only: "secondary",
+  coach: "secondary",
 }
 
 function formatDate(dateStr: string | null): string {
@@ -64,7 +65,7 @@ export default function AdminUsers() {
   const [newEmail, setNewEmail] = useState("")
   const [newFirstName, setNewFirstName] = useState("")
   const [newLastName, setNewLastName] = useState("")
-  const [newRole, setNewRole] = useState<UserRole>("staff")
+  const [newRole, setNewRole] = useState<UserRole>("missionary")
   const [newPassword, setNewPassword] = useState("")
   const [newPasswordConfirm, setNewPasswordConfirm] = useState("")
   const [createError, setCreateError] = useState("")
@@ -72,16 +73,18 @@ export default function AdminUsers() {
   // Edit form state
   const [editFirstName, setEditFirstName] = useState("")
   const [editLastName, setEditLastName] = useState("")
-  const [editRole, setEditRole] = useState<UserRole>("staff")
+  const [editRole, setEditRole] = useState<UserRole>("missionary")
   const [editError, setEditError] = useState("")
   const [editSupervisedUserIds, setEditSupervisedUserIds] = useState<string[]>([])
+  const [editCoachedUserIds, setEditCoachedUserIds] = useState<string[]>([])
   const [missionaryPickerOpen, setMissionaryPickerOpen] = useState(false)
+  const [coacheeMissionaryPickerOpen, setCoacheeMissionaryPickerOpen] = useState(false)
 
   const resetCreateForm = () => {
     setNewEmail("")
     setNewFirstName("")
     setNewLastName("")
-    setNewRole("staff")
+    setNewRole("missionary")
     setNewPassword("")
     setNewPasswordConfirm("")
     setCreateError("")
@@ -133,7 +136,11 @@ export default function AdminUsers() {
     // Find users supervised by this user
     const supervised = users?.filter(u => u.supervisor === user.id).map(u => u.id) || []
     setEditSupervisedUserIds(supervised)
+    // Find users coached by this user
+    const coached = users?.filter(u => u.coach === user.id).map(u => u.id) || []
+    setEditCoachedUserIds(coached)
     setMissionaryPickerOpen(false)
+    setCoacheeMissionaryPickerOpen(false)
   }
 
   const handleUpdate = async () => {
@@ -146,9 +153,13 @@ export default function AdminUsers() {
         last_name: editLastName,
         role: editRole,
       }
-      // Include supervised_user_ids when role is mission_supervisor
-      if (editRole === "mission_supervisor") {
+      // Include supervised_user_ids when role is supervisor
+      if (editRole === "supervisor") {
         data.supervised_user_ids = editSupervisedUserIds
+      }
+      // Include coached_user_ids when role is coach
+      if (editRole === "coach") {
+        data.coached_user_ids = editCoachedUserIds
       }
       await updateMutation.mutateAsync({
         id: editingUser.id,
@@ -214,6 +225,17 @@ export default function AdminUsers() {
               }
             >
               Analytics
+            </NavLink>
+            <NavLink
+              to="/admin/assignments"
+              className={({ isActive }) =>
+                cn(
+                  "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
+                  isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+                )
+              }
+            >
+              Assignments
             </NavLink>
           </div>
 
@@ -351,9 +373,14 @@ export default function AdminUsers() {
                           <Badge variant={roleVariants[user.role]}>
                             {userRoleLabels[user.role]}
                           </Badge>
-                          {user.role === "mission_supervisor" && users && (
+                          {user.role === "supervisor" && users && (
                             <span className="ml-1 text-xs text-muted-foreground">
                               ({users.filter(u => u.supervisor === user.id).length})
+                            </span>
+                          )}
+                          {user.role === "coach" && users && (
+                            <span className="ml-1 text-xs text-muted-foreground">
+                              ({users.filter(u => u.coach === user.id).length})
                             </span>
                           )}
                         </TableCell>
@@ -455,7 +482,7 @@ export default function AdminUsers() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-                {editRole === "mission_supervisor" && (() => {
+                {editRole === "supervisor" && (() => {
                   const availableUsers = users?.filter(u => u.id !== editingUser?.id && u.is_active) || []
                   return (
                     <div className="space-y-2">
@@ -521,6 +548,83 @@ export default function AdminUsers() {
                                   type="button"
                                   className="ml-1 rounded-full outline-none hover:bg-muted"
                                   onClick={() => setEditSupervisedUserIds(prev => prev.filter(i => i !== id))}
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </Badge>
+                            ) : null
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
+                {editRole === "coach" && (() => {
+                  const availableUsers = users?.filter(u => u.id !== editingUser?.id && u.is_active) || []
+                  return (
+                    <div className="space-y-2">
+                      <Label>Assigned Missionaries</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Select missionaries this coach can view
+                      </p>
+                      <Popover open={coacheeMissionaryPickerOpen} onOpenChange={setCoacheeMissionaryPickerOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={coacheeMissionaryPickerOpen}
+                            className="w-full justify-between font-normal"
+                          >
+                            {editCoachedUserIds.length > 0
+                              ? `${editCoachedUserIds.length} ${editCoachedUserIds.length !== 1 ? "missionaries" : "missionary"} selected`
+                              : "Select missionaries..."}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-full p-0" align="start">
+                          <Command>
+                            <CommandInput placeholder="Search missionaries..." />
+                            <CommandList>
+                              <CommandEmpty>No users found.</CommandEmpty>
+                              <CommandGroup>
+                                {availableUsers.map(u => (
+                                  <CommandItem
+                                    key={u.id}
+                                    value={`${u.full_name} ${u.email}`}
+                                    onSelect={() => {
+                                      setEditCoachedUserIds(prev =>
+                                        prev.includes(u.id)
+                                          ? prev.filter(id => id !== u.id)
+                                          : [...prev, u.id]
+                                      )
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        editCoachedUserIds.includes(u.id) ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    <span>{u.full_name}</span>
+                                    <span className="text-muted-foreground ml-auto text-xs">{u.email}</span>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                      {editCoachedUserIds.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {editCoachedUserIds.map(id => {
+                            const u = availableUsers.find(au => au.id === id)
+                            return u ? (
+                              <Badge key={id} variant="secondary" className="gap-1">
+                                {u.full_name}
+                                <button
+                                  type="button"
+                                  className="ml-1 rounded-full outline-none hover:bg-muted"
+                                  onClick={() => setEditCoachedUserIds(prev => prev.filter(i => i !== id))}
                                 >
                                   <X className="h-3 w-3" />
                                 </button>

@@ -40,7 +40,7 @@ export default function DonationList() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const isAdmin = user?.role === "admin"
-  const canSeeOwner = user?.role === "admin" || user?.role === "mission_supervisor"
+  const canSeeOwner = user?.role === "admin" || user?.role === "supervisor" || user?.role === "coach"
 
   const {
     filters,
@@ -65,7 +65,7 @@ export default function DonationList() {
   const { data: usersData } = useUsers()
   const ownerOptions = user?.role === "admin"
     ? (usersData || []).map((u) => ({ id: String(u.id), full_name: u.full_name }))
-    : user?.role === "mission_supervisor"
+    : (user?.role === "supervisor" || user?.role === "coach")
       ? [
           { id: String(user.id), full_name: `${user.first_name} ${user.last_name}` },
           ...(user.supervised_users?.map((u) => ({
