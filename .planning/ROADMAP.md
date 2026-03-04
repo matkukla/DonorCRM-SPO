@@ -114,6 +114,7 @@ See milestones/v2.1-ROADMAP.md for complete phase details.
 - [x] **Phase 40: Journal Report & Grid Behavior** - Rebuild journal report with new metrics/charts and make grid stage checkboxes directly clickable (completed 2026-02-27)
 - [x] **Phase 41: Begin Prayer** - Add a dedicated prayer session entry point that launches expanded Focus Mode (completed 2026-02-27)
 - [x] **Phase 42: Mission Supervisor Role** - New role with scoped visibility, assignment management, and missionary dashboard selector (completed 2026-03-02)
+- [ ] **Phase 43: Roles Redesign** - Rename staff→missionary and mission_supervisor→supervisor, add Coach role, Admin Assignments page, My Team page with missionary profiles
 
 ## Phase Details
 
@@ -188,13 +189,33 @@ Plans:
   2. Admin can assign specific missionaries to a supervisor via the user management UI
   3. A supervisor sees only their assigned missionaries' data on all pages (contacts, gifts, recurring gifts, tasks, journals, prayers, analytics)
   4. Admin and supervisor can select a missionary from a dropdown and view that missionary's personal dashboard
-**Plans**: 4 plans
+**Plans**: 5 plans (completed 2026-03-02)
 
 Plans:
-- [ ] 42-01-PLAN.md — Backend foundation: UserRole + supervisor FK + migration + get_visible_user_ids() helper + permission class + serializer updates (SUPV-01, SUPV-02)
-- [ ] 42-02-PLAN.md — Backend view scoping: update all get_queryset() methods across 13 view/service files to use centralized helper (SUPV-03)
-- [ ] 42-03-PLAN.md — Frontend types + role hierarchy + admin missionary assignment UI (SUPV-01, SUPV-02)
-- [ ] 42-04-PLAN.md — Owner columns + owner filters + dashboard missionary selector + read-only gating (SUPV-03, SUPV-04)
+- [x] 42-01-PLAN.md — Backend foundation: UserRole + supervisor FK + migration + get_visible_user_ids() helper + permission class + serializer updates (SUPV-01, SUPV-02)
+- [x] 42-02-PLAN.md — Backend view scoping: update all get_queryset() methods across 13 view/service files to use centralized helper (SUPV-03)
+- [x] 42-03-PLAN.md — Frontend types + role hierarchy + admin missionary assignment UI (SUPV-01, SUPV-02)
+- [x] 42-04-PLAN.md — Dashboard missionary selector + supervisor dashboard view (SUPV-04)
+- [x] 42-05-PLAN.md — List page owner columns + owner filters + read-only gating (SUPV-03)
+
+### Phase 43: Roles Redesign
+**Goal**: Rename roles to clearer names, add Coach role with limited visibility, and provide admin tools for managing assignments alongside supervisor/coach team views
+**Depends on**: Phase 42 (extends supervisor role foundation)
+**Requirements**: ROLE-01, ROLE-02, ROLE-03, ROLE-04, ROLE-05
+**Success Criteria** (what must be TRUE):
+  1. DB and UI use `missionary` (not `staff`) and `supervisor` (not `mission_supervisor`) everywhere
+  2. Admin can assign both a supervisor and a coach to each missionary via `/admin/assignments`
+  3. Coach role sees contacts + journals for assigned missionaries, but NOT gifts/pledges/donations
+  4. Supervisors and coaches see a `/team` page listing their assigned missionaries
+  5. Clicking a missionary on the team page opens a read-only profile with tabbed content
+**Plans**: 5 plans
+
+Plans:
+- [ ] 43-01-PLAN.md — DB migration: rename roles, add coach FK, update model/permissions/serializers (ROLE-01, ROLE-02)
+- [ ] 43-02-PLAN.md — Backend views: coach financial block, owner filter expansion, Assignments API (ROLE-02, ROLE-03)
+- [ ] 43-03-PLAN.md — Frontend types + role rename sweep + coach UI checks across all pages (ROLE-01, ROLE-02, ROLE-03)
+- [ ] 43-04-PLAN.md — Admin Assignments page: inline editable table with bulk operations (ROLE-04)
+- [ ] 43-05-PLAN.md — My Team page + Missionary profile page with tabbed read-only content (ROLE-05)
 
 ## Progress
 
@@ -214,8 +235,9 @@ Phases execute in numeric order: 38 -> 39 -> 40 -> 41 -> 42
 | 40. Journal Report & Grid Behavior | 2/2 | Complete    | 2026-02-27 | - |
 | 41. Begin Prayer | 1/1 | Complete    | 2026-02-27 | - |
 | 42. Mission Supervisor Role | 5/5 | Complete    | 2026-03-02 | - |
+| 43. Roles Redesign | 1/5 | In Progress|  | - |
 
-**Total:** 6 milestones shipped, 112 plans executed across 39 phases. v2.2 in progress (5 phases, 26 requirements).
+**Total:** 6 milestones shipped, 112 plans executed across 42 phases. v2.2 in progress (6 phases, 31 requirements).
 
 ---
 
