@@ -37,9 +37,9 @@ class ContactExportCSVView(APIView):
         else:
             queryset = Contact.objects.filter(owner_id__in=visible)
 
-        # Admin/supervisor owner filter (intentionally NOT in FilterSet - security)
+        # Admin/supervisor/coach owner filter (intentionally NOT in FilterSet - security)
         owner_id = request.query_params.get('owner')
-        if owner_id and user.role in ['admin', 'mission_supervisor']:
+        if owner_id and user.role in ['admin', 'supervisor', 'coach']:
             if visible is None or int(owner_id) in visible:
                 queryset = queryset.filter(owner_id=owner_id)
 
