@@ -14,11 +14,12 @@ class UserRole(models.TextChoices):
     """
     User roles determine permissions across the system.
     """
-    STAFF = 'staff', 'Staff'
+    MISSIONARY = 'missionary', 'Missionary'
     ADMIN = 'admin', 'Admin'
     FINANCE = 'finance', 'Finance'
     READ_ONLY = 'read_only', 'Read Only'
-    MISSION_SUPERVISOR = 'mission_supervisor', 'Mission Supervisor'
+    SUPERVISOR = 'supervisor', 'Supervisor'
+    COACH = 'coach', 'Coach'
 
 
 class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
@@ -26,10 +27,12 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
     Custom User model using email as the primary identifier.
 
     Roles:
-    - Staff: Manages their own donors, pledges, and tasks
+    - Missionary: Manages their own donors, pledges, and tasks
     - Admin: Full system access, user management, data imports
     - Finance: Import donations, view giving across organization
-    - Read-Only: View-only access for coaches/supervisors
+    - Read-Only: View-only access
+    - Supervisor: View/manage supervised missionaries' data
+    - Coach: View/manage coached users' data (financial data excluded)
     """
     # Remove username, use email instead
     email = models.EmailField('email address', unique=True)
@@ -44,7 +47,7 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
         'role',
         max_length=25,
         choices=UserRole.choices,
-        default=UserRole.STAFF,
+        default=UserRole.MISSIONARY,
         db_index=True
     )
 
@@ -56,6 +59,16 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
         on_delete=models.SET_NULL,
         related_name='supervised_users',
         help_text='The supervisor assigned to this user (if any)'
+    )
+
+    # Coach relationship
+    coach = models.ForeignKey(
+        'self',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='coached_users',
+        help_text='Coach assigned to this user'
     )
 
     # Support goal tracking for staff users
@@ -132,9 +145,9 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
         return self.role == UserRole.FINANCE
 
     @property
-    def is_staff_role(self):
-        """Check if user has staff role."""
-        return self.role == UserRole.STAFF
+    def is_missionary(self):
+        """Check if user has missionary role."""
+        return self.role == UserRole.MISSIONARY
 
     @property
     def is_read_only(self):
@@ -142,9 +155,14 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
         return self.role == UserRole.READ_ONLY
 
     @property
-    def is_mission_supervisor(self):
-        """Check if user has mission supervisor role."""
-        return self.role == UserRole.MISSION_SUPERVISOR
+    def is_supervisor(self):
+        """Check if user has supervisor role."""
+        return self.role == UserRole.SUPERVISOR
+
+    @property
+    def is_coach(self):
+        """Check if user has coach role."""
+        return self.role == UserRole.COACH
 
     def can_manage_contact(self, contact):
         """Check if user can manage a given contact."""
@@ -156,8 +174,13 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
         """Check if user can view a given contact."""
         if self.role in [UserRole.ADMIN, UserRole.FINANCE, UserRole.READ_ONLY]:
             return True
-        if self.role == UserRole.MISSION_SUPERVISOR:
+        if self.role == UserRole.SUPERVISOR:
             visible = self.supervised_users.filter(is_active=True).values_list('id', flat=True)
+            if contact.owner_id == self.id or contact.owner_id in visible:
+                return True
+            return False
+        if self.role == UserRole.COACH:
+            visible = self.coached_users.filter(is_active=True).values_list('id', flat=True)
             if contact.owner_id == self.id or contact.owner_id in visible:
                 return True
             return False
