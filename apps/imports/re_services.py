@@ -59,6 +59,42 @@ def decode_csv_bytes(file_bytes: bytes) -> str:
     raise ValueError('Unable to decode file with any supported encoding')
 
 
+_RE_TYPE_LABELS = frozenset({
+    'constituent', 'gift', 'recurring gift', 'solicitor',
+    'pledge', 'action', 'event', 'membership', 'relationship',
+})
+
+
+def skip_re_type_label_row(content: str) -> str:
+    """Skip the RE export type-label row if present.
+
+    RE CSV exports from Raiser's Edge often include a leading type-label row
+    (e.g. "Constituent,,,,,," or "Gift ,,,,,") before the actual column
+    headers. When present, this row is stripped so that csv.DictReader reads
+    the real headers from the second row.
+
+    Detection: the first row has exactly one non-empty cell AND that cell
+    matches a known RE export type-label keyword.
+    """
+    lines = content.splitlines(keepends=True)
+    if len(lines) < 2:
+        return content
+
+    # Parse first row with csv to respect quoting
+    try:
+        first_row = next(csv.reader([lines[0].rstrip('\r\n')]))
+    except StopIteration:
+        return content
+
+    non_empty_first = [c.strip() for c in first_row if c.strip()]
+
+    # Type-label row: exactly one non-empty cell that matches a known label
+    if len(non_empty_first) == 1 and non_empty_first[0].lower() in _RE_TYPE_LABELS:
+        return ''.join(lines[1:])
+
+    return content
+
+
 # Maximum length for string fields before DB save (prevents oversized values)
 MAX_FIELD_LENGTH = 10000
 
@@ -243,7 +279,7 @@ def import_re_solicitors(
 
     # Step 2: Decode
     try:
-        content = decode_csv_bytes(file_bytes)
+        content = skip_re_type_label_row(decode_csv_bytes(file_bytes))
     except ValueError as e:
         batch = ImportBatch.objects.create(
             import_type=ImportBatchType.RE_SOLICITOR,
@@ -438,6 +474,7 @@ CONSTITUENT_HEADER_ALIASES: dict[str, str] = {
     'cnbio_id': 'constituent_id',
     'consid': 'constituent_id',
     'constituent_id': 'constituent_id',
+    'constituent id': 'constituent_id',
     'cons_id': 'constituent_id',
     'id': 'constituent_id',
     # First name aliases
@@ -458,6 +495,7 @@ CONSTITUENT_HEADER_ALIASES: dict[str, str] = {
     'org_name': 'organization_name',
     'organization': 'organization_name',
     'organization_name': 'organization_name',
+    'organization name': 'organization_name',
     'org name': 'organization_name',
     # Email aliases
     'cnadrprf_email': 'email',
@@ -626,7 +664,7 @@ def import_re_constituents(
 
     # Step 2: Decode
     try:
-        content = decode_csv_bytes(file_bytes)
+        content = skip_re_type_label_row(decode_csv_bytes(file_bytes))
     except ValueError as e:
         batch = ImportBatch.objects.create(
             import_type=ImportBatchType.RE_CONSTITUENT,
@@ -1046,6 +1084,7 @@ GIFT_HEADER_ALIASES: dict[str, str] = {
     'fund_id': 'fund',
     'fund id': 'fund',
     'fund_description': 'fund',
+    'fund split amount': 'amount',
     # Description
     'gf_description': 'description',
     'description': 'description',
@@ -1058,6 +1097,7 @@ GIFT_HEADER_ALIASES: dict[str, str] = {
     # Credit amount (per-solicitor)
     'credit_amount': 'credit_amount',
     'gf_cnsol_1_01_amount': 'credit_amount',
+    'solicitor amount': 'credit_amount',
     # Prayer description
     'gift specific attributes prayer requests description': 'prayer_description',
     'prayer_requests_description': 'prayer_description',
@@ -1108,7 +1148,7 @@ def import_re_gifts(
 
     # Step 2: Decode
     try:
-        content = decode_csv_bytes(file_bytes)
+        content = skip_re_type_label_row(decode_csv_bytes(file_bytes))
     except ValueError as e:
         batch = ImportBatch.objects.create(
             import_type=ImportBatchType.RE_GIFT,
@@ -1376,6 +1416,7 @@ RECURRING_GIFT_HEADER_ALIASES: dict[str, str] = {
     'rg_id': 'gift_id',
     'recurring gift id': 'gift_id',
     'gift_id': 'gift_id',
+    'gift id': 'gift_id',
     'gf_id': 'gift_id',
     # Constituent ID
     'gf_cnbio_id': 'constituent_id',
@@ -1388,15 +1429,18 @@ RECURRING_GIFT_HEADER_ALIASES: dict[str, str] = {
     'amount': 'amount',
     'installment_amount': 'amount',
     'installment amount': 'amount',
+    'solicitor amount': 'amount',
     # Frequency
     'gf_installment_frequency': 'frequency',
     'installment_frequency': 'frequency',
     'frequency': 'frequency',
     'installment frequency': 'frequency',
+    'gift installment frequency': 'frequency',
     # Start date
     'gf_date': 'start_date',
     'start_date': 'start_date',
     'start date': 'start_date',
+    'gift date': 'start_date',
     'date_1st_pay': 'start_date',
     # End date
     'gf_end_date': 'end_date',
@@ -1410,6 +1454,7 @@ RECURRING_GIFT_HEADER_ALIASES: dict[str, str] = {
     'gf_fund': 'fund',
     'fund': 'fund',
     'fund_id': 'fund',
+    'fund id': 'fund',
     # Solicitor
     'solicitor_name': 'solicitor_name',
     'solicitor name': 'solicitor_name',
@@ -1417,6 +1462,11 @@ RECURRING_GIFT_HEADER_ALIASES: dict[str, str] = {
     # Credit amount
     'credit_amount': 'credit_amount',
     'gf_cnsol_1_01_amount': 'credit_amount',
+    # Prayer description
+    'gift specific attributes prayer requests description': 'prayer_description',
+    'prayer_requests_description': 'prayer_description',
+    'prayer requests description': 'prayer_description',
+    'prayer description': 'prayer_description',
     # Description
     'description': 'description',
     'gf_description': 'description',
@@ -1499,7 +1549,7 @@ def import_re_recurring_gifts(
 
     # Step 2: Decode
     try:
-        content = decode_csv_bytes(file_bytes)
+        content = skip_re_type_label_row(decode_csv_bytes(file_bytes))
     except ValueError as e:
         batch = ImportBatch.objects.create(
             import_type=ImportBatchType.RE_RECURRING_GIFT,

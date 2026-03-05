@@ -140,6 +140,7 @@ None active.
 | 5 | Remove analytics tab from left sidebar | 2026-02-16 | db2b504 | [5-remove-analytics-tab-from-left-sidebar-a](./quick/5-remove-analytics-tab-from-left-sidebar-a/) |
 | 6 | Move Journals to sidebar & add action dialogs | 2026-02-16 | 34097d1 | [6-move-journal-tab-to-own-sidebar-tab-add-](./quick/6-move-journal-tab-to-own-sidebar-tab-add-/) |
 | 7 | Implement light and dark mode toggle | 2026-02-16 | ccb4c67 | [7-implement-light-and-dark-mode-toggle](./quick/7-implement-light-and-dark-mode-toggle/) |
+| 8 | Fix import feature to accept test CSV files | 2026-03-05 | TBD | [8-fix-import-feature-to-accept-test-csv-fi](./quick/8-fix-import-feature-to-accept-test-csv-fi/) |
 
 ## Session Continuity
 
