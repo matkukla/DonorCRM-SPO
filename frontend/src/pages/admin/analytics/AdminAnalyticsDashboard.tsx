@@ -115,6 +115,17 @@ export default function AdminAnalyticsDashboard() {
             >
               Analytics
             </NavLink>
+            <NavLink
+              to="/admin/assignments"
+              className={({ isActive }) =>
+                cn(
+                  "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
+                  isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+                )
+              }
+            >
+              Assignments
+            </NavLink>
           </div>
 
           {/* Header */}
