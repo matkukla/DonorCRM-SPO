@@ -890,6 +890,23 @@ def import_re_constituents(
 # Gift import helpers
 # ---------------------------------------------------------------------------
 
+_PAYMENT_TYPE_MAP: dict[str, str] = {
+    'check': 'check',
+    'credit card': 'credit_card',
+    'eft': 'direct_deposit',
+    'direct debit': 'direct_deposit',
+    'direct deposit': 'direct_deposit',
+    'ach': 'direct_deposit',
+    'cash': '',
+    'online': '',
+}
+
+
+def _normalize_payment_type(raw: str) -> str:
+    """Normalize RE payment type string to Gift.PaymentType enum value."""
+    return _PAYMENT_TYPE_MAP.get(raw.strip().lower(), '')
+
+
 def _parse_amount_to_cents(amount_str: str) -> int:
     """Parse dollar amount string to cents integer.
 
@@ -1103,6 +1120,11 @@ GIFT_HEADER_ALIASES: dict[str, str] = {
     'prayer_requests_description': 'prayer_description',
     'prayer requests description': 'prayer_description',
     'prayer description': 'prayer_description',
+    # Payment type
+    'gift payment type': 'payment_type',
+    'payment_type': 'payment_type',
+    'payment type': 'payment_type',
+    'gf_pay_method': 'payment_type',
 }
 
 GIFT_REQUIRED_CANONICAL = {'gift_id', 'constituent_id', 'amount'}
@@ -1306,6 +1328,7 @@ def import_re_gifts(
                         gift_date=parsed_date,
                         fund=matched_fund,
                         description=first_row.get('description', ''),
+                        payment_type=_normalize_payment_type(first_row.get('payment_type', '')),
                     )
 
                     # Create GiftCredits -- one per row with a solicitor
@@ -1337,6 +1360,19 @@ def import_re_gifts(
                             solicitor=solicitor,
                             amount_cents=credit_amount,
                         )
+
+                    # Reassign contact owner to first resolved solicitor's user
+                    # (only if contact is still owned by the importer)
+                    if contact.owner_id == owner.pk:
+                        for row in rows:
+                            sol_name = row.get('solicitor_name', '')
+                            if not sol_name:
+                                continue
+                            sol = solicitor_lookup.get(normalize_solicitor_name(sol_name))
+                            if sol and sol.user_id:
+                                contact.owner = sol.user
+                                contact.save(update_fields=['owner'])
+                                break
 
                     # Check for prayer description
                     prayer_text = first_row.get('prayer_description', '')
@@ -1621,6 +1657,7 @@ def import_re_recurring_gifts(
     created_count = 0
     skipped_count = 0
     unmatched_solicitors: list[str] = []
+    seen_prayers: dict = {}
 
     try:
         with transaction.atomic():
@@ -1794,6 +1831,41 @@ def import_re_recurring_gifts(
                             solicitor=solicitor,
                             amount_cents=credit_amount,
                         )
+
+                    # Extract prayer intention from recurring gift (no Gift M2M link)
+                    prayer_text = first_row.get('prayer_description', '').strip()
+                    if prayer_text:
+                        from apps.prayers.models import PrayerIntention, PrayerIntentionStatus
+                        PRAYER_STOPLIST = {
+                            'n/a', 'na', 'none', 'no', '-', '--', '---', 'no prayer request',
+                            'x', 'xx', 'xxx', 'general', 'same', 'same as above',
+                            'see above', 'ditto', 'tbd', 'unknown',
+                        }
+                        if prayer_text.lower() not in PRAYER_STOPLIST and any(
+                            c.isalnum() for c in prayer_text
+                        ):
+                            normalized = prayer_text.lower()
+                            dedup_key = (contact.id, normalized)
+                            if dedup_key not in seen_prayers:
+                                existing_prayer = PrayerIntention.objects.filter(
+                                    contact=contact,
+                                    description__iexact=prayer_text,
+                                ).first()
+                                if existing_prayer:
+                                    seen_prayers[dedup_key] = existing_prayer
+                                else:
+                                    title = (
+                                        prayer_text[:80].rsplit(' ', 1)[0]
+                                        if len(prayer_text) > 80
+                                        else prayer_text
+                                    )
+                                    prayer = PrayerIntention.objects.create(
+                                        contact=contact,
+                                        title=title,
+                                        description=prayer_text,
+                                        status=PrayerIntentionStatus.ACTIVE,
+                                    )
+                                    seen_prayers[dedup_key] = prayer
 
                     transaction.savepoint_commit(sp)
                     created_count += 1
