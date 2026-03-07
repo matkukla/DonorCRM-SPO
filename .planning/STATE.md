@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: UI Polish, Journal Report & Supervisor Role
 status: executing
-stopped_at: Phase 44 context gathered
-last_updated: "2026-03-07T18:57:57.826Z"
+stopped_at: Completed 44-01-PLAN.md
+last_updated: "2026-03-07T19:34:14.279Z"
 last_activity: "2026-03-04 — Starting Phase 43 (Roles Redesign: coach role, role renames, assignments page, team page)"
 progress:
   total_phases: 7
   completed_phases: 6
-  total_plans: 18
-  completed_plans: 18
+  total_plans: 22
+  completed_plans: 19
   percent: 100
 ---
 
@@ -68,6 +68,7 @@ Progress: [██████████] 100%
 | Phase 43 P02 | 12 | 6 tasks | 8 files |
 | Phase 43 P4 | 65s | 3 tasks | 1 files |
 | Phase 43 P05 | 5 | 4 tasks | 2 files |
+| Phase 44 P01 | 3 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -119,6 +120,8 @@ v2.2 decisions:
 - [Phase 43]: Map<string, assignment> initialized from API on first load; dirty Set tracks changed IDs for diff-based save
 - [Phase 43]: MissionaryProfilePage derives missionary data from supervised_users in auth context — no extra getUser() call needed
 - [Phase 43]: Coach role check hides Donations tab and skips useGifts fetch by passing empty params
+- [Phase 44]: SimpleListFilter (UnresolvedAliasFilter) for MissionaryAliasAdmin — user__isnull not valid as list_filter value in Django admin
+- [Phase 44]: MissionaryAlias user=None sentinel means admin-flagged unresolved (distinct from never seen) — prevents auto-create loop for known-unresolvable names
 
 ### Roadmap Evolution
 
@@ -148,8 +151,8 @@ None active.
 
 ## Session Continuity
 
-Last session: 2026-03-07T18:57:57.823Z
-Stopped at: Phase 44 context gathered
+Last session: 2026-03-07T19:34:14.275Z
+Stopped at: Completed 44-01-PLAN.md
 Resume: All phases complete. v2.2 milestone shipped.
 
 ---
