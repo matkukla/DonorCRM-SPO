@@ -59,6 +59,42 @@ def decode_csv_bytes(file_bytes: bytes) -> str:
     raise ValueError('Unable to decode file with any supported encoding')
 
 
+_RE_TYPE_LABELS = frozenset({
+    'constituent', 'gift', 'recurring gift', 'solicitor',
+    'pledge', 'action', 'event', 'membership', 'relationship',
+})
+
+
+def skip_re_type_label_row(content: str) -> str:
+    """Skip the RE export type-label row if present.
+
+    RE CSV exports from Raiser's Edge often include a leading type-label row
+    (e.g. "Constituent,,,,,," or "Gift ,,,,,") before the actual column
+    headers. When present, this row is stripped so that csv.DictReader reads
+    the real headers from the second row.
+
+    Detection: the first row has exactly one non-empty cell AND that cell
+    matches a known RE export type-label keyword.
+    """
+    lines = content.splitlines(keepends=True)
+    if len(lines) < 2:
+        return content
+
+    # Parse first row with csv to respect quoting
+    try:
+        first_row = next(csv.reader([lines[0].rstrip('\r\n')]))
+    except StopIteration:
+        return content
+
+    non_empty_first = [c.strip() for c in first_row if c.strip()]
+
+    # Type-label row: exactly one non-empty cell that matches a known label
+    if len(non_empty_first) == 1 and non_empty_first[0].lower() in _RE_TYPE_LABELS:
+        return ''.join(lines[1:])
+
+    return content
+
+
 # Maximum length for string fields before DB save (prevents oversized values)
 MAX_FIELD_LENGTH = 10000
 
@@ -243,7 +279,7 @@ def import_re_solicitors(
 
     # Step 2: Decode
     try:
-        content = decode_csv_bytes(file_bytes)
+        content = skip_re_type_label_row(decode_csv_bytes(file_bytes))
     except ValueError as e:
         batch = ImportBatch.objects.create(
             import_type=ImportBatchType.RE_SOLICITOR,
@@ -438,6 +474,7 @@ CONSTITUENT_HEADER_ALIASES: dict[str, str] = {
     'cnbio_id': 'constituent_id',
     'consid': 'constituent_id',
     'constituent_id': 'constituent_id',
+    'constituent id': 'constituent_id',
     'cons_id': 'constituent_id',
     'id': 'constituent_id',
     # First name aliases
@@ -458,6 +495,7 @@ CONSTITUENT_HEADER_ALIASES: dict[str, str] = {
     'org_name': 'organization_name',
     'organization': 'organization_name',
     'organization_name': 'organization_name',
+    'organization name': 'organization_name',
     'org name': 'organization_name',
     # Email aliases
     'cnadrprf_email': 'email',
@@ -626,7 +664,7 @@ def import_re_constituents(
 
     # Step 2: Decode
     try:
-        content = decode_csv_bytes(file_bytes)
+        content = skip_re_type_label_row(decode_csv_bytes(file_bytes))
     except ValueError as e:
         batch = ImportBatch.objects.create(
             import_type=ImportBatchType.RE_CONSTITUENT,
@@ -852,6 +890,23 @@ def import_re_constituents(
 # Gift import helpers
 # ---------------------------------------------------------------------------
 
+_PAYMENT_TYPE_MAP: dict[str, str] = {
+    'check': 'check',
+    'credit card': 'credit_card',
+    'eft': 'direct_deposit',
+    'direct debit': 'direct_deposit',
+    'direct deposit': 'direct_deposit',
+    'ach': 'direct_deposit',
+    'cash': '',
+    'online': '',
+}
+
+
+def _normalize_payment_type(raw: str) -> str:
+    """Normalize RE payment type string to Gift.PaymentType enum value."""
+    return _PAYMENT_TYPE_MAP.get(raw.strip().lower(), '')
+
+
 def _parse_amount_to_cents(amount_str: str) -> int:
     """Parse dollar amount string to cents integer.
 
@@ -1046,6 +1101,7 @@ GIFT_HEADER_ALIASES: dict[str, str] = {
     'fund_id': 'fund',
     'fund id': 'fund',
     'fund_description': 'fund',
+    'fund split amount': 'amount',
     # Description
     'gf_description': 'description',
     'description': 'description',
@@ -1058,11 +1114,17 @@ GIFT_HEADER_ALIASES: dict[str, str] = {
     # Credit amount (per-solicitor)
     'credit_amount': 'credit_amount',
     'gf_cnsol_1_01_amount': 'credit_amount',
+    'solicitor amount': 'credit_amount',
     # Prayer description
     'gift specific attributes prayer requests description': 'prayer_description',
     'prayer_requests_description': 'prayer_description',
     'prayer requests description': 'prayer_description',
     'prayer description': 'prayer_description',
+    # Payment type
+    'gift payment type': 'payment_type',
+    'payment_type': 'payment_type',
+    'payment type': 'payment_type',
+    'gf_pay_method': 'payment_type',
 }
 
 GIFT_REQUIRED_CANONICAL = {'gift_id', 'constituent_id', 'amount'}
@@ -1108,7 +1170,7 @@ def import_re_gifts(
 
     # Step 2: Decode
     try:
-        content = decode_csv_bytes(file_bytes)
+        content = skip_re_type_label_row(decode_csv_bytes(file_bytes))
     except ValueError as e:
         batch = ImportBatch.objects.create(
             import_type=ImportBatchType.RE_GIFT,
@@ -1266,6 +1328,7 @@ def import_re_gifts(
                         gift_date=parsed_date,
                         fund=matched_fund,
                         description=first_row.get('description', ''),
+                        payment_type=_normalize_payment_type(first_row.get('payment_type', '')),
                     )
 
                     # Create GiftCredits -- one per row with a solicitor
@@ -1297,6 +1360,19 @@ def import_re_gifts(
                             solicitor=solicitor,
                             amount_cents=credit_amount,
                         )
+
+                    # Reassign contact owner to first resolved solicitor's user
+                    # (only if contact is still owned by the importer)
+                    if contact.owner_id == owner.pk:
+                        for row in rows:
+                            sol_name = row.get('solicitor_name', '')
+                            if not sol_name:
+                                continue
+                            sol = solicitor_lookup.get(normalize_solicitor_name(sol_name))
+                            if sol and sol.user_id:
+                                contact.owner = sol.user
+                                contact.save(update_fields=['owner'])
+                                break
 
                     # Check for prayer description
                     prayer_text = first_row.get('prayer_description', '')
@@ -1376,6 +1452,7 @@ RECURRING_GIFT_HEADER_ALIASES: dict[str, str] = {
     'rg_id': 'gift_id',
     'recurring gift id': 'gift_id',
     'gift_id': 'gift_id',
+    'gift id': 'gift_id',
     'gf_id': 'gift_id',
     # Constituent ID
     'gf_cnbio_id': 'constituent_id',
@@ -1388,15 +1465,18 @@ RECURRING_GIFT_HEADER_ALIASES: dict[str, str] = {
     'amount': 'amount',
     'installment_amount': 'amount',
     'installment amount': 'amount',
+    'solicitor amount': 'amount',
     # Frequency
     'gf_installment_frequency': 'frequency',
     'installment_frequency': 'frequency',
     'frequency': 'frequency',
     'installment frequency': 'frequency',
+    'gift installment frequency': 'frequency',
     # Start date
     'gf_date': 'start_date',
     'start_date': 'start_date',
     'start date': 'start_date',
+    'gift date': 'start_date',
     'date_1st_pay': 'start_date',
     # End date
     'gf_end_date': 'end_date',
@@ -1410,6 +1490,7 @@ RECURRING_GIFT_HEADER_ALIASES: dict[str, str] = {
     'gf_fund': 'fund',
     'fund': 'fund',
     'fund_id': 'fund',
+    'fund id': 'fund',
     # Solicitor
     'solicitor_name': 'solicitor_name',
     'solicitor name': 'solicitor_name',
@@ -1417,6 +1498,11 @@ RECURRING_GIFT_HEADER_ALIASES: dict[str, str] = {
     # Credit amount
     'credit_amount': 'credit_amount',
     'gf_cnsol_1_01_amount': 'credit_amount',
+    # Prayer description
+    'gift specific attributes prayer requests description': 'prayer_description',
+    'prayer_requests_description': 'prayer_description',
+    'prayer requests description': 'prayer_description',
+    'prayer description': 'prayer_description',
     # Description
     'description': 'description',
     'gf_description': 'description',
@@ -1499,7 +1585,7 @@ def import_re_recurring_gifts(
 
     # Step 2: Decode
     try:
-        content = decode_csv_bytes(file_bytes)
+        content = skip_re_type_label_row(decode_csv_bytes(file_bytes))
     except ValueError as e:
         batch = ImportBatch.objects.create(
             import_type=ImportBatchType.RE_RECURRING_GIFT,
@@ -1571,6 +1657,7 @@ def import_re_recurring_gifts(
     created_count = 0
     skipped_count = 0
     unmatched_solicitors: list[str] = []
+    seen_prayers: dict = {}
 
     try:
         with transaction.atomic():
@@ -1744,6 +1831,41 @@ def import_re_recurring_gifts(
                             solicitor=solicitor,
                             amount_cents=credit_amount,
                         )
+
+                    # Extract prayer intention from recurring gift (no Gift M2M link)
+                    prayer_text = first_row.get('prayer_description', '').strip()
+                    if prayer_text:
+                        from apps.prayers.models import PrayerIntention, PrayerIntentionStatus
+                        PRAYER_STOPLIST = {
+                            'n/a', 'na', 'none', 'no', '-', '--', '---', 'no prayer request',
+                            'x', 'xx', 'xxx', 'general', 'same', 'same as above',
+                            'see above', 'ditto', 'tbd', 'unknown',
+                        }
+                        if prayer_text.lower() not in PRAYER_STOPLIST and any(
+                            c.isalnum() for c in prayer_text
+                        ):
+                            normalized = prayer_text.lower()
+                            dedup_key = (contact.id, normalized)
+                            if dedup_key not in seen_prayers:
+                                existing_prayer = PrayerIntention.objects.filter(
+                                    contact=contact,
+                                    description__iexact=prayer_text,
+                                ).first()
+                                if existing_prayer:
+                                    seen_prayers[dedup_key] = existing_prayer
+                                else:
+                                    title = (
+                                        prayer_text[:80].rsplit(' ', 1)[0]
+                                        if len(prayer_text) > 80
+                                        else prayer_text
+                                    )
+                                    prayer = PrayerIntention.objects.create(
+                                        contact=contact,
+                                        title=title,
+                                        description=prayer_text,
+                                        status=PrayerIntentionStatus.ACTIVE,
+                                    )
+                                    seen_prayers[dedup_key] = prayer
 
                     transaction.savepoint_commit(sp)
                     created_count += 1

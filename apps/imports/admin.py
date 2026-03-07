@@ -5,7 +5,7 @@ from django.contrib import admin
 
 from apps.imports.models import (
     Fund, ImportRun, ImportRowError, ImportBatch, ImportBatchType, ImportBatchStatus,
-    MPDUpload, MPDSnapshot
+    MPDUpload, MPDSnapshot, MissionaryAlias
 )
 
 
@@ -66,6 +66,35 @@ class MPDUploadAdmin(admin.ModelAdmin):
     search_fields = ['filename']
     readonly_fields = ['id', 'created_at', 'updated_at', 'unmatched_rows']
     date_hierarchy = 'created_at'
+
+
+class UnresolvedAliasFilter(admin.SimpleListFilter):
+    """Filter MissionaryAlias by whether user is resolved or unresolved."""
+    title = 'resolution status'
+    parameter_name = 'resolved'
+
+    def lookups(self, request, model_admin):
+        return [
+            ('yes', 'Resolved'),
+            ('no', 'Unresolved (user=None)'),
+        ]
+
+    def queryset(self, request, queryset):
+        if self.value() == 'yes':
+            return queryset.filter(user__isnull=False)
+        if self.value() == 'no':
+            return queryset.filter(user__isnull=True)
+        return queryset
+
+
+@admin.register(MissionaryAlias)
+class MissionaryAliasAdmin(admin.ModelAdmin):
+    """Admin configuration for MissionaryAlias model."""
+    list_display = ['source_name', 'user', 'notes', 'created_at']
+    search_fields = ['source_name']
+    list_filter = [UnresolvedAliasFilter]
+    raw_id_fields = ['user']
+    readonly_fields = ['id', 'created_at', 'updated_at']
 
 
 @admin.register(MPDSnapshot)
