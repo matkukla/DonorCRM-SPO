@@ -1361,11 +1361,16 @@ def import_re_gifts(
                             amount_cents=credit_amount,
                         )
 
-                    # Reassign contact owner to first resolved solicitor's user
-                    # (only if contact is still owned by the importer)
-                    if contact.owner_id == owner.pk:
-                        for row in rows:
-                            sol_name = row.get('solicitor_name', '')
+                    # Reassign contact owner to first resolved solicitor's user.
+                    # Only skip if the contact is already owned by a linked missionary
+                    # (i.e. the owner has a Solicitor record). This handles the case where
+                    # constituents and gifts are imported by different admin users.
+                    contact_owner_is_missionary = Solicitor.objects.filter(
+                        user=contact.owner,
+                    ).exists()
+                    if not contact_owner_is_missionary:
+                        for credit_row in rows:
+                            sol_name = credit_row.get('solicitor_name', '')
                             if not sol_name:
                                 continue
                             sol = solicitor_lookup.get(normalize_solicitor_name(sol_name))
