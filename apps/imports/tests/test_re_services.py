@@ -450,6 +450,109 @@ class TestImportRERecurringGiftsPrayers:
         assert batch.status == ImportBatchStatus.COMPLETED
         assert PrayerIntention.objects.count() == 0
 
+
+# ---------------------------------------------------------------------------
+# Owner reassignment tests
+# ---------------------------------------------------------------------------
+
+@pytest.mark.django_db
+class TestImportREGiftsOwnerReassignment:
+    """Test that import_re_gifts reassigns contact owner to the matched solicitor's user."""
+
+    @pytest.fixture
+    def admin1(self):
+        return AdminUserFactory(email='admin1@test.com')
+
+    @pytest.fixture
+    def admin2(self):
+        return AdminUserFactory(email='admin2@test.com')
+
+    @pytest.fixture
+    def missionary(self):
+        return UserFactory(email='missionary@test.com')
+
+    def test_reassigns_owner_when_imported_by_different_admin(
+        self, admin1, admin2, missionary,
+    ):
+        """Contact owned by admin1 should be reassigned to missionary when gifts
+        are imported by admin2 (cross-admin scenario from production Render bug)."""
+        contact = Contact.objects.create(
+            owner=admin1,
+            external_constituent_id='C-REOWN-01',
+            first_name='Cross',
+            last_name='Admin',
+        )
+        solicitor = Solicitor.objects.create(
+            normalized_name='doe, john',
+            external_solicitor_id='SOL-REOWN-01',
+            user=missionary,
+        )
+        csv_data = _to_bytes(
+            'Gift_ID,Constituent_ID,GF_Amount,GF_Date,Solicitor_Name,Credit_Amount\n'
+            'G-REOWN-01,C-REOWN-01,100.00,2025-06-15,"Doe, John",100.00\n'
+        )
+        batch = import_re_gifts(csv_data, 'gifts_reown.csv', admin2, admin2)
+        assert batch.status == ImportBatchStatus.COMPLETED
+        contact.refresh_from_db()
+        assert contact.owner == missionary, (
+            f"Expected owner={missionary}, got {contact.owner}"
+        )
+
+    def test_does_not_reassign_if_already_owned_by_missionary(
+        self, admin1, missionary,
+    ):
+        """Contact already owned by a missionary (has Solicitor record) should NOT
+        be reassigned to a different missionary."""
+        # Create a Solicitor record for missionary (they are already a missionary)
+        Solicitor.objects.create(
+            normalized_name='existing, missionary',
+            external_solicitor_id='SOL-EXIST-01',
+            user=missionary,
+        )
+        contact = Contact.objects.create(
+            owner=missionary,
+            external_constituent_id='C-EXIST-01',
+            first_name='Existing',
+            last_name='Missionary',
+        )
+        # A different solicitor will try to claim the contact
+        other_missionary = UserFactory(email='other-missionary@test.com')
+        Solicitor.objects.create(
+            normalized_name='other, solicitor',
+            external_solicitor_id='SOL-OTHER-01',
+            user=other_missionary,
+        )
+        csv_data = _to_bytes(
+            'Gift_ID,Constituent_ID,GF_Amount,GF_Date,Solicitor_Name,Credit_Amount\n'
+            'G-EXIST-01,C-EXIST-01,200.00,2025-07-01,"Other, Solicitor",200.00\n'
+        )
+        batch = import_re_gifts(csv_data, 'gifts_exist.csv', admin1, admin1)
+        assert batch.status == ImportBatchStatus.COMPLETED
+        contact.refresh_from_db()
+        # Owner should remain the original missionary, not be changed to other_missionary
+        assert contact.owner == missionary, (
+            f"Expected owner to remain {missionary}, got {contact.owner}"
+        )
+
+    def test_no_reassign_if_no_solicitor_match(self, admin1):
+        """If no solicitor credit in CSV, contact owner is unchanged."""
+        contact = Contact.objects.create(
+            owner=admin1,
+            external_constituent_id='C-NOSOL-01',
+            first_name='No',
+            last_name='Solicitor',
+        )
+        csv_data = _to_bytes(
+            'Gift_ID,Constituent_ID,GF_Amount,GF_Date\n'
+            'G-NOSOL-01,C-NOSOL-01,50.00,2025-08-01\n'
+        )
+        batch = import_re_gifts(csv_data, 'gifts_nosol.csv', admin1, admin1)
+        assert batch.status == ImportBatchStatus.COMPLETED
+        contact.refresh_from_db()
+        assert contact.owner == admin1, (
+            f"Expected owner to remain {admin1}, got {contact.owner}"
+        )
+
     def test_prayer_dedup_across_recurring_gifts(self, admin_user, staff_user, setup_contact):
         """Two recurring gifts with identical prayer text create one PrayerIntention."""
         from apps.prayers.models import PrayerIntention
