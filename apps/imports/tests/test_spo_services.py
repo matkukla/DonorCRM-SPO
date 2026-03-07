@@ -468,15 +468,41 @@ class TestImportSpoGifts(TestCase):
 
     def test_anonymous_contact_created_on_first_anonymous_gift(self):
         """First anonymous gift for missionary creates 'Anonymous Donor' contact."""
-        pass  # TODO: plan 03
+        from apps.contacts.models import Contact
+        from apps.imports.spo_services import _get_or_create_anonymous_contact
+
+        missionary = _make_user('anon.first@test.com', 'Anon', 'First')
+        contact = _get_or_create_anonymous_contact(missionary)
+
+        self.assertIsNotNone(contact)
+        self.assertEqual(contact.first_name, 'Anonymous')
+        self.assertEqual(contact.last_name, 'Donor')
+        self.assertEqual(contact.owner, missionary)
+        self.assertEqual(contact.external_id, f'spo_anonymous_{missionary.id}')
+        self.assertEqual(contact.status, 'donor')
+        self.assertTrue(Contact.objects.filter(owner=missionary, external_id=f'spo_anonymous_{missionary.id}').exists())
 
     def test_anonymous_contact_reused(self):
         """Second anonymous gift reuses the same anonymous contact."""
-        pass  # TODO: plan 03
+        from apps.contacts.models import Contact
+        from apps.imports.spo_services import _get_or_create_anonymous_contact
+
+        missionary = _make_user('anon.reuse@test.com', 'Anon', 'Reuse')
+        c1 = _get_or_create_anonymous_contact(missionary)
+        c2 = _get_or_create_anonymous_contact(missionary)
+        self.assertEqual(c1.id, c2.id)
+        self.assertEqual(
+            Contact.objects.filter(owner=missionary, external_id=f'spo_anonymous_{missionary.id}').count(),
+            1
+        )
 
     def test_anonymous_contact_owner_is_missionary(self):
         """Anonymous contact owner=missionary for correct scope visibility."""
-        pass  # TODO: plan 03
+        from apps.imports.spo_services import _get_or_create_anonymous_contact
+
+        missionary = _make_user('anon.owner2@test.com', 'Anon', 'Owner')
+        contact = _get_or_create_anonymous_contact(missionary)
+        self.assertEqual(contact.owner, missionary)
 
     def test_blank_constituent_id_treated_as_anonymous(self):
         """Blank Constituent ID is treated as anonymous even without 'Yes' flag."""
