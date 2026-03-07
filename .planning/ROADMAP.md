@@ -244,7 +244,7 @@ Phases execute in numeric order: 38 -> 39 -> 40 -> 41 -> 42
 **Goal:** Build a three-step SPO import pipeline (missionary reconciliation, gift attribution, prayer extraction) with MissionaryAlias name matching, anonymous donor handling, tri-source comparison, and full audit trail
 **Requirements**: SPO-FOUNDATION, SPO-RECONCILE, SPO-GIFTS, SPO-PRAYERS, SPO-CLI, SPO-API
 **Depends on:** Phase 43
-**Plans:** 1/4 plans executed
+**Plans:** 2/4 plans executed
 
 Plans:
 - [ ] 44-01-PLAN.md — MissionaryAlias model + SPO ImportBatchType choices + migration + admin + test stubs (SPO-FOUNDATION)
