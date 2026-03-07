@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: UI Polish, Journal Report & Supervisor Role
 status: executing
-stopped_at: Completed 44-03-PLAN.md
-last_updated: "2026-03-07T20:04:34.698Z"
+stopped_at: Completed 44-04-PLAN.md
+last_updated: "2026-03-07T20:18:11.479Z"
 last_activity: "2026-03-04 — Starting Phase 43 (Roles Redesign: coach role, role renames, assignments page, team page)"
 progress:
   total_phases: 7
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 22
-  completed_plans: 21
+  completed_plans: 22
   percent: 100
 ---
 
@@ -71,6 +71,7 @@ Progress: [██████████] 100%
 | Phase 44 P01 | 3 | 2 tasks | 7 files |
 | Phase 44 P02 | ~16min | 2 tasks | 3 files |
 | Phase 44 P03 | 8min | 2 tasks | 2 files |
+| Phase 44 P04 | 9min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -129,6 +130,8 @@ v2.2 decisions:
 - [Phase 44]: [Phase 44-02]: Solicitor record created at reconcile time (not gift import time) — import_spo_gifts can assume Solicitor.user FK exists for resolved missionaries
 - [Phase 44]: import_spo_prayers() uses SPO_PRAYER dedup namespace separate from SPO_GIFT — allows re-running prayer extraction without reimporting gifts
 - [Phase 44]: [Phase 44-03]: _maybe_create_prayer_intention() called with actual signature (gift, prayer_text, contact, seen_prayers) — reuses existing RE service function; plan doc had incorrect simplified signature
+- [Phase 44]: force=True not exposed via API — admin must use CLI for force re-imports to prevent accidental web-based reimports
+- [Phase 44]: ZERO DONATIONS marker rendered in _print_summary for per_missionary entries with gifts_imported==0 — locked user decision from CONTEXT.md
 
 ### Roadmap Evolution
 
@@ -158,8 +161,8 @@ None active.
 
 ## Session Continuity
 
-Last session: 2026-03-07T20:04:23.903Z
-Stopped at: Completed 44-03-PLAN.md
+Last session: 2026-03-07T20:18:11.472Z
+Stopped at: Completed 44-04-PLAN.md
 Resume: All phases complete. v2.2 milestone shipped.
 
 ---
