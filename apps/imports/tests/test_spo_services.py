@@ -13,10 +13,19 @@ from apps.users.models import User
 
 
 def _make_solicitor_csv(*names):
-    """Build minimal SPO Solicitor CSV bytes with type-label row."""
-    lines = ['Solicitor', 'Name']
-    lines.extend(names)
-    return '\n'.join(lines).encode('utf-8')
+    """Build minimal SPO Solicitor CSV bytes with type-label row.
+
+    Uses csv.writer to properly quote names containing commas.
+    """
+    import csv as csv_mod
+    import io as io_mod
+    buf = io_mod.StringIO()
+    writer = csv_mod.writer(buf)
+    writer.writerow(['Solicitor'])
+    writer.writerow(['Name'])
+    for name in names:
+        writer.writerow([name])
+    return buf.getvalue().encode('utf-8')
 
 
 def _make_user(email, first, last, role='missionary', active=True):
