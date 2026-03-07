@@ -554,7 +554,9 @@ class TestImportSpoGifts(TestCase):
         from apps.imports.re_services import normalize_solicitor_name
 
         admin = _make_admin()
-        missionary = _make_user('blank.const@test.com', 'Blank', 'Const')
+        # first='Sam', last='Blank' → full_name='Sam Blank' → normalized='blank, sam'
+        # CSV solicitor_name 'Sam Blank' → normalized 'blank, sam' → exact match
+        missionary = _make_user('sam.blank@test.com', 'Sam', 'Blank')
         Solicitor.objects.create(
             user=missionary,
             normalized_name=normalize_solicitor_name(missionary.full_name),
@@ -564,7 +566,7 @@ class TestImportSpoGifts(TestCase):
             'gift_id': 'G-ANON-01',
             'constituent_id': '',   # blank → anonymous
             'is_anonymous': '',
-            'solicitor_name': 'Const Blank',
+            'solicitor_name': 'Sam Blank',
             'gift_amount': '25.00',
         })
         batch = import_spo_gifts(csv_bytes, 'gifts.csv', admin)
@@ -648,7 +650,9 @@ class TestImportSpoGifts(TestCase):
         from apps.prayers.models import PrayerIntention
 
         admin = _make_admin()
-        missionary = _make_user('prayer.extract@test.com', 'Prayer', 'Extract')
+        # first='Tom', last='Prayer' → full_name 'Tom Prayer' → normalized 'prayer, tom'
+        # CSV 'Tom Prayer' → exact match
+        missionary = _make_user('tom.prayer@test.com', 'Tom', 'Prayer')
         Solicitor.objects.create(
             user=missionary,
             normalized_name=normalize_solicitor_name(missionary.full_name),
@@ -657,7 +661,7 @@ class TestImportSpoGifts(TestCase):
         csv_bytes = _make_gifts_csv({
             'gift_id': 'G-PRAY-01',
             'constituent_id': '',
-            'solicitor_name': 'Extract Prayer',
+            'solicitor_name': 'Tom Prayer',
             'gift_amount': '50.00',
             'prayer_description': 'Healing for my mother',
         })
@@ -688,7 +692,9 @@ class TestImportSpoGifts(TestCase):
         from apps.imports.re_services import normalize_solicitor_name
 
         admin = _make_admin()
-        missionary = _make_user('type.label@test.com', 'Type', 'Label')
+        # first='Luke', last='Type' → full_name 'Luke Type' → normalized 'type, luke'
+        # CSV 'Luke Type' → exact match
+        missionary = _make_user('luke.type@test.com', 'Luke', 'Type')
         Solicitor.objects.create(
             user=missionary,
             normalized_name=normalize_solicitor_name(missionary.full_name),
@@ -696,7 +702,7 @@ class TestImportSpoGifts(TestCase):
 
         # include_type_label=True is default — ensures the type row is present
         csv_bytes = _make_gifts_csv(
-            {'gift_id': 'G-TYPELABEL-01', 'solicitor_name': 'Label Type', 'gift_amount': '20.00'},
+            {'gift_id': 'G-TYPELABEL-01', 'solicitor_name': 'Luke Type', 'gift_amount': '20.00'},
             include_type_label=True,
         )
         batch = import_spo_gifts(csv_bytes, 'gifts.csv', admin)
@@ -718,7 +724,9 @@ class TestImportSpoPrayers(TestCase):
         from apps.prayers.models import PrayerIntention
 
         admin = _make_admin()
-        missionary = _make_user('prayers.only@test.com', 'Prayers', 'Only')
+        # first='Kate', last='Miller' → full_name 'Kate Miller' → normalized 'miller, kate'
+        # CSV 'Kate Miller' → exact match
+        missionary = _make_user('kate.miller@test.com', 'Kate', 'Miller')
         Solicitor.objects.create(
             user=missionary,
             normalized_name=normalize_solicitor_name(missionary.full_name),
@@ -727,7 +735,7 @@ class TestImportSpoPrayers(TestCase):
         csv_bytes = _make_gifts_csv({
             'gift_id': 'G-PONLY-01',
             'constituent_id': '',
-            'solicitor_name': 'Only Prayers',
+            'solicitor_name': 'Kate Miller',
             'gift_amount': '50.00',
             'prayer_description': 'Safe travels for the family',
         })
