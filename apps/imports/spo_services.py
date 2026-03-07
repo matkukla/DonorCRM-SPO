@@ -557,7 +557,7 @@ _SPO_GIFT_HEADER_ALIASES_NESTED: dict[str, list[str]] = {
     'is_anonymous': ['Gift Is Anonymous', 'IsAnonymous', 'is_anonymous'],
     'solicitor_name': ['Solicitor Name', 'SolicitorName', 'solicitor_name'],
     'solicitor_amount': ['Solicitor Amount', 'SolicitorAmount', 'solicitor_amount'],
-    'gift_amount': ['Gift Amount', 'Amount', 'gift_amount'],
+    'gift_amount': ['Gift Amount', 'Fund Split Amount', 'Amount', 'gift_amount'],
     'gift_date': ['Gift Date', 'Date', 'gift_date'],
     'prayer_description': [
         'Gift Specific Attributes Prayer Requests Description',
