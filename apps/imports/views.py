@@ -26,6 +26,11 @@ from apps.imports.re_services import (
     import_re_recurring_gifts,
     import_re_solicitors,
 )
+from apps.imports.spo_services import (
+    import_spo_gifts,
+    import_spo_prayers,
+    reconcile_missionaries,
+)
 from apps.imports.services import (
     export_contacts_csv,
     export_gifts_csv,
@@ -1123,6 +1128,156 @@ class RERecurringGiftImportView(APIView):
             filename=file.name,
             uploaded_by=request.user,
             owner=request.user,
+        )
+
+        return Response({
+            'batch_id': str(batch.id),
+            'status': batch.status,
+            'is_duplicate': batch.status == ImportBatchStatus.DUPLICATE,
+            'created_count': batch.created_count,
+            'updated_count': batch.updated_count,
+            'skipped_count': batch.skipped_count,
+            'error_count': batch.error_count,
+            'total_rows': batch.total_rows,
+            'summary': batch.summary,
+        })
+
+
+# ---------------------------------------------------------------------------
+# SPO import views
+# ---------------------------------------------------------------------------
+
+class SPOMissionaryImportView(APIView):
+    """
+    POST: Reconcile SPO missionary accounts from Solicitors CSV (admin only).
+
+    Step 1 of the SPO import pipeline. Accepts CSV file upload.
+    Matches solicitor names to existing User accounts via three-level lookup,
+    auto-creates missionaries for unmatched names.
+    Returns ImportBatch result as JSON.
+
+    Note: force=True not supported via API — use the CLI command for force re-imports.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+    parser_classes = [MultiPartParser]
+
+    def post(self, request):
+        if 'file' not in request.FILES:
+            return Response(
+                {'detail': 'No file provided.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        file = request.FILES['file']
+        if file.size > MAX_UPLOAD_SIZE:
+            return Response(
+                {'detail': 'File too large (max 10 MB).'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        file_bytes = file.read()
+
+        batch = reconcile_missionaries(
+            file_bytes=file_bytes,
+            filename=file.name,
+            uploaded_by=request.user,
+        )
+
+        return Response({
+            'batch_id': str(batch.id),
+            'status': batch.status,
+            'is_duplicate': batch.status == ImportBatchStatus.DUPLICATE,
+            'created_count': batch.created_count,
+            'updated_count': batch.updated_count,
+            'skipped_count': batch.skipped_count,
+            'error_count': batch.error_count,
+            'total_rows': batch.total_rows,
+            'summary': batch.summary,
+        })
+
+
+class SPOGiftImportView(APIView):
+    """
+    POST: Import SPO gifts and attribute to missionaries (admin only).
+
+    Step 2 of the SPO import pipeline. Accepts CSV file upload.
+    Groups rows by Gift ID, creates Gift + GiftCredit records with missionary
+    attribution. Returns ImportBatch result as JSON.
+
+    Note: force=True not supported via API — use the CLI command for force re-imports.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+    parser_classes = [MultiPartParser]
+
+    def post(self, request):
+        if 'file' not in request.FILES:
+            return Response(
+                {'detail': 'No file provided.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        file = request.FILES['file']
+        if file.size > MAX_UPLOAD_SIZE:
+            return Response(
+                {'detail': 'File too large (max 10 MB).'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        file_bytes = file.read()
+
+        batch = import_spo_gifts(
+            file_bytes=file_bytes,
+            filename=file.name,
+            uploaded_by=request.user,
+        )
+
+        return Response({
+            'batch_id': str(batch.id),
+            'status': batch.status,
+            'is_duplicate': batch.status == ImportBatchStatus.DUPLICATE,
+            'created_count': batch.created_count,
+            'updated_count': batch.updated_count,
+            'skipped_count': batch.skipped_count,
+            'error_count': batch.error_count,
+            'total_rows': batch.total_rows,
+            'summary': batch.summary,
+        })
+
+
+class SPOPrayerImportView(APIView):
+    """
+    POST: Extract prayer intentions from SPO gifts CSV (admin only).
+
+    Step 3 of the SPO import pipeline (prayer-only rerun pass).
+    Accepts the same CSV format as the gifts endpoint but only extracts
+    prayer intentions — no Gift or GiftCredit records created.
+    Returns ImportBatch result as JSON.
+
+    Note: force=True not supported via API — use the CLI command for force re-imports.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+    parser_classes = [MultiPartParser]
+
+    def post(self, request):
+        if 'file' not in request.FILES:
+            return Response(
+                {'detail': 'No file provided.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        file = request.FILES['file']
+        if file.size > MAX_UPLOAD_SIZE:
+            return Response(
+                {'detail': 'File too large (max 10 MB).'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        file_bytes = file.read()
+
+        batch = import_spo_prayers(
+            file_bytes=file_bytes,
+            filename=file.name,
+            uploaded_by=request.user,
         )
 
         return Response({
