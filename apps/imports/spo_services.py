@@ -2,9 +2,9 @@
 SPO (Support Processing Operations) import services.
 
 Implements the three-step SPO data pipeline:
-  Step 1 (this plan): reconcile_missionaries() — establish the missionary User population
-  Step 2 (plan 03):   import_spo_gifts() — import gifts with GiftCredit attribution
-  Step 3 (future):    import_spo_prayers() — import prayer intentions
+  Step 1 (plan 02): reconcile_missionaries() — establish the missionary User population
+  Step 2 (plan 03): import_spo_gifts() — import gifts with GiftCredit attribution
+  Step 3 (plan 03): import_spo_prayers() — prayer-only extraction pass
 
 Both management commands and API endpoints call these service functions.
 """
@@ -19,7 +19,7 @@ from typing import Optional
 from django.db import transaction
 
 from apps.contacts.models import Contact
-from apps.gifts.models import Solicitor
+from apps.gifts.models import Gift, GiftCredit, Solicitor
 from apps.imports.models import (
     ImportBatch,
     ImportBatchStatus,
@@ -28,6 +28,10 @@ from apps.imports.models import (
     MPDSnapshot,
 )
 from apps.imports.re_services import (
+    _build_header_mapping,
+    _maybe_create_prayer_intention,
+    _parse_amount_to_cents,
+    _parse_date,
     check_duplicate_import,
     decode_csv_bytes,
     normalize_solicitor_name,
@@ -539,3 +543,442 @@ def _get_or_create_anonymous_contact(missionary: 'User') -> 'Contact':
             missionary.email,
         )
     return contact
+
+
+# ---------------------------------------------------------------------------
+# SPO Gift header aliases
+# ---------------------------------------------------------------------------
+
+# Nested form: {canonical: [alias1, alias2, ...]}
+# Used to build the flat alias_map for _build_header_mapping.
+_SPO_GIFT_HEADER_ALIASES_NESTED: dict[str, list[str]] = {
+    'gift_id': ['Gift ID', 'GiftID', 'gift_id'],
+    'constituent_id': ['Constituent ID', 'ConstituentID', 'constituent_id'],
+    'is_anonymous': ['Gift Is Anonymous', 'IsAnonymous', 'is_anonymous'],
+    'solicitor_name': ['Solicitor Name', 'SolicitorName', 'solicitor_name'],
+    'solicitor_amount': ['Solicitor Amount', 'SolicitorAmount', 'solicitor_amount'],
+    'gift_amount': ['Gift Amount', 'Amount', 'gift_amount'],
+    'gift_date': ['Gift Date', 'Date', 'gift_date'],
+    'prayer_description': [
+        'Gift Specific Attributes Prayer Requests Description',
+        'Prayer Description',
+        'prayer_description',
+    ],
+}
+
+# Flat alias map: {alias_lowercase: canonical_name}
+SPO_GIFT_HEADER_ALIAS_MAP: dict[str, str] = {
+    alias.lower(): canonical
+    for canonical, aliases in _SPO_GIFT_HEADER_ALIASES_NESTED.items()
+    for alias in aliases
+}
+
+
+# ---------------------------------------------------------------------------
+# import_spo_gifts — Step 2 entry point
+# ---------------------------------------------------------------------------
+
+def import_spo_gifts(
+    file_bytes: bytes,
+    filename: str,
+    uploaded_by: 'User',
+    force: bool = False,
+) -> ImportBatch:
+    """Step 2: Import SPO gifts CSV, attribute to missionaries, create GiftCredit records.
+
+    Contact resolution:
+      - Named donor:     Contact.objects.filter(external_constituent_id=...).first()
+      - Anonymous/blank: _get_or_create_anonymous_contact(missionary)
+      - Unresolved sol:  skip row, count in summary['unmatched_unresolved']
+      - Contact not found: skip row, count in summary['contact_not_found']
+
+    GiftCredit: created after each Gift for the missionary's Solicitor record
+    (created by reconcile_missionaries in plan 02).
+
+    Prayer: _maybe_create_prayer_intention() called when description column non-empty.
+
+    Row errors isolated via savepoints — one bad row does not roll back others.
+
+    Returns ImportBatch (DUPLICATE if same file already imported and not force).
+    """
+    sha256_hash = hashlib.sha256(file_bytes).hexdigest()
+
+    # Step 1: SHA256 dedup
+    existing = check_duplicate_import(file_bytes, ImportBatchType.SPO_GIFT)
+    if existing and not force:
+        logger.info('Duplicate SPO gift import detected for %s', filename)
+        existing.status = ImportBatchStatus.DUPLICATE
+        existing.save(update_fields=['status'])
+        return existing
+    elif existing and force:
+        logger.info(
+            'Force flag set — re-importing gifts %s (deleting old batch %s)',
+            filename, existing.id,
+        )
+        existing.delete()
+
+    # Step 2: Decode CSV
+    try:
+        content = skip_re_type_label_row(decode_csv_bytes(file_bytes))
+    except ValueError as e:
+        return ImportBatch.objects.create(
+            import_type=ImportBatchType.SPO_GIFT,
+            status=ImportBatchStatus.FAILED,
+            filename=filename,
+            sha256_hash=sha256_hash,
+            uploaded_by=uploaded_by,
+            summary={'errors': [{'row': 0, 'error': str(e)}]},
+        )
+
+    # Step 3: Parse CSV headers
+    reader = csv.DictReader(io.StringIO(content))
+    fieldnames = list(reader.fieldnames or [])
+    col_map = _build_header_mapping(fieldnames, SPO_GIFT_HEADER_ALIAS_MAP)
+
+    # Helper to safely read a canonical column from a row
+    def _get(row, canonical):
+        actual_col = col_map.get(canonical)
+        if actual_col is None:
+            return ''
+        return (row.get(actual_col) or '').strip()
+
+    # Step 4: Pre-build missionary lookups
+    all_active_users = User.objects.filter(is_active=True)
+    user_lookup = _build_user_lookup(all_active_users)
+    alias_lookup = _build_alias_lookup()
+
+    # Pre-build solicitor lookup: {user_id: Solicitor}
+    solicitor_by_user_id: dict[int, Solicitor] = {
+        s.user_id: s
+        for s in Solicitor.objects.filter(user__isnull=False).select_related('user')
+    }
+
+    # Step 5: Process rows
+    total_rows = 0
+    created_count = 0
+    skipped_count = 0
+    error_count = 0
+
+    unmatched_unresolved: list[str] = []
+    contact_not_found: list[str] = []
+    errors: list[dict] = []
+    per_missionary: list[dict] = []
+    seen_prayers: dict = {}
+
+    rows = list(reader)
+
+    with transaction.atomic():
+        for row_num, row in enumerate(rows, start=2):  # row 1 = headers
+            gift_id = _get(row, 'gift_id')
+            if not gift_id:
+                skipped_count += 1
+                continue
+
+            total_rows += 1
+            solicitor_name_raw = _get(row, 'solicitor_name')
+            constituent_id = _get(row, 'constituent_id')
+            is_anonymous_raw = _get(row, 'is_anonymous').lower()
+            gift_amount_raw = _get(row, 'gift_amount')
+            solicitor_amount_raw = _get(row, 'solicitor_amount')
+            gift_date_raw = _get(row, 'gift_date')
+            prayer_description = _get(row, 'prayer_description')
+
+            sp = transaction.savepoint()
+            try:
+                # 7a. Resolve missionary via solicitor_name column
+                missionary, match_type = _match_missionary_name(
+                    solicitor_name_raw, user_lookup, alias_lookup,
+                )
+                if missionary is None:
+                    # 'unresolved' (alias with user=None) or 'new' (unknown name)
+                    # Either way: no Solicitor record exists → skip
+                    logger.debug(
+                        'Skipping gift %s — unresolved solicitor "%s" (match_type=%s)',
+                        gift_id, solicitor_name_raw, match_type,
+                    )
+                    unmatched_unresolved.append(solicitor_name_raw)
+                    skipped_count += 1
+                    transaction.savepoint_rollback(sp)
+                    continue
+
+                # 7b. Resolve contact
+                is_anonymous = is_anonymous_raw in ('yes', 'true', '1')
+                if is_anonymous or not constituent_id:
+                    contact = _get_or_create_anonymous_contact(missionary)
+                else:
+                    contact = Contact.objects.filter(
+                        external_constituent_id=constituent_id,
+                    ).first()
+                    if contact is None:
+                        logger.debug(
+                            'Skipping gift %s — contact not found for constituent_id=%s',
+                            gift_id, constituent_id,
+                        )
+                        contact_not_found.append(constituent_id)
+                        skipped_count += 1
+                        transaction.savepoint_rollback(sp)
+                        continue
+
+                # 7c. Idempotency: skip if gift already exists
+                if Gift.objects.filter(external_gift_id=gift_id).exists():
+                    logger.debug('Skipping gift %s — already imported', gift_id)
+                    skipped_count += 1
+                    transaction.savepoint_commit(sp)
+                    continue
+
+                # 7d. Parse gift fields
+                amount_cents = _parse_amount_to_cents(gift_amount_raw)
+                gift_date = _parse_date(gift_date_raw)
+                if gift_date is None:
+                    errors.append({'row': row_num, 'error': f'Invalid date: {gift_date_raw!r}'})
+                    error_count += 1
+                    transaction.savepoint_rollback(sp)
+                    continue
+
+                # 7d. Create Gift
+                gift = Gift.objects.create(
+                    donor_contact=contact,
+                    amount_cents=amount_cents,
+                    gift_date=gift_date,
+                    external_gift_id=gift_id,
+                )
+
+                # 7e. Create GiftCredit for missionary's Solicitor
+                solicitor = solicitor_by_user_id.get(missionary.id)
+                if solicitor is None:
+                    # Solicitor should exist (created by plan 02 reconcile), but be safe
+                    solicitor = _get_or_create_missionary_solicitor(missionary)
+                    solicitor_by_user_id[missionary.id] = solicitor
+
+                credit_amount_cents = _parse_amount_to_cents(solicitor_amount_raw) or amount_cents
+                GiftCredit.objects.get_or_create(
+                    gift=gift,
+                    solicitor=solicitor,
+                    defaults={'amount_cents': credit_amount_cents},
+                )
+
+                # 7f. Prayer intention
+                if prayer_description:
+                    _maybe_create_prayer_intention(gift, prayer_description, contact, seen_prayers)
+
+                created_count += 1
+                per_missionary.append({
+                    'gift_id': gift_id,
+                    'missionary': solicitor_name_raw,
+                    'match_type': match_type,
+                    'constituent_id': constituent_id,
+                    'amount_cents': amount_cents,
+                })
+                transaction.savepoint_commit(sp)
+
+            except Exception as exc:
+                logger.exception('Error processing gift row %d (gift_id=%s): %s', row_num, gift_id, exc)
+                errors.append({'row': row_num, 'error': str(exc)})
+                error_count += 1
+                transaction.savepoint_rollback(sp)
+
+    summary = {
+        'created': created_count,
+        'skipped': skipped_count,
+        'errors': error_count,
+        'unmatched_unresolved': unmatched_unresolved,
+        'contact_not_found': contact_not_found,
+        'per_missionary': per_missionary,
+        'error_details': errors,
+    }
+
+    batch = ImportBatch.objects.create(
+        import_type=ImportBatchType.SPO_GIFT,
+        status=ImportBatchStatus.COMPLETED,
+        filename=filename,
+        sha256_hash=sha256_hash,
+        uploaded_by=uploaded_by,
+        total_rows=total_rows,
+        created_count=created_count,
+        skipped_count=skipped_count,
+        error_count=error_count,
+        summary=summary,
+    )
+
+    logger.info(
+        'SPO gift import complete for %s: %d created, %d skipped, %d errors',
+        filename, created_count, skipped_count, error_count,
+    )
+    return batch
+
+
+# ---------------------------------------------------------------------------
+# import_spo_prayers — Step 3 entry point
+# ---------------------------------------------------------------------------
+
+def import_spo_prayers(
+    file_bytes: bytes,
+    filename: str,
+    uploaded_by: 'User',
+    force: bool = False,
+) -> ImportBatch:
+    """Step 3: Extract prayer intentions from SPO gifts CSV (prayer-only rerun pass).
+
+    Reads the same gifts CSV format as import_spo_gifts() but ONLY extracts
+    prayer intentions. No Gift or GiftCredit records are created.
+
+    Uses ImportBatchType.SPO_PRAYER for dedup — separate namespace from SPO_GIFT,
+    allowing this pass to run independently after a force gift re-import.
+
+    Prayer import is best-effort: unresolvable contacts cause a graceful skip
+    (not a failure), since prayer data is not financial.
+
+    Returns ImportBatch with created_count = prayer intentions created.
+    """
+    sha256_hash = hashlib.sha256(file_bytes).hexdigest()
+
+    # Step 1: SHA256 dedup
+    existing = check_duplicate_import(file_bytes, ImportBatchType.SPO_PRAYER)
+    if existing and not force:
+        logger.info('Duplicate SPO prayer import detected for %s', filename)
+        existing.status = ImportBatchStatus.DUPLICATE
+        existing.save(update_fields=['status'])
+        return existing
+    elif existing and force:
+        logger.info(
+            'Force flag set — re-importing prayers %s (deleting old batch %s)',
+            filename, existing.id,
+        )
+        existing.delete()
+
+    # Step 2: Decode CSV
+    try:
+        content = skip_re_type_label_row(decode_csv_bytes(file_bytes))
+    except ValueError as e:
+        return ImportBatch.objects.create(
+            import_type=ImportBatchType.SPO_PRAYER,
+            status=ImportBatchStatus.FAILED,
+            filename=filename,
+            sha256_hash=sha256_hash,
+            uploaded_by=uploaded_by,
+            summary={'errors': [{'row': 0, 'error': str(e)}]},
+        )
+
+    # Step 3: Parse CSV headers
+    reader = csv.DictReader(io.StringIO(content))
+    fieldnames = list(reader.fieldnames or [])
+    col_map = _build_header_mapping(fieldnames, SPO_GIFT_HEADER_ALIAS_MAP)
+
+    def _get(row, canonical):
+        actual_col = col_map.get(canonical)
+        if actual_col is None:
+            return ''
+        return (row.get(actual_col) or '').strip()
+
+    # Step 4: Pre-build missionary lookups
+    all_active_users = User.objects.filter(is_active=True)
+    user_lookup = _build_user_lookup(all_active_users)
+    alias_lookup = _build_alias_lookup()
+
+    # Step 5: Process rows — prayer extraction only
+    total_rows = 0
+    created_count = 0
+    skipped_count = 0
+    seen_prayers: dict = {}
+    rows = list(reader)
+
+    with transaction.atomic():
+        for row in rows:
+            gift_id = _get(row, 'gift_id')
+            prayer_description = _get(row, 'prayer_description')
+            if not prayer_description:
+                skipped_count += 1
+                continue
+
+            total_rows += 1
+            solicitor_name_raw = _get(row, 'solicitor_name')
+            constituent_id = _get(row, 'constituent_id')
+            is_anonymous_raw = _get(row, 'is_anonymous').lower()
+
+            # Resolve missionary (best-effort)
+            missionary, match_type = _match_missionary_name(
+                solicitor_name_raw, user_lookup, alias_lookup,
+            )
+            if missionary is None:
+                # Best-effort: can't link prayer to missionary — skip
+                skipped_count += 1
+                continue
+
+            # Resolve contact (best-effort)
+            is_anonymous = is_anonymous_raw in ('yes', 'true', '1')
+            if is_anonymous or not constituent_id:
+                contact = _get_or_create_anonymous_contact(missionary)
+            else:
+                contact = Contact.objects.filter(
+                    external_constituent_id=constituent_id,
+                ).first()
+                if contact is None:
+                    # Best-effort: skip unresolvable contacts
+                    skipped_count += 1
+                    continue
+
+            # Look up existing Gift for M2M linkage (if imported already)
+            gift = Gift.objects.filter(external_gift_id=gift_id).first() if gift_id else None
+
+            sp = transaction.savepoint()
+            try:
+                if gift is not None:
+                    result = _maybe_create_prayer_intention(gift, prayer_description, contact, seen_prayers)
+                    if result:
+                        created_count += 1
+                else:
+                    # No gift to link — create prayer intention without M2M
+                    from apps.prayers.models import PrayerIntention, PrayerIntentionStatus
+                    PRAYER_STOPLIST = {
+                        'n/a', 'na', 'none', 'no', '-', '--', '---', 'no prayer request',
+                        'x', 'xx', 'xxx', 'general', 'same', 'same as above',
+                        'see above', 'ditto', 'tbd', 'unknown',
+                    }
+                    text = prayer_description.strip()
+                    if text and text.lower() not in PRAYER_STOPLIST and any(c.isalnum() for c in text):
+                        normalized = text.lower().strip()
+                        dedup_key = (contact.id, normalized)
+                        if dedup_key not in seen_prayers:
+                            existing_prayer = PrayerIntention.objects.filter(
+                                contact=contact,
+                                description__iexact=text,
+                            ).first()
+                            if existing_prayer:
+                                seen_prayers[dedup_key] = existing_prayer
+                            else:
+                                title = text[:80].rsplit(' ', 1)[0] if len(text) > 80 else text
+                                prayer = PrayerIntention.objects.create(
+                                    contact=contact,
+                                    title=title,
+                                    description=text,
+                                    status=PrayerIntentionStatus.ACTIVE,
+                                )
+                                seen_prayers[dedup_key] = prayer
+                                created_count += 1
+                transaction.savepoint_commit(sp)
+            except Exception as exc:
+                logger.exception('Error extracting prayer from gift %s: %s', gift_id, exc)
+                transaction.savepoint_rollback(sp)
+
+    summary = {
+        'prayers_created': created_count,
+        'skipped': skipped_count,
+    }
+
+    batch = ImportBatch.objects.create(
+        import_type=ImportBatchType.SPO_PRAYER,
+        status=ImportBatchStatus.COMPLETED,
+        filename=filename,
+        sha256_hash=sha256_hash,
+        uploaded_by=uploaded_by,
+        total_rows=total_rows,
+        created_count=created_count,
+        skipped_count=skipped_count,
+        summary=summary,
+    )
+
+    logger.info(
+        'SPO prayer extraction complete for %s: %d prayers created, %d skipped',
+        filename, created_count, skipped_count,
+    )
+    return batch
