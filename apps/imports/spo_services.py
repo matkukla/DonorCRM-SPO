@@ -30,6 +30,7 @@ from apps.imports.models import (
 from apps.imports.re_services import (
     _build_header_mapping,
     _maybe_create_prayer_intention,
+    _normalize_payment_type,
     _parse_amount_to_cents,
     _parse_date,
     check_duplicate_import,
@@ -559,6 +560,7 @@ _SPO_GIFT_HEADER_ALIASES_NESTED: dict[str, list[str]] = {
     'solicitor_amount': ['Solicitor Amount', 'SolicitorAmount', 'solicitor_amount'],
     'gift_amount': ['Gift Amount', 'Fund Split Amount', 'Amount', 'gift_amount'],
     'gift_date': ['Gift Date', 'Date', 'gift_date'],
+    'payment_type': ['Gift Payment Type', 'Payment Type', 'payment_type'],
     'prayer_description': [
         'Gift Specific Attributes Prayer Requests Description',
         'Prayer Description',
@@ -735,12 +737,16 @@ def import_spo_gifts(
                     transaction.savepoint_rollback(sp)
                     continue
 
+                payment_type_raw = _get(row, 'payment_type')
+                payment_type = _normalize_payment_type(payment_type_raw)
+
                 # 7d. Create Gift
                 gift = Gift.objects.create(
                     donor_contact=contact,
                     amount_cents=amount_cents,
                     gift_date=gift_date,
                     external_gift_id=gift_id,
+                    payment_type=payment_type,
                 )
 
                 # 7e. Create GiftCredit for missionary's Solicitor
