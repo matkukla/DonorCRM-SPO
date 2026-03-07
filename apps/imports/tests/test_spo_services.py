@@ -2,8 +2,9 @@
 Tests for SPO reconcile_missionaries() and import_spo_gifts() services.
 
 TDD plan 02: TestReconcileMissionaries stubs filled in.
-TDD plan 03: TestImportSpoGifts stubs to be filled in.
+TDD plan 03: TestImportSpoGifts stubs filled in (import_spo_gifts, import_spo_prayers, TestIdempotency).
 """
+import csv as csv_mod
 import io
 
 from django.test import TestCase
@@ -47,6 +48,47 @@ def _make_admin():
         last_name='User',
         role='admin',
     )
+
+
+def _make_gifts_csv(*rows, include_type_label=True):
+    """Build minimal SPO Gifts CSV bytes.
+
+    Each row should be a dict with keys: gift_id, constituent_id, is_anonymous,
+    solicitor_name, solicitor_amount, gift_amount, gift_date, prayer_description.
+    Missing keys default to empty string.
+    """
+    buf = io.StringIO()
+    writer = csv_mod.writer(buf)
+    if include_type_label:
+        writer.writerow(['Gift'])
+    writer.writerow([
+        'Gift ID', 'Constituent ID', 'Gift Is Anonymous', 'Solicitor Name',
+        'Solicitor Amount', 'Gift Amount', 'Gift Date',
+        'Gift Specific Attributes Prayer Requests Description',
+    ])
+    defaults = {
+        'gift_id': 'G001',
+        'constituent_id': '',
+        'is_anonymous': '',
+        'solicitor_name': '',
+        'solicitor_amount': '50.00',
+        'gift_amount': '50.00',
+        'gift_date': '2025-01-15',
+        'prayer_description': '',
+    }
+    for row in rows:
+        r = {**defaults, **row}
+        writer.writerow([
+            r['gift_id'],
+            r['constituent_id'],
+            r['is_anonymous'],
+            r['solicitor_name'],
+            r['solicitor_amount'],
+            r['gift_amount'],
+            r['gift_date'],
+            r['prayer_description'],
+        ])
+    return buf.getvalue().encode('utf-8')
 
 
 class TestReconcileMissionaries(TestCase):
@@ -506,27 +548,214 @@ class TestImportSpoGifts(TestCase):
 
     def test_blank_constituent_id_treated_as_anonymous(self):
         """Blank Constituent ID is treated as anonymous even without 'Yes' flag."""
-        pass  # TODO: plan 03
+        from apps.contacts.models import Contact
+        from apps.gifts.models import Gift, Solicitor
+        from apps.imports.spo_services import import_spo_gifts
+        from apps.imports.re_services import normalize_solicitor_name
+
+        admin = _make_admin()
+        missionary = _make_user('blank.const@test.com', 'Blank', 'Const')
+        Solicitor.objects.create(
+            user=missionary,
+            normalized_name=normalize_solicitor_name(missionary.full_name),
+        )
+
+        csv_bytes = _make_gifts_csv({
+            'gift_id': 'G-ANON-01',
+            'constituent_id': '',   # blank → anonymous
+            'is_anonymous': '',
+            'solicitor_name': 'Const Blank',
+            'gift_amount': '25.00',
+        })
+        batch = import_spo_gifts(csv_bytes, 'gifts.csv', admin)
+
+        self.assertEqual(batch.status, ImportBatchStatus.COMPLETED)
+        self.assertEqual(batch.created_count, 1)
+        gift = Gift.objects.get(external_gift_id='G-ANON-01')
+        anon_contact = Contact.objects.get(
+            owner=missionary,
+            external_id=f'spo_anonymous_{missionary.id}',
+        )
+        self.assertEqual(gift.donor_contact, anon_contact)
 
     def test_unresolved_solicitor_gift_skipped(self):
         """Gift referencing unresolved solicitor is skipped, counted in summary."""
-        pass  # TODO: plan 03
+        from apps.gifts.models import Gift
+        from apps.imports.spo_services import import_spo_gifts
+
+        admin = _make_admin()
+        # 'Unknown Person' has no User and no alias → match_type='new'
+        # For gift import, 'new' means unresolved (no Solicitor exists yet) — skip
+        csv_bytes = _make_gifts_csv({
+            'gift_id': 'G-UNRES-01',
+            'solicitor_name': 'Unknown Person Nobody',
+            'gift_amount': '100.00',
+        })
+        batch = import_spo_gifts(csv_bytes, 'gifts.csv', admin)
+
+        self.assertEqual(batch.status, ImportBatchStatus.COMPLETED)
+        self.assertEqual(batch.created_count, 0)
+        self.assertEqual(Gift.objects.count(), 0)
+        self.assertIn('unmatched_unresolved', batch.summary)
+        self.assertGreater(len(batch.summary['unmatched_unresolved']), 0)
 
     def test_gift_attributed_to_missionary(self):
         """Gift Solicitor Name maps to missionary User, GiftCredit created."""
-        pass  # TODO: plan 03
+        from apps.contacts.models import Contact
+        from apps.gifts.models import Gift, GiftCredit, Solicitor
+        from apps.imports.spo_services import import_spo_gifts
+        from apps.imports.re_services import normalize_solicitor_name
+
+        admin = _make_admin()
+        missionary = _make_user('peter.attr@test.com', 'Peter', 'Attr')
+        solicitor = Solicitor.objects.create(
+            user=missionary,
+            normalized_name=normalize_solicitor_name(missionary.full_name),
+        )
+        # Named donor contact with constituent_id
+        contact = Contact.objects.create(
+            owner=missionary,
+            first_name='John',
+            last_name='Donor',
+            external_constituent_id='CONST-001',
+            status='donor',
+        )
+
+        csv_bytes = _make_gifts_csv({
+            'gift_id': 'G-ATTR-01',
+            'constituent_id': 'CONST-001',
+            'solicitor_name': 'Peter Attr',
+            'solicitor_amount': '75.00',
+            'gift_amount': '75.00',
+        })
+        batch = import_spo_gifts(csv_bytes, 'gifts.csv', admin)
+
+        self.assertEqual(batch.status, ImportBatchStatus.COMPLETED)
+        self.assertEqual(batch.created_count, 1)
+        gift = Gift.objects.get(external_gift_id='G-ATTR-01')
+        self.assertEqual(gift.donor_contact, contact)
+        # GiftCredit links gift to missionary's solicitor
+        self.assertEqual(GiftCredit.objects.count(), 1)
+        credit = GiftCredit.objects.first()
+        self.assertEqual(credit.solicitor.user, missionary)
+        self.assertEqual(credit.gift, gift)
 
     def test_prayer_extracted_from_gift_description(self):
         """Gift with prayer description column creates PrayerIntention."""
-        pass  # TODO: plan 03
+        from apps.gifts.models import Solicitor
+        from apps.imports.spo_services import import_spo_gifts
+        from apps.imports.re_services import normalize_solicitor_name
+        from apps.prayers.models import PrayerIntention
+
+        admin = _make_admin()
+        missionary = _make_user('prayer.extract@test.com', 'Prayer', 'Extract')
+        Solicitor.objects.create(
+            user=missionary,
+            normalized_name=normalize_solicitor_name(missionary.full_name),
+        )
+
+        csv_bytes = _make_gifts_csv({
+            'gift_id': 'G-PRAY-01',
+            'constituent_id': '',
+            'solicitor_name': 'Extract Prayer',
+            'gift_amount': '50.00',
+            'prayer_description': 'Healing for my mother',
+        })
+        batch = import_spo_gifts(csv_bytes, 'gifts.csv', admin)
+
+        self.assertEqual(batch.status, ImportBatchStatus.COMPLETED)
+        self.assertEqual(PrayerIntention.objects.count(), 1)
+        prayer = PrayerIntention.objects.first()
+        self.assertIn('mother', prayer.description)
 
     def test_dedup_same_file(self):
         """Same file bytes returns DUPLICATE ImportBatch."""
-        pass  # TODO: plan 03
+        from apps.imports.spo_services import import_spo_gifts
+
+        admin = _make_admin()
+        csv_bytes = _make_gifts_csv({'gift_id': 'G-DEDUP-01', 'gift_amount': '10.00'})
+
+        batch1 = import_spo_gifts(csv_bytes, 'gifts.csv', admin)
+        self.assertNotEqual(batch1.status, ImportBatchStatus.DUPLICATE)
+
+        batch2 = import_spo_gifts(csv_bytes, 'gifts.csv', admin)
+        self.assertEqual(batch2.status, ImportBatchStatus.DUPLICATE)
 
     def test_type_label_row_skipped(self):
-        """Leading SPO type-label row is skipped before DictReader."""
-        pass  # TODO: plan 03
+        """Leading SPO type-label row (Gift,...) is skipped before DictReader."""
+        from apps.gifts.models import Gift, Solicitor
+        from apps.imports.spo_services import import_spo_gifts
+        from apps.imports.re_services import normalize_solicitor_name
+
+        admin = _make_admin()
+        missionary = _make_user('type.label@test.com', 'Type', 'Label')
+        Solicitor.objects.create(
+            user=missionary,
+            normalized_name=normalize_solicitor_name(missionary.full_name),
+        )
+
+        # include_type_label=True is default — ensures the type row is present
+        csv_bytes = _make_gifts_csv(
+            {'gift_id': 'G-TYPELABEL-01', 'solicitor_name': 'Label Type', 'gift_amount': '20.00'},
+            include_type_label=True,
+        )
+        batch = import_spo_gifts(csv_bytes, 'gifts.csv', admin)
+
+        self.assertEqual(batch.status, ImportBatchStatus.COMPLETED)
+        # Type-label row skipped; exactly 1 data row processed
+        self.assertEqual(batch.total_rows, 1)
+
+
+class TestImportSpoPrayers(TestCase):
+    """Tests for import_spo_prayers() service."""
+
+    def test_prayer_extracted_without_gift_creation(self):
+        """import_spo_prayers() creates PrayerIntention but NOT Gift records."""
+        from apps.contacts.models import Contact
+        from apps.gifts.models import Gift, Solicitor
+        from apps.imports.spo_services import import_spo_prayers
+        from apps.imports.re_services import normalize_solicitor_name
+        from apps.prayers.models import PrayerIntention
+
+        admin = _make_admin()
+        missionary = _make_user('prayers.only@test.com', 'Prayers', 'Only')
+        Solicitor.objects.create(
+            user=missionary,
+            normalized_name=normalize_solicitor_name(missionary.full_name),
+        )
+
+        csv_bytes = _make_gifts_csv({
+            'gift_id': 'G-PONLY-01',
+            'constituent_id': '',
+            'solicitor_name': 'Only Prayers',
+            'gift_amount': '50.00',
+            'prayer_description': 'Safe travels for the family',
+        })
+        batch = import_spo_prayers(csv_bytes, 'gifts.csv', admin)
+
+        self.assertEqual(batch.status, ImportBatchStatus.COMPLETED)
+        # No Gift records should be created
+        self.assertEqual(Gift.objects.count(), 0)
+        # Prayer should be created
+        self.assertEqual(PrayerIntention.objects.count(), 1)
+        self.assertGreater(batch.created_count, 0)
+
+    def test_prayer_dedup_separate_from_gift_import(self):
+        """SPO_PRAYER dedup is separate from SPO_GIFT — both can exist."""
+        from apps.imports.models import ImportBatchType
+        from apps.imports.spo_services import import_spo_gifts, import_spo_prayers
+
+        admin = _make_admin()
+        csv_bytes = _make_gifts_csv({'gift_id': 'G-PDEDUP-01', 'gift_amount': '10.00'})
+
+        # Import as gifts
+        batch_gift = import_spo_gifts(csv_bytes, 'gifts.csv', admin)
+        self.assertEqual(batch_gift.import_type, ImportBatchType.SPO_GIFT)
+
+        # Import same file as prayers — separate dedup namespace
+        batch_prayer = import_spo_prayers(csv_bytes, 'gifts.csv', admin)
+        self.assertEqual(batch_prayer.import_type, ImportBatchType.SPO_PRAYER)
+        self.assertNotEqual(batch_prayer.status, ImportBatchStatus.DUPLICATE)
 
 
 class TestIdempotency(TestCase):
@@ -534,8 +763,28 @@ class TestIdempotency(TestCase):
 
     def test_reconcile_force_bypasses_dedup(self):
         """reconcile_missionaries with force=True reimports same file."""
-        pass  # TODO: plan 03
+        from apps.imports.spo_services import reconcile_missionaries
+
+        admin = _make_admin()
+        csv_bytes = _make_solicitor_csv('Alice Force')
+
+        batch1 = reconcile_missionaries(csv_bytes, 'solicitors.csv', admin)
+        self.assertNotEqual(batch1.status, ImportBatchStatus.DUPLICATE)
+
+        batch2 = reconcile_missionaries(csv_bytes, 'solicitors.csv', admin, force=True)
+        self.assertNotEqual(batch2.status, ImportBatchStatus.DUPLICATE)
+        self.assertEqual(batch2.status, ImportBatchStatus.COMPLETED)
 
     def test_gift_import_force_bypasses_dedup(self):
         """import_spo_gifts with force=True reimports same file."""
-        pass  # TODO: plan 03
+        from apps.imports.spo_services import import_spo_gifts
+
+        admin = _make_admin()
+        csv_bytes = _make_gifts_csv({'gift_id': 'G-FORCE-01', 'gift_amount': '10.00'})
+
+        batch1 = import_spo_gifts(csv_bytes, 'gifts.csv', admin)
+        self.assertNotEqual(batch1.status, ImportBatchStatus.DUPLICATE)
+
+        batch2 = import_spo_gifts(csv_bytes, 'gifts.csv', admin, force=True)
+        self.assertNotEqual(batch2.status, ImportBatchStatus.DUPLICATE)
+        self.assertEqual(batch2.status, ImportBatchStatus.COMPLETED)
