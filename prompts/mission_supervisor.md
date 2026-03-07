@@ -1,0 +1,2 @@
+Create a mission supervisor role that has the same access as the Admin role but can only see missionaries under them. Admins can see all staff members. 
+Also, mission supervisors and admins should be able to select missionaries and view their dashboard.
