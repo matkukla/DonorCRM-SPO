@@ -54,8 +54,8 @@ def _make_gifts_csv(*rows, include_type_label=True):
     """Build minimal SPO Gifts CSV bytes.
 
     Each row should be a dict with keys: gift_id, constituent_id, is_anonymous,
-    solicitor_name, solicitor_amount, gift_amount, gift_date, prayer_description.
-    Missing keys default to empty string.
+    solicitor_name, solicitor_amount, gift_amount, gift_date, prayer_description,
+    payment_type. Missing keys default to empty string.
     """
     buf = io.StringIO()
     writer = csv_mod.writer(buf)
@@ -65,6 +65,7 @@ def _make_gifts_csv(*rows, include_type_label=True):
         'Gift ID', 'Constituent ID', 'Gift Is Anonymous', 'Solicitor Name',
         'Solicitor Amount', 'Gift Amount', 'Gift Date',
         'Gift Specific Attributes Prayer Requests Description',
+        'Gift Payment Type',
     ])
     defaults = {
         'gift_id': 'G001',
@@ -75,6 +76,7 @@ def _make_gifts_csv(*rows, include_type_label=True):
         'gift_amount': '50.00',
         'gift_date': '2025-01-15',
         'prayer_description': '',
+        'payment_type': '',
     }
     for row in rows:
         r = {**defaults, **row}
@@ -87,6 +89,7 @@ def _make_gifts_csv(*rows, include_type_label=True):
             r['gift_amount'],
             r['gift_date'],
             r['prayer_description'],
+            r['payment_type'],
         ])
     return buf.getvalue().encode('utf-8')
 
@@ -710,6 +713,29 @@ class TestImportSpoGifts(TestCase):
         self.assertEqual(batch.status, ImportBatchStatus.COMPLETED)
         # Type-label row skipped; exactly 1 data row processed
         self.assertEqual(batch.total_rows, 1)
+
+    def test_payment_type_set_on_spo_gift(self):
+        """Gift Payment Type column is mapped and stored on Gift.payment_type."""
+        from apps.gifts.models import Gift, Solicitor
+        from apps.imports.spo_services import import_spo_gifts
+        from apps.imports.re_services import normalize_solicitor_name
+
+        admin = _make_admin()
+        missionary = _make_user('pay.type@test.com', 'Pay', 'Type')
+        Solicitor.objects.create(
+            user=missionary,
+            normalized_name=normalize_solicitor_name(missionary.full_name),
+        )
+        csv_bytes = _make_gifts_csv({
+            'gift_id': 'G-PAY-01',
+            'solicitor_name': 'Pay Type',
+            'gift_amount': '100.00',
+            'payment_type': 'EFT',
+        })
+        batch = import_spo_gifts(csv_bytes, 'gifts.csv', admin)
+        self.assertEqual(batch.status, ImportBatchStatus.COMPLETED)
+        gift = Gift.objects.get(external_gift_id='G-PAY-01')
+        self.assertEqual(gift.payment_type, 'direct_deposit')  # EFT maps to direct_deposit
 
 
 class TestImportSpoPrayers(TestCase):
