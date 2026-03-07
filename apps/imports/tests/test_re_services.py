@@ -400,3 +400,66 @@ class TestMalformedCSVHandling:
         # Null bytes are stripped by decode_csv_bytes, import should succeed
         assert batch.status == ImportBatchStatus.COMPLETED
         assert batch.created_count == 1
+
+
+# ---------------------------------------------------------------------------
+# Recurring gift prayer extraction tests
+# ---------------------------------------------------------------------------
+
+@pytest.mark.django_db
+class TestImportRERecurringGiftsPrayers:
+    """Test prayer extraction from recurring gift import."""
+
+    @pytest.fixture
+    def setup_contact(self, staff_user):
+        return Contact.objects.create(
+            owner=staff_user,
+            external_constituent_id='C-PRAY-01',
+            first_name='Prayer',
+            last_name='Donor',
+        )
+
+    def test_prayer_extracted_from_recurring_gift(self, admin_user, staff_user, setup_contact):
+        """Recurring gift with prayer_description creates PrayerIntention."""
+        from apps.prayers.models import PrayerIntention
+        csv_data = _to_bytes(
+            'Recurring Gift\n'
+            'Gift ID,Constituent ID,Amount,Frequency,Gift Date,Status,'
+            'Gift Specific Attributes Prayer Requests Description\n'
+            'RG-PRAY-01,C-PRAY-01,100.00,Monthly,2025-01-01,Active,Healing for family\n'
+        )
+        batch = import_re_recurring_gifts(csv_data, 'recurring.csv', admin_user, staff_user)
+        assert batch.status == ImportBatchStatus.COMPLETED
+        assert PrayerIntention.objects.count() == 1
+        prayer = PrayerIntention.objects.first()
+        assert 'Healing' in prayer.description
+        assert prayer.contact == setup_contact
+        # No gift M2M link — recurring gifts have no associated Gift record
+        assert prayer.gifts.count() == 0
+
+    def test_no_prayer_when_description_empty(self, admin_user, staff_user, setup_contact):
+        """Recurring gift with empty prayer description creates no PrayerIntention."""
+        from apps.prayers.models import PrayerIntention
+        csv_data = _to_bytes(
+            'Recurring Gift\n'
+            'Gift ID,Constituent ID,Amount,Frequency,Gift Date,Status,'
+            'Gift Specific Attributes Prayer Requests Description\n'
+            'RG-NOPRAY-01,C-PRAY-01,100.00,Monthly,2025-01-01,Active,\n'
+        )
+        batch = import_re_recurring_gifts(csv_data, 'recurring.csv', admin_user, staff_user)
+        assert batch.status == ImportBatchStatus.COMPLETED
+        assert PrayerIntention.objects.count() == 0
+
+    def test_prayer_dedup_across_recurring_gifts(self, admin_user, staff_user, setup_contact):
+        """Two recurring gifts with identical prayer text create one PrayerIntention."""
+        from apps.prayers.models import PrayerIntention
+        csv_data = _to_bytes(
+            'Recurring Gift\n'
+            'Gift ID,Constituent ID,Amount,Frequency,Gift Date,Status,'
+            'Gift Specific Attributes Prayer Requests Description\n'
+            'RG-DEDUP-01,C-PRAY-01,100.00,Monthly,2025-01-01,Active,Same prayer text\n'
+            'RG-DEDUP-02,C-PRAY-01,200.00,Monthly,2025-02-01,Active,Same prayer text\n'
+        )
+        batch = import_re_recurring_gifts(csv_data, 'recurring.csv', admin_user, staff_user)
+        assert batch.status == ImportBatchStatus.COMPLETED
+        assert PrayerIntention.objects.count() == 1
