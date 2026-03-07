@@ -31,6 +31,9 @@ from apps.imports.views import (
     REGiftImportView,
     RERecurringGiftImportView,
     RESolicitorImportView,
+    SPOGiftImportView,
+    SPOMissionaryImportView,
+    SPOPrayerImportView,
     TransactionImportView,
     TransactionTemplateView,
 )
@@ -54,6 +57,10 @@ urlpatterns = [
     path('re/gifts/', REGiftImportView.as_view(), name='import-re-gifts'),
     path('re/recurring-gifts/', RERecurringGiftImportView.as_view(), name='import-re-recurring-gifts'),
     path('re/solicitors/', RESolicitorImportView.as_view(), name='import-re-solicitors'),
+    # SPO import pipeline (three-step workflow)
+    path('spo/missionaries/', SPOMissionaryImportView.as_view(), name='import-spo-missionaries'),
+    path('spo/gifts/', SPOGiftImportView.as_view(), name='import-spo-gifts'),
+    path('spo/prayers/', SPOPrayerImportView.as_view(), name='import-spo-prayers'),
     path('pledges/', PledgeImportView.as_view(), name='import-pledges'),
     path('transactions/', TransactionImportView.as_view(), name='import-transactions'),
     path('export/contacts/', ContactExportView.as_view(), name='export-contacts'),
