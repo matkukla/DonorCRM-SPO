@@ -239,6 +239,19 @@ Phases execute in numeric order: 38 -> 39 -> 40 -> 41 -> 42
 
 **Total:** 6 milestones shipped, 112 plans executed across 42 phases. v2.2 in progress (6 phases, 31 requirements).
 
+### Phase 44: Modify the SPO data import and reconciliation workflow
+
+**Goal:** Build a three-step SPO import pipeline (missionary reconciliation, gift attribution, prayer extraction) with MissionaryAlias name matching, anonymous donor handling, tri-source comparison, and full audit trail
+**Requirements**: SPO-FOUNDATION, SPO-RECONCILE, SPO-GIFTS, SPO-PRAYERS, SPO-CLI, SPO-API
+**Depends on:** Phase 43
+**Plans:** 4/4 plans complete
+
+Plans:
+- [ ] 44-01-PLAN.md — MissionaryAlias model + SPO ImportBatchType choices + migration + admin + test stubs (SPO-FOUNDATION)
+- [ ] 44-02-PLAN.md — reconcile_missionaries() service: three-level name matching, tri-source comparison, audit output (SPO-RECONCILE)
+- [ ] 44-03-PLAN.md — import_spo_gifts() + import_spo_prayers() services: gift attribution, anonymous donor handling, prayer extraction (SPO-GIFTS, SPO-PRAYERS)
+- [ ] 44-04-PLAN.md — Three management commands + three API views + URL routes (SPO-CLI, SPO-API)
+
 ---
 
-*Last updated: 2026-02-27 (Phase 39 plans created)*
+*Last updated: 2026-03-07 (Phase 44 plans created)*

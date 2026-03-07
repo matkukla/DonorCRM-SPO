@@ -197,6 +197,9 @@ class ImportBatchType(models.TextChoices):
     GENERIC_CONTACTS = 'generic_contacts', 'Generic Contacts'
     GENERIC_DONATIONS = 'generic_donations', 'Generic Donations'
     SMARTSHEET_MPD = 'smartsheet_mpd', 'Smartsheet MPD'
+    SPO_MISSIONARY = 'spo_missionary', 'SPO Missionary Reconciliation'
+    SPO_GIFT = 'spo_gift', 'SPO Gift Import'
+    SPO_PRAYER = 'spo_prayer', 'SPO Prayer Import'
 
 
 class ImportBatchStatus(models.TextChoices):
@@ -373,3 +376,45 @@ class MPDSnapshot(TimeStampedModel):
 
     def __str__(self):
         return f'MPD Snapshot for {self.user} ({self.upload.created_at.date()})'
+
+
+class MissionaryAlias(TimeStampedModel):
+    """
+    Maps ambiguous SPO source name variants to known missionary Users.
+
+    Drives the three-level matching logic in the SPO reconciliation pipeline:
+      1. Exact full name match
+      2. Normalized (punctuation-stripped lowercase) match
+      3. Alias table lookup (this model)
+
+    user=None means an admin has seen this name and marked it as unresolved —
+    distinct from "never seen before". This prevents repeated auto-create attempts
+    for known-unresolvable names.
+    """
+    source_name = models.CharField(
+        'source name',
+        max_length=255,
+        unique=True,
+        db_index=True,
+        help_text='Name as it appears in SPO CSV export'
+    )
+    user = models.ForeignKey(
+        'users.User',
+        on_delete=models.CASCADE,
+        related_name='name_aliases',
+        null=True,
+        blank=True,
+        help_text='Resolved missionary. Null = unresolved.'
+    )
+    notes = models.TextField(
+        blank=True,
+        help_text='Optional admin notes'
+    )
+
+    class Meta:
+        db_table = 'missionary_aliases'
+        verbose_name = 'missionary alias'
+        verbose_name_plural = 'missionary aliases'
+
+    def __str__(self):
+        return f'{self.source_name} -> {self.user}'

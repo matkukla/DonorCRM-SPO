@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: UI Polish, Journal Report & Supervisor Role
 status: executing
-stopped_at: Completed 43-05-PLAN.md
-last_updated: "2026-03-04T22:16:39.660Z"
+stopped_at: Completed 44-04-PLAN.md
+last_updated: "2026-03-07T20:40:31.069Z"
 last_activity: "2026-03-04 — Starting Phase 43 (Roles Redesign: coach role, role renames, assignments page, team page)"
 progress:
-  total_phases: 6
-  completed_phases: 6
-  total_plans: 18
-  completed_plans: 18
+  total_phases: 7
+  completed_phases: 7
+  total_plans: 22
+  completed_plans: 22
   percent: 100
 ---
 
@@ -29,7 +29,7 @@ Milestone: v2.2 UI Polish, Journal Report & Supervisor Role
 Phase: 43 of 43 (Roles Redesign)
 Plan: 0 of 5 in current phase (starting execution)
 Status: Phase 43 in progress
-Last activity: 2026-03-04 — Starting Phase 43 (Roles Redesign: coach role, role renames, assignments page, team page)
+Last activity: 2026-03-07 - Completed quick task 9: Create automated tests to make sure all 4 SPO CSV files map correctly to the application
 
 Progress: [██████████] 100%
 
@@ -68,6 +68,10 @@ Progress: [██████████] 100%
 | Phase 43 P02 | 12 | 6 tasks | 8 files |
 | Phase 43 P4 | 65s | 3 tasks | 1 files |
 | Phase 43 P05 | 5 | 4 tasks | 2 files |
+| Phase 44 P01 | 3 | 2 tasks | 7 files |
+| Phase 44 P02 | ~16min | 2 tasks | 3 files |
+| Phase 44 P03 | 8min | 2 tasks | 2 files |
+| Phase 44 P04 | 9min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -119,6 +123,19 @@ v2.2 decisions:
 - [Phase 43]: Map<string, assignment> initialized from API on first load; dirty Set tracks changed IDs for diff-based save
 - [Phase 43]: MissionaryProfilePage derives missionary data from supervised_users in auth context — no extra getUser() call needed
 - [Phase 43]: Coach role check hides Donations tab and skips useGifts fetch by passing empty params
+- [Phase 44]: SimpleListFilter (UnresolvedAliasFilter) for MissionaryAliasAdmin — user__isnull not valid as list_filter value in Django admin
+- [Phase 44]: MissionaryAlias user=None sentinel means admin-flagged unresolved (distinct from never seen) — prevents auto-create loop for known-unresolvable names
+- [Phase 44]: csv.writer used in test helper _make_solicitor_csv to properly quote names with commas — naive newline join caused CSV field-splitting on 'OBrien, Pat'
+- [Phase 44]: [Phase 44-02]: force=True deletes existing ImportBatch before re-creating — UniqueConstraint on (import_type, sha256_hash) prevents simple re-insert
+- [Phase 44]: [Phase 44-02]: Solicitor record created at reconcile time (not gift import time) — import_spo_gifts can assume Solicitor.user FK exists for resolved missionaries
+- [Phase 44]: import_spo_prayers() uses SPO_PRAYER dedup namespace separate from SPO_GIFT — allows re-running prayer extraction without reimporting gifts
+- [Phase 44]: [Phase 44-03]: _maybe_create_prayer_intention() called with actual signature (gift, prayer_text, contact, seen_prayers) — reuses existing RE service function; plan doc had incorrect simplified signature
+- [Phase 44]: force=True not exposed via API — admin must use CLI for force re-imports to prevent accidental web-based reimports
+- [Phase 44]: ZERO DONATIONS marker rendered in _print_summary for per_missionary entries with gifts_imported==0 — locked user decision from CONTEXT.md
+
+### Roadmap Evolution
+
+- Phase 44 added: Modify the SPO data import and reconciliation workflow
 
 ### Research Flags
 
@@ -140,11 +157,15 @@ None active.
 | 5 | Remove analytics tab from left sidebar | 2026-02-16 | db2b504 | [5-remove-analytics-tab-from-left-sidebar-a](./quick/5-remove-analytics-tab-from-left-sidebar-a/) |
 | 6 | Move Journals to sidebar & add action dialogs | 2026-02-16 | 34097d1 | [6-move-journal-tab-to-own-sidebar-tab-add-](./quick/6-move-journal-tab-to-own-sidebar-tab-add-/) |
 | 7 | Implement light and dark mode toggle | 2026-02-16 | ccb4c67 | [7-implement-light-and-dark-mode-toggle](./quick/7-implement-light-and-dark-mode-toggle/) |
+| 8 | Fix import feature to accept test CSV files | 2026-03-05 | eae3ca2 | [8-fix-import-feature-to-accept-test-csv-fi](./quick/8-fix-import-feature-to-accept-test-csv-fi/) |
+| 9 | Create automated tests to make sure all 4 SPO CSV files map correctly to the application | 2026-03-07 | a2f83ab | [9-create-automated-tests-to-make-sure-all-](./quick/9-create-automated-tests-to-make-sure-all-/) |
+| 10 | Analyze 4 CSV formats vs Phase 44 import pipeline | 2026-03-07 | f598891 | [10-read-import-analysis-md-to-analyze-the-c](./quick/10-read-import-analysis-md-to-analyze-the-c/) |
+| 11 | Fix two bugs from import analysis: SPO payment_type + RE recurring gift prayers | 2026-03-07 | 0b047ba | [11-fix-all-bugs-found-in-10-analysis-md](./quick/11-fix-all-bugs-found-in-10-analysis-md/) |
 
 ## Session Continuity
 
-Last session: 2026-03-04T22:10:55.453Z
-Stopped at: Completed 43-05-PLAN.md
+Last session: 2026-03-07T22:50:00Z
+Stopped at: Completed quick task 11 (SPO payment_type + RE recurring gift prayer bugs)
 Resume: All phases complete. v2.2 milestone shipped.
 
 ---
