@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: UI Polish, Journal Report & Supervisor Role
 status: executing
-stopped_at: Completed 44-04-PLAN.md
-last_updated: "2026-03-07T20:40:31.069Z"
-last_activity: "2026-03-04 — Starting Phase 43 (Roles Redesign: coach role, role renames, assignments page, team page)"
+stopped_at: Phase 45 context gathered
+last_updated: "2026-03-07T23:51:32.920Z"
+last_activity: "2026-03-07 - Completed quick task 12: Fix bug where owner of contacts in Render database is not being mapped correctly"
 progress:
-  total_phases: 7
+  total_phases: 9
   completed_phases: 7
   total_plans: 22
   completed_plans: 22
@@ -136,6 +136,8 @@ v2.2 decisions:
 ### Roadmap Evolution
 
 - Phase 44 added: Modify the SPO data import and reconciliation workflow
+- Phase 45 added: Fix backend-to-frontend data mapping issues (import giving stats, organization name full-stack)
+- Phase 46 added: Multiple supervisors per missionary
 
 ### Research Flags
 
@@ -165,8 +167,8 @@ None active.
 
 ## Session Continuity
 
-Last session: 2026-03-07T23:27:00Z
-Stopped at: Completed quick task 12 (fix owner reassignment guard in import_re_gifts)
+Last session: 2026-03-07T23:51:32.916Z
+Stopped at: Phase 45 context gathered
 Resume: All phases complete. v2.2 milestone shipped.
 
 ---
