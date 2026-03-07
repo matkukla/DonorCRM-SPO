@@ -450,6 +450,20 @@ class TestImportRERecurringGiftsPrayers:
         assert batch.status == ImportBatchStatus.COMPLETED
         assert PrayerIntention.objects.count() == 0
 
+    def test_prayer_dedup_across_recurring_gifts(self, admin_user, staff_user, setup_contact):
+        """Two recurring gifts with identical prayer text create one PrayerIntention."""
+        from apps.prayers.models import PrayerIntention
+        csv_data = _to_bytes(
+            'Recurring Gift\n'
+            'Gift ID,Constituent ID,Amount,Frequency,Gift Date,Status,'
+            'Gift Specific Attributes Prayer Requests Description\n'
+            'RG-DEDUP-01,C-PRAY-01,100.00,Monthly,2025-01-01,Active,Same prayer text\n'
+            'RG-DEDUP-02,C-PRAY-01,200.00,Monthly,2025-02-01,Active,Same prayer text\n'
+        )
+        batch = import_re_recurring_gifts(csv_data, 'recurring.csv', admin_user, staff_user)
+        assert batch.status == ImportBatchStatus.COMPLETED
+        assert PrayerIntention.objects.count() == 1
+
 
 # ---------------------------------------------------------------------------
 # Owner reassignment tests
@@ -552,17 +566,3 @@ class TestImportREGiftsOwnerReassignment:
         assert contact.owner == admin1, (
             f"Expected owner to remain {admin1}, got {contact.owner}"
         )
-
-    def test_prayer_dedup_across_recurring_gifts(self, admin_user, staff_user, setup_contact):
-        """Two recurring gifts with identical prayer text create one PrayerIntention."""
-        from apps.prayers.models import PrayerIntention
-        csv_data = _to_bytes(
-            'Recurring Gift\n'
-            'Gift ID,Constituent ID,Amount,Frequency,Gift Date,Status,'
-            'Gift Specific Attributes Prayer Requests Description\n'
-            'RG-DEDUP-01,C-PRAY-01,100.00,Monthly,2025-01-01,Active,Same prayer text\n'
-            'RG-DEDUP-02,C-PRAY-01,200.00,Monthly,2025-02-01,Active,Same prayer text\n'
-        )
-        batch = import_re_recurring_gifts(csv_data, 'recurring.csv', admin_user, staff_user)
-        assert batch.status == ImportBatchStatus.COMPLETED
-        assert PrayerIntention.objects.count() == 1
