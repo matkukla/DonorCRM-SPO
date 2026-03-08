@@ -7,6 +7,7 @@ export interface ContactListItem {
   first_name: string
   last_name: string
   full_name: string
+  organization_name?: string
   email: string | null
   phone: string | null
   status: ContactStatus
@@ -40,6 +41,7 @@ export interface ContactDetail extends ContactListItem {
 export interface ContactCreate {
   first_name: string
   last_name: string
+  organization_name?: string
   email?: string
   phone?: string
   phone_secondary?: string
