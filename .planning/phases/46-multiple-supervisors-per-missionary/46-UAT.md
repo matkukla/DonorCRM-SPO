@@ -1,9 +1,9 @@
 ---
-status: complete
+status: resolved
 phase: 46-multiple-supervisors-per-missionary
 source: [46-01-SUMMARY.md, 46-02-SUMMARY.md, 46-03-SUMMARY.md, 46-04-SUMMARY.md, 46-05-SUMMARY.md]
 started: 2026-03-08T05:00:00Z
-updated: 2026-03-08T05:30:00Z
+updated: 2026-03-07T00:00:00Z
 ---
 
 ## Current Test
@@ -64,12 +64,18 @@ skipped: 0
 
 ## Gaps
 
-- truth: "Supervisor Edit Dialog shows only users that exist in the Users list (Admin > Users)"
-  status: failed
+- truth: "The Assignments page supervisor list should only show users that currently have role=supervisor"
+  status: resolved
   reason: "User reported: Wendy Burger isn't a user but is shown in Assignments as a supervisor"
   severity: major
   test: 9
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "views_assignments.py line 37 uses m.supervisors.all() with no role filter — any user ID in the M2M junction table appears in supervisor_ids regardless of current role. The migration 0006 also copied FK data into M2M without role-checking the target user, creating ghost rows."
+  artifacts:
+    - path: "apps/users/views_assignments.py"
+      issue: "line 37: m.supervisors.all() must be m.supervisors.filter(role='supervisor', is_active=True); same for m.coaches on line 38"
+    - path: "apps/users/migrations/0006_m2m_supervisors.py"
+      issue: "copy_fk_to_m2m copied FK assignments without validating target user role — ghost rows may exist in junction table"
+  missing:
+    - "Filter m.supervisors and m.coaches by role and is_active in views_assignments.py GET response"
+    - "Data cleanup: purge M2M junction rows where supervisor/coach user does not have the correct role"
+  debug_session: ".planning/debug/ghost-supervisor-assignments-ui.md"
