@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: UI Polish, Journal Report & Supervisor Role
 status: executing
-stopped_at: Completed 46-04-PLAN.md
-last_updated: "2026-03-08T05:08:14.662Z"
+stopped_at: Completed 46-05-PLAN.md
+last_updated: "2026-03-08T05:11:15.520Z"
 last_activity: "2026-03-07 - Completed quick task 12: Fix bug where owner of contacts in Render database is not being mapped correctly"
 progress:
   total_phases: 9
-  completed_phases: 8
+  completed_phases: 9
   total_plans: 31
-  completed_plans: 30
+  completed_plans: 31
   percent: 100
 ---
 
@@ -80,6 +80,7 @@ Progress: [██████████] 100%
 | Phase 46-multiple-supervisors-per-missionary P02 | 9 | 2 tasks | 4 files |
 | Phase 46 P03 | 3min | 2 tasks | 3 files |
 | Phase 46 P04 | 2min | 2 tasks | 2 files |
+| Phase 46 P05 | 5min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -154,6 +155,7 @@ v2.2 decisions:
 - [Phase 46]: UserSerializer: removed stale supervisor/coach_id FK fields; UserAdminUpdateSerializer.update() now uses M2M .set()
 - [Phase 46]: Auto-clear on role change implemented in User.save() (not serializer) because tests call sup.save() directly — model is the correct invariant layer
 - [Phase 46]: SupervisorCell+CoachCell sub-components keep per-row popover state local; bulkDirty Set tracks additive=true for bulk-applied rows vs full-replace for individual edits
+- [Phase 46]: Frontend derivation for supervised/coached IDs: filter all users by role='missionary' and u.supervisor_ids.includes(supervisorUser.id) — avoids backend change
 
 ### Roadmap Evolution
 
@@ -189,8 +191,8 @@ None active.
 
 ## Session Continuity
 
-Last session: 2026-03-08T05:08:14.658Z
-Stopped at: Completed 46-04-PLAN.md
+Last session: 2026-03-08T05:11:15.516Z
+Stopped at: Completed 46-05-PLAN.md
 Resume: All phases complete. v2.2 milestone shipped.
 
 ---
