@@ -34,8 +34,8 @@ class AssignmentsView(APIView):
                     'id': str(m.id),
                     'email': m.email,
                     'full_name': m.full_name,
-                    'supervisor_ids': [str(s.id) for s in m.supervisors.all()],
-                    'coach_ids': [str(c.id) for c in m.coaches.all()],
+                    'supervisor_ids': [str(s.id) for s in m.supervisors.filter(role='supervisor', is_active=True)],
+                    'coach_ids': [str(c.id) for c in m.coaches.filter(role='coach', is_active=True)],
                 }
                 for m in missionaries
             ],
