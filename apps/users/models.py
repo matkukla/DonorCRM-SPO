@@ -124,6 +124,21 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
             models.Index(fields=['is_active']),
         ]
 
+    def save(self, *args, **kwargs):
+        """Override save to auto-clear M2M assignments when role changes away from supervisor/coach."""
+        old_role = None
+        if self.pk:
+            try:
+                old_role = User.objects.filter(pk=self.pk).values_list('role', flat=True).first()
+            except Exception:
+                pass
+        super().save(*args, **kwargs)
+        if old_role is not None:
+            if old_role == UserRole.SUPERVISOR and self.role != UserRole.SUPERVISOR:
+                self.supervised_users.clear()
+            if old_role == UserRole.COACH and self.role != UserRole.COACH:
+                self.coached_users.clear()
+
     def __str__(self):
         return f'{self.first_name} {self.last_name} ({self.email})'
 

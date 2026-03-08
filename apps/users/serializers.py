@@ -14,13 +14,21 @@ class UserSerializer(serializers.ModelSerializer):
     Used only by admin-gated endpoints (UserListCreateView, UserDetailView).
     """
     full_name = serializers.CharField(read_only=True)
+    supervisor_ids = serializers.SerializerMethodField()
+    coach_ids = serializers.SerializerMethodField()
+
+    def get_supervisor_ids(self, obj):
+        return [str(s.id) for s in obj.supervisors.all()]
+
+    def get_coach_ids(self, obj):
+        return [str(c.id) for c in obj.coaches.all()]
 
     class Meta:
         model = User
         fields = [
             'id', 'email', 'first_name', 'last_name', 'full_name',
-            'phone', 'role', 'monthly_goal', 'email_notifications',
-            'is_active', 'date_joined', 'last_login_at'
+            'phone', 'role', 'supervisor_ids', 'coach_ids', 'monthly_goal',
+            'email_notifications', 'is_active', 'date_joined', 'last_login_at'
         ]
         read_only_fields = ['id', 'date_joined', 'last_login_at']
 
