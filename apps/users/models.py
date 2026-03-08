@@ -51,24 +51,22 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
         db_index=True
     )
 
-    # Supervisor relationship
-    supervisor = models.ForeignKey(
+    # Supervisor relationships (M2M: a missionary can have multiple supervisors)
+    supervisors = models.ManyToManyField(
         'self',
-        null=True,
+        symmetrical=False,
         blank=True,
-        on_delete=models.SET_NULL,
         related_name='supervised_users',
-        help_text='The supervisor assigned to this user (if any)'
+        help_text='Supervisors assigned to this missionary'
     )
 
-    # Coach relationship
-    coach = models.ForeignKey(
+    # Coach relationships (M2M: a missionary can have multiple coaches)
+    coaches = models.ManyToManyField(
         'self',
-        null=True,
+        symmetrical=False,
         blank=True,
-        on_delete=models.SET_NULL,
         related_name='coached_users',
-        help_text='Coach assigned to this user'
+        help_text='Coaches assigned to this missionary'
     )
 
     # Support goal tracking for staff users
