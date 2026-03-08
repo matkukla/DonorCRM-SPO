@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: UI Polish, Journal Report & Supervisor Role
 status: executing
-stopped_at: Completed 45-03-PLAN.md
-last_updated: "2026-03-08T00:18:22.120Z"
+stopped_at: Completed 45-04-PLAN.md (Phase 45 complete)
+last_updated: "2026-03-08T00:30:03.799Z"
 last_activity: "2026-03-07 - Completed quick task 12: Fix bug where owner of contacts in Render database is not being mapped correctly"
 progress:
   total_phases: 9
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 26
-  completed_plans: 25
+  completed_plans: 26
   percent: 100
 ---
 
@@ -75,6 +75,7 @@ Progress: [██████████] 100%
 | Phase 45 P01 | 2 | 2 tasks | 2 files |
 | Phase 45 P02 | 3 | 2 tasks | 5 files |
 | Phase 45 P03 | 2min | 2 tasks | 3 files |
+| Phase 45 P04 | 10min | 1 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -141,6 +142,8 @@ v2.2 decisions:
 - [Phase 45]: CSV export uses contact.full_name property instead of f-string — single source of truth for display name logic
 - [Phase 45]: organization_name added to ContactListItem only — ContactDetail inherits via extends, no duplication
 - [Phase 45]: ContactForm validation: combined hasPersonName || hasOrgName check replaces individual first/last required checks
+- [Phase 45]: required=False, allow_blank=True added to ContactDetailSerializer first_name/last_name — DRF re-enforces required independently of model field
+- [Phase 45]: blank=True added to Contact.first_name and last_name — required so org contacts can be edited without validation errors
 
 ### Roadmap Evolution
 
@@ -176,8 +179,8 @@ None active.
 
 ## Session Continuity
 
-Last session: 2026-03-08T00:18:22.116Z
-Stopped at: Completed 45-03-PLAN.md
+Last session: 2026-03-08T00:29:57.440Z
+Stopped at: Completed 45-04-PLAN.md (Phase 45 complete)
 Resume: All phases complete. v2.2 milestone shipped.
 
 ---
