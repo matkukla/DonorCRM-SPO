@@ -245,6 +245,123 @@ class TestAutoUnassignOnRoleChange:
 
 
 # ---------------------------------------------------------------------------
+# Role-filter regression tests (Plan 06: Ghost supervisor fix)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.django_db
+class TestAssignmentsViewRoleFilter:
+    """Regression tests ensuring GET only returns currently-valid role holders.
+
+    Ghost rows are M2M entries where the referenced user no longer holds the
+    expected role (e.g., was supervisor, now missionary). These were created by
+    migration 0006 which copied FK data without role validation.
+    """
+
+    def _admin_client(self):
+        """Return an APIClient authenticated as an admin user."""
+        admin = AdminUserFactory()
+        client = APIClient()
+        client.force_authenticate(user=admin)
+        return client
+
+    def test_ghost_supervisor_excluded_from_get(self):
+        """A role-changed user (supervisor → missionary) must NOT appear in supervisor_ids.
+
+        Ghost row created by direct DB update (bypassing User.save() auto-clear),
+        mimicking data left by the FK-to-M2M migration without role validation.
+        """
+        client = self._admin_client()
+        missionary = UserFactory()
+        ex_sup = SupervisorUserFactory()
+
+        # Assign as supervisor via M2M
+        missionary.supervisors.add(ex_sup)
+
+        # Directly change role in DB, bypassing User.save() — creates ghost row
+        User.objects.filter(id=ex_sup.id).update(role='missionary')
+
+        response = client.get('/api/v1/users/admin/assignments/')
+
+        assert response.status_code == 200
+        missionary_entry = next(
+            (m for m in response.data['missionaries'] if str(m['id']) == str(missionary.id)),
+            None,
+        )
+        assert missionary_entry is not None, "Missionary must appear in GET response"
+        assert str(ex_sup.id) not in missionary_entry['supervisor_ids'], (
+            "Ghost supervisor (role changed to missionary) must not appear in supervisor_ids"
+        )
+
+    def test_ghost_coach_excluded_from_get(self):
+        """A role-changed user (coach → missionary) must NOT appear in coach_ids.
+
+        Ghost row created by direct DB update, bypassing User.save() auto-clear.
+        """
+        client = self._admin_client()
+        missionary = UserFactory()
+        ex_coach = CoachUserFactory()
+
+        # Assign as coach via M2M
+        missionary.coaches.add(ex_coach)
+
+        # Directly change role in DB, bypassing User.save()
+        User.objects.filter(id=ex_coach.id).update(role='missionary')
+
+        response = client.get('/api/v1/users/admin/assignments/')
+
+        assert response.status_code == 200
+        missionary_entry = next(
+            (m for m in response.data['missionaries'] if str(m['id']) == str(missionary.id)),
+            None,
+        )
+        assert missionary_entry is not None, "Missionary must appear in GET response"
+        assert str(ex_coach.id) not in missionary_entry['coach_ids'], (
+            "Ghost coach (role changed to missionary) must not appear in coach_ids"
+        )
+
+    def test_active_supervisor_with_correct_role_appears_in_get(self):
+        """An active supervisor with role='supervisor' DOES appear in supervisor_ids."""
+        client = self._admin_client()
+        missionary = UserFactory()
+        sup = SupervisorUserFactory()
+        missionary.supervisors.add(sup)
+
+        response = client.get('/api/v1/users/admin/assignments/')
+
+        assert response.status_code == 200
+        missionary_entry = next(
+            (m for m in response.data['missionaries'] if str(m['id']) == str(missionary.id)),
+            None,
+        )
+        assert missionary_entry is not None
+        assert str(sup.id) in missionary_entry['supervisor_ids'], (
+            "Active supervisor with correct role must appear in supervisor_ids"
+        )
+
+    def test_inactive_supervisor_excluded_from_get(self):
+        """A supervisor with is_active=False must NOT appear in supervisor_ids."""
+        client = self._admin_client()
+        missionary = UserFactory()
+        sup = SupervisorUserFactory()
+        missionary.supervisors.add(sup)
+
+        # Deactivate the supervisor via direct DB update (bypasses save() hooks)
+        User.objects.filter(id=sup.id).update(is_active=False)
+
+        response = client.get('/api/v1/users/admin/assignments/')
+
+        assert response.status_code == 200
+        missionary_entry = next(
+            (m for m in response.data['missionaries'] if str(m['id']) == str(missionary.id)),
+            None,
+        )
+        assert missionary_entry is not None
+        assert str(sup.id) not in missionary_entry['supervisor_ids'], (
+            "Inactive supervisor (is_active=False) must not appear in supervisor_ids"
+        )
+
+
+# ---------------------------------------------------------------------------
 # Migration preservation (integration / manual test)
 # ---------------------------------------------------------------------------
 
