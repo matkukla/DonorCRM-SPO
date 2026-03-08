@@ -30,6 +30,8 @@ class ContactDetailSerializer(serializers.ModelSerializer):
     Serializer for contact detail view (all fields).
     """
     full_name = serializers.CharField(read_only=True)
+    first_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    last_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
     full_address = serializers.CharField(read_only=True)
     owner_name = serializers.CharField(source='owner.full_name', read_only=True)
     has_active_pledge = serializers.BooleanField(read_only=True)
