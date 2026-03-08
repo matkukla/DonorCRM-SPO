@@ -19,7 +19,7 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'id', 'email', 'first_name', 'last_name', 'full_name',
-            'phone', 'role', 'supervisor', 'coach_id', 'monthly_goal', 'email_notifications',
+            'phone', 'role', 'monthly_goal', 'email_notifications',
             'is_active', 'date_joined', 'last_login_at'
         ]
         read_only_fields = ['id', 'date_joined', 'last_login_at']
@@ -104,15 +104,13 @@ class UserAdminUpdateSerializer(serializers.ModelSerializer):
         coached_ids = validated_data.pop('coached_user_ids', None)
         instance = super().update(instance, validated_data)
         if supervised_ids is not None:
-            # Clear existing supervised users (set their supervisor to None)
-            instance.supervised_users.update(supervisor=None)
-            # Assign new supervised users
-            User.objects.filter(id__in=supervised_ids, is_active=True).update(supervisor=instance)
+            # Set supervised users via M2M (replaces existing assignments)
+            supervised_users = User.objects.filter(id__in=supervised_ids, is_active=True)
+            instance.supervised_users.set(supervised_users)
         if coached_ids is not None:
-            # Clear existing coached users (set their coach to None)
-            instance.coached_users.update(coach=None)
-            # Assign new coached users
-            User.objects.filter(id__in=coached_ids, is_active=True).update(coach=instance)
+            # Set coached users via M2M (replaces existing assignments)
+            coached_users = User.objects.filter(id__in=coached_ids, is_active=True)
+            instance.coached_users.set(coached_users)
         return instance
 
 

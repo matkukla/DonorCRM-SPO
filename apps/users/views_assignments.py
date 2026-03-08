@@ -14,7 +14,7 @@ class AssignmentsView(APIView):
     def get(self, request):
         missionaries = User.objects.filter(
             role='missionary', is_active=True
-        ).select_related('supervisor', 'coach').order_by('last_name', 'first_name')
+        ).prefetch_related('supervisors', 'coaches').order_by('last_name', 'first_name')
 
         supervisors = User.objects.filter(
             role='supervisor', is_active=True
@@ -34,8 +34,8 @@ class AssignmentsView(APIView):
                     'id': str(m.id),
                     'email': m.email,
                     'full_name': m.full_name,
-                    'supervisor_id': str(m.supervisor_id) if m.supervisor_id else None,
-                    'coach_id': str(m.coach_id) if m.coach_id else None,
+                    'supervisor_ids': [str(s.id) for s in m.supervisors.all()],
+                    'coach_ids': [str(c.id) for c in m.coaches.all()],
                 }
                 for m in missionaries
             ],
@@ -53,8 +53,9 @@ class AssignmentsView(APIView):
 
         for item in assignments:
             missionary_id = item.get('missionary_id')
-            supervisor_id = item.get('supervisor_id')  # uuid str or null
-            coach_id = item.get('coach_id')  # uuid str or null
+            supervisor_ids = item.get('supervisor_ids')  # list of uuid strs or null
+            coach_ids = item.get('coach_ids')  # list of uuid strs or null
+            additive = item.get('additive', False)
 
             try:
                 missionary = User.objects.get(id=missionary_id, role='missionary')
@@ -62,29 +63,36 @@ class AssignmentsView(APIView):
                 errors.append({'missionary_id': missionary_id, 'error': 'Not found or not a missionary'})
                 continue
 
-            # Validate supervisor
-            if supervisor_id is not None:
-                try:
-                    supervisor = User.objects.get(id=supervisor_id, role='supervisor')
-                    missionary.supervisor = supervisor
-                except User.DoesNotExist:
-                    errors.append({'missionary_id': missionary_id, 'error': f'Supervisor {supervisor_id} not found or not a supervisor'})
+            # Validate and assign supervisors
+            if supervisor_ids is not None:
+                valid_supervisors = list(
+                    User.objects.filter(id__in=supervisor_ids, role='supervisor')
+                )
+                found_ids = {str(s.id) for s in valid_supervisors}
+                invalid = [sid for sid in supervisor_ids if sid not in found_ids]
+                if invalid:
+                    errors.append({'missionary_id': missionary_id, 'error': f'Supervisor(s) not found or not supervisors: {invalid}'})
                     continue
-            else:
-                missionary.supervisor = None
+                if additive:
+                    missionary.supervisors.add(*valid_supervisors)
+                else:
+                    missionary.supervisors.set(valid_supervisors)
 
-            # Validate coach
-            if coach_id is not None:
-                try:
-                    coach = User.objects.get(id=coach_id, role='coach')
-                    missionary.coach = coach
-                except User.DoesNotExist:
-                    errors.append({'missionary_id': missionary_id, 'error': f'Coach {coach_id} not found or not a coach'})
+            # Validate and assign coaches
+            if coach_ids is not None:
+                valid_coaches = list(
+                    User.objects.filter(id__in=coach_ids, role='coach')
+                )
+                found_ids = {str(c.id) for c in valid_coaches}
+                invalid = [cid for cid in coach_ids if cid not in found_ids]
+                if invalid:
+                    errors.append({'missionary_id': missionary_id, 'error': f'Coach(es) not found or not coaches: {invalid}'})
                     continue
-            else:
-                missionary.coach = None
+                if additive:
+                    missionary.coaches.add(*valid_coaches)
+                else:
+                    missionary.coaches.set(valid_coaches)
 
-            missionary.save(update_fields=['supervisor', 'coach'])
             updated += 1
 
         return Response({'updated': updated, 'errors': errors})
