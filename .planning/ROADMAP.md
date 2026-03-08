@@ -252,6 +252,29 @@ Plans:
 - [ ] 44-03-PLAN.md — import_spo_gifts() + import_spo_prayers() services: gift attribution, anonymous donor handling, prayer extraction (SPO-GIFTS, SPO-PRAYERS)
 - [ ] 44-04-PLAN.md — Three management commands + three API views + URL routes (SPO-CLI, SPO-API)
 
+### Phase 45: Fix backend-to-frontend data mapping issues
+
+**Goal:** Org-type contacts (first_name and last_name blank, organization_name populated) display correctly across the entire application — in the contact list, search, CSV export, contact detail view, and create/edit form
+**Requirements**: ORG-01, ORG-02, ORG-03, ORG-04, ORG-05
+**Depends on:** Phase 44
+**Plans:** 4 plans
+
+Plans:
+- [ ] 45-01-PLAN.md — Wave 0: test stubs in test_org_contact_mapping.py + OrgContactFactory (ORG-01 through ORG-05)
+- [ ] 45-02-PLAN.md — Backend: full_name fallback + 3 serializers + 2 search paths + CSV export (ORG-01, ORG-02, ORG-03, ORG-04)
+- [ ] 45-03-PLAN.md — Frontend: TypeScript interfaces + ContactForm field/validation + ContactDetail display (ORG-01, ORG-03, ORG-05)
+- [ ] 45-04-PLAN.md — Human verification checkpoint: end-to-end org contact create/view/edit/search (ORG-01 through ORG-05)
+
+### Phase 46: Multiple supervisors per missionary
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 45
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 46 to break down)
+
 ---
 
-*Last updated: 2026-03-07 (Phase 44 plans created)*
+*Last updated: 2026-03-07 (Phase 45 plans created)*
