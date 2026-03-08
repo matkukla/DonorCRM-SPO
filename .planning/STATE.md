@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: UI Polish, Journal Report & Supervisor Role
 status: executing
-stopped_at: Completed 45-01-PLAN.md
-last_updated: "2026-03-08T00:09:36.557Z"
+stopped_at: Completed 45-02-PLAN.md
+last_updated: "2026-03-08T00:14:38.555Z"
 last_activity: "2026-03-07 - Completed quick task 12: Fix bug where owner of contacts in Render database is not being mapped correctly"
 progress:
   total_phases: 9
   completed_phases: 7
   total_plans: 26
-  completed_plans: 23
+  completed_plans: 24
   percent: 100
 ---
 
@@ -73,6 +73,7 @@ Progress: [██████████] 100%
 | Phase 44 P03 | 8min | 2 tasks | 2 files |
 | Phase 44 P04 | 9min | 2 tasks | 7 files |
 | Phase 45 P01 | 2 | 2 tasks | 2 files |
+| Phase 45 P02 | 3 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -135,6 +136,8 @@ v2.2 decisions:
 - [Phase 44]: ZERO DONATIONS marker rendered in _print_summary for per_missionary entries with gifts_imported==0 — locked user decision from CONTEXT.md
 - [Phase 45]: OrgContactFactory uses empty string literals for first_name/last_name to guarantee blank values for org-contact tests
 - [Phase 45]: All 7 org-contact behaviors specified as failing RED tests before implementation (Nyquist compliance for Wave 1)
+- [Phase 45]: organization_name NOT added to ContactDetailSerializer read_only_fields — must remain writable so users can edit it
+- [Phase 45]: CSV export uses contact.full_name property instead of f-string — single source of truth for display name logic
 
 ### Roadmap Evolution
 
@@ -170,8 +173,8 @@ None active.
 
 ## Session Continuity
 
-Last session: 2026-03-08T00:09:36.554Z
-Stopped at: Completed 45-01-PLAN.md
+Last session: 2026-03-08T00:14:38.551Z
+Stopped at: Completed 45-02-PLAN.md
 Resume: All phases complete. v2.2 milestone shipped.
 
 ---

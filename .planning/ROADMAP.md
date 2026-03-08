@@ -257,7 +257,7 @@ Plans:
 **Goal:** Org-type contacts (first_name and last_name blank, organization_name populated) display correctly across the entire application — in the contact list, search, CSV export, contact detail view, and create/edit form
 **Requirements**: ORG-01, ORG-02, ORG-03, ORG-04, ORG-05
 **Depends on:** Phase 44
-**Plans:** 1/4 plans executed
+**Plans:** 2/4 plans executed
 
 Plans:
 - [ ] 45-01-PLAN.md — Wave 0: test stubs in test_org_contact_mapping.py + OrgContactFactory (ORG-01 through ORG-05)
