@@ -270,7 +270,7 @@ Plans:
 **Goal:** Convert supervisor and coach relationships from ForeignKey to ManyToMany so each missionary can have multiple supervisors and coaches; update assignment UI with multi-select chips and a supervisor view toggle
 **Requirements**: SUPV-01, SUPV-02, SUPV-03
 **Depends on:** Phase 45
-**Plans:** 1/5 plans executed
+**Plans:** 2/5 plans executed
 
 Plans:
 - [ ] 46-01-PLAN.md — Wave 0: test stubs (test_m2m_assignments.py) + SupervisorUserFactory + CoachUserFactory (SUPV-01, SUPV-02, SUPV-03)

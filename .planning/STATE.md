@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: UI Polish, Journal Report & Supervisor Role
 status: executing
-stopped_at: Completed 46-01-PLAN.md
-last_updated: "2026-03-08T04:42:16.667Z"
+stopped_at: Completed 46-02-PLAN.md
+last_updated: "2026-03-08T04:59:26.036Z"
 last_activity: "2026-03-07 - Completed quick task 12: Fix bug where owner of contacts in Render database is not being mapped correctly"
 progress:
   total_phases: 9
   completed_phases: 8
   total_plans: 31
-  completed_plans: 27
+  completed_plans: 28
   percent: 100
 ---
 
@@ -77,6 +77,7 @@ Progress: [██████████] 100%
 | Phase 45 P03 | 2min | 2 tasks | 3 files |
 | Phase 45 P04 | 10min | 1 tasks | 3 files |
 | Phase 46 P01 | 196 | 2 tasks | 2 files |
+| Phase 46-multiple-supervisors-per-missionary P02 | 9 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -146,6 +147,9 @@ v2.2 decisions:
 - [Phase 45]: required=False, allow_blank=True added to ContactDetailSerializer first_name/last_name — DRF re-enforces required independently of model field
 - [Phase 45]: blank=True added to Contact.first_name and last_name — required so org contacts can be edited without validation errors
 - [Phase 46]: SupervisorUserFactory and CoachUserFactory inherit UserFactory with unique email sequences; all M2M behavioral contracts established as RED tests before any model changes
+- [Phase 46]: supervisors/coaches M2M field names plural; related_names supervised_users/coached_users kept identical so permissions.py unchanged
+- [Phase 46]: Migration uses RunPython copy_fk_to_m2m BEFORE RemoveField to preserve existing FK assignments in M2M join tables
+- [Phase 46]: UserSerializer: removed stale supervisor/coach_id FK fields; UserAdminUpdateSerializer.update() now uses M2M .set()
 
 ### Roadmap Evolution
 
@@ -181,8 +185,8 @@ None active.
 
 ## Session Continuity
 
-Last session: 2026-03-08T04:42:16.661Z
-Stopped at: Completed 46-01-PLAN.md
+Last session: 2026-03-08T04:59:26.031Z
+Stopped at: Completed 46-02-PLAN.md
 Resume: All phases complete. v2.2 milestone shipped.
 
 ---
