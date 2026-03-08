@@ -61,8 +61,8 @@ class Contact(TimeStampedModel):
     )
 
     # Basic information
-    first_name = models.CharField('first name', max_length=150)
-    last_name = models.CharField('last name', max_length=150)
+    first_name = models.CharField('first name', max_length=150, blank=True)
+    last_name = models.CharField('last name', max_length=150, blank=True)
     email = models.EmailField('email', blank=True)
     phone = models.CharField('phone', max_length=20, blank=True)
     phone_secondary = models.CharField('secondary phone', max_length=20, blank=True)
