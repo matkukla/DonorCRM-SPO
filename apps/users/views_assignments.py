@@ -50,6 +50,7 @@ class AssignmentsView(APIView):
 
         updated = 0
         errors = []
+        warnings = []
 
         for item in assignments:
             missionary_id = item.get('missionary_id')
@@ -94,5 +95,11 @@ class AssignmentsView(APIView):
                     missionary.coaches.set(valid_coaches)
 
             updated += 1
+            # Soft warning: flag missionaries with 5+ supervisors
+            if missionary.supervisors.count() >= 5:
+                warnings.append({
+                    'missionary_id': str(missionary.id),
+                    'warning': 'Missionary has 5+ supervisors assigned',
+                })
 
-        return Response({'updated': updated, 'errors': errors})
+        return Response({'updated': updated, 'errors': errors, 'warnings': warnings})
