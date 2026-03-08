@@ -54,7 +54,7 @@ class TestOrgContactAPIEndpoints:
         self.org_contact = OrgContactFactory(owner=self.user)
 
     def test_contact_list_api_includes_org_name(self):
-        resp = self.client.get('/contacts/')
+        resp = self.client.get('/api/v1/contacts/')
         assert resp.status_code == 200
         results = resp.json()['results']
         assert any(c['id'] == str(self.org_contact.id) for c in results)
@@ -63,14 +63,14 @@ class TestOrgContactAPIEndpoints:
 
     def test_list_endpoint_search_finds_org_by_name(self):
         query = self.org_contact.organization_name[:5]
-        resp = self.client.get(f'/contacts/?search={query}')
+        resp = self.client.get(f'/api/v1/contacts/?search={query}')
         assert resp.status_code == 200
         ids = [c['id'] for c in resp.json()['results']]
         assert str(self.org_contact.id) in ids
 
     def test_search_endpoint_finds_org_by_name(self):
         query = self.org_contact.organization_name[:5]
-        resp = self.client.get(f'/contacts/search/?q={query}')
+        resp = self.client.get(f'/api/v1/contacts/search/?q={query}')
         assert resp.status_code == 200
         ids = [c['id'] for c in resp.json()]
         assert str(self.org_contact.id) in ids
@@ -85,7 +85,7 @@ class TestOrgContactCSVExport:
         self.org_contact = OrgContactFactory(owner=self.user)
 
     def test_csv_export_uses_full_name_for_org(self):
-        resp = self.client.get('/contacts/export/')
+        resp = self.client.get('/api/v1/contacts/export/csv/')
         assert resp.status_code == 200
         content = b''.join(resp.streaming_content).decode()
         lines = content.strip().split('\n')

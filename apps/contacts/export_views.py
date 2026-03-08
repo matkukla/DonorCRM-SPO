@@ -67,7 +67,7 @@ class ContactExportCSVView(APIView):
             # Data rows
             for contact in filtered_qs:
                 yield writer.writerow([
-                    sanitize_csv_value(f'{contact.first_name} {contact.last_name}'),
+                    sanitize_csv_value(contact.full_name),
                     sanitize_csv_value(contact.email or ''),
                     sanitize_csv_value(contact.phone or ''),
                     sanitize_csv_value(contact.status or ''),

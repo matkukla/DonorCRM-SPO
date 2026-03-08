@@ -53,7 +53,7 @@ class ContactListCreateView(generics.ListCreateAPIView):
     """
     permission_classes = [permissions.IsAuthenticated, IsStaffOrAbove]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['first_name', 'last_name', 'email']
+    search_fields = ['first_name', 'last_name', 'email', 'organization_name']
     ordering_fields = ['last_name', 'first_name', 'created_at', 'last_gift_date', 'total_given']
     ordering = ['last_name', 'first_name']
     filterset_class = ContactFilterSet
@@ -262,7 +262,8 @@ class ContactSearchView(generics.ListAPIView):
                 Q(first_name__icontains=query) |
                 Q(last_name__icontains=query) |
                 Q(email__icontains=query) |
-                Q(phone__icontains=query)
+                Q(phone__icontains=query) |
+                Q(organization_name__icontains=query)
             )
 
         return queryset[:50]  # Limit search results
