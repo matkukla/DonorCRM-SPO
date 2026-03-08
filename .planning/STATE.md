@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: UI Polish, Journal Report & Supervisor Role
 status: executing
-stopped_at: Completed 46-03-PLAN.md
-last_updated: "2026-03-08T05:03:44.787Z"
+stopped_at: Completed 46-04-PLAN.md
+last_updated: "2026-03-08T05:08:14.662Z"
 last_activity: "2026-03-07 - Completed quick task 12: Fix bug where owner of contacts in Render database is not being mapped correctly"
 progress:
   total_phases: 9
   completed_phases: 8
   total_plans: 31
-  completed_plans: 29
+  completed_plans: 30
   percent: 100
 ---
 
@@ -79,6 +79,7 @@ Progress: [██████████] 100%
 | Phase 46 P01 | 196 | 2 tasks | 2 files |
 | Phase 46-multiple-supervisors-per-missionary P02 | 9 | 2 tasks | 4 files |
 | Phase 46 P03 | 3min | 2 tasks | 3 files |
+| Phase 46 P04 | 2min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -152,6 +153,7 @@ v2.2 decisions:
 - [Phase 46]: Migration uses RunPython copy_fk_to_m2m BEFORE RemoveField to preserve existing FK assignments in M2M join tables
 - [Phase 46]: UserSerializer: removed stale supervisor/coach_id FK fields; UserAdminUpdateSerializer.update() now uses M2M .set()
 - [Phase 46]: Auto-clear on role change implemented in User.save() (not serializer) because tests call sup.save() directly — model is the correct invariant layer
+- [Phase 46]: SupervisorCell+CoachCell sub-components keep per-row popover state local; bulkDirty Set tracks additive=true for bulk-applied rows vs full-replace for individual edits
 
 ### Roadmap Evolution
 
@@ -187,8 +189,8 @@ None active.
 
 ## Session Continuity
 
-Last session: 2026-03-08T05:03:38.441Z
-Stopped at: Completed 46-03-PLAN.md
+Last session: 2026-03-08T05:08:14.658Z
+Stopped at: Completed 46-04-PLAN.md
 Resume: All phases complete. v2.2 milestone shipped.
 
 ---
