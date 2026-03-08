@@ -267,14 +267,18 @@ Plans:
 
 ### Phase 46: Multiple supervisors per missionary
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Convert supervisor and coach relationships from ForeignKey to ManyToMany so each missionary can have multiple supervisors and coaches; update assignment UI with multi-select chips and a supervisor view toggle
+**Requirements**: SUPV-01, SUPV-02, SUPV-03
 **Depends on:** Phase 45
-**Plans:** 0 plans
+**Plans:** 5 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 46 to break down)
+- [ ] 46-01-PLAN.md — Wave 0: test stubs (test_m2m_assignments.py) + SupervisorUserFactory + CoachUserFactory (SUPV-01, SUPV-02, SUPV-03)
+- [ ] 46-02-PLAN.md — DB migration + User model: FK→M2M with data preservation (SUPV-01, SUPV-02)
+- [ ] 46-03-PLAN.md — Backend API layer: serializers + AssignmentsView arrays + additive flag (SUPV-02, SUPV-03)
+- [ ] 46-04-PLAN.md — Frontend API types + AdminAssignments multi-select chips + view toggle (SUPV-02)
+- [ ] 46-05-PLAN.md — AdminUsers.tsx: fix scalar FK assumptions, read from supervisor_ids/coach_ids arrays (SUPV-02)
 
 ---
 
-*Last updated: 2026-03-07 (Phase 45 plans created)*
+*Last updated: 2026-03-08 (Phase 46 plans created)*
