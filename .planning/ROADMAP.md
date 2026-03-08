@@ -270,7 +270,7 @@ Plans:
 **Goal:** Convert supervisor and coach relationships from ForeignKey to ManyToMany so each missionary can have multiple supervisors and coaches; update assignment UI with multi-select chips and a supervisor view toggle
 **Requirements**: SUPV-01, SUPV-02, SUPV-03
 **Depends on:** Phase 45
-**Plans:** 5/5 plans complete
+**Plans:** 6 plans (5 complete + 1 gap closure)
 
 Plans:
 - [ ] 46-01-PLAN.md — Wave 0: test stubs (test_m2m_assignments.py) + SupervisorUserFactory + CoachUserFactory (SUPV-01, SUPV-02, SUPV-03)
@@ -278,7 +278,8 @@ Plans:
 - [ ] 46-03-PLAN.md — Backend API layer: serializers + AssignmentsView arrays + additive flag (SUPV-02, SUPV-03)
 - [ ] 46-04-PLAN.md — Frontend API types + AdminAssignments multi-select chips + view toggle (SUPV-02)
 - [ ] 46-05-PLAN.md — AdminUsers.tsx: fix scalar FK assumptions, read from supervisor_ids/coach_ids arrays (SUPV-02)
+- [ ] 46-06-PLAN.md — GAP: Role-filter supervisors/coaches in GET response + purge ghost M2M rows (SUPV-02)
 
 ---
 
-*Last updated: 2026-03-08 (Phase 46 plans created)*
+*Last updated: 2026-03-08 (Phase 46 gap closure plan 06 created)*
