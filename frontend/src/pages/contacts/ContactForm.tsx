@@ -36,6 +36,7 @@ export default function ContactForm() {
   const [formData, setFormData] = useState<ContactCreate>({
     first_name: "",
     last_name: "",
+    organization_name: "",
     email: "",
     phone: "",
     phone_secondary: "",
@@ -55,6 +56,7 @@ export default function ContactForm() {
       setFormData({
         first_name: existingContact.first_name,
         last_name: existingContact.last_name,
+        organization_name: existingContact.organization_name || "",
         email: existingContact.email || "",
         phone: existingContact.phone || "",
         phone_secondary: existingContact.phone_secondary || "",
@@ -84,11 +86,10 @@ export default function ContactForm() {
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {}
 
-    if (!formData.first_name.trim()) {
-      newErrors.first_name = "First name is required"
-    }
-    if (!formData.last_name.trim()) {
-      newErrors.last_name = "Last name is required"
+    const hasPersonName = formData.first_name?.trim() || formData.last_name?.trim()
+    const hasOrgName = formData.organization_name?.trim()
+    if (!hasPersonName && !hasOrgName) {
+      newErrors.first_name = "First name or organization name is required"
     }
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = "Invalid email address"
@@ -159,6 +160,17 @@ export default function ContactForm() {
                   <CardDescription>Contact name and status</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/* Organization Name — optional, for org-type contacts */}
+                  <div className="space-y-2">
+                    <Label htmlFor="organization_name">Organization Name</Label>
+                    <Input
+                      id="organization_name"
+                      name="organization_name"
+                      value={formData.organization_name || ""}
+                      onChange={handleChange}
+                      placeholder="Leave blank for individual contacts"
+                    />
+                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="first_name">First Name *</Label>
