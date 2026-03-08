@@ -150,8 +150,9 @@ class Contact(TimeStampedModel):
 
     @property
     def full_name(self):
-        """Return the contact's full name."""
-        return f'{self.first_name} {self.last_name}'.strip()
+        """Return the contact's full name, falling back to organization_name for org contacts."""
+        name = f'{self.first_name} {self.last_name}'.strip()
+        return name or self.organization_name
 
     @property
     def full_address(self):
