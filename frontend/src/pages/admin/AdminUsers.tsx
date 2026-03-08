@@ -133,11 +133,15 @@ export default function AdminUsers() {
     setEditLastName(user.last_name)
     setEditRole(user.role)
     setEditError("")
-    // Find users supervised by this user
-    const supervised = users?.filter(u => u.supervisor === user.id).map(u => u.id) || []
+    // Find missionaries supervised by this user (M2M: check supervisor_ids array on each missionary)
+    const supervised = users?.filter(u =>
+      u.role === 'missionary' && u.supervisor_ids?.includes(user.id)
+    ).map(u => u.id) ?? []
     setEditSupervisedUserIds(supervised)
-    // Find users coached by this user
-    const coached = users?.filter(u => u.coach === user.id).map(u => u.id) || []
+    // Find missionaries coached by this user (M2M: check coach_ids array on each missionary)
+    const coached = users?.filter(u =>
+      u.role === 'missionary' && u.coach_ids?.includes(user.id)
+    ).map(u => u.id) ?? []
     setEditCoachedUserIds(coached)
     setMissionaryPickerOpen(false)
     setCoacheeMissionaryPickerOpen(false)
@@ -375,12 +379,12 @@ export default function AdminUsers() {
                           </Badge>
                           {user.role === "supervisor" && users && (
                             <span className="ml-1 text-xs text-muted-foreground">
-                              ({users.filter(u => u.supervisor === user.id).length})
+                              ({users.filter(u => u.role === 'missionary' && u.supervisor_ids?.includes(user.id)).length})
                             </span>
                           )}
                           {user.role === "coach" && users && (
                             <span className="ml-1 text-xs text-muted-foreground">
-                              ({users.filter(u => u.coach === user.id).length})
+                              ({users.filter(u => u.role === 'missionary' && u.coach_ids?.includes(user.id)).length})
                             </span>
                           )}
                         </TableCell>
@@ -486,7 +490,20 @@ export default function AdminUsers() {
                   const availableUsers = users?.filter(u => u.id !== editingUser?.id && u.is_active) || []
                   return (
                     <div className="space-y-2">
-                      <Label>Assigned Missionaries</Label>
+                      <Label>Currently Assigned Missionaries</Label>
+                      {editSupervisedUserIds.length > 0 ? (
+                        <div className="flex flex-wrap gap-1 p-2 rounded-md border bg-muted/30">
+                          {editSupervisedUserIds.map(id => {
+                            const u = availableUsers.find(au => au.id === id)
+                            return u ? (
+                              <Badge key={id} variant="secondary">{u.full_name}</Badge>
+                            ) : null
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground italic">No missionaries currently assigned</p>
+                      )}
+                      <Label className="pt-1">Update Assignment</Label>
                       <p className="text-xs text-muted-foreground">
                         Select missionaries this supervisor can view
                       </p>
@@ -563,7 +580,20 @@ export default function AdminUsers() {
                   const availableUsers = users?.filter(u => u.id !== editingUser?.id && u.is_active) || []
                   return (
                     <div className="space-y-2">
-                      <Label>Assigned Missionaries</Label>
+                      <Label>Currently Assigned Missionaries</Label>
+                      {editCoachedUserIds.length > 0 ? (
+                        <div className="flex flex-wrap gap-1 p-2 rounded-md border bg-muted/30">
+                          {editCoachedUserIds.map(id => {
+                            const u = availableUsers.find(au => au.id === id)
+                            return u ? (
+                              <Badge key={id} variant="secondary">{u.full_name}</Badge>
+                            ) : null
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground italic">No missionaries currently assigned</p>
+                      )}
+                      <Label className="pt-1">Update Assignment</Label>
                       <p className="text-xs text-muted-foreground">
                         Select missionaries this coach can view
                       </p>
