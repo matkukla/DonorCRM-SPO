@@ -44,6 +44,7 @@ export function useUpdateUser() {
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ["users"] })
       queryClient.invalidateQueries({ queryKey: ["users", id] })
+      queryClient.invalidateQueries({ queryKey: ["assignments"] })
     },
   })
 }
