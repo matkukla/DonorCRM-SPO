@@ -18,7 +18,7 @@ class ContactListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Contact
         fields = [
-            'id', 'first_name', 'last_name', 'full_name',
+            'id', 'first_name', 'last_name', 'full_name', 'organization_name',
             'email', 'phone', 'status',
             'total_given', 'gift_count', 'last_gift_date',
             'needs_thank_you', 'owner', 'owner_name'
@@ -30,6 +30,8 @@ class ContactDetailSerializer(serializers.ModelSerializer):
     Serializer for contact detail view (all fields).
     """
     full_name = serializers.CharField(read_only=True)
+    first_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    last_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
     full_address = serializers.CharField(read_only=True)
     owner_name = serializers.CharField(source='owner.full_name', read_only=True)
     has_active_pledge = serializers.BooleanField(read_only=True)
@@ -47,7 +49,7 @@ class ContactDetailSerializer(serializers.ModelSerializer):
         model = Contact
         fields = [
             'id', 'owner', 'owner_name',
-            'first_name', 'last_name', 'full_name',
+            'first_name', 'last_name', 'full_name', 'organization_name',
             'email', 'phone', 'phone_secondary',
             'street_address', 'city', 'state', 'postal_code', 'country',
             'full_address', 'status',
@@ -87,6 +89,8 @@ class ContactCreateSerializer(serializers.ModelSerializer):
     """
     Serializer for creating contacts.
     """
+    first_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    last_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
     group_ids = serializers.ListField(
         child=serializers.UUIDField(),
         write_only=True,
@@ -96,7 +100,7 @@ class ContactCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Contact
         fields = [
-            'id', 'first_name', 'last_name', 'email', 'phone', 'phone_secondary',
+            'id', 'first_name', 'last_name', 'organization_name', 'email', 'phone', 'phone_secondary',
             'street_address', 'city', 'state', 'postal_code', 'country',
             'status', 'notes', 'group_ids',
             'total_given', 'gift_count', 'needs_thank_you'
