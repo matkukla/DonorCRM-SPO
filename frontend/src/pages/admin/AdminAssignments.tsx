@@ -1,6 +1,6 @@
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
-import { NavLink, useBlocker } from "react-router-dom"
+import { NavLink, useNavigate } from "react-router-dom"
 import { cn } from "@/lib/utils"
 import { useAssignments, useUpdateAssignments } from "@/hooks/useUsers"
 import { Button } from "@/components/ui/button"
@@ -60,11 +60,16 @@ export default function AdminAssignments() {
     }
   }, [data]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Block in-app navigation when there are unsaved changes
-  const blocker = useBlocker(
-    ({ currentLocation, nextLocation }) =>
-      dirty.size > 0 && currentLocation.pathname !== nextLocation.pathname
-  )
+  const navigate = useNavigate()
+  const [pendingNav, setPendingNav] = useState<string | null>(null)
+
+  // Handle NavLink clicks when dirty — intercept via onClick
+  const handleNavClick = (to: string) => (e: React.MouseEvent) => {
+    if (dirty.size > 0) {
+      e.preventDefault()
+      setPendingNav(to)
+    }
+  }
 
   // Block browser tab close / refresh when there are unsaved changes
   useEffect(() => {
@@ -234,6 +239,7 @@ export default function AdminAssignments() {
             <NavLink
               to="/admin"
               end
+              onClick={handleNavClick("/admin")}
               className={({ isActive }) =>
                 cn(
                   "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
@@ -245,6 +251,7 @@ export default function AdminAssignments() {
             </NavLink>
             <NavLink
               to="/admin/analytics"
+              onClick={handleNavClick("/admin/analytics")}
               className={({ isActive }) =>
                 cn(
                   "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
@@ -256,6 +263,7 @@ export default function AdminAssignments() {
             </NavLink>
             <NavLink
               to="/admin/assignments"
+              onClick={handleNavClick("/admin/assignments")}
               className={({ isActive }) =>
                 cn(
                   "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
@@ -590,7 +598,7 @@ export default function AdminAssignments() {
       </Container>
 
       {/* Unsaved-changes navigation guard dialog */}
-      {blocker.state === "blocked" && (
+      {pendingNav !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-background rounded-lg border border-border p-6 shadow-lg max-w-sm w-full mx-4">
             <h2 className="text-lg font-semibold mb-2">Unsaved Changes</h2>
@@ -598,10 +606,10 @@ export default function AdminAssignments() {
               You have {dirty.size} unsaved assignment change{dirty.size !== 1 ? "s" : ""}. Leave anyway?
             </p>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => blocker.reset()}>
+              <Button variant="outline" size="sm" onClick={() => setPendingNav(null)}>
                 Stay
               </Button>
-              <Button variant="destructive" size="sm" onClick={() => blocker.proceed()}>
+              <Button variant="destructive" size="sm" onClick={() => { navigate(pendingNav); setPendingNav(null) }}>
                 Leave
               </Button>
             </div>
