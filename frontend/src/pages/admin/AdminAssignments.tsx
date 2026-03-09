@@ -1,6 +1,6 @@
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
-import { NavLink } from "react-router-dom"
+import { NavLink, useBlocker } from "react-router-dom"
 import { cn } from "@/lib/utils"
 import { useAssignments, useUpdateAssignments } from "@/hooks/useUsers"
 import { Button } from "@/components/ui/button"
@@ -59,6 +59,23 @@ export default function AdminAssignments() {
       setLocalAssignments(initial)
     }
   }, [data]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Block in-app navigation when there are unsaved changes
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      dirty.size > 0 && currentLocation.pathname !== nextLocation.pathname
+  )
+
+  // Block browser tab close / refresh when there are unsaved changes
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (dirty.size > 0) {
+        e.preventDefault()
+      }
+    }
+    window.addEventListener("beforeunload", handler)
+    return () => window.removeEventListener("beforeunload", handler)
+  }, [dirty.size])
 
   const filteredMissionaries = (data?.missionaries ?? []).filter(m =>
     m.full_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -555,8 +572,42 @@ export default function AdminAssignments() {
               </div>
             )
           )}
+          {/* Sticky Save bar — visible when missionary view has unsaved changes */}
+          {viewMode === "missionary" && dirty.size > 0 && (
+            <div className="sticky bottom-0 z-10 border-t border-border bg-background/95 backdrop-blur-sm py-3 -mx-4 px-4 flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">
+                {dirty.size} unsaved change{dirty.size !== 1 ? "s" : ""}
+              </span>
+              <Button
+                disabled={updateMutation.isPending}
+                onClick={handleSave}
+              >
+                {updateMutation.isPending ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          )}
         </div>
       </Container>
+
+      {/* Unsaved-changes navigation guard dialog */}
+      {blocker.state === "blocked" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-background rounded-lg border border-border p-6 shadow-lg max-w-sm w-full mx-4">
+            <h2 className="text-lg font-semibold mb-2">Unsaved Changes</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              You have {dirty.size} unsaved assignment change{dirty.size !== 1 ? "s" : ""}. Leave anyway?
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => blocker.reset()}>
+                Stay
+              </Button>
+              <Button variant="destructive" size="sm" onClick={() => blocker.proceed()}>
+                Leave
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </Section>
   )
 }
