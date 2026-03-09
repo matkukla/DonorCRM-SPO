@@ -51,24 +51,22 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
         db_index=True
     )
 
-    # Supervisor relationship
-    supervisor = models.ForeignKey(
+    # Supervisor relationships (M2M: a missionary can have multiple supervisors)
+    supervisors = models.ManyToManyField(
         'self',
-        null=True,
+        symmetrical=False,
         blank=True,
-        on_delete=models.SET_NULL,
         related_name='supervised_users',
-        help_text='The supervisor assigned to this user (if any)'
+        help_text='Supervisors assigned to this missionary'
     )
 
-    # Coach relationship
-    coach = models.ForeignKey(
+    # Coach relationships (M2M: a missionary can have multiple coaches)
+    coaches = models.ManyToManyField(
         'self',
-        null=True,
+        symmetrical=False,
         blank=True,
-        on_delete=models.SET_NULL,
         related_name='coached_users',
-        help_text='Coach assigned to this user'
+        help_text='Coaches assigned to this missionary'
     )
 
     # Support goal tracking for staff users
@@ -125,6 +123,21 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
             models.Index(fields=['role']),
             models.Index(fields=['is_active']),
         ]
+
+    def save(self, *args, **kwargs):
+        """Override save to auto-clear M2M assignments when role changes away from supervisor/coach."""
+        old_role = None
+        if self.pk:
+            try:
+                old_role = User.objects.filter(pk=self.pk).values_list('role', flat=True).first()
+            except Exception:
+                pass
+        super().save(*args, **kwargs)
+        if old_role is not None:
+            if old_role == UserRole.SUPERVISOR and self.role != UserRole.SUPERVISOR:
+                self.supervised_users.clear()
+            if old_role == UserRole.COACH and self.role != UserRole.COACH:
+                self.coached_users.clear()
 
     def __str__(self):
         return f'{self.first_name} {self.last_name} ({self.email})'

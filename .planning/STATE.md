@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: UI Polish, Journal Report & Supervisor Role
 status: executing
-stopped_at: Completed 45-04-PLAN.md (Phase 45 complete)
-last_updated: "2026-03-08T00:34:27.822Z"
-last_activity: "2026-03-07 - Completed quick task 12: Fix bug where owner of contacts in Render database is not being mapped correctly"
+stopped_at: "Completed quick task 13: Fix Phase 43 failing tests and add AdminAssignments sticky save bar + nav guard"
+last_updated: "2026-03-09T14:20:54.018Z"
+last_activity: "2026-03-09 - Completed quick task 13: Check if there is a way to make phase 46 more user friendly"
 progress:
   total_phases: 9
-  completed_phases: 8
-  total_plans: 26
-  completed_plans: 26
+  completed_phases: 9
+  total_plans: 32
+  completed_plans: 32
   percent: 100
 ---
 
@@ -29,7 +29,7 @@ Milestone: v2.2 UI Polish, Journal Report & Supervisor Role
 Phase: 43 of 43 (Roles Redesign)
 Plan: 0 of 5 in current phase (starting execution)
 Status: Phase 43 in progress
-Last activity: 2026-03-07 - Completed quick task 12: Fix bug where owner of contacts in Render database is not being mapped correctly
+Last activity: 2026-03-09 - Completed quick task 13: Check if there is a way to make phase 46 more user friendly
 
 Progress: [██████████] 100%
 
@@ -76,6 +76,12 @@ Progress: [██████████] 100%
 | Phase 45 P02 | 3 | 2 tasks | 5 files |
 | Phase 45 P03 | 2min | 2 tasks | 3 files |
 | Phase 45 P04 | 10min | 1 tasks | 3 files |
+| Phase 46 P01 | 196 | 2 tasks | 2 files |
+| Phase 46-multiple-supervisors-per-missionary P02 | 9 | 2 tasks | 4 files |
+| Phase 46 P03 | 3min | 2 tasks | 3 files |
+| Phase 46 P04 | 2min | 2 tasks | 2 files |
+| Phase 46 P05 | 5min | 1 tasks | 1 files |
+| Phase 46-multiple-supervisors-per-missionary P06 | 10min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -144,6 +150,15 @@ v2.2 decisions:
 - [Phase 45]: ContactForm validation: combined hasPersonName || hasOrgName check replaces individual first/last required checks
 - [Phase 45]: required=False, allow_blank=True added to ContactDetailSerializer first_name/last_name — DRF re-enforces required independently of model field
 - [Phase 45]: blank=True added to Contact.first_name and last_name — required so org contacts can be edited without validation errors
+- [Phase 46]: SupervisorUserFactory and CoachUserFactory inherit UserFactory with unique email sequences; all M2M behavioral contracts established as RED tests before any model changes
+- [Phase 46]: supervisors/coaches M2M field names plural; related_names supervised_users/coached_users kept identical so permissions.py unchanged
+- [Phase 46]: Migration uses RunPython copy_fk_to_m2m BEFORE RemoveField to preserve existing FK assignments in M2M join tables
+- [Phase 46]: UserSerializer: removed stale supervisor/coach_id FK fields; UserAdminUpdateSerializer.update() now uses M2M .set()
+- [Phase 46]: Auto-clear on role change implemented in User.save() (not serializer) because tests call sup.save() directly — model is the correct invariant layer
+- [Phase 46]: SupervisorCell+CoachCell sub-components keep per-row popover state local; bulkDirty Set tracks additive=true for bulk-applied rows vs full-replace for individual edits
+- [Phase 46]: Frontend derivation for supervised/coached IDs: filter all users by role='missionary' and u.supervisor_ids.includes(supervisorUser.id) — avoids backend change
+- [Phase 46]: Role filter applied in GET view (not serializer): m.supervisors.filter(role='supervisor', is_active=True) closes ghost supervisor UAT gap #9
+- [Phase 46]: purge_ghost_assignments management command created with --dry-run support to remove stale M2M rows from migration 0006
 
 ### Roadmap Evolution
 
@@ -176,11 +191,12 @@ None active.
 | 10 | Analyze 4 CSV formats vs Phase 44 import pipeline | 2026-03-07 | f598891 | [10-read-import-analysis-md-to-analyze-the-c](./quick/10-read-import-analysis-md-to-analyze-the-c/) |
 | 11 | Fix two bugs from import analysis: SPO payment_type + RE recurring gift prayers | 2026-03-07 | 0b047ba | [11-fix-all-bugs-found-in-10-analysis-md](./quick/11-fix-all-bugs-found-in-10-analysis-md/) |
 | 12 | Fix bug where owner of contacts in Render not reassigned to missionary after import_re_gifts | 2026-03-07 | 58d4b5b | [12-fix-bug-where-owner-of-contacts-in-rende](./quick/12-fix-bug-where-owner-of-contacts-in-rende/) |
+| 13 | Check if there is a way to make phase 46 more user friendly | 2026-03-09 | f49d23b | [13-check-if-there-is-a-way-to-make-phase-46](./quick/13-check-if-there-is-a-way-to-make-phase-46/) |
 
 ## Session Continuity
 
-Last session: 2026-03-08T00:29:57.440Z
-Stopped at: Completed 45-04-PLAN.md (Phase 45 complete)
+Last session: 2026-03-09T14:20:54.013Z
+Stopped at: Completed quick task 13: Fix Phase 43 failing tests and add AdminAssignments sticky save bar + nav guard
 Resume: All phases complete. v2.2 milestone shipped.
 
 ---

@@ -18,8 +18,8 @@ export interface User {
   is_active: boolean
   date_joined: string
   last_login_at: string | null
-  supervisor: string | null
-  coach: string | null
+  supervisor_ids: string[]
+  coach_ids: string[]
 }
 
 export interface UserCreate {
@@ -59,8 +59,8 @@ export interface MissionaryAssignment {
   id: string
   email: string
   full_name: string
-  supervisor_id: string | null
-  coach_id: string | null
+  supervisor_ids: string[]
+  coach_ids: string[]
 }
 
 export interface AssignmentsData {
@@ -71,8 +71,9 @@ export interface AssignmentsData {
 
 export interface AssignmentUpdate {
   missionary_id: string
-  supervisor_id: string | null
-  coach_id: string | null
+  supervisor_ids: string[]
+  coach_ids: string[]
+  additive?: boolean
 }
 
 // API functions
