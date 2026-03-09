@@ -69,7 +69,7 @@ class TestUserListView:
             'last_name': 'User',
             'password': 'securePass123!',
             'password_confirm': 'securePass123!',
-            'role': 'staff'
+            'role': 'read_only'
         })
 
         assert response.status_code == status.HTTP_201_CREATED
