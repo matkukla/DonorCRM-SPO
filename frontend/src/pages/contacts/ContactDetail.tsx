@@ -25,6 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   ArrowLeft,
   BookOpen,
+  Building2,
   Edit,
   Trash2,
   Heart,
@@ -280,6 +281,12 @@ export default function ContactDetail() {
                     <CardTitle>Contact Information</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    {contact.organization_name && (
+                      <div className="flex items-center gap-3">
+                        <Building2 className="h-4 w-4 text-muted-foreground" />
+                        <span>{contact.organization_name}</span>
+                      </div>
+                    )}
                     {contact.email && (
                       <div className="flex items-center gap-3">
                         <Mail className="h-4 w-4 text-muted-foreground" />

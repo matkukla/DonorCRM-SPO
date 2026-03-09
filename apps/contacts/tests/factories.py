@@ -38,3 +38,10 @@ class DonorContactFactory(ContactFactory):
 class LapsedContactFactory(ContactFactory):
     """Factory for creating lapsed donor contacts."""
     status = ContactStatus.LAPSED
+
+
+class OrgContactFactory(ContactFactory):
+    """Factory for creating organization-type contacts with blank first/last names."""
+    first_name = ''
+    last_name = ''
+    organization_name = factory.LazyFunction(lambda: fake.company())

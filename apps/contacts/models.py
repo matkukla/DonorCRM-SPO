@@ -61,8 +61,8 @@ class Contact(TimeStampedModel):
     )
 
     # Basic information
-    first_name = models.CharField('first name', max_length=150)
-    last_name = models.CharField('last name', max_length=150)
+    first_name = models.CharField('first name', max_length=150, blank=True)
+    last_name = models.CharField('last name', max_length=150, blank=True)
     email = models.EmailField('email', blank=True)
     phone = models.CharField('phone', max_length=20, blank=True)
     phone_secondary = models.CharField('secondary phone', max_length=20, blank=True)
@@ -150,8 +150,9 @@ class Contact(TimeStampedModel):
 
     @property
     def full_name(self):
-        """Return the contact's full name."""
-        return f'{self.first_name} {self.last_name}'.strip()
+        """Return the contact's full name, falling back to organization_name for org contacts."""
+        name = f'{self.first_name} {self.last_name}'.strip()
+        return name or self.organization_name
 
     @property
     def full_address(self):
