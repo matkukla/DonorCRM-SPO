@@ -53,7 +53,7 @@ Requirements for v2.2 milestone. Each maps to roadmap phases.
 
 ### Roles Redesign
 
-- [ ] **ROLE-01**: DB and UI use `missionary` (not `staff`) everywhere; test suite passes with correct role names
+- [x] **ROLE-01**: DB and UI use `missionary` (not `staff`) everywhere; test suite passes with correct role names
 - [x] **ROLE-02**: Coach role exists in the system (UserRole.COACH + migration)
 - [ ] **ROLE-03**: Coach users can access contacts for their assigned missionaries (no 403)
 - [ ] **ROLE-04**: Admin can assign coaches to missionaries via AdminUsers page (coached_user_ids persisted)
@@ -130,7 +130,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SUPV-02 | Phase 42 | Complete |
 | SUPV-03 | Phase 42 | Complete |
 | SUPV-04 | Phase 42 | Complete |
-| ROLE-01 | Phase 47 | Pending |
+| ROLE-01 | Phase 47 | Complete |
 | ROLE-02 | Phase 43 | Complete |
 | ROLE-03 | Phase 47 | Pending |
 | ROLE-04 | Phase 47 | Pending |

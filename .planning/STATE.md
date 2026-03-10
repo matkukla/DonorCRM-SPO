@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: UI Polish, Journal Report & Supervisor Role
 status: executing
-stopped_at: "Completed quick task 14: Make By Supervisor view editable in AdminAssignments"
-last_updated: "2026-03-10T14:21:00.973Z"
+stopped_at: "Completed 47-01: Replace stale role='staff' fixture strings with role='missionary'"
+last_updated: "2026-03-10T21:54:56.559Z"
 last_activity: "2026-03-09 - Completed quick task 13: Check if there is a way to make phase 46 more user friendly"
 progress:
-  total_phases: 9
-  completed_phases: 9
-  total_plans: 32
-  completed_plans: 32
+  total_phases: 10
+  completed_phases: 10
+  total_plans: 34
+  completed_plans: 34
   percent: 100
 ---
 
@@ -82,6 +82,8 @@ Progress: [██████████] 100%
 | Phase 46 P04 | 2min | 2 tasks | 2 files |
 | Phase 46 P05 | 5min | 1 tasks | 1 files |
 | Phase 46-multiple-supervisors-per-missionary P06 | 10min | 2 tasks | 5 files |
+| Phase 47-fix-coach-role-gaps P01 | 5 | 2 tasks | 4 files |
+| Phase 47 P02 | 4min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -159,6 +161,8 @@ v2.2 decisions:
 - [Phase 46]: Frontend derivation for supervised/coached IDs: filter all users by role='missionary' and u.supervisor_ids.includes(supervisorUser.id) — avoids backend change
 - [Phase 46]: Role filter applied in GET view (not serializer): m.supervisors.filter(role='supervisor', is_active=True) closes ghost supervisor UAT gap #9
 - [Phase 46]: purge_ghost_assignments management command created with --dry-run support to remove stale M2M rows from migration 0006
+- [Phase 47-fix-coach-role-gaps]: total_donations assertion corrected from 15000.0 (raw cents) to 150.0 (dollars) — stale comment said 'cents' but API returns dollars
+- [Phase 47]: Coach added to SAFE_METHODS guard in IsStaffOrAbove (identical pattern to read_only) — not added to final allowed list to preserve write block
 
 ### Roadmap Evolution
 
@@ -196,8 +200,8 @@ None active.
 
 ## Session Continuity
 
-Last session: 2026-03-10T14:21:00.967Z
-Stopped at: Completed quick task 14: Make By Supervisor view editable in AdminAssignments
+Last session: 2026-03-10T21:54:43.094Z
+Stopped at: Completed 47-01: Replace stale role='staff' fixture strings with role='missionary'
 Resume: All phases complete. v2.2 milestone shipped.
 
 ---
