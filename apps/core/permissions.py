@@ -82,8 +82,8 @@ class IsStaffOrAbove(permissions.BasePermission):
         if not request.user.is_authenticated:
             return False
 
-        # Read-only users can only perform safe methods
-        if request.user.role == 'read_only':
+        # Read-only and coach users can only perform safe methods
+        if request.user.role in ['read_only', 'coach']:
             return request.method in permissions.SAFE_METHODS
 
         return request.user.role in ['admin', 'finance', 'missionary', 'supervisor']
