@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: UI Polish, Journal Report & Supervisor Role
 status: executing
-stopped_at: "Completed 47-01: Replace stale role='staff' fixture strings with role='missionary'"
-last_updated: "2026-03-10T21:54:56.559Z"
+stopped_at: "Completed 47-02: Fix IsStaffOrAbove coach permission gate"
+last_updated: "2026-03-10T21:54:59.654Z"
 last_activity: "2026-03-09 - Completed quick task 13: Check if there is a way to make phase 46 more user friendly"
 progress:
   total_phases: 10
@@ -200,8 +200,8 @@ None active.
 
 ## Session Continuity
 
-Last session: 2026-03-10T21:54:43.094Z
-Stopped at: Completed 47-01: Replace stale role='staff' fixture strings with role='missionary'
+Last session: 2026-03-10T21:54:59.650Z
+Stopped at: Completed 47-02: Fix IsStaffOrAbove coach permission gate
 Resume: All phases complete. v2.2 milestone shipped.
 
 ---
