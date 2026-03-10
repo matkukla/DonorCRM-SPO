@@ -51,6 +51,22 @@ Requirements for v2.2 milestone. Each maps to roadmap phases.
 - [x] **SUPV-03**: Supervisor sees only their assigned missionaries' data across all pages
 - [x] **SUPV-04**: Admin and Supervisor can select a missionary and view their dashboard
 
+### Roles Redesign
+
+- [ ] **ROLE-01**: DB and UI use `missionary` (not `staff`) everywhere; test suite passes with correct role names
+- [x] **ROLE-02**: Coach role exists in the system (UserRole.COACH + migration)
+- [ ] **ROLE-03**: Coach users can access contacts for their assigned missionaries (no 403)
+- [ ] **ROLE-04**: Admin can assign coaches to missionaries via AdminUsers page (coached_user_ids persisted)
+- [ ] **ROLE-05**: `/team/:userId` Contacts tab works for coach users
+
+### Org Contacts
+
+- [x] **ORG-01**: Org-type contacts display organization_name in contact list and detail view
+- [x] **ORG-02**: Contacts with blank first/last name fall back to organization_name display
+- [x] **ORG-03**: Organization name is searchable in contact search
+- [x] **ORG-04**: Supervisor sees org contacts belonging to their assigned missionaries
+- [x] **ORG-05**: CSV export includes org_name column for org-type contacts
+
 ## Future Requirements
 
 Deferred to future release. Tracked but not in current roadmap.
@@ -114,10 +130,20 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SUPV-02 | Phase 42 | Complete |
 | SUPV-03 | Phase 42 | Complete |
 | SUPV-04 | Phase 42 | Complete |
+| ROLE-01 | Phase 47 | Pending |
+| ROLE-02 | Phase 43 | Complete |
+| ROLE-03 | Phase 47 | Pending |
+| ROLE-04 | Phase 47 | Pending |
+| ROLE-05 | Phase 47 | Pending |
+| ORG-01 | Phase 45 | Complete |
+| ORG-02 | Phase 45 | Complete |
+| ORG-03 | Phase 45 | Complete |
+| ORG-04 | Phase 45 | Complete |
+| ORG-05 | Phase 45 | Complete |
 
 **Coverage:**
-- v2.2 requirements: 26 total
-- Mapped to phases: 26
+- v2.2 requirements: 36 total (26 original + 10 previously orphaned)
+- Mapped to phases: 36
 - Unmapped: 0
 
 ---

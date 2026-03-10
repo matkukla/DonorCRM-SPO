@@ -280,6 +280,16 @@ Plans:
 - [ ] 46-05-PLAN.md — AdminUsers.tsx: fix scalar FK assumptions, read from supervisor_ids/coach_ids arrays (SUPV-02)
 - [ ] 46-06-PLAN.md — GAP: Role-filter supervisors/coaches in GET response + purge ghost M2M rows (SUPV-02)
 
+### Phase 47: Fix Coach Role Gaps
+**Goal:** Close critical v2.2 audit gaps — coach users can access contacts they're assigned to, test suite passes with correct role names, and coach assignments via AdminUsers page are persisted
+**Requirements**: ROLE-01, ROLE-03, ROLE-04, ROLE-05
+**Gap Closure:** Closes gaps from v2.2 audit
+**Depends on:** Phase 46
+
+Plans:
+- [ ] 47-01-PLAN.md — Fix stale role='staff' in conftest.py and 3 test files (ROLE-01)
+- [ ] 47-02-PLAN.md — Add coach to IsStaffOrAbove permission + fix coached_user_ids in UserAdminUpdateSerializer (ROLE-03, ROLE-04, ROLE-05)
+
 ---
 
-*Last updated: 2026-03-08 (Phase 46 gap closure plan 06 created)*
+*Last updated: 2026-03-10 (Phase 47 gap closure phase added)*
