@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: UI Polish, Journal Report & Supervisor Role
 status: executing
-stopped_at: "Completed quick task 13: Fix Phase 43 failing tests and add AdminAssignments sticky save bar + nav guard"
-last_updated: "2026-03-09T14:20:54.018Z"
+stopped_at: "Completed quick task 14: Make By Supervisor view editable in AdminAssignments"
+last_updated: "2026-03-10T14:21:00.973Z"
 last_activity: "2026-03-09 - Completed quick task 13: Check if there is a way to make phase 46 more user friendly"
 progress:
   total_phases: 9
@@ -192,11 +192,12 @@ None active.
 | 11 | Fix two bugs from import analysis: SPO payment_type + RE recurring gift prayers | 2026-03-07 | 0b047ba | [11-fix-all-bugs-found-in-10-analysis-md](./quick/11-fix-all-bugs-found-in-10-analysis-md/) |
 | 12 | Fix bug where owner of contacts in Render not reassigned to missionary after import_re_gifts | 2026-03-07 | 58d4b5b | [12-fix-bug-where-owner-of-contacts-in-rende](./quick/12-fix-bug-where-owner-of-contacts-in-rende/) |
 | 13 | Check if there is a way to make phase 46 more user friendly | 2026-03-09 | f49d23b | [13-check-if-there-is-a-way-to-make-phase-46](./quick/13-check-if-there-is-a-way-to-make-phase-46/) |
+| 14 | Make By Supervisor view editable in AdminAssignments | 2026-03-10 | 4342fc2 | [14-in-the-by-supervisor-view-allow-the-user](./quick/14-in-the-by-supervisor-view-allow-the-user/) |
 
 ## Session Continuity
 
-Last session: 2026-03-09T14:20:54.013Z
-Stopped at: Completed quick task 13: Fix Phase 43 failing tests and add AdminAssignments sticky save bar + nav guard
+Last session: 2026-03-10T14:21:00.967Z
+Stopped at: Completed quick task 14: Make By Supervisor view editable in AdminAssignments
 Resume: All phases complete. v2.2 milestone shipped.
 
 ---
