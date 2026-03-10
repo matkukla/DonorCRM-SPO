@@ -160,3 +160,20 @@ class TestAuthEndpoints:
 
         assert response.status_code == status.HTTP_200_OK
         assert 'access' in response.data
+
+
+@pytest.mark.django_db
+class TestCoachAssignment:
+    """Tests for coach coached_user_ids assignment (ROLE-04)."""
+
+    def test_admin_can_set_coached_user_ids(self, api_client, admin_user, coach_user, missionary_user):
+        """ROLE-04: coached_user_ids PATCH persists M2M assignment."""
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.patch(
+            f'/api/v1/users/{coach_user.id}/',
+            data={'coached_user_ids': [str(missionary_user.id)]},
+            format='json'
+        )
+        assert response.status_code == 200
+        coach_user.refresh_from_db()
+        assert missionary_user in coach_user.coached_users.all()
