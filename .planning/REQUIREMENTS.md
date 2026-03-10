@@ -55,9 +55,9 @@ Requirements for v2.2 milestone. Each maps to roadmap phases.
 
 - [x] **ROLE-01**: DB and UI use `missionary` (not `staff`) everywhere; test suite passes with correct role names
 - [x] **ROLE-02**: Coach role exists in the system (UserRole.COACH + migration)
-- [ ] **ROLE-03**: Coach users can access contacts for their assigned missionaries (no 403)
-- [ ] **ROLE-04**: Admin can assign coaches to missionaries via AdminUsers page (coached_user_ids persisted)
-- [ ] **ROLE-05**: `/team/:userId` Contacts tab works for coach users
+- [x] **ROLE-03**: Coach users can access contacts for their assigned missionaries (no 403)
+- [x] **ROLE-04**: Admin can assign coaches to missionaries via AdminUsers page (coached_user_ids persisted)
+- [x] **ROLE-05**: `/team/:userId` Contacts tab works for coach users
 
 ### Org Contacts
 
@@ -132,9 +132,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SUPV-04 | Phase 42 | Complete |
 | ROLE-01 | Phase 47 | Complete |
 | ROLE-02 | Phase 43 | Complete |
-| ROLE-03 | Phase 47 | Pending |
-| ROLE-04 | Phase 47 | Pending |
-| ROLE-05 | Phase 47 | Pending |
+| ROLE-03 | Phase 47 | Complete |
+| ROLE-04 | Phase 47 | Complete |
+| ROLE-05 | Phase 47 | Complete |
 | ORG-01 | Phase 45 | Complete |
 | ORG-02 | Phase 45 | Complete |
 | ORG-03 | Phase 45 | Complete |
