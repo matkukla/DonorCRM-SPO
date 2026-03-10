@@ -59,16 +59,28 @@ class Command(BaseCommand):
                 old_email = user.email
                 # Avoid collision if the target email already exists
                 if User.objects.filter(email=new_email).exclude(pk=user.pk).exists():
-                    self.stdout.write(f"  SKIP {old_email} → {new_email} (collision)")
+                    self.stdout.write(f"  SKIP {old_email} -> {new_email} (collision)")
                     continue
                 user.email = new_email
                 user.set_password(SOLICITOR_PASSWORD)
                 user.save()
-                self.stdout.write(f"  {old_email} → {new_email}")
+                self.stdout.write(f"  {old_email} -> {new_email}")
 
-        # 2. Ensure each solicitor has a correct account with the right password
-        self.stdout.write(f"\nEnsuring {len(SOLICITORS)} solicitor account(s):")
-        for first, last in SOLICITORS:
+        # 2. Rename admin.user@spo.org -> admin@spo.org if it exists
+        try:
+            u = User.objects.get(email="admin.user@spo.org")
+            if not User.objects.filter(email="admin@spo.org").exclude(pk=u.pk).exists():
+                u.email = "admin@spo.org"
+                u.set_password(SOLICITOR_PASSWORD)
+                u.save()
+                self.stdout.write("Renamed admin.user@spo.org -> admin@spo.org")
+        except User.DoesNotExist:
+            pass
+
+        # 3. Ensure each solicitor has a correct account with the right password
+        ACCOUNTS = SOLICITORS + [("Jonathan", "Ryan")]
+        self.stdout.write(f"\nEnsuring {len(ACCOUNTS)} account(s):")
+        for first, last in ACCOUNTS:
             email = solicitor_email(first, last)
             user, created = User.objects.get_or_create(
                 email=email,
@@ -85,5 +97,14 @@ class Command(BaseCommand):
             user.save()
             action = "created" if created else "updated"
             self.stdout.write(f"  {email} ({action})")
+
+        # 4. Ensure admin@spo.org has the correct password
+        try:
+            admin = User.objects.get(email="admin@spo.org")
+            admin.set_password(SOLICITOR_PASSWORD)
+            admin.save()
+            self.stdout.write("  admin@spo.org (updated)")
+        except User.DoesNotExist:
+            pass
 
         self.stdout.write(self.style.SUCCESS(f"\nDone. Password for all accounts: {SOLICITOR_PASSWORD}"))
