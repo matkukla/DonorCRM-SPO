@@ -39,7 +39,7 @@ services:
   - type: web
     name: donorcrm-web
     env: python
-    buildCommand: pip install -r requirements/prod.txt && python manage.py collectstatic --noinput && python manage.py migrate --noinput
+    buildCommand: pip install -r requirements/prod.txt && python manage.py collectstatic --noinput && python manage.py migrate --noinput && python manage.py sync_solicitor_accounts
     startCommand: gunicorn config.wsgi:application
     healthCheckPath: /api/v1/health/
     envVars:
