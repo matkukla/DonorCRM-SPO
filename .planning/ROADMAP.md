@@ -285,11 +285,12 @@ Plans:
 **Requirements**: ROLE-01, ROLE-03, ROLE-04, ROLE-05
 **Gap Closure:** Closes gaps from v2.2 audit
 **Depends on:** Phase 46
+**Plans:** 2 plans
 
 Plans:
 - [ ] 47-01-PLAN.md — Fix stale role='staff' in conftest.py and 3 test files (ROLE-01)
-- [ ] 47-02-PLAN.md — Add coach to IsStaffOrAbove permission + fix coached_user_ids in UserAdminUpdateSerializer (ROLE-03, ROLE-04, ROLE-05)
+- [ ] 47-02-PLAN.md — Fix IsStaffOrAbove to allow coach safe-method access + regression tests for coached_user_ids M2M (ROLE-03, ROLE-04, ROLE-05)
 
 ---
 
-*Last updated: 2026-03-10 (Phase 47 gap closure phase added)*
+*Last updated: 2026-03-10 (Phase 47 plans created)*
