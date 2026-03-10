@@ -161,8 +161,8 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.ScopedRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'auth': '5/min',
-        'password': '3/min',
+        'auth': '20/min',
+        'password': '10/min',
     },
 }
 
