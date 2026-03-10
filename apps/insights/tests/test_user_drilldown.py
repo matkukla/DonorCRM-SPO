@@ -168,14 +168,14 @@ class UserDrilldownViewTest(TestCase):
         self.assertEqual(response.data['user']['id'], str(self.missionary.id))
         self.assertEqual(response.data['user']['name'], 'Missionary Smith')
         self.assertEqual(response.data['user']['email'], 'missionary@test.com')
-        self.assertEqual(response.data['user']['role'], 'staff')
+        self.assertEqual(response.data['user']['role'], 'missionary')
 
         # Check stats
         self.assertEqual(response.data['stats']['total_contacts'], 3)
         self.assertEqual(response.data['stats']['active_journals'], 2)
         self.assertEqual(response.data['stats']['decisions_logged'], 2)
         self.assertEqual(response.data['stats']['conversion_rate'], 66.7)  # 2/3 * 100
-        self.assertEqual(response.data['stats']['total_donations'], 15000.0)  # 15000 cents ($150.00)
+        self.assertEqual(response.data['stats']['total_donations'], 150.0)  # $150.00 (10000 + 5000 cents converted to dollars)
         self.assertEqual(response.data['stats']['donation_count'], 2)
 
     def test_returns_stalled_contact_count(self):
