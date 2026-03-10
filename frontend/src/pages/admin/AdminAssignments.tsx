@@ -141,6 +141,22 @@ export default function AdminAssignments() {
     setBulkDirty(prev => { const next = new Set(prev); next.delete(missionaryId); return next })
   }
 
+  // Toggle a missionary for a supervisor (supervisor view)
+  const toggleMissionaryForSupervisor = (missionaryId: string, supervisorId: string) => {
+    setLocalAssignments(prev => {
+      const next = new Map(prev)
+      const current = next.get(missionaryId) ?? { supervisor_ids: [], coach_ids: [] }
+      const alreadyAssigned = current.supervisor_ids.includes(supervisorId)
+      const newSupervisorIds = alreadyAssigned
+        ? current.supervisor_ids.filter(id => id !== supervisorId)
+        : [...current.supervisor_ids, supervisorId]
+      next.set(missionaryId, { ...current, supervisor_ids: newSupervisorIds })
+      return next
+    })
+    setDirty(prev => new Set([...prev, missionaryId]))
+    setBulkDirty(prev => { const next = new Set(prev); next.delete(missionaryId); return next })
+  }
+
   // Toggle a coach for a single missionary
   const toggleCoach = (missionaryId: string, coachId: string) => {
     setLocalAssignments(prev => {
@@ -556,20 +572,12 @@ export default function AdminAssignments() {
                         <p className="font-medium">{supervisor.first_name} {supervisor.last_name}</p>
                         <p className="text-sm text-muted-foreground truncate">{supervisor.email}</p>
                       </div>
-                      <div className="flex flex-wrap gap-1 pt-0.5">
-                        {missionaryIds.length === 0 ? (
-                          <span className="text-sm text-muted-foreground">No missionaries assigned</span>
-                        ) : (
-                          missionaryIds.map(mid => {
-                            const m = data?.missionaries.find(m => m.id === mid)
-                            return m ? (
-                              <Badge key={mid} variant="secondary">
-                                {m.full_name}
-                              </Badge>
-                            ) : null
-                          })
-                        )}
-                      </div>
+                      <MissionaryCell
+                        assignedMissionaryIds={missionaryIds}
+                        allMissionaries={data?.missionaries ?? []}
+                        onToggle={(mId) => toggleMissionaryForSupervisor(mId, supervisor.id)}
+                        onRemove={(mId) => toggleMissionaryForSupervisor(mId, supervisor.id)}
+                      />
                     </div>
                   )
                 })}
@@ -580,8 +588,8 @@ export default function AdminAssignments() {
               </div>
             )
           )}
-          {/* Sticky Save bar — visible when missionary view has unsaved changes */}
-          {viewMode === "missionary" && dirty.size > 0 && (
+          {/* Sticky Save bar — visible when any view has unsaved changes */}
+          {dirty.size > 0 && (
             <div className="sticky bottom-0 z-10 border-t border-border bg-background/95 backdrop-blur-sm py-3 -mx-4 px-4 flex items-center justify-between">
               <span className="text-sm text-muted-foreground">
                 {dirty.size} unsaved change{dirty.size !== 1 ? "s" : ""}
@@ -760,6 +768,81 @@ function CoachCell({ coachIds, allCoaches, onToggle, onRemove }: CoachCellProps)
                   className="ml-1 rounded-full outline-none hover:bg-muted"
                   onClick={() => onRemove(cid)}
                   aria-label={`Remove ${c.first_name} ${c.last_name}`}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            ) : null
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+interface MissionaryCellProps {
+  assignedMissionaryIds: string[]
+  allMissionaries: { id: string; full_name: string; email: string }[]
+  onToggle: (mId: string) => void
+  onRemove: (mId: string) => void
+}
+
+function MissionaryCell({ assignedMissionaryIds, allMissionaries, onToggle, onRemove }: MissionaryCellProps) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="space-y-1">
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className="w-full justify-between font-normal h-8 text-sm"
+          >
+            {assignedMissionaryIds.length > 0
+              ? `${assignedMissionaryIds.length} missionar${assignedMissionaryIds.length !== 1 ? "ies" : "y"}`
+              : "Assign missionary..."}
+            <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[240px] p-0" align="start">
+          <Command>
+            <CommandInput placeholder="Search missionaries..." />
+            <CommandList>
+              <CommandEmpty>No missionaries found.</CommandEmpty>
+              <CommandGroup>
+                {allMissionaries.map(m => (
+                  <CommandItem
+                    key={m.id}
+                    value={`${m.full_name} ${m.email}`}
+                    onSelect={() => onToggle(m.id)}
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        assignedMissionaryIds.includes(m.id) ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    <span>{m.full_name}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+      {assignedMissionaryIds.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {assignedMissionaryIds.map(mid => {
+            const m = allMissionaries.find(m => m.id === mid)
+            return m ? (
+              <Badge key={mid} variant="secondary" className="gap-1 text-xs">
+                {m.full_name}
+                <button
+                  type="button"
+                  className="ml-1 rounded-full outline-none hover:bg-muted"
+                  onClick={() => onRemove(mid)}
+                  aria-label={`Remove ${m.full_name}`}
                 >
                   <X className="h-3 w-3" />
                 </button>
