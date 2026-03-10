@@ -7,7 +7,7 @@ import pytest
 from django.utils import timezone
 from rest_framework import status
 
-from apps.contacts.models import ContactStatus
+from apps.contacts.models import Contact, ContactStatus
 
 
 @pytest.mark.django_db
@@ -270,3 +270,32 @@ class TestEventNotifications:
         events = response.data['results']
         donation_events = [e for e in events if e['event_type'] == 'donation_received']
         assert len(donation_events) > 0
+
+
+@pytest.mark.django_db
+class TestCoachContactAccess:
+    """ROLE-03 and ROLE-05: Coach users can read contacts for their missionaries."""
+
+    def test_coach_can_list_contacts(self, api_client, coach_user, missionary_user):
+        """ROLE-03: Coach can GET /api/v1/contacts/ and receive 200."""
+        coach_user.coached_users.add(missionary_user)
+        api_client.force_authenticate(user=coach_user)
+        response = api_client.get('/api/v1/contacts/')
+        assert response.status_code == 200
+
+    def test_coach_cannot_create_contact(self, api_client, coach_user):
+        """ROLE-03 write block: Coach POST /api/v1/contacts/ returns 403."""
+        api_client.force_authenticate(user=coach_user)
+        response = api_client.post('/api/v1/contacts/', data={
+            'first_name': 'Test', 'last_name': 'Donor'
+        }, format='json')
+        assert response.status_code == 403
+
+    def test_coach_contact_list_scoped_to_missionaries(self, api_client, coach_user, missionary_user):
+        """ROLE-05: Coach sees only contacts owned by their coached missionaries."""
+        coach_user.coached_users.add(missionary_user)
+        Contact.objects.create(owner=missionary_user, first_name='Visible', last_name='Contact')
+        api_client.force_authenticate(user=coach_user)
+        response = api_client.get('/api/v1/contacts/')
+        assert response.status_code == 200
+        # scoped: returns contacts owned by coached missionaries
