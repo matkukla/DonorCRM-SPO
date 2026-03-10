@@ -31,6 +31,7 @@ export default function Login() {
       navigate(from, { replace: true })
     } catch {
       setError("Invalid email or password. Please try again.")
+      setPassword("")
     } finally {
       setIsSubmitting(false)
     }
