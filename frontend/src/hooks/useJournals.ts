@@ -77,6 +77,12 @@ export function useCreateJournal() {
     mutationFn: (data: JournalCreate) => createJournal(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["journals"] })
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          Array.isArray(query.queryKey) &&
+          query.queryKey[0] === "journals" &&
+          query.queryKey[2] === "members",
+      })
     },
   })
 }

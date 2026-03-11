@@ -87,7 +87,7 @@ export const LogEventDialog = React.memo(function LogEventDialog({
 
   const effectiveJournalContactId = preselectedJournalContactId || selectedJournalContactId
 
-  const canSubmit = !!effectiveJournalContactId || !!contactId
+  const canSubmit = !!effectiveJournalContactId
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

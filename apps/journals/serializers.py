@@ -225,26 +225,9 @@ class JournalStageEventSerializer(serializers.ModelSerializer):
         contact_id = validated_data.pop('contact_id', None)
 
         if not validated_data.get('journal_contact') and contact_id:
-            from apps.contacts.models import Contact
-
-            if user and user.role == 'admin':
-                contact = Contact.objects.get(id=contact_id)
-            else:
-                contact = Contact.objects.get(id=contact_id, owner=user)
-            journal = Journal.objects.filter(
-                owner=user, is_archived=False
-            ).first()
-            if not journal:
-                # Auto-create a default journal for the user
-                journal = Journal.objects.create(
-                    owner=user,
-                    name="My Journal",
-                    goal_amount=Decimal('0.01'),
-                )
-            jc, _ = JournalContact.objects.get_or_create(
-                journal=journal, contact=contact
+            raise serializers.ValidationError(
+                {"contact_id": "journal_contact is required. Use the journal grid to log events."}
             )
-            validated_data['journal_contact'] = jc
 
         if user and user.is_authenticated:
             validated_data['triggered_by'] = user
