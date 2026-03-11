@@ -22,6 +22,7 @@ import {
   Receipt,
 } from "lucide-react"
 import { useAuth } from "@/providers/AuthProvider"
+import spoLogo from "@/assets/spo_logo.png"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
 interface NavItem {
@@ -106,8 +107,8 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
   return (
     <aside className={cn("flex flex-col h-full bg-background border-r border-border", className)}>
       {/* Logo */}
-      <div className="h-16 flex items-center px-6 border-b border-border">
-        <span className="text-xl font-semibold text-primary">DonorCRM</span>
+      <div className="h-16 flex items-center px-4 border-b border-border">
+        <img src={spoLogo} alt="SPO" className="h-8 w-auto object-contain" />
       </div>
 
       {/* Navigation */}
