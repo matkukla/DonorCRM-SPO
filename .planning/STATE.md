@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: "Completed quick task 16: Add SPO logo to sidebar header"
+stopped_at: "Completed quick task 17: Replace Vite SVG favicon with SPO PNG favicon"
 last_updated: "2026-03-11T20:55:03.837Z"
 last_activity: "2026-03-11 - Completed quick task 15: investigate and fix calculation error in Monthly Support Goal"
 progress:
@@ -198,11 +198,12 @@ None active.
 | 14 | Make By Supervisor view editable in AdminAssignments | 2026-03-10 | 4342fc2 | [14-in-the-by-supervisor-view-allow-the-user](./quick/14-in-the-by-supervisor-view-allow-the-user/) |
 | 15 | investigate and fix calculation error in Monthly Support Goal | 2026-03-11 | ee42905 | [15-investigate-and-fix-calculation-error-in](./quick/15-investigate-and-fix-calculation-error-in/) |
 | 16 | Add SPO logo to top-left sidebar header | 2026-03-11 | a76d34c | [16-add-spo-logo-to-the-top-left-of-the-appl](./quick/16-add-spo-logo-to-the-top-left-of-the-appl/) |
+| 17 | Replace Vite SVG favicon with SPO PNG favicon | 2026-03-11 | 353649d | [17-make-spo-favicon-png-the-favicon-for-the](./quick/17-make-spo-favicon-png-the-favicon-for-the/) |
 
 ## Session Continuity
 
 Last session: 2026-03-11T20:55:03.832Z
-Stopped at: Completed quick task 16: Add SPO logo to sidebar header
+Stopped at: Completed quick task 17: Replace Vite SVG favicon with SPO PNG favicon
 Resume: All phases complete. v2.2 milestone shipped.
 
 ---
