@@ -207,13 +207,12 @@ def get_giving_summary(user, year=None):
     year_start = date(year, 1, 1)
     year_end = date(year, 12, 31)
 
-    visible = get_visible_user_ids(user)
-    if visible is None:
-        gifts = Gift.objects.all()
-        recurring_gifts = RecurringGift.objects.all()
-    else:
-        gifts = Gift.objects.filter(donor_contact__owner_id__in=visible)
-        recurring_gifts = RecurringGift.objects.filter(donor_contact__owner_id__in=visible)
+    # Always scope to the requesting user's own contacts.
+    # get_visible_user_ids returns None (all-access) for admin/finance/read_only,
+    # but the Given & Expecting widget is personal — it compares against the
+    # user's own monthly_goal, so must only count their own contacts' gifts.
+    gifts = Gift.objects.filter(donor_contact__owner=user)
+    recurring_gifts = RecurringGift.objects.filter(donor_contact__owner=user)
 
     # Given: sum of gifts this year (cents -> dollars)
     total_cents = gifts.filter(
@@ -257,11 +256,9 @@ def get_monthly_gifts(user, months=12):
     today = date.today()
     start_date = (today.replace(day=1) - relativedelta(months=months - 1))
 
-    visible = get_visible_user_ids(user)
-    if visible is None:
-        gifts = Gift.objects.all()
-    else:
-        gifts = Gift.objects.filter(donor_contact__owner_id__in=visible)
+    # Always scope to the requesting user's own contacts.
+    # This chart shows the user's personal giving history vs their monthly_goal.
+    gifts = Gift.objects.filter(donor_contact__owner=user)
 
     monthly_data = (
         gifts.filter(gift_date__gte=start_date)
