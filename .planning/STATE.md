@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-03-11)
 
 Milestone: v2.2 UI Polish, Journal Report & Supervisor Role — ✅ SHIPPED 2026-03-11
 Status: Milestone complete — ready for next milestone
-Last activity: 2026-03-11 - Archived v2.2 milestone
+Last activity: 2026-03-11 - Completed quick task 15: investigate and fix calculation error in Monthly Support Goal
 
 Progress: [██████████] 100% — 10/10 phases, 34/34 plans
 
@@ -196,6 +196,7 @@ None active.
 | 12 | Fix bug where owner of contacts in Render not reassigned to missionary after import_re_gifts | 2026-03-07 | 58d4b5b | [12-fix-bug-where-owner-of-contacts-in-rende](./quick/12-fix-bug-where-owner-of-contacts-in-rende/) |
 | 13 | Check if there is a way to make phase 46 more user friendly | 2026-03-09 | f49d23b | [13-check-if-there-is-a-way-to-make-phase-46](./quick/13-check-if-there-is-a-way-to-make-phase-46/) |
 | 14 | Make By Supervisor view editable in AdminAssignments | 2026-03-10 | 4342fc2 | [14-in-the-by-supervisor-view-allow-the-user](./quick/14-in-the-by-supervisor-view-allow-the-user/) |
+| 15 | investigate and fix calculation error in Monthly Support Goal | 2026-03-11 | ee42905 | [15-investigate-and-fix-calculation-error-in](./quick/15-investigate-and-fix-calculation-error-in/) |
 
 ## Session Continuity
 
