@@ -91,7 +91,7 @@ export async function getJournalMembers(
   filters: Omit<JournalMemberFilters, 'journal'> = {}
 ): Promise<PaginatedResponse<JournalMember>> {
   const params = new URLSearchParams()
-  params.append('journal', journalId)
+  params.append('journal_id', journalId)
   if (filters.search) {
     params.append('search', filters.search)
   }
