@@ -90,3 +90,9 @@ credentials.json
 
 # MCP config (contains API keys)
 .mcp.json
+
+# Claude Code local config and skills
+.claude/
+
+# Local test data
+test_data/
