@@ -30,6 +30,7 @@ export const CreateJournalDialog = React.memo(function CreateJournalDialog({
 
   const createJournalMutation = useCreateJournal()
   const isPending = createJournalMutation.isPending
+  const isSubmittingRef = React.useRef(false)
 
   // Reset form when dialog closes
   React.useEffect(() => {
@@ -43,8 +44,13 @@ export const CreateJournalDialog = React.memo(function CreateJournalDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    // Synchronous guard — prevents double-submit before isPending re-renders
+    if (isSubmittingRef.current) return
+    isSubmittingRef.current = true
+
     if (!name || !goalAmount) {
       toast.error("Name and goal amount are required")
+      isSubmittingRef.current = false
       return
     }
 
@@ -59,6 +65,8 @@ export const CreateJournalDialog = React.memo(function CreateJournalDialog({
       navigate(`/journals/${result.id}`)
     } catch {
       toast.error("Failed to create journal")
+    } finally {
+      isSubmittingRef.current = false
     }
   }
 
