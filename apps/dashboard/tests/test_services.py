@@ -20,7 +20,7 @@ from apps.dashboard.services import (
 from apps.events.tests.factories import EventFactory
 from apps.gifts.tests.factories import GiftFactory, RecurringGiftFactory
 from apps.tasks.tests.factories import OverdueTaskFactory, TaskFactory
-from apps.users.tests.factories import UserFactory
+from apps.users.tests.factories import AdminUserFactory, UserFactory
 
 
 @pytest.mark.django_db
@@ -124,6 +124,75 @@ class TestGetSupportProgress:
         assert result['monthly_goal'] == 5000.0
         assert result['percentage'] == 2.0
         assert result['gap'] == 4900.0
+        assert result['active_pledge_count'] == 1
+
+    def test_missionary_only_sees_own_contacts_gifts(self):
+        """Regression: missionary A must not see missionary B's recurring gifts.
+
+        Root cause investigated: get_visible_user_ids returns {user.id} for
+        missionary role, so filter is donor_contact__owner_id__in={A.id}.
+        B's contacts are excluded — this verifies correct cross-user isolation.
+        """
+        missionary_a = UserFactory(role='missionary', monthly_goal=Decimal('5000.00'))
+        missionary_b = UserFactory(role='missionary', monthly_goal=Decimal('3000.00'))
+
+        contact_a = ContactFactory(owner=missionary_a)
+        contact_b = ContactFactory(owner=missionary_b)
+
+        # A has $100/month recurring gift
+        RecurringGiftFactory(donor_contact=contact_a, amount_cents=10000, frequency='monthly')
+        # B has $200/month recurring gift — must NOT appear in A's progress
+        RecurringGiftFactory(donor_contact=contact_b, amount_cents=20000, frequency='monthly')
+
+        result_a = get_support_progress(missionary_a)
+
+        # A should only see their own $100/month, not B's $200/month
+        assert result_a['current_monthly_support'] == 100.0
+        assert result_a['active_pledge_count'] == 1
+
+    def test_admin_support_progress_only_shows_own_contacts(self):
+        """Regression: admin must only see their own contacts' recurring gifts.
+
+        Bug: get_visible_user_ids returns None for admin, causing
+        get_support_progress to use RecurringGift.objects.all() — this
+        includes ALL missionaries' recurring gifts in the admin's personal
+        Monthly Support Goal tile, inflating current_monthly_support.
+
+        Fix: get_support_progress must scope admin to their own contacts
+        (donor_contact__owner=user) so the dashboard shows personal progress only.
+        """
+        admin = AdminUserFactory(monthly_goal=Decimal('5000.00'))
+        # Admin has no contacts or recurring gifts of their own
+
+        # A different missionary has active recurring gifts
+        missionary = UserFactory(role='missionary', monthly_goal=Decimal('3000.00'))
+        contact = ContactFactory(owner=missionary)
+        RecurringGiftFactory(donor_contact=contact, amount_cents=50000, frequency='monthly')
+
+        result = get_support_progress(admin)
+
+        # Admin has no personal donors — their support progress must be $0
+        assert result['current_monthly_support'] == 0.0
+        assert result['active_pledge_count'] == 0
+
+    def test_bimonthly_gift_monthly_equivalent(self):
+        """Regression: BIMONTHLY frequency (every 2 months) gives 0.5x monthly equivalent.
+
+        A $200/bimonthly gift means one $200 payment every 2 months.
+        Annual total = 6 x $200 = $1200.
+        Monthly equivalent = $1200 / 12 = $100/month.
+        Multiplier must be 0.5 (Decimal('1') / Decimal('2')).
+        """
+        user = UserFactory(role='missionary', monthly_goal=Decimal('5000.00'))
+        contact = ContactFactory(owner=user)
+
+        # $200 every 2 months (bimonthly) = $100/month equivalent
+        RecurringGiftFactory(donor_contact=contact, amount_cents=20000, frequency='bimonthly')
+
+        result = get_support_progress(user)
+
+        # 20000 cents = $200, bimonthly (every 2 months) * 0.5 = $100/month
+        assert result['current_monthly_support'] == 100.0
         assert result['active_pledge_count'] == 1
 
 
