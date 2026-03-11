@@ -71,7 +71,7 @@ def _make_staff():
         password='staffpass',
         first_name='Staff',
         last_name='User',
-        role='staff',
+        role='missionary',
     )
 
 

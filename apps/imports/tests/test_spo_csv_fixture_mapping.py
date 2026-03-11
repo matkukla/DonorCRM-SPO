@@ -37,7 +37,7 @@ def _make_admin():
 def _make_staff_owner():
     return User.objects.create_user(
         email='owner@example.com', password='ownerpass',
-        first_name='Owner', last_name='Staff', role='staff',
+        first_name='Owner', last_name='Staff', role='missionary',
     )
 
 

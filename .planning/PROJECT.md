@@ -2,34 +2,38 @@
 
 ## What This Is
 
-A donor relationship management system for missionaries. Includes contact management, gift tracking (with solicitor credit splitting), recurring gift management, task system, Journal feature for fundraising campaign pipelines, Raiser's Edge and generic CSV import, Smartsheet MPD report import, prayer intentions tracking, comprehensive list page filtering with URL-based state, draggable dashboard tiles, and an Admin Analytics Dashboard for coaches and leadership to monitor missionary performance across the organization.
+A donor relationship management system for missionaries. Includes contact management (including org-type contacts), gift tracking (with solicitor credit splitting), recurring gift management, task system, Journal feature for fundraising campaign pipelines, Raiser's Edge/SPO/generic CSV import, Smartsheet MPD report import, prayer intentions tracking with Begin Prayer flow, comprehensive list page filtering with URL-based state, draggable dashboard tiles, and an Admin Analytics Dashboard. Supports a full role hierarchy: missionary, supervisor (scoped to assigned missionaries), coach (contacts + journals only), and admin — all with M2M assignment support.
 
 ## Core Value
 
 Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems, and leadership can proactively support their teams through cross-missionary analytics.
 
-## Current State (after v2.1)
+## Current State (after v2.2)
 
 - **Backend:** Django 4.2.28 + DRF, ~26,000 LOC Python (excluding migrations), 9 apps (contacts, gifts, prayers, tasks, journals, insights, users, imports, core)
-- **Frontend:** React 19 + TypeScript + Vite, ~24,000 LOC TypeScript
+- **Frontend:** React 19 + TypeScript + Vite, ~26,000 LOC TypeScript
 - **Database:** PostgreSQL with Django ORM, UUID primary keys
-- **UI:** Tailwind CSS + Radix UI components, Recharts for charts, @uiw/react-heat-map for heatmap, @dnd-kit for drag-and-drop, TanStack Table for sorting
+- **UI:** Tailwind CSS + Radix UI components, Recharts for charts, @dnd-kit for drag-and-drop, TanStack Table for sorting (heatmap removed in v2.2)
 - **Filtering:** django-filter 24.3 backend, nuqs URL state frontend, FilterBar shared component
-- **Import systems:** Raiser's Edge CSV (4 types), Generic CSV (contacts, donations), Smartsheet MPD (Excel/CSV)
-- **Security:** Rate-limited auth (5/min), CSP headers (django-csp), authenticated API docs, security-scanned dependencies
-- **Total milestones shipped:** 6 (v1.0, v1.1, v1.2, v1.3, v2.0, v2.1)
-- **Total plans executed:** 107 across 37 phases
+- **Import systems:** Raiser's Edge CSV (4 types), Generic CSV (contacts, donations), Smartsheet MPD (Excel/CSV), SPO import pipeline (missionaries, gifts, prayers)
+- **Security:** Rate-limited auth (20/min demo mode), CSP headers (django-csp), authenticated API docs, security-scanned dependencies
+- **Roles:** missionary, supervisor (M2M scoped visibility), coach (M2M, contacts+journals only), admin — get_visible_user_ids() centralized helper
+- **Total milestones shipped:** 7 (v1.0, v1.1, v1.2, v1.3, v2.0, v2.1, v2.2)
+- **Total plans executed:** 141 across 47 phases
 
-### What's New in v2.1
+### What's New in v2.2
 
-- Auth rate limiting (5/min) via DRF ScopedRateThrottle on login and token refresh
-- Fixed refresh token rotation (frontend stores both access + refresh tokens)
-- Custom AlphanumericPasswordValidator (requires letters + numbers)
-- Content-Security-Policy via django-csp in production
-- Referrer-Policy and Permissions-Policy on frontend static site
-- API docs (schema/swagger/redoc) gated behind authentication in production
-- 8 Python CVEs + 3 JS CVEs patched
-- bandit and pip-audit added as dev dependencies for CI security scanning
+- UI polish: centered dialogs system-wide, "Potential Donor" rename, gift list Type column, analytics Review Queue and heatmap removed
+- Dashboard: bar/line chart toggle, cross-section drag-and-drop, tightened tile gaps, stale text removed
+- Journal report rebuilt: 4 metric cards, goal progress bar, Contacts by Stage and Decision Status charts, conditional alerts
+- Journal grid: single-click stage checkbox auto-creates event; Decision column between Close and Thank
+- Begin Prayer: dedicated "Begin Prayer" button launching expanded Focus Mode with intention selection dialog
+- Mission Supervisor role with scoped visibility → upgraded to M2M (multiple supervisors and coaches per missionary)
+- Roles Redesign: staff→missionary, mission_supervisor→supervisor, Coach role with financial data block
+- Admin Assignments page with multi-select chips and view toggle; My Team page with missionary profiles
+- SPO import pipeline: MissionaryAlias name matching, gift attribution, prayer extraction (CLI/API)
+- Org contact data mapping: organization_name across list, search, CSV export, contact detail, create/edit form
+- Coach role gaps closed: IsStaffOrAbove allows coach safe-method access, coached_user_ids M2M persisted
 
 ## Requirements
 
@@ -116,23 +120,20 @@ Missionaries can manage donor relationships efficiently, with accurate data impo
 - ✓ Python dependency CVE patches (Django 4.2.28, gunicorn 22.x) — v2.1
 - ✓ JS dependency CVE patches (axios, minimatch, ajv) — v2.1
 - ✓ Security audit report (SECURITY-REPORT.md) — v2.1
+- ✓ UI polish: centered dialogs, "Potential Donor" rename, gift Type column, analytics cleanup — v2.2
+- ✓ Dashboard chart toggle, cross-section drag-and-drop, tightened gaps, stale tiles removed — v2.2
+- ✓ Journal report rebuilt with metrics cards, charts, alerts; single-click stage checkbox — v2.2
+- ✓ Begin Prayer flow with intention selection dialog and expanded Focus Mode — v2.2
+- ✓ Mission Supervisor role with scoped visibility and M2M assignment (multiple supervisors/coaches) — v2.2
+- ✓ Roles Redesign: missionary/supervisor/coach roles with Coach financial block — v2.2
+- ✓ Admin Assignments page + My Team page with missionary profiles — v2.2
+- ✓ SPO import pipeline (MissionaryAlias, gift attribution, prayer extraction) — v2.2
+- ✓ Org contact data mapping: organization_name across all views and export — v2.2
+- ✓ Coach role gaps: IsStaffOrAbove fix, coached_user_ids M2M, stale role strings fixed — v2.2
 
 ### Active
 
-## Current Milestone: v2.2 UI Polish, Journal Report & Supervisor Role
-
-**Goal:** Refine the UI across all major pages, rebuild the journal report component, add Begin Prayer flow, and introduce the Mission Supervisor role with scoped visibility.
-
-**Target features:**
-- Dashboard layout modifications (remove stale text, resize gaps, chart toggle, draggable anywhere)
-- Center all modal dialogs
-- Rebuild journal report component (new metrics, charts, checkbox behavior, remove pipeline breakdown)
-- Rename "Prospect" to "Potential Donor" on contacts page
-- Modify gifts page columns (remove Funds/Description, add Type column)
-- Remove Fund column from pledges page
-- Remove Review Queue and heat map from analytics dashboard
-- Add Begin Prayer feature (expand Focus Mode with dedicated prayer session view)
-- Create Mission Supervisor role (admin-assigned, scoped visibility, missionary dashboard selector)
+_(No active requirements — start next milestone with `/gsd:new-milestone`)_
 
 ### Out of Scope
 
@@ -212,6 +213,13 @@ Missionaries can manage donor relationships efficiently, with accurate data impo
 | Strict CSP (default-src: 'none') for Django API (v2.1) | API serves JSON only; admin/docs excluded from CSP | ✓ Good |
 | Conditional API docs auth via settings.DEBUG (v2.1) | Open in dev for convenience, gated in production | ✓ Good |
 | django-csp 4.0 dict config format (v2.1) | CONTENT_SECURITY_POLICY dict with EXCLUDE_URL_PREFIXES | ✓ Good |
+| Dialog-first modal pattern (v2.2) | All overlays use centered Dialog with max-h-[80vh] and overflow-y-auto; no side-sliding Sheets | ✓ Good |
+| Single-click stage checkbox auto-creates event (v2.2) | Removed transition warning toasts for independent stage toggles per JRNL-08 | ✓ Good |
+| get_visible_user_ids() centralized visibility helper (v2.2) | Returns None for all-access roles, set of IDs for scoped roles — clean pattern for all views | ✓ Good |
+| Supervisor/coach as M2M not FK (v2.2 Phase 46) | Supports multiple supervisors/coaches per missionary; FK data preserved in migration | ✓ Good |
+| IsSupervisorWriteRestricted + IsStaffOrAbove permission classes (v2.2) | Separate permission classes for write restriction vs role gate; coach gets safe-method access | ✓ Good |
+| SPO import as CLI/API only — no frontend UI (v2.2) | Pre-existing deferred decision; CLI workflow is intentional for admin-only operation | — Pending |
+| staff_users() in managers.py uses stale role='staff' (v2.2 tech debt) | Method appears unused in production; accepted as low-priority tech debt | ⚠️ Revisit |
 
 ---
-*Last updated: 2026-02-26 after v2.2 milestone started*
+*Last updated: 2026-03-11 after v2.2 milestone*
