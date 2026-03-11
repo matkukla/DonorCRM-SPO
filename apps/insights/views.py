@@ -4,7 +4,7 @@ Views for Insights/Reports data.
 from datetime import datetime
 
 from drf_spectacular.utils import OpenApiParameter, extend_schema
-from rest_framework import permissions
+from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
