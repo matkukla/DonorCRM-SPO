@@ -1,5 +1,37 @@
 # DonorCRM Milestones
 
+## v2.2 -- UI Polish, Journal Report & Supervisor Role
+**Completed:** 2026-03-11
+**Duration:** 57 days (2026-01-13 → 2026-03-10)
+
+Delivered a comprehensive UI polish pass, rebuilt journal reporting, added Begin Prayer flow, introduced Mission Supervisor and Coach roles with scoped visibility and M2M assignments, built SPO import pipeline, fixed org contact data mapping, and closed all audit gaps.
+
+**Scope:**
+- 36 requirements implemented
+- 10 phases executed (38-47)
+- 34 plans completed
+- 296 files changed, +34,664 / -1,951 lines
+
+**Key Features:**
+- UI polish: centered dialogs, "Potential Donor" rename, gift list Type column, cleaned analytics dashboard (removed Review Queue and heatmap)
+- Dashboard modifications: chart toggle (bar/line), cross-section drag-and-drop, tightened gaps, removed stale text and tiles
+- Journal report rebuilt: metrics cards, goal progress bar, Contacts by Stage and Decision Status charts, conditional alerts; single-click stage checkbox auto-creates stage event
+- Begin Prayer: dedicated "Begin Prayer" button launching expanded Focus Mode with intention selection dialog
+- Mission Supervisor role: scoped visibility, admin assignment management, missionary dashboard selector; later upgraded to M2M (multiple supervisors/coaches per missionary)
+- Roles Redesign: staff→missionary, mission_supervisor→supervisor, Coach role with financial data block, Admin Assignments page, My Team page
+- SPO import pipeline: MissionaryAlias name matching, gift attribution, prayer extraction, tri-source comparison (CLI/API)
+- Org contact data mapping: organization_name displayed across list, search, CSV export, contact detail, and create/edit form
+- Coach role gaps closed: IsStaffOrAbove allows coach safe-method access, coached_user_ids M2M persisted, stale role='staff' strings fixed
+
+**Archives:**
+- [v2.2-ROADMAP.md](milestones/v2.2-ROADMAP.md)
+- [v2.2-REQUIREMENTS.md](milestones/v2.2-REQUIREMENTS.md)
+- [v2.2-MILESTONE-AUDIT.md](milestones/v2.2-MILESTONE-AUDIT.md)
+
+**Git Tag:** v2.2
+
+---
+
 ## Completed Milestones
 
 ### v1.0 -- Journal Feature
@@ -182,5 +214,5 @@ _No active milestones. Run `/gsd:new-milestone` to start the next one._
 
 ---
 
-*Last updated: 2026-02-25 (v2.1 shipped)*
+*Last updated: 2026-03-11 (v2.2 shipped)*
 
