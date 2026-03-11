@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: UI Polish, Journal Report & Supervisor Role
-status: executing
-stopped_at: "Completed 47-02: Fix IsStaffOrAbove coach permission gate"
-last_updated: "2026-03-10T21:58:17.355Z"
-last_activity: "2026-03-09 - Completed quick task 13: Check if there is a way to make phase 46 more user friendly"
+status: milestone_complete
+stopped_at: "v2.2 milestone archived"
+last_updated: "2026-03-11"
+last_activity: "2026-03-11 - Completed v2.2 milestone archival"
 progress:
   total_phases: 10
   completed_phases: 10
@@ -18,20 +18,18 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-26)
+See: .planning/PROJECT.md (updated 2026-03-11)
 
 **Core value:** Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems, and leadership can proactively support their teams through cross-missionary analytics.
-**Current focus:** Phase 43 — Roles Redesign
+**Current focus:** Planning next milestone — run `/gsd:new-milestone`
 
 ## Current Position
 
-Milestone: v2.2 UI Polish, Journal Report & Supervisor Role
-Phase: 43 of 43 (Roles Redesign)
-Plan: 0 of 5 in current phase (starting execution)
-Status: Phase 43 in progress
-Last activity: 2026-03-09 - Completed quick task 13: Check if there is a way to make phase 46 more user friendly
+Milestone: v2.2 UI Polish, Journal Report & Supervisor Role — ✅ SHIPPED 2026-03-11
+Status: Milestone complete — ready for next milestone
+Last activity: 2026-03-11 - Archived v2.2 milestone
 
-Progress: [██████████] 100%
+Progress: [██████████] 100% — 10/10 phases, 34/34 plans
 
 ## Performance Metrics
 
