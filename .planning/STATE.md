@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.2
-milestone_name: UI Polish, Journal Report & Supervisor Role
-status: milestone_complete
-stopped_at: "v2.2 milestone archived"
-last_updated: "2026-03-11"
-last_activity: "2026-03-11 - Completed v2.2 milestone archival"
+milestone: v1.0
+milestone_name: milestone
+status: completed
+stopped_at: "Completed quick task 15: Fixed Monthly Support Goal calculation error"
+last_updated: "2026-03-11T15:17:38.650Z"
+last_activity: 2026-03-11 - Archived v2.2 milestone
 progress:
-  total_phases: 10
-  completed_phases: 10
-  total_plans: 34
-  completed_plans: 34
+  total_phases: 23
+  completed_phases: 22
+  total_plans: 66
+  completed_plans: 68
   percent: 100
 ---
 
@@ -161,6 +161,7 @@ v2.2 decisions:
 - [Phase 46]: purge_ghost_assignments management command created with --dry-run support to remove stale M2M rows from migration 0006
 - [Phase 47-fix-coach-role-gaps]: total_donations assertion corrected from 15000.0 (raw cents) to 150.0 (dollars) — stale comment said 'cents' but API returns dollars
 - [Phase 47]: Coach added to SAFE_METHODS guard in IsStaffOrAbove (identical pattern to read_only) — not added to final allowed list to preserve write block
+- [Phase quick-15]: get_support_progress() scoped to donor_contact__owner=user for all roles — Monthly Support Goal is personal, not role-scoped; all-access sentinel only valid for list views
 
 ### Roadmap Evolution
 
@@ -198,8 +199,8 @@ None active.
 
 ## Session Continuity
 
-Last session: 2026-03-10T21:54:59.650Z
-Stopped at: Completed 47-02: Fix IsStaffOrAbove coach permission gate
+Last session: 2026-03-11T15:17:33.602Z
+Stopped at: Completed quick task 15: Fixed Monthly Support Goal calculation error
 Resume: All phases complete. v2.2 milestone shipped.
 
 ---
