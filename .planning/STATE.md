@@ -176,7 +176,7 @@ v2.2 decisions:
 
 ### Pending Todos
 
-16 pending todo(s). See `.planning/todos/pending/`.
+17 pending todo(s). See `.planning/todos/pending/`.
 
 ### Blockers/Concerns
 
