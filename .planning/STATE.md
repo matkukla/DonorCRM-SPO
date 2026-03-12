@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Goal Tracking & View As
 status: executing
-stopped_at: Completed 48-01-PLAN.md
-last_updated: "2026-03-12T16:15:00Z"
+stopped_at: Completed 48-02-PLAN.md
+last_updated: "2026-03-12T16:19:32.292Z"
 last_activity: 2026-03-12 — Phase 48 Plan 01 complete (monthly_average in MPD views)
 progress:
   total_phases: 6
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
+  completed_plans: 2
   percent: 8
 ---
 
@@ -49,6 +49,7 @@ Progress: [█░░░░░░░░░] 8% — 0/6 phases, 1/2 plans (phase 4
 | 51 | Data scoping: admin/supervisor default to own data | SCOPE-01, SCOPE-02 |
 | 52 | View As backend: middleware, permissions, mutation blocking | VIEWAS-07, VIEWAS-08, VIEWAS-12 |
 | 53 | View As frontend: context, banner, selector, cache | VIEWAS-01 through VIEWAS-06, VIEWAS-09, VIEWAS-10, VIEWAS-11 |
+| Phase 48 P02 | 8 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -63,6 +64,7 @@ Recent decisions relevant to v2.3:
 - [quick-15]: get_support_progress() scoped to donor_contact__owner=user for all roles — Monthly Support Goal is personal
 - [Phase 47]: get_visible_user_ids() returns None sentinel for all-access roles — this sentinel will need to change under SCOPE-01 (admins default to own data)
 - [Phase 46]: supervised_users field name kept in CurrentUserSerializer — frontend uses it for supervisor and coach
+- [Phase 48]: Admin MPD Overview table placed outside the \!isViewingOther guard so admins see all-missionaries overview regardless of which user's dashboard they view
 
 ### Pending Todos
 
@@ -74,6 +76,6 @@ Recent decisions relevant to v2.3:
 
 ## Session Continuity
 
-Last session: 2026-03-12T16:15:00Z
-Stopped at: Completed 48-01-PLAN.md
+Last session: 2026-03-12T16:19:21.816Z
+Stopped at: Completed 48-02-PLAN.md
 Resume: Execute `/gsd:execute-phase 48` for Plan 02 (frontend monthly_average tile)
