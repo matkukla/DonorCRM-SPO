@@ -41,6 +41,31 @@ export function MPDOverviewTable() {
         ),
         cell: (info) => info.getValue(),
       }),
+      columnHelper.accessor("monthly_average", {
+        header: ({ column }) => (
+          <button
+            className="flex items-center gap-2 hover:text-foreground cursor-pointer"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            Monthly Average
+            <ArrowUpDown className="h-4 w-4" />
+          </button>
+        ),
+        cell: (info) => formatMPDCurrency(info.getValue() ?? null),
+        sortingFn: (rowA, rowB, columnId) => {
+          const a = rowA.getValue<string | null>(columnId)
+          const b = rowB.getValue<string | null>(columnId)
+          if (a === null && b === null) return 0
+          if (a === null) return 1
+          if (b === null) return -1
+          const numA = parseFloat(a)
+          const numB = parseFloat(b)
+          if (isNaN(numA) && isNaN(numB)) return 0
+          if (isNaN(numA)) return 1
+          if (isNaN(numB)) return -1
+          return numA - numB
+        },
+      }),
       columnHelper.accessor("current_mpd_cap", {
         header: ({ column }) => (
           <button
