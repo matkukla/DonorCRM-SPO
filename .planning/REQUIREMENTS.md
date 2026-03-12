@@ -47,8 +47,8 @@
 
 ### MPD Dashboard
 
-- [ ] **MPD-01**: Dashboard displays a "Monthly Average" tile in the MPD Financial Overview section showing average monthly giving
-- [ ] **MPD-02**: Dashboard displays an MPD Overview section visible only to admin role, showing org-wide MPD health metrics from Smartsheet data
+- [x] **MPD-01**: Dashboard displays a "Monthly Average" tile in the MPD Financial Overview section showing average monthly giving
+- [x] **MPD-02**: Dashboard displays an MPD Overview section visible only to admin role, showing org-wide MPD health metrics from Smartsheet data
 
 ## v2.4+ Requirements (Deferred)
 
@@ -77,8 +77,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MPD-01 | Phase 48 | Pending |
-| MPD-02 | Phase 48 | Pending |
+| MPD-01 | Phase 48 | Complete |
+| MPD-02 | Phase 48 | Complete |
 | FISC-01 | Phase 49 | Pending |
 | FISC-02 | Phase 49 | Pending |
 | GOAL-02 | Phase 49 | Pending |
