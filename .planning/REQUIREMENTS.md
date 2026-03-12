@@ -77,41 +77,41 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FISC-01 | Phase 48 | Pending |
-| FISC-02 | Phase 48 | Pending |
-| GOAL-01 | Phase 48 | Pending |
-| GOAL-02 | Phase 48 | Pending |
-| GOAL-03 | Phase 48 | Pending |
-| GOAL-04 | Phase 48 | Pending |
-| GOAL-05 | Phase 48 | Pending |
-| GOAL-06 | Phase 48 | Pending |
-| GOAL-07 | Phase 48 | Pending |
-| GOAL-08 | Phase 48 | Pending |
-| GOAL-09 | Phase 48 | Pending |
-| GOAL-10 | Phase 48 | Pending |
-| GOAL-11 | Phase 48 | Pending |
-| SCOPE-01 | TBD | Pending |
-| SCOPE-02 | TBD | Pending |
-| VIEWAS-01 | TBD | Pending |
-| VIEWAS-02 | TBD | Pending |
-| VIEWAS-03 | TBD | Pending |
-| VIEWAS-04 | TBD | Pending |
-| VIEWAS-05 | TBD | Pending |
-| VIEWAS-06 | TBD | Pending |
-| VIEWAS-07 | TBD | Pending |
-| VIEWAS-08 | TBD | Pending |
-| VIEWAS-09 | TBD | Pending |
-| VIEWAS-10 | TBD | Pending |
-| VIEWAS-11 | TBD | Pending |
-| VIEWAS-12 | TBD | Pending |
-| MPD-01 | TBD | Pending |
-| MPD-02 | TBD | Pending |
+| MPD-01 | Phase 48 | Pending |
+| MPD-02 | Phase 48 | Pending |
+| FISC-01 | Phase 49 | Pending |
+| FISC-02 | Phase 49 | Pending |
+| GOAL-02 | Phase 49 | Pending |
+| GOAL-03 | Phase 49 | Pending |
+| GOAL-04 | Phase 49 | Pending |
+| GOAL-11 | Phase 49 | Pending |
+| GOAL-01 | Phase 50 | Pending |
+| GOAL-05 | Phase 50 | Pending |
+| GOAL-06 | Phase 50 | Pending |
+| GOAL-07 | Phase 50 | Pending |
+| GOAL-08 | Phase 50 | Pending |
+| GOAL-09 | Phase 50 | Pending |
+| GOAL-10 | Phase 50 | Pending |
+| SCOPE-01 | Phase 51 | Pending |
+| SCOPE-02 | Phase 51 | Pending |
+| VIEWAS-07 | Phase 52 | Pending |
+| VIEWAS-08 | Phase 52 | Pending |
+| VIEWAS-12 | Phase 52 | Pending |
+| VIEWAS-01 | Phase 53 | Pending |
+| VIEWAS-02 | Phase 53 | Pending |
+| VIEWAS-03 | Phase 53 | Pending |
+| VIEWAS-04 | Phase 53 | Pending |
+| VIEWAS-05 | Phase 53 | Pending |
+| VIEWAS-06 | Phase 53 | Pending |
+| VIEWAS-09 | Phase 53 | Pending |
+| VIEWAS-10 | Phase 53 | Pending |
+| VIEWAS-11 | Phase 53 | Pending |
 
 **Coverage:**
 - v2.3 requirements: 29 total
-- Mapped to phases: TBD (updated after roadmap)
-- Unmapped: TBD
+- Mapped to phases: 29/29
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-12*
-*Last updated: 2026-03-12 after initial definition*
+*Last updated: 2026-03-12 — traceability updated (phase order revised: MPD moved to Phase 48, Goal backend to 49, Goal frontend to 50, Data Scoping to 51, View As backend to 52, View As frontend to 53)*
