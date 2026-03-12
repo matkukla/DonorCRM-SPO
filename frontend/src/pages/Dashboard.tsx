@@ -316,8 +316,8 @@ export default function Dashboard() {
             </>
           )}
 
-          {/* Admin MPD Overview -- visible to admin regardless of personal MPD data */}
-          {user?.role === "admin" && (
+          {/* Admin MPD Overview -- visible to admin on their own dashboard only */}
+          {user?.role === "admin" && !isViewingOther && (
             <div className="space-y-2">
               <h2 className="text-lg font-semibold">MPD Overview</h2>
               <MPDOverviewTable />
