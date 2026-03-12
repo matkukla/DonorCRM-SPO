@@ -8,6 +8,17 @@ A donor relationship management system for missionaries. Includes contact manage
 
 Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems, and leadership can proactively support their teams through cross-missionary analytics.
 
+## Current Milestone: v2.3 Goal Tracking & View As
+
+**Goal:** Give missionaries a dedicated Goal page to track fundraising progress, and give supervisors/admins a View As mode to see any missionary's data in read-only.
+
+**Target features:**
+- Goal page with fiscal-year progress calculation, journal selection, pacing targets, and progress bars
+- Supervisor/admin View As mode with persistent banner, read-only enforcement, and `X-View-As-User-Id` backend middleware
+- Default data scoping — admins/supervisors see only their own data unless in View As mode
+- Fiscal year configuration (July 1 start) as shared utility
+- MPD dashboard enhancements: Monthly Average tile + Admin MPD Overview section
+
 ## Current State (after v2.2)
 
 - **Backend:** Django 4.2.28 + DRF, ~26,000 LOC Python (excluding migrations), 9 apps (contacts, gifts, prayers, tasks, journals, insights, users, imports, core)
@@ -133,7 +144,22 @@ Missionaries can manage donor relationships efficiently, with accurate data impo
 
 ### Active
 
-_(No active requirements — start next milestone with `/gsd:new-milestone`)_
+- [ ] Goal page: fiscal-year support calculation from selected journals
+- [ ] Goal page: journal selection persisted per user
+- [ ] Goal page: pacing targets (calls/meetings based on goal)
+- [ ] Goal page: three progress bars (support $, calls, meetings) with milestone markers
+- [ ] Goal page: read-only mode for supervisors/admins
+- [ ] Goal page: navigation item in sidebar (below Dashboard)
+- [ ] Goal fields: monthly_support_goal_cents on User model; GoalJournalSelection model
+- [ ] Fiscal year utility: July 1 start, months remaining calculation (shared backend + frontend)
+- [ ] View As mode: X-View-As-User-Id middleware with permission check
+- [ ] View As mode: GET /api/users/viewable endpoint
+- [ ] View As mode: frontend ViewAsContext + API header injection
+- [ ] View As mode: persistent banner with Exit button
+- [ ] View As mode: read-only enforcement (mutations blocked frontend + backend)
+- [ ] Data scoping: all roles (incl. admin) default to owner=self; View As unlocks another user
+- [ ] MPD dashboard: Monthly Average tile in MPD Financial Overview section
+- [ ] MPD dashboard: Admin MPD Overview section visible to admin role
 
 ### Out of Scope
 
@@ -222,4 +248,4 @@ _(No active requirements — start next milestone with `/gsd:new-milestone`)_
 | staff_users() in managers.py uses stale role='staff' (v2.2 tech debt) | Method appears unused in production; accepted as low-priority tech debt | ⚠️ Revisit |
 
 ---
-*Last updated: 2026-03-11 after v2.2 milestone*
+*Last updated: 2026-03-12 after v2.3 milestone started*
