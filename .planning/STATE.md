@@ -1,35 +1,36 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: completed
-stopped_at: "Completed quick task 17: Replace Vite SVG favicon with SPO PNG favicon"
-last_updated: "2026-03-11T20:55:03.837Z"
-last_activity: "2026-03-11 - Completed quick task 15: investigate and fix calculation error in Monthly Support Goal"
+milestone: v2.3
+milestone_name: Goal Tracking & View As
+status: in_progress
+stopped_at: "Milestone v2.3 started — defining requirements"
+last_updated: "2026-03-12T00:00:00.000Z"
+last_activity: "2026-03-12 — Milestone v2.3 started"
 progress:
-  total_phases: 23
-  completed_phases: 22
-  total_plans: 66
-  completed_plans: 68
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-11)
+See: .planning/PROJECT.md (updated 2026-03-12)
 
 **Core value:** Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems, and leadership can proactively support their teams through cross-missionary analytics.
-**Current focus:** Planning next milestone — run `/gsd:new-milestone`
+**Current focus:** Phase: Not started (defining requirements)
 
 ## Current Position
 
-Milestone: v2.2 UI Polish, Journal Report & Supervisor Role — ✅ SHIPPED 2026-03-11
-Status: Milestone complete — ready for next milestone
-Last activity: 2026-03-11 - Completed quick task 15: investigate and fix calculation error in Monthly Support Goal
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-12 — Milestone v2.3 started
 
-Progress: [██████████] 100% — 10/10 phases, 34/34 plans
+Progress: [░░░░░░░░░░] 0% — 0/? phases, 0/? plans
 
 ## Performance Metrics
 
