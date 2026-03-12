@@ -741,6 +741,7 @@ class MPDOverviewView(APIView):
                 missionaries.append({
                     'user_id': str(user.id),
                     'user_name': user.full_name,
+                    'monthly_average': str(snapshot.monthly_average) if snapshot.monthly_average is not None else None,
                     'current_mpd_cap': str(snapshot.current_mpd_cap) if snapshot.current_mpd_cap is not None else None,
                     'latest_roll_forward_balance': str(snapshot.latest_roll_forward_balance) if snapshot.latest_roll_forward_balance is not None else None,
                     'months_remaining_rf': snapshot.months_remaining_rf,
@@ -771,6 +772,7 @@ class MPDMyDataView(APIView):
 
         return Response({
             'has_data': True,
+            'monthly_average': str(snapshot.monthly_average) if snapshot.monthly_average is not None else None,
             'current_mpd_cap': str(snapshot.current_mpd_cap) if snapshot.current_mpd_cap is not None else None,
             'latest_roll_forward_balance': str(snapshot.latest_roll_forward_balance) if snapshot.latest_roll_forward_balance is not None else None,
             'months_remaining_rf': snapshot.months_remaining_rf,
