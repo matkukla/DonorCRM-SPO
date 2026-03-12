@@ -140,7 +140,10 @@ See milestones/v2.2-ROADMAP.md for complete phase details.
   1. The MPD Financial Overview section on the dashboard shows a "Monthly Average" tile displaying the user's average monthly giving calculated from Smartsheet MPD data
   2. Admin users see an additional "MPD Overview" section on the dashboard showing org-wide MPD health metrics aggregated from all missionaries' Smartsheet snapshots
   3. Non-admin users do not see the MPD Overview section
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 48-01-PLAN.md — Backend: add monthly_average to MPDMyDataView and MPDOverviewView with tests
+- [ ] 48-02-PLAN.md — Frontend: Monthly Average tile, 4-col grid, admin MPD Overview table section
 
 ### Phase 49: Goal Page — Data Model & Backend
 **Goal**: The backend infrastructure for Goal tracking exists: fiscal year utility, goal data models, and API endpoints that correctly calculate support progress from selected journals
@@ -201,7 +204,7 @@ See milestones/v2.2-ROADMAP.md for complete phase details.
 
 ## Summary Checklist
 
-- [ ] **Phase 48: MPD Dashboard Enhancements** - Monthly Average tile and Admin MPD Overview section
+- [x] **Phase 48: MPD Dashboard Enhancements** - Monthly Average tile and Admin MPD Overview section (completed 2026-03-12)
 - [ ] **Phase 49: Goal Page — Data Model & Backend** - Fiscal year utility, User.monthly_support_goal_cents, GoalJournalSelection model, and goal calculation API endpoints
 - [ ] **Phase 50: Goal Page — Frontend UI** - Goal page with progress bars, pacing targets, milestone messages, sidebar nav, and read-only mode
 - [ ] **Phase 51: Data Scoping** - Admin and supervisor default to own data; cross-user access only via View As
@@ -222,7 +225,7 @@ See milestones/v2.2-ROADMAP.md for complete phase details.
 | 27-36 | v2.0 | 27/27 | Complete | 2026-02-25 |
 | 37 | v2.1 | 3/3 | Complete | 2026-02-25 |
 | 38-47 | v2.2 | 34/34 | Complete | 2026-03-11 |
-| 48. MPD Dashboard Enhancements | v2.3 | 0/TBD | Not started | - |
+| 48. MPD Dashboard Enhancements | v2.3 | 2/2 | Complete | 2026-03-12 |
 | 49. Goal Page — Data Model & Backend | v2.3 | 0/TBD | Not started | - |
 | 50. Goal Page — Frontend UI | v2.3 | 0/TBD | Not started | - |
 | 51. Data Scoping | v2.3 | 0/TBD | Not started | - |
@@ -233,4 +236,4 @@ See milestones/v2.2-ROADMAP.md for complete phase details.
 
 ---
 
-*Last updated: 2026-03-12 (v2.3 phase order revised — MPD enhancements moved to Phase 48)*
+*Last updated: 2026-03-12 (Phase 48 planned: 2 plans)*

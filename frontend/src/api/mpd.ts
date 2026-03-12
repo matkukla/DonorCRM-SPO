@@ -34,6 +34,7 @@ export interface MPDOverviewResponse {
 export interface MPDMissionaryOverview {
   user_id: string
   user_name: string
+  monthly_average?: string | null
   current_mpd_cap: string | null
   latest_roll_forward_balance: string | null
   months_remaining_rf: string
@@ -42,6 +43,7 @@ export interface MPDMissionaryOverview {
 /** My data response from GET /api/v1/imports/mpd/me/ */
 export interface MPDMyDataResponse {
   has_data: boolean
+  monthly_average?: string | null
   current_mpd_cap?: string | null
   latest_roll_forward_balance?: string | null
   months_remaining_rf?: string

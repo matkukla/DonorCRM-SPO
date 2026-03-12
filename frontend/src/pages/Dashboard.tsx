@@ -17,6 +17,7 @@ import { SortableDashboardTile } from "@/components/dashboard/SortableDashboardT
 import { LogEventDialog } from "@/pages/journals/components/LogEventDialog"
 import { useMPDMyData } from "@/hooks/useMPD"
 import { MPDStatsInline } from "@/components/mpd/MPDStatsInline"
+import { MPDOverviewTable } from "@/components/mpd/MPDOverviewTable"
 import { Users, DollarSign, FileText, CheckSquare, RotateCcw, ChevronDown, Check, Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -294,16 +295,17 @@ export default function Dashboard() {
           {!isViewingOther && (
             <>
               {mpdLoading ? (
-                <div className="grid gap-3 md:grid-cols-3">
-                  {[...Array(3)].map((_, i) => (
+                <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
+                  {[...Array(4)].map((_, i) => (
                     <div key={i} className="h-24 bg-muted rounded-lg animate-pulse" />
                   ))}
                 </div>
               ) : mpdData?.has_data ? (
                 <div className="space-y-2">
                   <h2 className="text-lg font-semibold">MPD Financial Overview</h2>
-                  <div className="grid gap-3 md:grid-cols-3">
+                  <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
                     <MPDStatsInline
+                      monthlyAverage={mpdData.monthly_average}
                       currentMpdCap={mpdData.current_mpd_cap}
                       latestRollForwardBalance={mpdData.latest_roll_forward_balance}
                       monthsRemainingRf={mpdData.months_remaining_rf}
@@ -312,6 +314,14 @@ export default function Dashboard() {
                 </div>
               ) : null}
             </>
+          )}
+
+          {/* Admin MPD Overview -- visible to admin on their own dashboard only */}
+          {user?.role === "admin" && !isViewingOther && (
+            <div className="space-y-2">
+              <h2 className="text-lg font-semibold">MPD Overview</h2>
+              <MPDOverviewTable />
+            </div>
           )}
         </div>
 
