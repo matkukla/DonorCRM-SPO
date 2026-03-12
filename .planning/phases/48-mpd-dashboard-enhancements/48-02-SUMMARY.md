@@ -12,6 +12,7 @@ provides:
   - Monthly Average tile as first card in 4-card MPD Financial Overview section on Dashboard
   - Admin-only MPD Overview table section on Dashboard with Monthly Average as second column
   - 4-column responsive MPD grid (sm:grid-cols-2 md:grid-cols-4)
+  - isViewingOther guard on admin MPD Overview table (hidden when admin views a missionary's dashboard)
 affects: [phase-49, phase-50, phase-52, phase-53]
 
 # Tech tracking
@@ -19,7 +20,7 @@ tech-stack:
   added: []
   patterns:
     - "TanStack decimal sortingFn: null sorts last, parseFloat for numeric comparison"
-    - "Admin section guard pattern: user?.role === 'admin' outside isViewingOther block"
+    - "Admin section guard pattern: user?.role === 'admin' && !isViewingOther for context-sensitive admin sections"
 
 key-files:
   created: []
@@ -30,29 +31,30 @@ key-files:
     - frontend/src/pages/Dashboard.tsx
 
 key-decisions:
-  - "Admin MPD Overview table placed outside the !isViewingOther guard — admin sees it regardless of whose dashboard they view"
+  - "Admin MPD Overview table requires both role === 'admin' AND !isViewingOther — table is hidden when admin uses View As to browse a missionary's dashboard"
   - "Monthly Average column inserted as second column in MPDOverviewTable (after Missionary, before MPD Cap) matching backend dict order"
 
 patterns-established:
   - "MPDStatsInline Fragment pattern: parent grid wrapper, 4 Card children returned as Fragment"
+  - "isViewingOther guard: admin-only sections that are personal or admin-context-specific must check !isViewingOther in addition to the role guard"
 
 requirements-completed: [MPD-01, MPD-02]
 
 # Metrics
-duration: 8min
+duration: ~30min
 completed: 2026-03-12
 ---
 
 # Phase 48 Plan 02: MPD Dashboard Frontend Summary
 
-**Monthly Average tile added as first of 4 MPD cards for all users, plus admin-only MPD Overview table with Monthly Average as sortable second column**
+**Monthly Average tile added as first of 4 MPD cards for all users, plus admin-only MPD Overview table with Monthly Average column, hidden during View As browsing**
 
 ## Performance
 
-- **Duration:** 8 min
+- **Duration:** ~30 min
 - **Started:** 2026-03-12T16:17:06Z
-- **Completed:** 2026-03-12T16:25:00Z
-- **Tasks:** 2 auto-tasks completed (Task 3 is human-verify checkpoint)
+- **Completed:** 2026-03-12
+- **Tasks:** 3 (2 auto + 1 checkpoint with user-feedback fix)
 - **Files modified:** 4
 
 ## Accomplishments
@@ -61,7 +63,7 @@ completed: 2026-03-12
 - Added Monthly Average Card as first of 4 cards in MPDStatsInline component
 - Added Monthly Average as second sortable column in MPDOverviewTable (after Missionary, before MPD Cap)
 - Updated Dashboard.tsx MPD grid to 4-column responsive layout (sm:grid-cols-2 md:grid-cols-4)
-- Added admin-only MPD Overview section on Dashboard outside isViewingOther guard
+- Added admin-only MPD Overview section on Dashboard, guarded by both role check and !isViewingOther
 
 ## Task Commits
 
@@ -69,26 +71,40 @@ Each task was committed atomically:
 
 1. **Task 1: Update TypeScript interfaces and MPDStatsInline component** - `81ca2c1` (feat)
 2. **Task 2: Add Monthly Average column to MPDOverviewTable and wire Dashboard.tsx** - `c6c121d` (feat)
+3. **Task 3 fix: Hide MPD Overview table when admin is viewing as missionary** - `7d95472` (fix)
 
 ## Files Created/Modified
 
 - `frontend/src/api/mpd.ts` - Added monthly_average to MPDMyDataResponse and MPDMissionaryOverview interfaces
 - `frontend/src/components/mpd/MPDStatsInline.tsx` - Added monthlyAverage prop and Monthly Average Card as first of 4 cards
 - `frontend/src/components/mpd/MPDOverviewTable.tsx` - Inserted monthly_average as second column with decimal sortingFn
-- `frontend/src/pages/Dashboard.tsx` - Updated to 4-col grid, passes monthlyAverage prop, added admin MPDOverviewTable section
+- `frontend/src/pages/Dashboard.tsx` - Updated to 4-col grid, passes monthlyAverage prop, added admin MPDOverviewTable with !isViewingOther guard
 
 ## Decisions Made
 
-- Admin MPD Overview table placed outside the `!isViewingOther` guard — admins see the overview regardless of which user's dashboard they're viewing. This is intentional: the overview shows all missionaries' data, not just the viewed user's data.
+- Admin MPD Overview table requires both `role === 'admin'` AND `!isViewingOther`. The table shows all missionaries' MPD data and should only appear when the admin is on their own dashboard. When an admin uses "View As" to browse a missionary's dashboard, the table is hidden to avoid confusion.
 - Monthly Average column inserted as second in MPDOverviewTable (after Missionary, before MPD Cap), matching the backend dict key order from plan 48-01.
 
 ## Deviations from Plan
 
-None - plan executed exactly as written.
+### Auto-fixed Issues
+
+**1. [Rule 1 - Bug] Added !isViewingOther guard to admin MPD Overview section**
+- **Found during:** Task 3 (human verification — user feedback)
+- **Issue:** Admin MPD Overview table rendered even when admin was viewing a missionary's dashboard via View As, which is confusing and incorrect
+- **Fix:** Changed guard from `user?.role === "admin"` to `user?.role === "admin" && !isViewingOther`
+- **Files modified:** `frontend/src/pages/Dashboard.tsx`
+- **Verification:** TypeScript clean (`npx tsc --noEmit`); guard logic reviewed
+- **Committed in:** `7d95472`
+
+---
+
+**Total deviations:** 1 auto-fixed (Rule 1 - Bug)
+**Impact on plan:** Essential correctness fix. Admin-only sections that are admin-context-specific must respect the viewing context. No scope creep.
 
 ## Issues Encountered
 
-None.
+None beyond the guard fix addressed above.
 
 ## User Setup Required
 
@@ -96,8 +112,8 @@ None - no external service configuration required.
 
 ## Next Phase Readiness
 
-- MPD Dashboard Enhancements (Phase 48) fully complete pending human visual verification (Task 3 checkpoint)
-- Phase 49 (Goal backend) is ready to begin
+- Phase 48 (MPD Dashboard Enhancements) fully complete. MPD-01 and MPD-02 requirements fulfilled.
+- Phase 49 (Goal backend: fiscal year utility, data model, API) is ready to begin.
 
 ---
 *Phase: 48-mpd-dashboard-enhancements*
