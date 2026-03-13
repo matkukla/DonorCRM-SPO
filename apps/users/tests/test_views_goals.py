@@ -49,7 +49,7 @@ def test_patch_saves_journal_selections():
     get_response = client.get("/api/v1/goals/me/")
     assert get_response.status_code == 200
     data = get_response.json()
-    assert set(data["selected_journal_ids"]) == {j1.id, j2.id}
+    assert set(data["selected_journal_ids"]) == {str(j1.id), str(j2.id)}
 
 
 @pytest.mark.django_db
@@ -73,7 +73,7 @@ def test_patch_journal_replace_all():
 
     get_response = client.get("/api/v1/goals/me/")
     data = get_response.json()
-    assert data["selected_journal_ids"] == [j1.id]
+    assert data["selected_journal_ids"] == [str(j1.id)]
 
 
 @pytest.mark.django_db

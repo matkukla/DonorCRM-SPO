@@ -55,6 +55,9 @@ urlpatterns = [
     # Prayers
     path('prayers/', include('apps.prayers.urls')),
 
+    # Goals
+    path('goals/', include('apps.users.urls_goals')),
+
     # Insights/Reports
     path('insights/', include('apps.insights.urls')),
 ]
