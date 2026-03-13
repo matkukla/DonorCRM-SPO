@@ -1,6 +1,5 @@
 from django.core.management.base import BaseCommand
 from apps.users.models import User, UserRole
-from decimal import Decimal
 
 
 class Command(BaseCommand):
@@ -9,22 +8,23 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         PASSWORD = 'Test1234'
 
+        # Tuples: (first, last, goal_cents)  — values are dollar amounts × 100
         missionaries = [
-            ('Joe', 'Man', Decimal('2200')),
-            ('Frank', 'Guy', Decimal('4300')),
-            ('Rachel', 'Gal', Decimal('1100')),
-            ('Jimmy', 'John', Decimal('2700')),
-            ('Ronald', 'McDonald', Decimal('2200')),
-            ('Rose', 'Red', Decimal('550')),
-            ('Mary', 'Grace', Decimal('2200')),
-            ('Simon', 'Peter', Decimal('2200')),
-            ('John', 'Paul', Decimal('1850')),
-            ('Sarah', 'Female', Decimal('2200')),
-            ('Wendy', 'Burger', Decimal('2200')),
+            ('Joe', 'Man', 220000),
+            ('Frank', 'Guy', 430000),
+            ('Rachel', 'Gal', 110000),
+            ('Jimmy', 'John', 270000),
+            ('Ronald', 'McDonald', 220000),
+            ('Rose', 'Red', 55000),
+            ('Mary', 'Grace', 220000),
+            ('Simon', 'Peter', 220000),
+            ('John', 'Paul', 185000),
+            ('Sarah', 'Female', 220000),
+            ('Wendy', 'Burger', 220000),
         ]
 
         new_count = 0
-        for first, last, goal in missionaries:
+        for first, last, goal_cents in missionaries:
             email = f'{first.lower()}.{last.lower()}@spo.org'
             user, was_created = User.objects.get_or_create(
                 email=email,
@@ -32,7 +32,7 @@ class Command(BaseCommand):
                     'first_name': first,
                     'last_name': last,
                     'role': UserRole.MISSIONARY,
-                    'monthly_goal': goal,
+                    'monthly_support_goal_cents': goal_cents,
                     'is_active': True,
                 }
             )
