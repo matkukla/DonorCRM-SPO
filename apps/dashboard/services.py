@@ -181,7 +181,7 @@ def get_support_progress(user):
     rg_count = active_recurring.count()
 
     # Get user's goal
-    goal = float(user.monthly_goal) if user.monthly_goal else 0
+    goal = user.monthly_support_goal_cents / 100 if user.monthly_support_goal_cents else 0
 
     return {
         'current_monthly_support': total_monthly,
@@ -240,7 +240,7 @@ def get_giving_summary(user, year=None):
     expecting = max(0, float(annualized_recurring) - float(given))
 
     # Goals
-    monthly_goal = float(user.monthly_goal) if user.monthly_goal else 0
+    monthly_goal = user.monthly_support_goal_cents / 100 if user.monthly_support_goal_cents else 0
     annual_goal = monthly_goal * 12
 
     given_float = float(given)
@@ -293,7 +293,7 @@ def get_monthly_gifts(user, months=12):
             'total': monthly_map.get(month_date, 0),
         })
 
-    monthly_goal = float(user.monthly_goal) if user.monthly_goal else 0
+    monthly_goal = user.monthly_support_goal_cents / 100 if user.monthly_support_goal_cents else 0
 
     return {
         'months': result,

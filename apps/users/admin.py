@@ -23,7 +23,7 @@ class UserAdmin(BaseUserAdmin):
         (None, {'fields': ('email', 'password')}),
         ('Personal Info', {'fields': ('first_name', 'last_name', 'phone')}),
         ('Role & Permissions', {
-            'fields': ('role', 'monthly_goal', 'is_active', 'is_staff', 'is_superuser')
+            'fields': ('role', 'monthly_support_goal_cents', 'goal_weeks', 'is_active', 'is_staff', 'is_superuser')
         }),
         ('Preferences', {'fields': ('email_notifications',)}),
         ('Important Dates', {'fields': ('last_login', 'date_joined')}),

@@ -27,7 +27,7 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'id', 'email', 'first_name', 'last_name', 'full_name',
-            'phone', 'role', 'supervisor_ids', 'coach_ids', 'monthly_goal',
+            'phone', 'role', 'supervisor_ids', 'coach_ids', 'monthly_support_goal_cents',
             'email_notifications', 'is_active', 'date_joined', 'last_login_at'
         ]
         read_only_fields = ['id', 'date_joined', 'last_login_at']
@@ -53,7 +53,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'email', 'first_name', 'last_name', 'phone',
-            'role', 'monthly_goal', 'password', 'password_confirm'
+            'role', 'monthly_support_goal_cents', 'password', 'password_confirm'
         ]
 
     def validate(self, attrs):
@@ -78,7 +78,8 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'first_name', 'last_name', 'phone',
-            'monthly_goal', 'email_notifications', 'dashboard_layout'
+            'monthly_support_goal_cents', 'goal_weeks',
+            'email_notifications', 'dashboard_layout'
         ]
 
 
@@ -103,7 +104,7 @@ class UserAdminUpdateSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'first_name', 'last_name', 'phone', 'role',
-            'monthly_goal', 'email_notifications', 'is_active',
+            'monthly_support_goal_cents', 'email_notifications', 'is_active',
             'supervised_user_ids', 'coached_user_ids'
         ]
 
@@ -173,7 +174,7 @@ class CurrentUserSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'id', 'email', 'first_name', 'last_name', 'full_name',
-            'phone', 'role', 'monthly_goal', 'email_notifications',
+            'phone', 'role', 'monthly_support_goal_cents', 'goal_weeks', 'email_notifications',
             'date_joined', 'last_login_at',
             'contact_count', 'active_pledge_count', 'dashboard_layout',
             'supervised_users'
