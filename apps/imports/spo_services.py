@@ -732,7 +732,7 @@ def import_spo_gifts(
                 amount_cents = _parse_amount_to_cents(gift_amount_raw)
                 if amount_cents == 0:
                     errors.append({'row': row_num, 'error': f'Unparseable or zero amount: {gift_amount_raw!r}'})
-                    skipped_count += 1
+                    error_count += 1
                     transaction.savepoint_rollback(sp)
                     continue
 
