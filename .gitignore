@@ -96,3 +96,22 @@ credentials.json
 
 # Local test data
 test_data/
+prompts/roles.md
+prompts/CSV_import_system_1.md
+prompts/CSV_import_system_2.md
+prompts/dashboard_modification.md
+prompts/goal_tab_prompt.md
+prompts/import_analysis.md
+prompts/import_prompt.md
+spo_logo.png
+spo_favicon.png
+prompts/journal_bug_prompt.md
+prompts/journal_report.md
+prompts/mission_supervisor.md
+prompts/mpd_resources_prompt.md
+prompts/prayer_intentions.md
+prompts/view_as_missionary_prompt.md
+test_data/transactions.csv
+test_data/pledges.csv
+test_data/funds.csv
+test_data/entities.csv
