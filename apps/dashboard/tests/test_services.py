@@ -2,8 +2,6 @@
 Tests for dashboard service functions.
 """
 from datetime import date, timedelta
-from decimal import Decimal
-
 
 import pytest
 from django.utils import timezone
@@ -321,7 +319,7 @@ class TestGetGivingSummary:
 
     def test_given_sums_current_year_only(self):
         """Given should only sum gifts from the requested year."""
-        user = UserFactory(role='missionary', monthly_goal=Decimal('1000.00'))
+        user = UserFactory(role='missionary', monthly_support_goal_cents=100000)
         contact = ContactFactory(owner=user)
         today = date.today()
 
@@ -336,7 +334,7 @@ class TestGetGivingSummary:
 
     def test_expecting_equals_annualized_minus_given(self):
         """Expecting = annualized recurring - given (when positive)."""
-        user = UserFactory(role='missionary', monthly_goal=Decimal('1000.00'))
+        user = UserFactory(role='missionary', monthly_support_goal_cents=100000)
         contact = ContactFactory(owner=user)
         today = date.today()
 
@@ -352,7 +350,7 @@ class TestGetGivingSummary:
 
     def test_expecting_floors_at_zero(self):
         """Expecting should floor at 0 when given > annualized recurring."""
-        user = UserFactory(role='missionary', monthly_goal=Decimal('1000.00'))
+        user = UserFactory(role='missionary', monthly_support_goal_cents=100000)
         contact = ContactFactory(owner=user)
         today = date.today()
 
@@ -367,7 +365,7 @@ class TestGetGivingSummary:
 
     def test_percentage_calculated_correctly(self):
         """Percentage = (given + expecting) / annual_goal * 100."""
-        user = UserFactory(role='missionary', monthly_goal=Decimal('1000.00'))
+        user = UserFactory(role='missionary', monthly_support_goal_cents=100000)
         contact = ContactFactory(owner=user)
         today = date.today()
 
@@ -384,8 +382,8 @@ class TestGetGivingSummary:
 
     def test_no_cross_user_data_leakage(self):
         """Missionary A should not see missionary B's gifts."""
-        user_a = UserFactory(role='missionary', monthly_goal=Decimal('1000.00'))
-        user_b = UserFactory(role='missionary', monthly_goal=Decimal('1000.00'))
+        user_a = UserFactory(role='missionary', monthly_support_goal_cents=100000)
+        user_b = UserFactory(role='missionary', monthly_support_goal_cents=100000)
         contact_b = ContactFactory(owner=user_b)
         today = date.today()
 
@@ -397,7 +395,7 @@ class TestGetGivingSummary:
 
     def test_empty_case_returns_zeros(self):
         """No gifts and no recurring should return all zeros."""
-        user = UserFactory(role='missionary', monthly_goal=Decimal('0.00'))
+        user = UserFactory(role='missionary', monthly_support_goal_cents=0)
 
         result = get_giving_summary(user)
 
@@ -412,7 +410,7 @@ class TestGetMonthlyGifts:
 
     def test_returns_12_months_with_gap_fill(self):
         """Monthly chart should return 12 months with gaps filled as 0."""
-        user = UserFactory(role='missionary', monthly_goal=Decimal('1000.00'))
+        user = UserFactory(role='missionary', monthly_support_goal_cents=100000)
 
         result = get_monthly_gifts(user, months=12)
 
@@ -424,7 +422,7 @@ class TestGetMonthlyGifts:
 
     def test_amounts_in_dollars(self):
         """Monthly totals should be converted from cents to dollars."""
-        user = UserFactory(role='missionary', monthly_goal=Decimal('1000.00'))
+        user = UserFactory(role='missionary', monthly_support_goal_cents=100000)
         contact = ContactFactory(owner=user)
         today = date.today()
 
@@ -439,7 +437,7 @@ class TestGetMonthlyGifts:
 
     def test_no_cross_user_leakage(self):
         """Missionary A should not see missionary B's gift data in chart."""
-        user_a = UserFactory(role='missionary', monthly_goal=Decimal('1000.00'))
+        user_a = UserFactory(role='missionary', monthly_support_goal_cents=100000)
         user_b = UserFactory(role='missionary')
         contact_b = ContactFactory(owner=user_b)
         today = date.today()
