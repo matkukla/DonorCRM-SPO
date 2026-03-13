@@ -212,6 +212,8 @@ class Contact(TimeStampedModel):
             if agg['last']:
                 last_gift = gifts.order_by('-gift_date').first()
                 self.last_gift_amount = last_gift.amount_dollars if last_gift else None
+            else:
+                self.last_gift_amount = None
 
             # Update status based on giving history
             if self.gift_count > 0 and self.status == ContactStatus.PROSPECT:
