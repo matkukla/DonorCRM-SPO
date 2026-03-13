@@ -24,10 +24,11 @@ export function useMPDUpload() {
 /**
  * Fetch per-missionary latest MPD data (admin only)
  */
-export function useMPDOverview() {
+export function useMPDOverview({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: ["mpd", "overview"],
     queryFn: getMPDOverview,
+    enabled,
   })
 }
 

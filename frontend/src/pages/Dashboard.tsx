@@ -15,7 +15,7 @@ import { GivingSummaryCard } from "@/components/dashboard/GivingSummaryCard"
 import { MonthlyGiftsCard } from "@/components/dashboard/MonthlyGiftsCard"
 import { SortableDashboardTile } from "@/components/dashboard/SortableDashboardTile"
 import { LogEventDialog } from "@/pages/journals/components/LogEventDialog"
-import { useMPDMyData } from "@/hooks/useMPD"
+import { useMPDMyData, useMPDOverview } from "@/hooks/useMPD"
 import { MPDStatsInline } from "@/components/mpd/MPDStatsInline"
 import { MPDOverviewTable } from "@/components/mpd/MPDOverviewTable"
 import { Users, DollarSign, FileText, CheckSquare, RotateCcw, ChevronDown, Check, Info } from "lucide-react"
@@ -48,6 +48,8 @@ const TILE_SIZES: Record<string, number> = {
   "support-progress": 2,
   "recent-donations": 2,
   "late-donations": 2,
+  "mpd-financial-overview": 4,
+  "mpd-overview-table": 4,
 }
 
 export default function Dashboard() {
@@ -66,6 +68,7 @@ export default function Dashboard() {
 
   const { data, isLoading, error } = useDashboardSummary(effectiveUserId)
   const { data: mpdData, isLoading: mpdLoading } = useMPDMyData()
+  const { data: mpdOverviewData, isLoading: mpdOverviewLoading } = useMPDOverview({ enabled: user?.role === "admin" })
   const [quickLogContactId, setQuickLogContactId] = useState<string | null>(null)
 
   const [viewingPickerOpen, setViewingPickerOpen] = useState(false)
@@ -108,6 +111,17 @@ export default function Dashboard() {
       })()
     : null
 
+  // When viewing another missionary, derive their MPD data from the admin overview
+  const viewedMissionaryMpdData = isViewingOther && selectedUserId
+    ? mpdOverviewData?.missionaries.find((m) => m.user_id === selectedUserId)
+    : null
+
+  // Effective MPD data: own data when on own dashboard, viewed missionary's data when viewing other
+  const effectiveMpdData = isViewingOther ? viewedMissionaryMpdData : mpdData
+  const effectiveMpdHasData = isViewingOther
+    ? !!viewedMissionaryMpdData
+    : mpdData?.has_data
+
   function handleDragStart(event: DragStartEvent) {
     const id = event.active.id as string
     setActiveId(id)
@@ -149,32 +163,65 @@ export default function Dashboard() {
         return <RecentDonations donations={data?.recent_gifts || []} isLoading={isLoading} />
       case "late-donations":
         return <LateDonations donations={data?.late_donations || []} totalCount={data?.late_donations_count || 0} isLoading={isLoading} onQuickLog={(contactId) => setQuickLogContactId(contactId)} />
+      case "mpd-financial-overview": {
+        const isLoadingMpd = isViewingOther ? mpdOverviewLoading : mpdLoading
+        if (isLoadingMpd) return (
+          <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-24 bg-muted rounded-lg animate-pulse" />
+            ))}
+          </div>
+        )
+        if (!effectiveMpdHasData || !effectiveMpdData) return null
+        return (
+          <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
+            <MPDStatsInline
+              monthlyAverage={(effectiveMpdData as { monthly_average?: string | null }).monthly_average}
+              currentMpdCap={(effectiveMpdData as { current_mpd_cap?: string | null }).current_mpd_cap}
+              latestRollForwardBalance={(effectiveMpdData as { latest_roll_forward_balance?: string | null }).latest_roll_forward_balance}
+              monthsRemainingRf={(effectiveMpdData as { months_remaining_rf?: string }).months_remaining_rf}
+            />
+          </div>
+        )
+      }
+      case "mpd-overview-table":
+        if (user?.role !== "admin" || isViewingOther) return null
+        return <MPDOverviewTable />
       default: return null
     }
+  }
+
+  function getTileColSpan(id: string) {
+    const size = TILE_SIZES[id]
+    if (size === 4) return "col-span-2 lg:col-span-4"
+    if (size === 2) return "col-span-2"
+    return "col-span-1"
   }
 
   // Render tile grid -- either with DnD (own dashboard) or static (viewing other)
   function renderTileGrid() {
     const grid = (
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {tileOrder.map((id) =>
-          isDragEnabled ? (
+        {tileOrder.map((id) => {
+          const content = renderTileById(id)
+          if (content === null) return null
+          return isDragEnabled ? (
             <SortableDashboardTile
               key={id}
               id={id}
-              className={TILE_SIZES[id] === 2 ? "col-span-2" : "col-span-1"}
+              className={getTileColSpan(id)}
             >
-              {renderTileById(id)}
+              {content}
             </SortableDashboardTile>
           ) : (
             <div
               key={id}
-              className={TILE_SIZES[id] === 2 ? "col-span-2" : "col-span-1"}
+              className={getTileColSpan(id)}
             >
-              {renderTileById(id)}
+              {content}
             </div>
           )
-        )}
+        })}
       </div>
     )
 
@@ -290,39 +337,6 @@ export default function Dashboard() {
           )}
 
           {renderTileGrid()}
-
-          {/* MPD Section -- NOT draggable (Fragment children, conditional) */}
-          {!isViewingOther && (
-            <>
-              {mpdLoading ? (
-                <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
-                  {[...Array(4)].map((_, i) => (
-                    <div key={i} className="h-24 bg-muted rounded-lg animate-pulse" />
-                  ))}
-                </div>
-              ) : mpdData?.has_data ? (
-                <div className="space-y-2">
-                  <h2 className="text-lg font-semibold">MPD Financial Overview</h2>
-                  <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
-                    <MPDStatsInline
-                      monthlyAverage={mpdData.monthly_average}
-                      currentMpdCap={mpdData.current_mpd_cap}
-                      latestRollForwardBalance={mpdData.latest_roll_forward_balance}
-                      monthsRemainingRf={mpdData.months_remaining_rf}
-                    />
-                  </div>
-                </div>
-              ) : null}
-            </>
-          )}
-
-          {/* Admin MPD Overview -- visible to admin on their own dashboard only */}
-          {user?.role === "admin" && !isViewingOther && (
-            <div className="space-y-2">
-              <h2 className="text-lg font-semibold">MPD Overview</h2>
-              <MPDOverviewTable />
-            </div>
-          )}
         </div>
 
         {/* Quick Log dialog for Late Donations */}
