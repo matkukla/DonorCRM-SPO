@@ -58,10 +58,11 @@ export function GivingSummaryCard({ userId }: { userId?: string }) {
   }
 
   const percentage = Math.round(data.percentage)
-  const remaining = Math.max(0, data.annual_goal - data.given)
+  const filled = data.given + data.expecting
+  const remaining = Math.max(0, data.annual_goal - filled)
 
   const donutData = [
-    { name: "Given", value: data.given },
+    { name: "Given", value: filled },
     { name: "Remaining", value: remaining },
   ]
 

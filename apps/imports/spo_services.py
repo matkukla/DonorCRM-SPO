@@ -730,6 +730,12 @@ def import_spo_gifts(
 
                 # 7d. Parse gift fields
                 amount_cents = _parse_amount_to_cents(gift_amount_raw)
+                if amount_cents == 0:
+                    errors.append({'row': row_num, 'error': f'Unparseable or zero amount: {gift_amount_raw!r}'})
+                    error_count += 1
+                    transaction.savepoint_rollback(sp)
+                    continue
+
                 gift_date = _parse_date(gift_date_raw)
                 if gift_date is None:
                     errors.append({'row': row_num, 'error': f'Invalid date: {gift_date_raw!r}'})

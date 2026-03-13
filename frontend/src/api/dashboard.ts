@@ -82,6 +82,7 @@ export interface DashboardSummary {
   thank_you_queue: ThankYouContact[]
   thank_you_count: number
   support_progress: SupportProgress
+  recent_gifts_total: number
   recent_gifts: RecentGift[]
 }
 
