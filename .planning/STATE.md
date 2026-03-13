@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Goal Tracking & View As
 status: executing
-stopped_at: Completed 49-02-PLAN.md
-last_updated: "2026-03-13T03:16:32.470Z"
+stopped_at: Completed 49-03-PLAN.md
+last_updated: "2026-03-13T03:24:55.867Z"
 last_activity: 2026-03-12 — Phase 48 Plan 01 complete (monthly_average in MPD views)
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 6
-  completed_plans: 4
+  completed_plans: 5
   percent: 8
 ---
 
@@ -53,6 +53,7 @@ Progress: [█░░░░░░░░░] 8% — 0/6 phases, 1/2 plans (phase 4
 | Phase 48-mpd-dashboard-enhancements P02 | 30 | 3 tasks | 4 files |
 | Phase 49 P01 | 4min | 3 tasks | 4 files |
 | Phase 49 P02 | 4 | 2 tasks | 3 files |
+| Phase 49 P03 | 25min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -74,6 +75,8 @@ Recent decisions relevant to v2.3:
 - [Phase 49-01]: UserFactory monthly_support_goal_cents uses random_int (integer cents 100000-1000000); goal_weeks defaults to 52
 - [Phase 49]: FREQUENCY_MULTIPLIERS and _monthly_equivalent_aggregate extracted to apps/core/gift_utils.py so goal_services.py can import them without circular dashboard app dependency
 - [Phase 49]: Case, When, RecurringGiftFrequency removed from dashboard/services.py imports after confirming no remaining usages after extraction
+- [Phase 49-03]: Two-migration strategy: schema-only 0007 (RenameField + AddField + CreateModel) then data-conversion 0008 (RunPython + AlterField) avoids PostgreSQL type-cast error on direct decimal-to-integer ALTER
+- [Phase 49-03]: API response dict keys kept as 'monthly_goal' in dashboard/services.py for backwards API compat — only model field access updated to monthly_support_goal_cents
 
 ### Pending Todos
 
@@ -85,6 +88,6 @@ Recent decisions relevant to v2.3:
 
 ## Session Continuity
 
-Last session: 2026-03-13T03:16:32.467Z
-Stopped at: Completed 49-02-PLAN.md
+Last session: 2026-03-13T03:24:55.861Z
+Stopped at: Completed 49-03-PLAN.md
 Resume: Plan Phase 49 with `/gsd:plan-phase 49`

@@ -18,7 +18,7 @@
 - [ ] **GOAL-08**: Goal page shows motivational milestone messages at 0%, 25%, 50%, 75%, 100% progress thresholds
 - [ ] **GOAL-09**: Goal page shows empty-state messages when no goal is set or no journals are selected
 - [ ] **GOAL-10**: Supervisor and admin see Goal page in read-only mode (cannot edit goal or journal selections)
-- [ ] **GOAL-11**: Monthly support goal field is removed from Settings page (or replaced with a link to Goal page)
+- [x] **GOAL-11**: Monthly support goal field is removed from Settings page (or replaced with a link to Goal page)
 
 ### Fiscal Year
 
@@ -84,7 +84,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | GOAL-02 | Phase 49 | Complete |
 | GOAL-03 | Phase 49 | Complete |
 | GOAL-04 | Phase 49 | Complete |
-| GOAL-11 | Phase 49 | Pending |
+| GOAL-11 | Phase 49 | Complete |
 | GOAL-01 | Phase 50 | Pending |
 | GOAL-05 | Phase 50 | Pending |
 | GOAL-06 | Phase 50 | Pending |
