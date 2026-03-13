@@ -3,7 +3,6 @@ Management command to generate sample data for testing.
 """
 import random
 from datetime import timedelta
-from decimal import Decimal
 
 from django.core.management.base import BaseCommand
 from django.utils import timezone
@@ -95,7 +94,7 @@ class Command(BaseCommand):
                 'first_name': 'Sarah',
                 'last_name': 'Smith',
                 'role': UserRole.MISSIONARY,
-                'monthly_goal': Decimal('5000.00'),
+                'monthly_support_goal_cents': 500000,
                 'is_active': True,
             }
         )

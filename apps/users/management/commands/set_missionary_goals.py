@@ -4,7 +4,7 @@ from apps.users.models import User
 
 
 class Command(BaseCommand):
-    help = 'Set a random monthly_goal (2500-5000, rounded to nearest 100) for missionary accounts.'
+    help = 'Set a random monthly_support_goal_cents (2500-5000, rounded to nearest 100) for missionary accounts.'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -24,13 +24,10 @@ class Command(BaseCommand):
 
         qs = User.objects.filter(role='missionary', is_active=True)
         if not overwrite:
-            qs = qs.filter(monthly_goal__isnull=True) | User.objects.filter(
-                role='missionary', is_active=True, monthly_goal=0
-            )
             # Re-evaluate as a list to avoid ORM union issues
             ids_no_goal = list(
                 User.objects.filter(role='missionary', is_active=True)
-                .exclude(monthly_goal__gt=0)
+                .exclude(monthly_support_goal_cents__gt=0)
                 .values_list('id', flat=True)
             )
             qs = User.objects.filter(id__in=ids_no_goal)
@@ -47,11 +44,13 @@ class Command(BaseCommand):
 
         for user in missionaries:
             # Random multiple of 100 between 2500 and 5000 inclusive
-            goal = random.randint(25, 50) * 100
-            self.stdout.write(f'  {user.email}: ${goal:,}')
+            # goal in dollars (2500-5000, multiple of 100), convert to cents
+            goal_dollars = random.randint(25, 50) * 100
+            goal_cents = goal_dollars * 100
+            self.stdout.write(f'  {user.email}: ${goal_dollars:,}')
             if not dry_run:
-                user.monthly_goal = goal
-                user.save(update_fields=['monthly_goal'])
+                user.monthly_support_goal_cents = goal_cents
+                user.save(update_fields=['monthly_support_goal_cents'])
 
         if dry_run:
             self.stdout.write('\nDry run complete — no changes saved.')

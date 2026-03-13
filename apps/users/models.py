@@ -70,12 +70,15 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
     )
 
     # Support goal tracking for staff users
-    monthly_goal = models.DecimalField(
-        'monthly support goal',
-        max_digits=10,
-        decimal_places=2,
+    monthly_support_goal_cents = models.PositiveBigIntegerField(
+        'monthly support goal (cents)',
         default=0,
-        help_text='Monthly support goal amount in dollars'
+        help_text='Monthly support goal in cents (e.g., 350000 = $3,500.00)'
+    )
+    goal_weeks = models.PositiveIntegerField(
+        'goal weeks',
+        default=52,
+        help_text='Number of weeks to accomplish support goal'
     )
 
     # Dashboard preferences
@@ -177,6 +180,12 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
         """Check if user has coach role."""
         return self.role == UserRole.COACH
 
+    @property
+    def monthly_support_goal_dollars(self):
+        """Return monthly support goal as Decimal dollars."""
+        from decimal import Decimal
+        return Decimal(self.monthly_support_goal_cents) / Decimal(100)
+
     def can_manage_contact(self, contact):
         """Check if user can manage a given contact."""
         if self.is_admin:
@@ -198,3 +207,28 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
                 return True
             return False
         return contact.owner == self
+
+
+class GoalJournalSelection(TimeStampedModel):
+    """Journals selected by a user to count toward their support goal."""
+    user = models.ForeignKey(
+        'users.User',
+        on_delete=models.CASCADE,
+        related_name='goal_journal_selections',
+        db_index=True,
+    )
+    journal = models.ForeignKey(
+        'journals.Journal',
+        on_delete=models.CASCADE,
+        related_name='goal_selections',
+        db_index=True,
+    )
+
+    class Meta:
+        db_table = 'goal_journal_selections'
+        verbose_name = 'goal journal selection'
+        verbose_name_plural = 'goal journal selections'
+        unique_together = [['user', 'journal']]
+
+    def __str__(self):
+        return f'{self.user.email} \u2192 journal {self.journal_id}'

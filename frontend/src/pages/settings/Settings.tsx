@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { useQueryClient } from "@tanstack/react-query"
+import { Link } from "react-router-dom"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -8,11 +8,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/providers/AuthProvider"
 import { apiClient } from "@/api/client"
-import { User, Lock, CheckCircle, Target } from "lucide-react"
+import { User, Lock, CheckCircle, Target, ArrowRight } from "lucide-react"
 
 export default function Settings() {
   const { user, refreshUser } = useAuth()
-  const queryClient = useQueryClient()
 
   // Profile form state
   const [firstName, setFirstName] = useState(user?.first_name || "")
@@ -20,12 +19,6 @@ export default function Settings() {
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false)
   const [profileSuccess, setProfileSuccess] = useState(false)
   const [profileError, setProfileError] = useState("")
-
-  // Goal form state
-  const [monthlyGoal, setMonthlyGoal] = useState(user?.monthly_goal || "")
-  const [isUpdatingGoal, setIsUpdatingGoal] = useState(false)
-  const [goalSuccess, setGoalSuccess] = useState(false)
-  const [goalError, setGoalError] = useState("")
 
   // Password form state
   const [currentPassword, setCurrentPassword] = useState("")
@@ -53,34 +46,6 @@ export default function Settings() {
       setProfileError("Failed to update profile. Please try again.")
     } finally {
       setIsUpdatingProfile(false)
-    }
-  }
-
-  const handleUpdateGoal = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsUpdatingGoal(true)
-    setGoalSuccess(false)
-    setGoalError("")
-
-    const goalValue = parseFloat(monthlyGoal as string)
-    if (monthlyGoal && (isNaN(goalValue) || goalValue < 0)) {
-      setGoalError("Please enter a valid dollar amount.")
-      setIsUpdatingGoal(false)
-      return
-    }
-
-    try {
-      await apiClient.patch("/users/me/", {
-        monthly_goal: monthlyGoal || "0",
-      })
-      await refreshUser()
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] })
-      setGoalSuccess(true)
-      setTimeout(() => setGoalSuccess(false), 3000)
-    } catch (err) {
-      setGoalError("Failed to update goal. Please try again.")
-    } finally {
-      setIsUpdatingGoal(false)
     }
   }
 
@@ -130,7 +95,7 @@ export default function Settings() {
             </p>
           </div>
 
-          {/* Fundraising Goal Card - full width */}
+          {/* Fundraising Goal Card - links to dedicated Goal page (GOAL-11) */}
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
@@ -138,56 +103,16 @@ export default function Settings() {
                 <CardTitle>Fundraising Goal</CardTitle>
               </div>
               <CardDescription>
-                Set your monthly support goal. This is used to track progress on your dashboard.
+                Set your monthly support goal and journal selections on the Goal page.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleUpdateGoal} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="monthlyGoal">Monthly Goal ($)</Label>
-                    <Input
-                      id="monthlyGoal"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={monthlyGoal ?? ""}
-                      onChange={(e) => setMonthlyGoal(e.target.value)}
-                      placeholder="e.g. 5000"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Annual Goal</Label>
-                    <Input
-                      value={
-                        monthlyGoal && !isNaN(parseFloat(monthlyGoal as string))
-                          ? `$${(parseFloat(monthlyGoal as string) * 12).toLocaleString()}`
-                          : "—"
-                      }
-                      disabled
-                      className="bg-muted"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Calculated from monthly goal
-                    </p>
-                  </div>
-                </div>
-
-                {goalError && (
-                  <p className="text-sm text-destructive">{goalError}</p>
-                )}
-
-                {goalSuccess && (
-                  <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
-                    <CheckCircle className="h-4 w-4" />
-                    Goal updated successfully
-                  </div>
-                )}
-
-                <Button type="submit" disabled={isUpdatingGoal}>
-                  {isUpdatingGoal ? "Saving..." : "Save Goal"}
-                </Button>
-              </form>
+              <Button asChild variant="outline">
+                <Link to="/goal">
+                  Go to Goal page
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
             </CardContent>
           </Card>
 
