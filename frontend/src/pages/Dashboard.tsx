@@ -98,10 +98,8 @@ export default function Dashboard() {
     }
   }, [data, isLoading, isViewingOther])
 
-  // Calculate total donations this month from recent gifts
-  const totalDonationsThisMonth = data?.recent_gifts?.reduce((sum, gift) => {
-    return sum + parseFloat(gift.amount)
-  }, 0) || 0
+  // Use backend-aggregated total (includes ALL gifts, not just first 10)
+  const totalDonationsThisMonth = data?.recent_gifts_total || 0
 
   // Get name of the selected missionary for display
   const selectedUserName = isViewingOther
@@ -153,7 +151,7 @@ export default function Dashboard() {
       case "active-pledges":
         return <StatCard title="Active Pledges" value={data?.support_progress?.active_pledge_count || 0} icon={FileText} isLoading={isLoading} />
       case "needs-attention-stat":
-        return <StatCard title="Items Needing Attention" value={(data?.needs_attention?.overdue_task_count || 0) + (data?.needs_attention?.late_pledge_count || 0)} icon={CheckSquare} isLoading={isLoading} />
+        return <StatCard title="Items Needing Attention" value={(data?.needs_attention?.overdue_task_count || 0) + (data?.needs_attention?.tasks_due_today_count || 0) + (data?.needs_attention?.thank_you_needed_count || 0)} icon={CheckSquare} isLoading={isLoading} />
       // Content section
       case "needs-attention":
         return <NeedsAttention overdueTasks={data?.needs_attention?.overdue_tasks || []} overdueTaskCount={data?.needs_attention?.overdue_task_count || 0} latePledges={data?.needs_attention?.late_pledges || []} latePledgeCount={data?.needs_attention?.late_pledge_count || 0} thankYouNeeded={data?.needs_attention?.thank_you_needed || []} thankYouCount={data?.needs_attention?.thank_you_needed_count || 0} isLoading={isLoading} />
