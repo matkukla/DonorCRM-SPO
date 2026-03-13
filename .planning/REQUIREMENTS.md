@@ -9,9 +9,9 @@
 ### Goal Page
 
 - [ ] **GOAL-01**: Missionary can navigate to a dedicated Goal page from the sidebar (below Dashboard)
-- [ ] **GOAL-02**: Missionary can set and save their monthly support goal (in dollars)
-- [ ] **GOAL-03**: Missionary can select which of their journals count toward their goal (multi-select, persisted)
-- [ ] **GOAL-04**: Goal page displays effective monthly support calculated from selected journals (monthly pledges + one-time gifts ÷ months remaining in fiscal year)
+- [x] **GOAL-02**: Missionary can set and save their monthly support goal (in dollars)
+- [x] **GOAL-03**: Missionary can select which of their journals count toward their goal (multi-select, persisted)
+- [x] **GOAL-04**: Goal page displays effective monthly support calculated from selected journals (monthly pledges + one-time gifts ÷ months remaining in fiscal year)
 - [ ] **GOAL-05**: Goal page displays pacing targets: estimated calls and meetings needed based on goal amount (25 calls and 10 meetings per $1,000)
 - [ ] **GOAL-06**: Goal page displays three progress bars: Monthly Support ($), Calls Completed, and Meetings Held — each with 25/50/75/100% milestone markers
 - [ ] **GOAL-07**: Monthly Support progress bar changes color by threshold (red <75%, green 75-99%, honey gold 100%)
@@ -22,8 +22,8 @@
 
 ### Fiscal Year
 
-- [ ] **FISC-01**: Fiscal year starts July 1 and resets annually — shared utility used by Goal page and dashboard calculations
-- [ ] **FISC-02**: Months remaining in fiscal year is calculated dynamically (minimum 1 to avoid division by zero)
+- [x] **FISC-01**: Fiscal year starts July 1 and resets annually — shared utility used by Goal page and dashboard calculations
+- [x] **FISC-02**: Months remaining in fiscal year is calculated dynamically (minimum 1 to avoid division by zero)
 
 ### View As Mode
 
@@ -79,11 +79,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | MPD-01 | Phase 48 | Complete |
 | MPD-02 | Phase 48 | Complete |
-| FISC-01 | Phase 49 | Pending |
-| FISC-02 | Phase 49 | Pending |
-| GOAL-02 | Phase 49 | Pending |
-| GOAL-03 | Phase 49 | Pending |
-| GOAL-04 | Phase 49 | Pending |
+| FISC-01 | Phase 49 | Complete |
+| FISC-02 | Phase 49 | Complete |
+| GOAL-02 | Phase 49 | Complete |
+| GOAL-03 | Phase 49 | Complete |
+| GOAL-04 | Phase 49 | Complete |
 | GOAL-11 | Phase 49 | Pending |
 | GOAL-01 | Phase 50 | Pending |
 | GOAL-05 | Phase 50 | Pending |
