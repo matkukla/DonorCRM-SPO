@@ -123,10 +123,59 @@ def get_needs_attention(user):
 
 def get_late_donations(user, limit=10):
     """
-    Get late donations. RecurringGift has no is_late field, so this returns
-    an empty list. Kept for API compatibility.
+    Get late donations by comparing each active recurring gift's expected
+    interval against the linked contact's last_gift_date.
+
+    A recurring gift is "late" if enough time has passed since the contact's
+    last gift based on the frequency, with a 50% grace period.
     """
-    return []
+    # Frequency -> expected days between gifts
+    frequency_days = {
+        RecurringGiftFrequency.WEEKLY: 7,
+        RecurringGiftFrequency.BIWEEKLY: 14,
+        RecurringGiftFrequency.MONTHLY: 30,
+        RecurringGiftFrequency.BIMONTHLY: 60,
+        RecurringGiftFrequency.QUARTERLY: 90,
+        RecurringGiftFrequency.SEMI_ANNUALLY: 180,
+        RecurringGiftFrequency.ANNUALLY: 365,
+    }
+
+    today = date.today()
+    active_recurring = RecurringGift.objects.filter(
+        donor_contact__owner=user,
+        status=RecurringGiftStatus.ACTIVE,
+    ).select_related('donor_contact').exclude(
+        frequency=RecurringGiftFrequency.IRREGULAR,
+    )
+
+    late = []
+    for rg in active_recurring:
+        interval = frequency_days.get(rg.frequency)
+        if not interval:
+            continue
+
+        contact = rg.donor_contact
+        last_date = contact.last_gift_date or rg.start_date
+        # 50% grace period
+        threshold = timedelta(days=int(interval * 1.5))
+        if today - last_date > threshold:
+            days_late = (today - last_date).days - interval
+            monthly_eq = float(rg.monthly_equivalent)
+            late.append({
+                'id': str(rg.id),
+                'contact_id': str(contact.id),
+                'contact_name': f'{contact.first_name} {contact.last_name}'.strip(),
+                'amount': str(rg.amount_dollars),
+                'frequency': rg.frequency,
+                'monthly_equivalent': monthly_eq,
+                'last_gift_date': last_date.isoformat() if last_date else None,
+                'days_late': days_late,
+                'next_expected_date': (last_date + timedelta(days=interval)).isoformat(),
+            })
+
+    # Sort by days late descending, limit results
+    late.sort(key=lambda x: x['days_late'], reverse=True)
+    return late[:limit]
 
 
 def get_thank_you_queue(user):
@@ -315,9 +364,9 @@ def get_dashboard_summary(user):
         'id', 'first_name', 'last_name', 'last_gift_amount'
     ))
 
-    # Late donations - static empty (RecurringGift has no is_late field)
+    # Late donations
     late_donations = get_late_donations(user)
-    late_donations_count = 0
+    late_donations_count = len(late_donations)
 
     thank_you_qs = get_thank_you_queue(user)
     thank_you_list = list(thank_you_qs[:5].values(
@@ -327,6 +376,14 @@ def get_dashboard_summary(user):
 
     logger.debug(f'Dashboard data fetched: {late_donations_count} late donations, {thank_you_count} thank-you needed')
 
+    # Pre-aggregate total of ALL recent gifts (not just the limited list)
+    thirty_days_ago = date.today() - timedelta(days=30)
+    recent_total_cents = Gift.objects.filter(
+        donor_contact__owner=user,
+        gift_date__gte=thirty_days_ago,
+    ).aggregate(total=Sum('amount_cents'))['total'] or 0
+    recent_gifts_total = float(Decimal(recent_total_cents) / Decimal(100))
+
     return {
         'what_changed': what_changed,
         'needs_attention': needs_attention,
@@ -335,6 +392,7 @@ def get_dashboard_summary(user):
         'thank_you_queue': thank_you_list,
         'thank_you_count': thank_you_count,
         'support_progress': get_support_progress(user),
+        'recent_gifts_total': recent_gifts_total,
         'recent_gifts': list(get_recent_gifts(user).annotate(
             amount=ExpressionWrapper(
                 F('amount_cents') / Value(100),

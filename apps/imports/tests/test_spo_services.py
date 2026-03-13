@@ -737,6 +737,31 @@ class TestImportSpoGifts(TestCase):
         gift = Gift.objects.get(external_gift_id='G-PAY-01')
         self.assertEqual(gift.payment_type, 'direct_deposit')  # EFT maps to direct_deposit
 
+    def test_zero_amount_gift_skipped(self):
+        """SPO import should skip rows with unparseable/zero amounts."""
+        from apps.gifts.models import Gift, Solicitor
+        from apps.imports.spo_services import import_spo_gifts
+        from apps.imports.re_services import normalize_solicitor_name
+
+        admin = _make_admin()
+        missionary = _make_user('zero.amt@test.com', 'Zero', 'Amt')
+        Solicitor.objects.create(
+            user=missionary,
+            normalized_name=normalize_solicitor_name(missionary.full_name),
+        )
+
+        csv_bytes = _make_gifts_csv(
+            {'gift_id': 'G-ZERO-01', 'solicitor_name': 'Zero Amt', 'gift_amount': '$0.00'},
+            {'gift_id': 'G-ZERO-02', 'solicitor_name': 'Zero Amt', 'gift_amount': 'N/A'},
+            {'gift_id': 'G-GOOD-01', 'solicitor_name': 'Zero Amt', 'gift_amount': '50.00'},
+        )
+        batch = import_spo_gifts(csv_bytes, 'gifts.csv', admin)
+
+        # Only the valid $50 gift should be created
+        self.assertEqual(Gift.objects.filter(external_gift_id='G-GOOD-01').count(), 1)
+        self.assertFalse(Gift.objects.filter(external_gift_id='G-ZERO-01').exists())
+        self.assertFalse(Gift.objects.filter(external_gift_id='G-ZERO-02').exists())
+
 
 class TestImportSpoPrayers(TestCase):
     """Tests for import_spo_prayers() service."""

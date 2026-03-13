@@ -1,7 +1,7 @@
 """
 Tests for dashboard service functions.
 """
-from datetime import timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 
 import pytest
@@ -10,7 +10,9 @@ from django.utils import timezone
 from apps.contacts.tests.factories import ContactFactory
 from apps.dashboard.services import (
     get_dashboard_summary,
+    get_giving_summary,
     get_late_donations,
+    get_monthly_gifts,
     get_needs_attention,
     get_recent_gifts,
     get_support_progress,
@@ -82,11 +84,107 @@ class TestGetNeedsAttention:
 class TestGetLateDonations:
     """Tests for get_late_donations function."""
 
-    def test_get_late_donations_returns_empty(self):
-        """Test that get_late_donations always returns empty list (RecurringGift has no is_late)."""
+    def test_no_recurring_gifts_returns_empty(self):
+        """No recurring gifts means no late donations."""
         user = UserFactory(role='missionary')
 
         result = get_late_donations(user)
+
+        assert len(result) == 0
+
+    def test_returns_late_recurring_gift(self):
+        """A monthly recurring gift with no recent gifts should be flagged as late."""
+        user = UserFactory(role='missionary')
+        contact = ContactFactory(owner=user, last_gift_date=date.today() - timedelta(days=60))
+        RecurringGiftFactory(
+            donor_contact=contact,
+            amount_cents=10000,
+            frequency='monthly',
+            start_date=date.today() - timedelta(days=90),
+        )
+
+        result = get_late_donations(user)
+
+        assert len(result) == 1
+        assert result[0]['contact_id'] == str(contact.id)
+        assert result[0]['days_late'] > 0
+
+    def test_excludes_inactive_recurring_gifts(self):
+        """Inactive recurring gifts should not be flagged as late."""
+        user = UserFactory(role='missionary')
+        contact = ContactFactory(owner=user, last_gift_date=date.today() - timedelta(days=60))
+        RecurringGiftFactory(
+            donor_contact=contact,
+            amount_cents=10000,
+            frequency='monthly',
+            status='terminated',
+            start_date=date.today() - timedelta(days=90),
+        )
+
+        result = get_late_donations(user)
+
+        assert len(result) == 0
+
+    def test_recent_gift_not_flagged(self):
+        """A monthly recurring gift with a recent gift should not be flagged."""
+        user = UserFactory(role='missionary')
+        contact = ContactFactory(owner=user, last_gift_date=date.today() - timedelta(days=10))
+        RecurringGiftFactory(
+            donor_contact=contact,
+            amount_cents=10000,
+            frequency='monthly',
+            start_date=date.today() - timedelta(days=90),
+        )
+
+        result = get_late_donations(user)
+
+        assert len(result) == 0
+
+    def test_grace_period_not_exceeded(self):
+        """A gift within the grace period (1.5x interval) should not be flagged."""
+        user = UserFactory(role='missionary')
+        # Monthly interval is 30 days, grace period is 45 days
+        # Last gift 40 days ago — within grace period
+        contact = ContactFactory(owner=user, last_gift_date=date.today() - timedelta(days=40))
+        RecurringGiftFactory(
+            donor_contact=contact,
+            amount_cents=10000,
+            frequency='monthly',
+            start_date=date.today() - timedelta(days=120),
+        )
+
+        result = get_late_donations(user)
+
+        assert len(result) == 0
+
+    def test_excludes_irregular_frequency(self):
+        """Irregular frequency recurring gifts should not be flagged."""
+        user = UserFactory(role='missionary')
+        contact = ContactFactory(owner=user, last_gift_date=date.today() - timedelta(days=200))
+        RecurringGiftFactory(
+            donor_contact=contact,
+            amount_cents=10000,
+            frequency='irregular',
+            start_date=date.today() - timedelta(days=300),
+        )
+
+        result = get_late_donations(user)
+
+        assert len(result) == 0
+
+    def test_no_cross_user_leakage(self):
+        """Late donations from other users should not appear."""
+        user_a = UserFactory(role='missionary')
+        user_b = UserFactory(role='missionary')
+        contact_b = ContactFactory(owner=user_b, last_gift_date=date.today() - timedelta(days=60))
+        RecurringGiftFactory(
+            donor_contact=contact_b,
+            amount_cents=10000,
+            frequency='monthly',
+            start_date=date.today() - timedelta(days=90),
+        )
+
+        result = get_late_donations(user_a)
 
         assert len(result) == 0
 
@@ -217,6 +315,143 @@ class TestGetRecentGifts:
 
 
 @pytest.mark.django_db
+class TestGetGivingSummary:
+    """Tests for get_giving_summary function."""
+
+    def test_given_sums_current_year_only(self):
+        """Given should only sum gifts from the requested year."""
+        user = UserFactory(role='missionary', monthly_goal=Decimal('1000.00'))
+        contact = ContactFactory(owner=user)
+        today = date.today()
+
+        # Gift this year
+        GiftFactory(donor_contact=contact, amount_cents=5000, gift_date=date(today.year, 1, 15))
+        # Gift last year — should be excluded
+        GiftFactory(donor_contact=contact, amount_cents=9999, gift_date=date(today.year - 1, 6, 1))
+
+        result = get_giving_summary(user, year=today.year)
+
+        assert result['given'] == 50.0  # 5000 cents = $50
+
+    def test_expecting_equals_annualized_minus_given(self):
+        """Expecting = annualized recurring - given (when positive)."""
+        user = UserFactory(role='missionary', monthly_goal=Decimal('1000.00'))
+        contact = ContactFactory(owner=user)
+        today = date.today()
+
+        # $100/month recurring = $1200/year annualized
+        RecurringGiftFactory(donor_contact=contact, amount_cents=10000, frequency='monthly')
+        # $200 given this year
+        GiftFactory(donor_contact=contact, amount_cents=20000, gift_date=date(today.year, 1, 15))
+
+        result = get_giving_summary(user, year=today.year)
+
+        assert result['given'] == 200.0
+        assert result['expecting'] == 1000.0  # 1200 - 200 = 1000
+
+    def test_expecting_floors_at_zero(self):
+        """Expecting should floor at 0 when given > annualized recurring."""
+        user = UserFactory(role='missionary', monthly_goal=Decimal('1000.00'))
+        contact = ContactFactory(owner=user)
+        today = date.today()
+
+        # $100/month recurring = $1200/year
+        RecurringGiftFactory(donor_contact=contact, amount_cents=10000, frequency='monthly')
+        # $2000 given (more than annualized)
+        GiftFactory(donor_contact=contact, amount_cents=200000, gift_date=date(today.year, 1, 15))
+
+        result = get_giving_summary(user, year=today.year)
+
+        assert result['expecting'] == 0
+
+    def test_percentage_calculated_correctly(self):
+        """Percentage = (given + expecting) / annual_goal * 100."""
+        user = UserFactory(role='missionary', monthly_goal=Decimal('1000.00'))
+        contact = ContactFactory(owner=user)
+        today = date.today()
+
+        # $1000/month recurring = $12000/year, annual_goal = $12000
+        RecurringGiftFactory(donor_contact=contact, amount_cents=100000, frequency='monthly')
+        # $6000 given
+        GiftFactory(donor_contact=contact, amount_cents=600000, gift_date=date(today.year, 1, 15))
+
+        result = get_giving_summary(user, year=today.year)
+
+        # given=6000, expecting=max(0, 12000-6000)=6000, total=12000
+        # percentage = 12000 / 12000 * 100 = 100
+        assert result['percentage'] == 100.0
+
+    def test_no_cross_user_data_leakage(self):
+        """Missionary A should not see missionary B's gifts."""
+        user_a = UserFactory(role='missionary', monthly_goal=Decimal('1000.00'))
+        user_b = UserFactory(role='missionary', monthly_goal=Decimal('1000.00'))
+        contact_b = ContactFactory(owner=user_b)
+        today = date.today()
+
+        GiftFactory(donor_contact=contact_b, amount_cents=50000, gift_date=date(today.year, 1, 15))
+
+        result = get_giving_summary(user_a, year=today.year)
+
+        assert result['given'] == 0.0
+
+    def test_empty_case_returns_zeros(self):
+        """No gifts and no recurring should return all zeros."""
+        user = UserFactory(role='missionary', monthly_goal=Decimal('0.00'))
+
+        result = get_giving_summary(user)
+
+        assert result['given'] == 0.0
+        assert result['expecting'] == 0
+        assert result['percentage'] == 0
+
+
+@pytest.mark.django_db
+class TestGetMonthlyGifts:
+    """Tests for get_monthly_gifts function."""
+
+    def test_returns_12_months_with_gap_fill(self):
+        """Monthly chart should return 12 months with gaps filled as 0."""
+        user = UserFactory(role='missionary', monthly_goal=Decimal('1000.00'))
+
+        result = get_monthly_gifts(user, months=12)
+
+        assert len(result['months']) == 12
+        # All gaps should be 0
+        for month in result['months']:
+            assert 'month' in month
+            assert 'total' in month
+
+    def test_amounts_in_dollars(self):
+        """Monthly totals should be converted from cents to dollars."""
+        user = UserFactory(role='missionary', monthly_goal=Decimal('1000.00'))
+        contact = ContactFactory(owner=user)
+        today = date.today()
+
+        GiftFactory(donor_contact=contact, amount_cents=15000, gift_date=today)
+
+        result = get_monthly_gifts(user, months=12)
+
+        # Find this month's entry
+        this_month = today.strftime('%Y-%m')
+        month_entry = next(m for m in result['months'] if m['month'] == this_month)
+        assert month_entry['total'] == 150.0  # 15000 cents = $150
+
+    def test_no_cross_user_leakage(self):
+        """Missionary A should not see missionary B's gift data in chart."""
+        user_a = UserFactory(role='missionary', monthly_goal=Decimal('1000.00'))
+        user_b = UserFactory(role='missionary')
+        contact_b = ContactFactory(owner=user_b)
+        today = date.today()
+
+        GiftFactory(donor_contact=contact_b, amount_cents=50000, gift_date=today)
+
+        result = get_monthly_gifts(user_a, months=12)
+
+        total_all = sum(m['total'] for m in result['months'])
+        assert total_all == 0
+
+
+@pytest.mark.django_db
 class TestGetDashboardSummary:
     """Tests for get_dashboard_summary function."""
 
@@ -232,6 +467,7 @@ class TestGetDashboardSummary:
         assert 'thank_you_queue' in result
         assert 'support_progress' in result
         assert 'recent_gifts' in result
+        assert 'recent_gifts_total' in result
 
     def test_get_dashboard_summary_returns_serializable_data(self):
         """Test that dashboard summary returns JSON-serializable data."""
@@ -244,3 +480,39 @@ class TestGetDashboardSummary:
         # Should not raise JSONDecodeError
         json_str = json.dumps(result, default=str)
         assert json_str is not None
+
+    def test_recent_gifts_total_includes_all_gifts(self):
+        """recent_gifts_total should include ALL recent gifts, not just first 10."""
+        user = UserFactory(role='missionary')
+        contact = ContactFactory(owner=user)
+        today = date.today()
+
+        # Create 15 gifts of $100 each in the last 30 days
+        for i in range(15):
+            GiftFactory(
+                donor_contact=contact,
+                amount_cents=10000,
+                gift_date=today - timedelta(days=i),
+            )
+
+        result = get_dashboard_summary(user)
+
+        # recent_gifts list is capped at 10, but total should reflect all 15
+        assert len(result['recent_gifts']) == 10
+        assert result['recent_gifts_total'] == 1500.0  # 15 * $100
+
+    def test_late_donations_count_matches_list(self):
+        """late_donations_count should match the actual list length."""
+        user = UserFactory(role='missionary')
+        contact = ContactFactory(owner=user, last_gift_date=date.today() - timedelta(days=60))
+        RecurringGiftFactory(
+            donor_contact=contact,
+            amount_cents=10000,
+            frequency='monthly',
+            start_date=date.today() - timedelta(days=90),
+        )
+
+        result = get_dashboard_summary(user)
+
+        assert result['late_donations_count'] == len(result['late_donations'])
+        assert result['late_donations_count'] >= 1
