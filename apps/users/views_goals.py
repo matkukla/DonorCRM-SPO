@@ -62,6 +62,11 @@ class GoalView(APIView):
                 valid_journals = list(Journal.objects.filter(id__in=journal_ids, owner=user))
             except Exception:
                 return Response({'error': 'journal_ids contains invalid values'}, status=400)
+            valid_journal_ids = {str(j.id) for j in valid_journals}
+            submitted_ids = {str(jid) for jid in journal_ids}
+            invalid_ids = submitted_ids - valid_journal_ids
+            if invalid_ids:
+                return Response({'error': f'Invalid or inaccessible journal_ids: {sorted(invalid_ids)}'}, status=400)
             # Replace-all semantics: delete then bulk create (atomic to prevent partial state)
             with transaction.atomic():
                 GoalJournalSelection.objects.filter(user=user).delete()

@@ -229,9 +229,6 @@ class GoalJournalSelection(TimeStampedModel):
         verbose_name = 'goal journal selection'
         verbose_name_plural = 'goal journal selections'
         unique_together = [['user', 'journal']]
-        indexes = [
-            models.Index(fields=['user', 'journal']),
-        ]
 
     def __str__(self):
         return f'{self.user.email} \u2192 journal {self.journal_id}'
