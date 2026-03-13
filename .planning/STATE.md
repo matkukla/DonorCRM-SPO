@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Goal Tracking & View As
 status: executing
-stopped_at: Completed 48-02-PLAN.md (Phase 48 fully done)
-last_updated: "2026-03-12T16:53:32.713Z"
+stopped_at: Completed 49-04-PLAN.md
+last_updated: "2026-03-13T03:37:28.128Z"
 last_activity: 2026-03-12 — Phase 48 Plan 01 complete (monthly_average in MPD views)
 progress:
-  total_phases: 6
-  completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
+  total_phases: 7
+  completed_phases: 2
+  total_plans: 6
+  completed_plans: 6
   percent: 8
 ---
 
@@ -51,6 +51,10 @@ Progress: [█░░░░░░░░░] 8% — 0/6 phases, 1/2 plans (phase 4
 | 53 | View As frontend: context, banner, selector, cache | VIEWAS-01 through VIEWAS-06, VIEWAS-09, VIEWAS-10, VIEWAS-11 |
 | Phase 48 P02 | 8 | 2 tasks | 4 files |
 | Phase 48-mpd-dashboard-enhancements P02 | 30 | 3 tasks | 4 files |
+| Phase 49 P01 | 4min | 3 tasks | 4 files |
+| Phase 49 P02 | 4 | 2 tasks | 3 files |
+| Phase 49 P03 | 25min | 2 tasks | 10 files |
+| Phase 49 P04 | 6m | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -67,6 +71,15 @@ Recent decisions relevant to v2.3:
 - [Phase 46]: supervised_users field name kept in CurrentUserSerializer — frontend uses it for supervisor and coach
 - [Phase 48]: Admin MPD Overview table placed outside the \!isViewingOther guard so admins see all-missionaries overview regardless of which user's dashboard they view
 - [Phase 48-mpd-dashboard-enhancements]: Admin MPD Overview table requires both role=admin AND \!isViewingOther — hidden when admin browses a missionary's dashboard via View As
+- [Phase 49-01]: Deferred imports in test stubs (inline inside test body) so all 17 items collect before implementation modules exist
+- [Phase 49-01]: months_remaining returns 10 for Aug 15 (counts months AFTER current month through June); minimum guard returns 1 even on June 30
+- [Phase 49-01]: UserFactory monthly_support_goal_cents uses random_int (integer cents 100000-1000000); goal_weeks defaults to 52
+- [Phase 49]: FREQUENCY_MULTIPLIERS and _monthly_equivalent_aggregate extracted to apps/core/gift_utils.py so goal_services.py can import them without circular dashboard app dependency
+- [Phase 49]: Case, When, RecurringGiftFrequency removed from dashboard/services.py imports after confirming no remaining usages after extraction
+- [Phase 49-03]: Two-migration strategy: schema-only 0007 (RenameField + AddField + CreateModel) then data-conversion 0008 (RunPython + AlterField) avoids PostgreSQL type-cast error on direct decimal-to-integer ALTER
+- [Phase 49-03]: API response dict keys kept as 'monthly_goal' in dashboard/services.py for backwards API compat — only model field access updated to monthly_support_goal_cents
+- [Phase 49-04]: GoalView does not use a DRF serializer — reads request.data directly and returns get_goal_progress() dict, following existing CurrentUserView pattern
+- [Phase 49-04]: selected_journal_ids returned as list of strings (str(jid)) for consistent JSON serialization across UUID fields
 
 ### Pending Todos
 
@@ -78,6 +91,6 @@ Recent decisions relevant to v2.3:
 
 ## Session Continuity
 
-Last session: 2026-03-12T16:50:58.582Z
-Stopped at: Completed 48-02-PLAN.md (Phase 48 fully done)
+Last session: 2026-03-13T03:33:33.380Z
+Stopped at: Completed 49-04-PLAN.md
 Resume: Plan Phase 49 with `/gsd:plan-phase 49`

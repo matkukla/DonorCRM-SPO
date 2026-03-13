@@ -6,55 +6,17 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from dateutil.relativedelta import relativedelta
-from django.db.models import Case, Count, DecimalField, ExpressionWrapper, F, Q, Sum, Value, When
+from django.db.models import Count, DecimalField, ExpressionWrapper, F, Q, Sum, Value
 from django.db.models.functions import TruncMonth
 
 from apps.contacts.models import Contact
+from apps.core.gift_utils import FREQUENCY_MULTIPLIERS, _monthly_equivalent_aggregate
 from apps.core.permissions import get_visible_user_ids
 from apps.events.models import Event
 from apps.gifts.models import Gift, RecurringGift, RecurringGiftFrequency, RecurringGiftStatus
 from apps.tasks.models import Task, TaskStatus
 
 logger = logging.getLogger(__name__)
-
-# Frequency multipliers for SQL CASE/WHEN aggregation.
-# Must match RecurringGift.monthly_equivalent property exactly.
-FREQUENCY_MULTIPLIERS = {
-    RecurringGiftFrequency.MONTHLY: Decimal('1'),
-    RecurringGiftFrequency.QUARTERLY: Decimal('1') / Decimal('3'),
-    RecurringGiftFrequency.SEMI_ANNUALLY: Decimal('1') / Decimal('6'),
-    RecurringGiftFrequency.ANNUALLY: Decimal('1') / Decimal('12'),
-    RecurringGiftFrequency.BIMONTHLY: Decimal('1') / Decimal('2'),
-    RecurringGiftFrequency.BIWEEKLY: Decimal('26') / Decimal('12'),
-    RecurringGiftFrequency.WEEKLY: Decimal('52') / Decimal('12'),
-    RecurringGiftFrequency.IRREGULAR: Decimal('1'),
-}
-
-
-def _monthly_equivalent_aggregate(queryset):
-    """
-    Compute the total monthly equivalent of recurring gifts via SQL aggregation.
-
-    Uses CASE/WHEN to apply the correct frequency multiplier per row,
-    then SUM across all rows. Returns the total in dollars (Decimal).
-
-    This replaces the O(N) Python loop pattern:
-      sum(rg.monthly_equivalent for rg in queryset)
-    """
-    result = queryset.annotate(
-        freq_multiplier=Case(
-            *[
-                When(frequency=freq, then=Value(mult))
-                for freq, mult in FREQUENCY_MULTIPLIERS.items()
-            ],
-            default=Value(Decimal('1')),
-            output_field=DecimalField(max_digits=20, decimal_places=10),
-        ),
-        monthly_cents=F('amount_cents') * F('freq_multiplier'),
-    ).aggregate(total=Sum('monthly_cents'))
-
-    total_cents = result['total'] or Decimal('0')
-    return round(total_cents / Decimal('100'), 2)
 
 
 def get_what_changed(user, since=None):
@@ -219,7 +181,7 @@ def get_support_progress(user):
     rg_count = active_recurring.count()
 
     # Get user's goal
-    goal = float(user.monthly_goal) if user.monthly_goal else 0
+    goal = user.monthly_support_goal_cents / 100 if user.monthly_support_goal_cents else 0
 
     return {
         'current_monthly_support': total_monthly,
@@ -278,7 +240,7 @@ def get_giving_summary(user, year=None):
     expecting = max(0, float(annualized_recurring) - float(given))
 
     # Goals
-    monthly_goal = float(user.monthly_goal) if user.monthly_goal else 0
+    monthly_goal = user.monthly_support_goal_cents / 100 if user.monthly_support_goal_cents else 0
     annual_goal = monthly_goal * 12
 
     given_float = float(given)
@@ -331,7 +293,7 @@ def get_monthly_gifts(user, months=12):
             'total': monthly_map.get(month_date, 0),
         })
 
-    monthly_goal = float(user.monthly_goal) if user.monthly_goal else 0
+    monthly_goal = user.monthly_support_goal_cents / 100 if user.monthly_support_goal_cents else 0
 
     return {
         'months': result,
