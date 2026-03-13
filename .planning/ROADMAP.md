@@ -9,7 +9,7 @@
 - ✅ **v2.0 Import Revamp, Prayer Intentions & Dashboard Polish** — Phases 27-36 (shipped 2026-02-25)
 - ✅ **v2.1 Security Hardening** — Phase 37 (shipped 2026-02-25)
 - ✅ **v2.2 UI Polish, Journal Report & Supervisor Role** — Phases 38-47 (shipped 2026-03-11)
-- 🚧 **v2.3 Goal Tracking & View As** — Phases 48-53 (in progress)
+- 🚧 **v2.3 Goal Tracking & View As** — Phases 48-54 (in progress)
 
 ## Phases
 
@@ -153,8 +153,9 @@ Plans:
   1. A fiscal_year_utils module exists with July 1 start logic and a months_remaining() function that returns a minimum of 1
   2. Missionary can set and save their monthly support goal in dollars via the API, persisted as cents on the User model
   3. Missionary can save a list of journals that count toward their goal, with selections persisted per user in GoalJournalSelection
-  4. The goal detail API endpoint returns calculated effective monthly support (monthly pledges + one-time gifts divided by months remaining in fiscal year) from the selected journals
-  5. The monthly support goal field is removed from the Settings page or replaced with a link to the Goal page
+  4. Missionary can save the number of weeks to accomplish their goal (goalWeeks), persisted on the User model alongside the monthly support goal
+  5. The goal detail API endpoint returns calculated effective monthly support (monthly pledges + one-time gifts divided by months remaining in fiscal year) from the selected journals
+  6. The monthly support goal field is removed from the Settings page or replaced with a link to the Goal page
 **Plans**: TBD
 
 ### Phase 50: Goal Page — Frontend UI
@@ -165,7 +166,7 @@ Plans:
   1. A "Goal" link appears in the sidebar below Dashboard and routes to the Goal page
   2. The Goal page displays three progress bars (Monthly Support $, Calls Completed, Meetings Held) each with 25/50/75/100% milestone markers
   3. Monthly Support bar changes color based on threshold: red below 75%, green 75–99%, honey gold at 100%
-  4. Pacing targets (estimated calls and meetings at 25 calls and 10 meetings per $1,000 of goal) appear when a goal and journals are selected
+  4. Pacing targets (Partners Needed = Goal ÷ $80 avg gift; Calls = Partners × 9; Appts = Partners × 1.5; Appts per Week = Appts ÷ goalWeeks) appear when a goal and journals are selected
   5. Motivational milestone messages appear at 0%, 25%, 50%, 75%, and 100% progress; empty-state messages appear when no goal is set or no journals are selected
   6. Supervisor and admin users see the Goal page in read-only mode — goal amount and journal selections cannot be edited
 **Plans**: TBD
@@ -202,6 +203,18 @@ Plans:
   5. View As selection persists across page navigation until the Exit button is clicked; all React Query caches are invalidated when the selected user changes
 **Plans**: TBD
 
+### Phase 54: MPD Resources Tab
+**Goal**: Missionaries, supervisors, and admins can access a standalone MPD Resources page with an interactive Support Raising Calculator that computes pacing targets in real-time from a goal amount and weeks input
+**Depends on**: Phase 48 (MPD foundation; can run in parallel with 49–53)
+**Requirements**: MPD-CALC-01
+**Success Criteria** (what must be TRUE):
+  1. An "MPD Resources" nav item appears in the sidebar directly under "Insights" and routes to /mpd-resources
+  2. The Support Raising Calculator displays a 2-column grid with 2 inputs (Amount to Raise, Number of Weeks) and 6 read-only outputs (Name-storming, Phone Calls, Phone Convos, Scheduled Appts, Mission Partners, Appts per Week)
+  3. All outputs update in real-time as inputs change, using centralized constants in frontend/src/config/mpdCalculator.ts (DEFAULT_AVG_GIFT_DOLLARS: 80, NAMES_PER_PARTNER: 4.5, CALLS_PER_PARTNER: 9, CONVOS_PER_PARTNER: 3, APPTS_PER_PARTNER: 1.5)
+  4. A "More Resources Coming Soon" placeholder card appears below the calculator
+  5. The layout is responsive (single column on mobile)
+**Plans**: 1 plan
+
 ## Summary Checklist
 
 - [x] **Phase 48: MPD Dashboard Enhancements** - Monthly Average tile and Admin MPD Overview section (completed 2026-03-12)
@@ -210,10 +223,12 @@ Plans:
 - [ ] **Phase 51: Data Scoping** - Admin and supervisor default to own data; cross-user access only via View As
 - [ ] **Phase 52: View As — Backend** - X-View-As-User-Id middleware, permission checks, mutation blocking, viewable users endpoint
 - [ ] **Phase 53: View As — Frontend** - ViewAsContext, API header injection, persistent banner, selector, nav hiding, cache invalidation
+- [ ] **Phase 54: MPD Resources Tab** - MPD Resources nav item under Insights, Support Raising Calculator with real-time pacing outputs, centralized constants in mpdCalculator.ts
 
 ## Progress
 
-**Execution Order:** 48 → 49 → 50 → 51 → 52 → 53
+**Execution Order:** 48 → 49 → 50 → 51 → 52 → 53 → 54
+(Phase 54 can also run in parallel with 49–53 as it's pure frontend with no backend dependencies)
 (Phase 51 can run in parallel with 49–50; phases 52–53 depend on 51)
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -231,9 +246,10 @@ Plans:
 | 51. Data Scoping | v2.3 | 0/TBD | Not started | - |
 | 52. View As — Backend | v2.3 | 0/TBD | Not started | - |
 | 53. View As — Frontend | v2.3 | 0/TBD | Not started | - |
+| 54. MPD Resources Tab | v2.3 | 0/1 | Not started | - |
 
-**Total:** 7 milestones shipped, 141 plans executed across 47 phases. v2.3 in progress (0/6 phases complete).
+**Total:** 7 milestones shipped, 141 plans executed across 47 phases. v2.3 in progress (1/7 phases complete).
 
 ---
 
-*Last updated: 2026-03-12 (Phase 48 planned: 2 plans)*
+*Last updated: 2026-03-12 (Phase 48 complete; Phase 54 added for MPD Resources Tab)*

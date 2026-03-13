@@ -7,6 +7,7 @@ export const DEFAULT_TILE_ORDER = [
   "giving-summary", "monthly-gifts",
   "thank-you", "recent-donations-stat", "active-pledges", "needs-attention-stat",
   "needs-attention", "support-progress", "recent-donations", "late-donations",
+  "mpd-financial-overview", "mpd-overview-table",
 ]
 
 const VALID_TILES = new Set(DEFAULT_TILE_ORDER)
