@@ -80,4 +80,4 @@ Recent decisions relevant to v2.3:
 
 Last session: 2026-03-12T16:50:58.582Z
 Stopped at: Completed 48-02-PLAN.md (Phase 48 fully done)
-Resume: Execute `/gsd:execute-phase 48` for Plan 02 (frontend monthly_average tile)
+Resume: Plan Phase 49 with `/gsd:plan-phase 49`
