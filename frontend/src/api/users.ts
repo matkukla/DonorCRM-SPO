@@ -13,7 +13,7 @@ export interface User {
   full_name: string
   phone: string
   role: UserRole
-  monthly_goal: string | null
+  monthly_support_goal_cents: number
   email_notifications: boolean
   is_active: boolean
   date_joined: string
@@ -28,7 +28,7 @@ export interface UserCreate {
   last_name: string
   phone?: string
   role: UserRole
-  monthly_goal?: string
+  monthly_support_goal_cents?: number
   password: string
   password_confirm: string
 }
@@ -38,7 +38,7 @@ export interface UserUpdate {
   last_name?: string
   phone?: string
   role?: UserRole
-  monthly_goal?: string
+  monthly_support_goal_cents?: number
   email_notifications?: boolean
   is_active?: boolean
   supervised_user_ids?: string[]
