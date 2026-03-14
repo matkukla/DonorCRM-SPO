@@ -190,7 +190,10 @@ Plans:
   1. An admin user logging in sees only their own contacts, gifts, journals, tasks, and prayers — not all users' data
   2. A supervisor user logging in sees only their own data by default — not their assigned missionaries' data
   3. Cross-user data access activates only when a View As session is explicitly started — no other pathway unlocks it
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 51-01-PLAN.md — Wave 1: test scaffold for get_visible_user_ids() covering all 6 roles (RED state)
+- [ ] 51-02-PLAN.md — Wave 2: implement scoping change in permissions.py + fix breaking test
 
 ### Phase 52: View As — Backend
 **Goal**: The backend can validate View As permissions, return the correct list of viewable users per role, and block all mutating requests when the X-View-As-User-Id header is present
