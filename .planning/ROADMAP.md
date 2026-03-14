@@ -174,7 +174,13 @@ Plans:
   4. Pacing targets (Partners Needed = Goal ÷ $80 avg gift; Calls = Partners × 9; Appts = Partners × 1.5; Appts per Week = Appts ÷ goalWeeks) appear when a goal and journals are selected
   5. Motivational milestone messages appear at 0%, 25%, 50%, 75%, and 100% progress; empty-state messages appear when no goal is set or no journals are selected
   6. Supervisor and admin users see the Goal page in read-only mode — goal amount and journal selections cannot be edited
-**Plans**: TBD
+**Plans**: 5 plans
+Plans:
+- [ ] 50-01-PLAN.md — Wave 1: backend fields (calls_completed, meetings_held), migration, views_goals PATCH, tests
+- [ ] 50-02-PLAN.md — Wave 1: GoalProgressBar component with tick marks and dynamic color
+- [ ] 50-03-PLAN.md — Wave 2: goals.ts API client + useGoal.ts React Query hooks
+- [ ] 50-04-PLAN.md — Wave 3: Sidebar nav, lazy route, GoalPage (Settings, Progress, Pacing cards)
+- [ ] 50-05-PLAN.md — Wave 4: checkpoint human verification
 
 ### Phase 51: Data Scoping — Admin & Supervisor Default to Own Data
 **Goal**: Admin and supervisor roles default to seeing only their own data across all list views, identical to missionary behavior — elevated cross-user access is no longer the default
