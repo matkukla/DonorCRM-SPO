@@ -9,7 +9,7 @@ from django.db.models import Sum
 from apps.core.fiscal_year import fiscal_year_start, months_remaining
 from apps.core.gift_utils import _monthly_equivalent_aggregate
 from apps.gifts.models import Gift, RecurringGift, RecurringGiftStatus
-from apps.journals.models import JournalContact
+from apps.journals.models import JournalContact, JournalStageEvent
 from apps.users.models import GoalJournalSelection
 
 
@@ -44,6 +44,8 @@ def get_goal_progress(user):
             'effective_monthly_support': 0.0,
             'recurring_monthly': 0.0,
             'one_time_monthly': 0.0,
+            'calls_count': 0,
+            'meetings_count': 0,
         }
 
     # Contact IDs in selected journals — enforce journal ownership scoping
@@ -76,6 +78,16 @@ def get_goal_progress(user):
 
     effective = recurring_monthly + one_time_monthly
 
+    # Activity counts: count JournalStageEvents via journal_contact__journal_id__in
+    calls_count = JournalStageEvent.objects.filter(
+        journal_contact__journal_id__in=selected_journal_ids,
+        event_type='call_logged',
+    ).count()
+    meetings_count = JournalStageEvent.objects.filter(
+        journal_contact__journal_id__in=selected_journal_ids,
+        event_type='meeting_completed',
+    ).count()
+
     return {
         'monthly_support_goal_cents': user.monthly_support_goal_cents,
         'goal_weeks': user.goal_weeks,
@@ -83,4 +95,6 @@ def get_goal_progress(user):
         'effective_monthly_support': round(effective, 2),
         'recurring_monthly': round(recurring_monthly, 2),
         'one_time_monthly': round(one_time_monthly, 2),
+        'calls_count': calls_count,
+        'meetings_count': meetings_count,
     }

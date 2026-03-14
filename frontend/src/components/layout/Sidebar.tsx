@@ -20,6 +20,7 @@ import {
   AlertCircle,
   ListTodo,
   Receipt,
+  Target,
 } from "lucide-react"
 import { useAuth } from "@/providers/AuthProvider"
 import spoLogo from "@/assets/spo_logo.png"
@@ -35,6 +36,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: "Dashboard", href: "/", icon: <LayoutDashboard className="h-5 w-5" /> },
+  { label: "Goal", href: "/goal", icon: <Target className="h-5 w-5" /> },
   { label: "Contacts", href: "/contacts", icon: <Users className="h-5 w-5" /> },
   { label: "Donations", href: "/donations", icon: <DollarSign className="h-5 w-5" /> },
   { label: "Pledges", href: "/pledges", icon: <FileText className="h-5 w-5" /> },

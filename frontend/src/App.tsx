@@ -35,6 +35,7 @@ import JournalList from "@/pages/journals/JournalList"
 
 // Lazy-loaded pages (heavy: recharts, dnd-kit, complex sub-components)
 const Dashboard = React.lazy(() => import("@/pages/Dashboard"))
+const GoalPage = React.lazy(() => import("@/pages/goal/GoalPage"))
 const JournalDetail = React.lazy(() => import("@/pages/journals/JournalDetail"))
 const ImportExport = React.lazy(() => import("@/pages/imports/ImportExport"))
 const AdminAnalyticsDashboard = React.lazy(() => import("@/pages/admin/analytics/AdminAnalyticsDashboard"))
@@ -101,6 +102,7 @@ function App() {
 
                 {/* Protected routes with app layout */}
                 <Route path="/" element={<ProtectedPage><Dashboard /></ProtectedPage>} />
+                <Route path="/goal" element={<ProtectedPage><GoalPage /></ProtectedPage>} />
                 <Route path="/contacts" element={<ProtectedPage><ContactList /></ProtectedPage>} />
                 <Route path="/contacts/new" element={<ProtectedPage requiredRole="missionary"><ContactForm /></ProtectedPage>} />
                 <Route path="/contacts/:id" element={<ProtectedPage><ContactDetail /></ProtectedPage>} />

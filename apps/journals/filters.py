@@ -7,7 +7,7 @@ from apps.journals.models import Journal
 class JournalFilterSet(django_filters.FilterSet):
     deadline_after = django_filters.DateFilter(field_name='deadline', lookup_expr='gte')
     deadline_before = django_filters.DateFilter(field_name='deadline', lookup_expr='lte')
-    owner = django_filters.NumberFilter(field_name='owner_id')
+    owner = django_filters.UUIDFilter(field_name='owner_id')
 
     class Meta:
         model = Journal
