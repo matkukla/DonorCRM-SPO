@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label"
 import { Loader2, ShieldCheck, CheckCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useGoalData, useUpdateGoal } from "@/hooks/useGoal"
-import { useAuth } from "@/providers/AuthProvider"
 import { GoalProgressBar } from "@/components/goal/GoalProgressBar"
 import { useJournals } from "@/hooks/useJournals"
 
@@ -68,8 +67,7 @@ function PacingTile({ label, value }: { label: string; value: string }) {
 export default function GoalPage() {
   const { data: goalData, isLoading } = useGoalData()
   const updateGoal = useUpdateGoal()
-  const { user } = useAuth()
-  const isReadOnly = user?.role === "supervisor" || user?.role === "admin"
+  const isReadOnly = false // TODO(phase-52): re-enable when View As context exists
 
   // Goal Settings local state
   const [goalDollars, setGoalDollars] = useState("")
