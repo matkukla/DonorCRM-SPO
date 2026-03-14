@@ -95,3 +95,61 @@ def test_unauthenticated_get_returns_401():
     client = APIClient()
     response = client.get("/api/v1/goals/me/")
     assert response.status_code == 401
+
+
+@pytest.mark.django_db
+def test_get_returns_calls_meetings_counts():
+    """GOAL-06: GET response includes calls_count and meetings_count."""
+    user = UserFactory()
+    client = APIClient()
+    client.force_authenticate(user=user)
+    response = client.get("/api/v1/goals/me/")
+    assert response.status_code == 200
+    data = response.json()
+    assert "calls_count" in data
+    assert "meetings_count" in data
+    assert isinstance(data["calls_count"], int)
+    assert isinstance(data["meetings_count"], int)
+
+
+@pytest.mark.django_db
+def test_calls_count_reflects_journal_events():
+    """GOAL-06: calls_count counts call_logged events from selected journals."""
+    from apps.journals.models import Journal, JournalContact, JournalStageEvent
+    from apps.users.models import GoalJournalSelection
+
+    user = UserFactory()
+    journal = Journal.objects.create(name="Test Journal", owner=user, goal_amount="1000.00")
+
+    # Create a JournalContact to attach events to
+    from apps.contacts.tests.factories import ContactFactory
+    contact = ContactFactory(owner=user)
+    jc = JournalContact.objects.create(journal=journal, contact=contact)
+
+    # Create 3 call_logged events on this journal contact
+    for _ in range(3):
+        JournalStageEvent.objects.create(
+            journal_contact=jc,
+            stage='contact',
+            event_type='call_logged',
+        )
+
+    # Select this journal
+    GoalJournalSelection.objects.create(user=user, journal=journal)
+
+    client = APIClient()
+    client.force_authenticate(user=user)
+    response = client.get("/api/v1/goals/me/")
+    assert response.status_code == 200
+    assert response.json()["calls_count"] == 3
+
+
+@pytest.mark.django_db
+def test_supervisor_can_get_goal_readonly():
+    """GOAL-10: Supervisor role can GET /api/v1/goals/me/ (read-only enforced in UI, not API)."""
+    from apps.users.models import UserRole
+    user = UserFactory(role=UserRole.SUPERVISOR)
+    client = APIClient()
+    client.force_authenticate(user=user)
+    response = client.get("/api/v1/goals/me/")
+    assert response.status_code == 200
