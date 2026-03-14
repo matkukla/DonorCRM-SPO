@@ -1,5 +1,5 @@
 ---
-status: complete
+status: diagnosed
 phase: 50-goal-page-frontend-ui
 source: 50-01-SUMMARY.md, 50-02-SUMMARY.md, 50-03-SUMMARY.md, 50-04-SUMMARY.md
 started: 2026-03-14T02:00:00Z
@@ -74,13 +74,23 @@ skipped: 2
   reason: "User reported: yes, however they are read-only. Why are they read-only for the admin user?"
   severity: major
   test: 3
-  artifacts: []
-  missing: []
+  root_cause: "isReadOnly on line 72 of GoalPage.tsx is computed as `user?.role === 'supervisor' || user?.role === 'admin'`, incorrectly forcing read-only for all admin/supervisor users on their own /goal page. No View As context exists in phase 50 — /goal always shows the current user's own goal."
+  artifacts:
+    - path: "frontend/src/pages/goal/GoalPage.tsx"
+      issue: "Line 72: isReadOnly uses role check instead of viewing-context check"
+  missing:
+    - "isReadOnly should be false until phase 52-53 introduces View As context with a userId param"
+  debug_session: ""
 
 - truth: "Read-only mode applies only when viewing another user's goal (View As / supervisor context), not when admin/supervisor views their own goal"
   status: failed
   reason: "User reported: yes, but it is also the case for the admin user's own account. It should only be read-only if an admin or supervisor is viewing another missionary, not for their own view"
   severity: major
   test: 10
-  artifacts: []
-  missing: []
+  root_cause: "Same root cause as Test 3 — isReadOnly role check affects the user's own /goal page. The /goal route has no userId param or View As context in phase 50, so role alone cannot distinguish self-view from supervisor-viewing-missionary."
+  artifacts:
+    - path: "frontend/src/pages/goal/GoalPage.tsx"
+      issue: "Line 72: isReadOnly = user?.role === 'supervisor' || user?.role === 'admin'"
+  missing:
+    - "Phase 52-53 will add View As context; for now isReadOnly should be false"
+  debug_session: ""
