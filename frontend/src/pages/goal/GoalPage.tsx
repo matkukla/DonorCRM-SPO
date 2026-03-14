@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils"
 import { useGoalData, useUpdateGoal } from "@/hooks/useGoal"
 import { GoalProgressBar } from "@/components/goal/GoalProgressBar"
 import { useJournals } from "@/hooks/useJournals"
+import { useAuth } from "@/providers/AuthProvider"
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -67,6 +68,7 @@ function PacingTile({ label, value }: { label: string; value: string }) {
 export default function GoalPage() {
   const { data: goalData, isLoading } = useGoalData()
   const updateGoal = useUpdateGoal()
+  const { user } = useAuth()
   const isReadOnly = false // TODO(phase-52): re-enable when View As context exists
 
   // Goal Settings local state
@@ -76,8 +78,10 @@ export default function GoalPage() {
   const [settingsSaved, setSettingsSaved] = useState(false)
   const [validationError, setValidationError] = useState<string | null>(null)
 
-  // Fetch journals for checkbox list
-  const { data: journalsData } = useJournals({ page_size: "100" })
+  // Fetch only journals owned by the current user
+  const journalParams: Record<string, string> = { page_size: "100" }
+  if (user?.id) journalParams.owner = user.id
+  const { data: journalsData } = useJournals(journalParams)
   const journals = journalsData?.results ?? []
 
   // Sync local state from API data when it loads
