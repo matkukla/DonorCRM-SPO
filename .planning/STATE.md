@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Goal Tracking & View As
 status: executing
-stopped_at: Phase 50 context gathered
-last_updated: "2026-03-14T00:30:20.617Z"
+stopped_at: Completed 50-02-PLAN.md (GoalProgressBar component)
+last_updated: "2026-03-14T01:17:12.862Z"
 last_activity: 2026-03-12 — Phase 48 Plan 01 complete (monthly_average in MPD views)
 progress:
   total_phases: 7
   completed_phases: 2
-  total_plans: 6
-  completed_plans: 6
+  total_plans: 11
+  completed_plans: 8
   percent: 8
 ---
 
@@ -55,6 +55,8 @@ Progress: [█░░░░░░░░░] 8% — 0/6 phases, 1/2 plans (phase 4
 | Phase 49 P02 | 4 | 2 tasks | 3 files |
 | Phase 49 P03 | 25min | 2 tasks | 10 files |
 | Phase 49 P04 | 6m | 2 tasks | 5 files |
+| Phase 50 P01 | 1min | 1 tasks | 2 files |
+| Phase 50 P02 | 2 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -80,6 +82,10 @@ Recent decisions relevant to v2.3:
 - [Phase 49-03]: API response dict keys kept as 'monthly_goal' in dashboard/services.py for backwards API compat — only model field access updated to monthly_support_goal_cents
 - [Phase 49-04]: GoalView does not use a DRF serializer — reads request.data directly and returns get_goal_progress() dict, following existing CurrentUserView pattern
 - [Phase 49-04]: selected_journal_ids returned as list of strings (str(jid)) for consistent JSON serialization across UUID fields
+- [Phase 50-01]: JournalStageEvent FK chain is journal_contact__journal -> Journal, so counts use journal_contact__journal_id__in (not journal_id__in)
+- [Phase 50-01]: Early-return path (no journals) explicitly returns calls_count=0 and meetings_count=0 to maintain consistent response shape
+- [Phase 50-02]: Tick marks placed on wrapper div (not track or fill) to avoid clipping — allows fixed positions at 25/50/75/100% regardless of fill width
+- [Phase 50-02]: disabled=true applies opacity-40 at wrapper level + bg-muted fill; 100% tick uses -translate-x-full to keep right edge inside container
 
 ### Pending Todos
 
@@ -91,6 +97,6 @@ Recent decisions relevant to v2.3:
 
 ## Session Continuity
 
-Last session: 2026-03-14T00:30:20.613Z
-Stopped at: Phase 50 context gathered
+Last session: 2026-03-14T01:17:12.858Z
+Stopped at: Completed 50-02-PLAN.md (GoalProgressBar component)
 Resume: Plan Phase 49 with `/gsd:plan-phase 49`
