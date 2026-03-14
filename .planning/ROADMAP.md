@@ -257,7 +257,7 @@ Plans:
 | 48. MPD Dashboard Enhancements | v2.3 | 2/2 | Complete | 2026-03-12 |
 | 49. Goal Page — Data Model & Backend | 4/4 | Complete    | 2026-03-13 | - |
 | 50. Goal Page — Frontend UI | 4/5 | In Progress|  | - |
-| 51. Data Scoping | v2.3 | 0/TBD | Not started | - |
+| 51. Data Scoping | 1/2 | In Progress|  | - |
 | 52. View As — Backend | v2.3 | 0/TBD | Not started | - |
 | 53. View As — Frontend | v2.3 | 0/TBD | Not started | - |
 | 54. MPD Resources Tab | v2.3 | 0/1 | Not started | - |
