@@ -8,7 +8,7 @@
 
 ### Goal Page
 
-- [ ] **GOAL-01**: Missionary can navigate to a dedicated Goal page from the sidebar (below Dashboard)
+- [x] **GOAL-01**: Missionary can navigate to a dedicated Goal page from the sidebar (below Dashboard)
 - [x] **GOAL-02**: Missionary can set and save their monthly support goal (in dollars)
 - [x] **GOAL-03**: Missionary can select which of their journals count toward their goal (multi-select, persisted)
 - [x] **GOAL-04**: Goal page displays effective monthly support calculated from selected journals (monthly pledges + one-time gifts ÷ months remaining in fiscal year)
@@ -16,7 +16,7 @@
 - [x] **GOAL-06**: Goal page displays three progress bars: Monthly Support ($), Calls Completed, and Meetings Held — each with 25/50/75/100% milestone markers
 - [x] **GOAL-07**: Monthly Support progress bar changes color by threshold (red <75%, green 75-99%, honey gold 100%)
 - [ ] **GOAL-08**: Goal page shows motivational milestone messages at 0%, 25%, 50%, 75%, 100% progress thresholds
-- [ ] **GOAL-09**: Goal page shows empty-state messages when no goal is set or no journals are selected
+- [x] **GOAL-09**: Goal page shows empty-state messages when no goal is set or no journals are selected
 - [x] **GOAL-10**: Supervisor and admin see Goal page in read-only mode (cannot edit goal or journal selections)
 - [x] **GOAL-11**: Monthly support goal field is removed from Settings page (or replaced with a link to Goal page)
 
@@ -85,12 +85,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | GOAL-03 | Phase 49 | Complete |
 | GOAL-04 | Phase 49 | Complete |
 | GOAL-11 | Phase 49 | Complete |
-| GOAL-01 | Phase 50 | Pending |
+| GOAL-01 | Phase 50 | Complete |
 | GOAL-05 | Phase 50 | Pending |
 | GOAL-06 | Phase 50 | Complete |
 | GOAL-07 | Phase 50 | Complete |
 | GOAL-08 | Phase 50 | Pending |
-| GOAL-09 | Phase 50 | Pending |
+| GOAL-09 | Phase 50 | Complete |
 | GOAL-10 | Phase 50 | Complete |
 | SCOPE-01 | Phase 51 | Pending |
 | SCOPE-02 | Phase 51 | Pending |

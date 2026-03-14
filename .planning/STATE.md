@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Goal Tracking & View As
 status: executing
-stopped_at: Completed 50-02-PLAN.md (GoalProgressBar component)
-last_updated: "2026-03-14T01:17:12.862Z"
+stopped_at: Completed 50-03-PLAN.md (Goal API client and React Query hooks)
+last_updated: "2026-03-14T01:20:02.846Z"
 last_activity: 2026-03-12 — Phase 48 Plan 01 complete (monthly_average in MPD views)
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 11
-  completed_plans: 8
+  completed_plans: 9
   percent: 8
 ---
 
@@ -57,6 +57,7 @@ Progress: [█░░░░░░░░░] 8% — 0/6 phases, 1/2 plans (phase 4
 | Phase 49 P04 | 6m | 2 tasks | 5 files |
 | Phase 50 P01 | 1min | 1 tasks | 2 files |
 | Phase 50 P02 | 2 | 1 tasks | 1 files |
+| Phase 50 P03 | 1min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -86,6 +87,9 @@ Recent decisions relevant to v2.3:
 - [Phase 50-01]: Early-return path (no journals) explicitly returns calls_count=0 and meetings_count=0 to maintain consistent response shape
 - [Phase 50-02]: Tick marks placed on wrapper div (not track or fill) to avoid clipping — allows fixed positions at 25/50/75/100% regardless of fill width
 - [Phase 50-02]: disabled=true applies opacity-40 at wrapper level + bg-muted fill; 100% tick uses -translate-x-full to keep right edge inside container
+- [Phase 50]: 50-03: GoalUpdatePayload excludes calls_count/meetings_count (server-computed, not writable via PATCH)
+- [Phase 50]: 50-03: useUpdateGoal uses setQueryData(['goal'], data) not invalidateQueries to avoid stale-cache round-trip flash
+- [Phase 50]: 50-03: PATCH write key is journal_ids (not selected_journal_ids) matching backend contract
 
 ### Pending Todos
 
@@ -97,6 +101,6 @@ Recent decisions relevant to v2.3:
 
 ## Session Continuity
 
-Last session: 2026-03-14T01:17:12.858Z
-Stopped at: Completed 50-02-PLAN.md (GoalProgressBar component)
+Last session: 2026-03-14T01:20:02.842Z
+Stopped at: Completed 50-03-PLAN.md (Goal API client and React Query hooks)
 Resume: Plan Phase 49 with `/gsd:plan-phase 49`
