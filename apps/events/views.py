@@ -26,11 +26,12 @@ class EventListView(generics.ListAPIView):
     def get_queryset(self):
         user = self.request.user
 
-        # Admin can see all events when ?all is passed, others see only their own
+        # finance/read_only roles (visible is None) can see all events when ?all is passed
         visible = get_visible_user_ids(user, request=self.request)
         if visible is None and self.request.query_params.get('all'):
             return Event.objects.all()
-
+        if visible is not None:
+            return Event.objects.filter(user_id__in=visible).select_related('contact')
         return Event.objects.filter(user=user).select_related('contact')
 
 
@@ -46,7 +47,7 @@ class EventDetailView(generics.RetrieveAPIView):
         visible = get_visible_user_ids(user, request=self.request)
         if visible is None:
             return Event.objects.all()
-        return Event.objects.filter(user=user)
+        return Event.objects.filter(user_id__in=visible)
 
 
 class EventMarkReadView(APIView):
@@ -90,7 +91,8 @@ class UnreadEventCountView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        counts = Event.objects.filter(user=request.user).aggregate(
+        effective_user = getattr(request, 'view_as_user', None) or request.user
+        counts = Event.objects.filter(user=effective_user).aggregate(
             unread_count=Count('id', filter=models.Q(is_read=False)),
             new_count=Count('id', filter=models.Q(is_new=True))
         )
