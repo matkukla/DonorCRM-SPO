@@ -46,7 +46,7 @@ def _resolve_target_user(request):
         # dashboard dropdown. This is distinct from default data scoping
         # (get_visible_user_ids), which governs list views, not dashboard selection.
         if user.role not in ['admin', 'supervisor']:
-            visible = get_visible_user_ids(user)
+            visible = get_visible_user_ids(user, request=request)
             if visible is not None and uuid.UUID(target_user_id) not in visible:
                 raise PermissionDenied(
                     'You do not have permission to view this user\'s dashboard.'
@@ -254,7 +254,7 @@ class UserDashboardLayoutView(APIView):
     @extend_schema(tags=['dashboard'], summary='Get user dashboard layout')
     def get(self, request, pk):
         if request.user.role not in ['admin', 'supervisor']:
-            visible = get_visible_user_ids(request.user)
+            visible = get_visible_user_ids(request.user, request=request)
             if visible is not None and pk not in visible:
                 raise PermissionDenied('You do not have permission to view this user\'s dashboard.')
         target = User.objects.filter(id=pk, is_active=True).first()
