@@ -61,7 +61,7 @@ class ContactListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         user = self.request.user
 
-        visible = get_visible_user_ids(user)
+        visible = get_visible_user_ids(user, request=self.request)
         if visible is None:
             queryset = Contact.objects.all()
         else:
@@ -96,7 +96,7 @@ class ContactDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        visible = get_visible_user_ids(user)
+        visible = get_visible_user_ids(user, request=self.request)
         if visible is None:
             return Contact.objects.all()
         return Contact.objects.filter(owner_id__in=visible)
@@ -122,7 +122,7 @@ class ContactThankView(APIView):
     def post(self, request, pk):
         user = request.user
         try:
-            visible = get_visible_user_ids(user)
+            visible = get_visible_user_ids(user, request=request)
             if visible is None:
                 contact = Contact.objects.get(pk=pk)
             else:
@@ -149,7 +149,7 @@ class ContactGiftsView(generics.ListAPIView):
 
         contact_id = self.kwargs.get('pk')
         user = self.request.user
-        visible = get_visible_user_ids(user)
+        visible = get_visible_user_ids(user, request=self.request)
         if visible is None:
             return Gift.objects.filter(donor_contact_id=contact_id).order_by('-gift_date')
         return Gift.objects.filter(
@@ -173,7 +173,7 @@ class ContactRecurringGiftsView(generics.ListAPIView):
 
         contact_id = self.kwargs.get('pk')
         user = self.request.user
-        visible = get_visible_user_ids(user)
+        visible = get_visible_user_ids(user, request=self.request)
         if visible is None:
             return RecurringGift.objects.filter(donor_contact_id=contact_id).order_by('-start_date')
         return RecurringGift.objects.filter(
@@ -200,7 +200,7 @@ class ContactTasksView(generics.ListAPIView):
 
         queryset = Task.objects.filter(contact_id=contact_id)
 
-        visible = get_visible_user_ids(user)
+        visible = get_visible_user_ids(user, request=self.request)
         if visible is not None:
             queryset = queryset.filter(owner_id__in=visible)
 
@@ -219,7 +219,7 @@ class ContactEmailsView(APIView):
 
     def get(self, request):
         user = request.user
-        visible = get_visible_user_ids(user)
+        visible = get_visible_user_ids(user, request=request)
         if visible is None:
             queryset = Contact.objects.all()
         else:
@@ -250,7 +250,7 @@ class ContactSearchView(generics.ListAPIView):
         user = self.request.user
         query = self.request.query_params.get('q', '')
 
-        visible = get_visible_user_ids(user)
+        visible = get_visible_user_ids(user, request=self.request)
         if visible is None:
             queryset = Contact.objects.all()
         else:
@@ -302,7 +302,7 @@ class ContactJournalsView(generics.ListAPIView):
         ).order_by('-created_at')
 
         # Filter by ownership using visibility helper
-        visible = get_visible_user_ids(user)
+        visible = get_visible_user_ids(user, request=self.request)
         if visible is not None:
             memberships = memberships.filter(journal__owner_id__in=visible)
 
@@ -324,7 +324,7 @@ class ContactPrayerIntentionsView(generics.ListAPIView):
         qs = PrayerIntention.objects.filter(
             contact_id=contact_id
         ).select_related('contact')
-        visible = get_visible_user_ids(user)
+        visible = get_visible_user_ids(user, request=self.request)
         if visible is not None:
             qs = qs.filter(contact__owner_id__in=visible)
         return qs.order_by('-created_at')
@@ -350,7 +350,7 @@ class ContactJournalEventsView(generics.ListAPIView):
             'journal_contact__contact',
             'triggered_by',
         ).order_by('-created_at')
-        visible = get_visible_user_ids(user)
+        visible = get_visible_user_ids(user, request=self.request)
         if visible is not None:
             qs = qs.filter(journal_contact__journal__owner_id__in=visible)
         return qs
