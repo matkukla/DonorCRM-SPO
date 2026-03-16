@@ -42,8 +42,8 @@
 
 ### Data Scoping
 
-- [ ] **SCOPE-01**: Admin and supervisor roles default to seeing only their own data (owner=self) in all list views — same as missionary role
-- [ ] **SCOPE-02**: Elevated cross-user data access only activates when a View As session is active
+- [x] **SCOPE-01**: Admin and supervisor roles default to seeing only their own data (owner=self) in all list views — same as missionary role
+- [x] **SCOPE-02**: Elevated cross-user data access only activates when a View As session is active
 
 ### MPD Dashboard
 
@@ -92,8 +92,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | GOAL-08 | Phase 50 | Complete |
 | GOAL-09 | Phase 50 | Complete |
 | GOAL-10 | Phase 50 | Complete |
-| SCOPE-01 | Phase 51 | Pending |
-| SCOPE-02 | Phase 51 | Pending |
+| SCOPE-01 | Phase 51 | Complete |
+| SCOPE-02 | Phase 51 | Complete |
 | VIEWAS-07 | Phase 52 | Pending |
 | VIEWAS-08 | Phase 52 | Pending |
 | VIEWAS-12 | Phase 52 | Pending |

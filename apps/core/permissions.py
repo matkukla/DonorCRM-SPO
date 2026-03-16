@@ -2,15 +2,15 @@
 Custom permission classes for role-based access control.
 
 Access Control Matrix:
-  admin       - Full access to all resources (all CRUD, all users' data)
+  admin       - Full CRUD on own resources by default; cross-user access via View As only
   finance     - Read access to all resources; write access to own data only
   missionary  - Full CRUD on own resources only
   read_only   - Read access to own resources only (safe HTTP methods)
-  supervisor  - Read/write own data + read supervised missionaries' data
+  supervisor  - Full CRUD on own resources only; cross-user access via View As only
   coach       - Read/write own data + read coached users' data (no financial data)
 
 Owner scoping in views uses two patterns:
-  - Multi-role check: role in ['admin', 'finance', 'read_only'] -> see all
+  - Multi-role check: role in ['finance', 'read_only'] -> see all
   - Single-role check: role == 'admin' -> see all (admin-only endpoints)
 Write operations are gated by IsStaffOrAbove (excludes read_only and coach).
 """
@@ -20,21 +20,21 @@ from rest_framework import permissions
 def get_visible_user_ids(user):
     """Return set of user IDs whose data this user can see, or None for 'all'.
 
-    - Admin/Finance/ReadOnly: returns None (sentinel for 'all users')
-    - Supervisor: returns {own_id} union {supervised user IDs}
-    - Coach: returns {own_id} union {coached user IDs}
-    - Missionary: returns {own_id}
+    Roles that see only their own data (return {user.id}):
+      - admin, supervisor, missionary
+
+    Roles that see own + coached users (return {user.id} ∪ coached_user_ids):
+      - coach
+
+    Roles that see all users' data (return None sentinel):
+      - finance, read_only
+
+    Note: Admin and supervisor cross-user access activates only via View As
+    session (Phase 52+). Admin analytics endpoints (get_dashboard_overview,
+    get_stalled_contacts, etc.) do NOT call this function and are unaffected.
     """
-    if user.role in ['admin', 'finance', 'read_only']:
+    if user.role in ['finance', 'read_only']:
         return None
-    if user.role == 'supervisor':
-        ids = set(
-            user.supervised_users
-            .filter(is_active=True)
-            .values_list('id', flat=True)
-        )
-        ids.add(user.id)
-        return ids
     if user.role == 'coach':
         ids = set(
             user.coached_users

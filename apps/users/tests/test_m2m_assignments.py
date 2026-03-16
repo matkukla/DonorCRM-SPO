@@ -49,13 +49,14 @@ class TestM2MModelBehaviors:
         assert sup2.id in assigned_ids
         assert missionary.supervisors.count() == 2
 
-    def test_get_visible_user_ids_returns_missionary_for_both_supervisors(self):
-        """get_visible_user_ids() returns missionary's ID for both supervisors.
+    def test_get_visible_user_ids_returns_own_id_for_both_supervisors(self):
+        """After Phase 51: get_visible_user_ids() returns {user.id} for supervisor role.
 
-        When the same missionary is assigned to two supervisors, each supervisor
-        independently sees that missionary in their visible set.
+        Supervised missionaries are NOT included in the default visible set.
+        Cross-user access requires an explicit View As session (Phase 52+).
 
-        RED: Fails with AttributeError on `user.supervisors` M2M.
+        Even when the same missionary is assigned to two supervisors, each supervisor
+        only sees their own data — not the missionary's data.
         """
         from apps.core.permissions import get_visible_user_ids
 
@@ -63,20 +64,19 @@ class TestM2MModelBehaviors:
         sup1 = SupervisorUserFactory()
         sup2 = SupervisorUserFactory()
 
-        # After Plan 02: M2M assignment from missionary → supervisors
+        # M2M assignment still valid — the relationship exists; it just doesn't
+        # affect the default visible set after Phase 51
         missionary.supervisors.add(sup1)
         missionary.supervisors.add(sup2)
 
-        # Each supervisor independently sees the missionary
+        # Each supervisor sees only their own data
         visible_sup1 = get_visible_user_ids(sup1)
         visible_sup2 = get_visible_user_ids(sup2)
 
-        assert missionary.id in visible_sup1, (
-            "Supervisor 1 should see the shared missionary"
-        )
-        assert missionary.id in visible_sup2, (
-            "Supervisor 2 should see the shared missionary"
-        )
+        assert visible_sup1 == {sup1.id}, "Supervisor 1 sees only own data (Phase 51+)"
+        assert visible_sup2 == {sup2.id}, "Supervisor 2 sees only own data (Phase 51+)"
+        assert missionary.id not in visible_sup1, "Supervisor cannot see missionary by default"
+        assert missionary.id not in visible_sup2, "Supervisor cannot see missionary by default"
 
 
 # ---------------------------------------------------------------------------

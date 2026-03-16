@@ -190,7 +190,10 @@ Plans:
   1. An admin user logging in sees only their own contacts, gifts, journals, tasks, and prayers — not all users' data
   2. A supervisor user logging in sees only their own data by default — not their assigned missionaries' data
   3. Cross-user data access activates only when a View As session is explicitly started — no other pathway unlocks it
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 51-01-PLAN.md — Wave 1: test scaffold for get_visible_user_ids() covering all 6 roles (RED state)
+- [ ] 51-02-PLAN.md — Wave 2: implement scoping change in permissions.py + fix breaking test
 
 ### Phase 52: View As — Backend
 **Goal**: The backend can validate View As permissions, return the correct list of viewable users per role, and block all mutating requests when the X-View-As-User-Id header is present
@@ -231,7 +234,7 @@ Plans:
 - [x] **Phase 48: MPD Dashboard Enhancements** - Monthly Average tile and Admin MPD Overview section (completed 2026-03-12)
 - [x] **Phase 49: Goal Page — Data Model & Backend** - Fiscal year utility, User.monthly_support_goal_cents, GoalJournalSelection model, and goal calculation API endpoints (completed 2026-03-13)
 - [ ] **Phase 50: Goal Page — Frontend UI** - Goal page with progress bars, pacing targets, milestone messages, sidebar nav, and read-only mode
-- [ ] **Phase 51: Data Scoping** - Admin and supervisor default to own data; cross-user access only via View As
+- [x] **Phase 51: Data Scoping** - Admin and supervisor default to own data; cross-user access only via View As (completed 2026-03-16)
 - [ ] **Phase 52: View As — Backend** - X-View-As-User-Id middleware, permission checks, mutation blocking, viewable users endpoint
 - [ ] **Phase 53: View As — Frontend** - ViewAsContext, API header injection, persistent banner, selector, nav hiding, cache invalidation
 - [ ] **Phase 54: MPD Resources Tab** - MPD Resources nav item under Insights, Support Raising Calculator with real-time pacing outputs, centralized constants in mpdCalculator.ts
@@ -254,7 +257,7 @@ Plans:
 | 48. MPD Dashboard Enhancements | v2.3 | 2/2 | Complete | 2026-03-12 |
 | 49. Goal Page — Data Model & Backend | 4/4 | Complete    | 2026-03-13 | - |
 | 50. Goal Page — Frontend UI | 4/5 | In Progress|  | - |
-| 51. Data Scoping | v2.3 | 0/TBD | Not started | - |
+| 51. Data Scoping | 3/3 | Complete    | 2026-03-16 | - |
 | 52. View As — Backend | v2.3 | 0/TBD | Not started | - |
 | 53. View As — Frontend | v2.3 | 0/TBD | Not started | - |
 | 54. MPD Resources Tab | v2.3 | 0/1 | Not started | - |
