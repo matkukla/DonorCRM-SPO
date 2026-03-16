@@ -17,8 +17,12 @@ Write operations are gated by IsStaffOrAbove (excludes read_only and coach).
 from rest_framework import permissions
 
 
-def get_visible_user_ids(user):
+def get_visible_user_ids(user, request=None):
     """Return set of user IDs whose data this user can see, or None for 'all'.
+
+    When request.view_as_user is set (View As mode), always returns
+    {view_as_user.id} regardless of viewer role. This is the data scoping
+    choke point for the View As feature (Phase 52+).
 
     Roles that see only their own data (return {user.id}):
       - admin, supervisor, missionary
@@ -33,6 +37,12 @@ def get_visible_user_ids(user):
     session (Phase 52+). Admin analytics endpoints (get_dashboard_overview,
     get_stalled_contacts, etc.) do NOT call this function and are unaffected.
     """
+    # View As override: scope to the target user regardless of viewer role.
+    if request is not None:
+        view_as_user = getattr(request, 'view_as_user', None)
+        if view_as_user is not None:
+            return {view_as_user.id}
+
     if user.role in ['finance', 'read_only']:
         return None
     if user.role == 'coach':

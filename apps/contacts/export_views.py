@@ -31,7 +31,7 @@ class ContactExportCSVView(APIView):
         user = request.user
 
         # Same owner-scoping as ContactListCreateView
-        visible = get_visible_user_ids(user)
+        visible = get_visible_user_ids(user, request=request)
         if visible is None:
             queryset = Contact.objects.all()
         else:

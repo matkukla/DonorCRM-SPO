@@ -17,10 +17,10 @@ from apps.prayers.models import PrayerIntention
 from apps.prayers.serializers import PrayerIntentionSerializer
 
 
-def _owner_scoped_queryset(user):
+def _owner_scoped_queryset(user, request=None):
     """Return PrayerIntention queryset scoped by ownership."""
     qs = PrayerIntention.objects.select_related('contact', 'contact__owner').all()
-    visible = get_visible_user_ids(user)
+    visible = get_visible_user_ids(user, request=request)
     if visible is not None:
         qs = qs.filter(contact__owner_id__in=visible)
     return qs
@@ -39,7 +39,7 @@ class PrayerIntentionListCreateView(generics.ListCreateAPIView):
     ordering_fields = ['created_at', 'status', 'last_prayed_at']
 
     def get_queryset(self):
-        return _owner_scoped_queryset(self.request.user).annotate(
+        return _owner_scoped_queryset(self.request.user, request=self.request).annotate(
             status_order=Case(
                 When(status='active', then=Value(0)),
                 When(status='answered', then=Value(1)),
@@ -59,7 +59,7 @@ class PrayerIntentionDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = PrayerIntentionSerializer
 
     def get_queryset(self):
-        return _owner_scoped_queryset(self.request.user)
+        return _owner_scoped_queryset(self.request.user, request=self.request)
 
 
 class MarkPrayedView(APIView):
@@ -69,7 +69,7 @@ class MarkPrayedView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk):
-        qs = _owner_scoped_queryset(request.user)
+        qs = _owner_scoped_queryset(request.user, request=request)
         try:
             intention = qs.get(pk=pk)
         except PrayerIntention.DoesNotExist:
@@ -96,7 +96,7 @@ class TodaysFocusView(generics.ListAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        qs = _owner_scoped_queryset(user).filter(status='active')
+        qs = _owner_scoped_queryset(user, request=self.request).filter(status='active')
 
         # Deterministic daily rotation: compute offset from hash of date + user pk
         today_str = timezone.now().date().isoformat()

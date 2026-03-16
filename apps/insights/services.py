@@ -35,31 +35,31 @@ def _parse_date_range(date_from=None, date_to=None):
     return dt_from_val, dt_to_val
 
 
-def _scope_gifts(user):
+def _scope_gifts(user, request=None):
     """Return gift queryset scoped by user role."""
-    visible = get_visible_user_ids(user)
+    visible = get_visible_user_ids(user, request=request)
     if visible is None:
         return Gift.objects.all()
     return Gift.objects.filter(donor_contact__owner_id__in=visible)
 
 
-def _scope_recurring_gifts(user):
+def _scope_recurring_gifts(user, request=None):
     """Return recurring gift queryset scoped by user role."""
-    visible = get_visible_user_ids(user)
+    visible = get_visible_user_ids(user, request=request)
     if visible is None:
         return RecurringGift.objects.all()
     return RecurringGift.objects.filter(donor_contact__owner_id__in=visible)
 
 
-def _scope_tasks(user):
+def _scope_tasks(user, request=None):
     """Return task queryset scoped by user role."""
-    visible = get_visible_user_ids(user)
+    visible = get_visible_user_ids(user, request=request)
     if visible is None:
         return Task.objects.all()
     return Task.objects.filter(owner_id__in=visible)
 
 
-def get_donations_by_month(user, year=None):
+def get_donations_by_month(user, year=None, request=None):
     """
     Get gift totals grouped by month for a given year.
     Defaults to current year.
@@ -67,7 +67,7 @@ def get_donations_by_month(user, year=None):
     if year is None:
         year = date.today().year
 
-    gifts = _scope_gifts(user)
+    gifts = _scope_gifts(user, request=request)
 
     monthly_data = (
         gifts.filter(gift_date__year=year)
@@ -106,14 +106,14 @@ def get_donations_by_month(user, year=None):
     }
 
 
-def get_donations_by_year(user, years=5):
+def get_donations_by_year(user, years=5, request=None):
     """
     Get gift totals grouped by year for the last N years.
     """
     current_year = date.today().year
     start_year = current_year - years + 1
 
-    gifts = _scope_gifts(user)
+    gifts = _scope_gifts(user, request=request)
 
     yearly_data = (
         gifts.filter(gift_date__year__gte=start_year)
@@ -145,11 +145,11 @@ def get_donations_by_year(user, years=5):
     }
 
 
-def get_monthly_commitments(user):
+def get_monthly_commitments(user, request=None):
     """
     Get summary of active recurring gifts with monthly equivalents.
     """
-    recurring_gifts = _scope_recurring_gifts(user)
+    recurring_gifts = _scope_recurring_gifts(user, request=request)
     active_recurring = recurring_gifts.filter(status=RecurringGiftStatus.ACTIVE).select_related('donor_contact')
 
     # Group by frequency
@@ -201,11 +201,11 @@ def get_late_donations(user, limit=50):
     return {'late_donations': [], 'total_count': 0}
 
 
-def get_follow_ups(user, limit=50):
+def get_follow_ups(user, limit=50, request=None):
     """
     Get incomplete tasks ordered by due date (oldest first).
     """
-    tasks = _scope_tasks(user)
+    tasks = _scope_tasks(user, request=request)
 
     follow_ups = tasks.filter(
         status__in=[TaskStatus.PENDING, TaskStatus.IN_PROGRESS]

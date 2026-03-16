@@ -31,7 +31,7 @@ class JournalExportCSVView(APIView):
         user = request.user
 
         # Same owner-scoping as JournalListCreateView
-        visible = get_visible_user_ids(user)
+        visible = get_visible_user_ids(user, request=request)
         if visible is None:
             queryset = Journal.objects.all()
         else:

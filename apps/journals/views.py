@@ -68,7 +68,7 @@ class JournalListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         user = self.request.user
 
-        visible = get_visible_user_ids(user)
+        visible = get_visible_user_ids(user, request=self.request)
         if visible is None:
             queryset = Journal.objects.all()
         else:
@@ -122,7 +122,7 @@ class JournalDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        visible = get_visible_user_ids(user)
+        visible = get_visible_user_ids(user, request=self.request)
         if visible is None:
             return Journal.objects.all().select_related('owner')
         return Journal.objects.filter(owner_id__in=visible).select_related('owner')
@@ -161,7 +161,7 @@ class JournalStageEventListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         user = self.request.user
 
-        visible = get_visible_user_ids(user)
+        visible = get_visible_user_ids(user, request=self.request)
         if visible is None:
             queryset = JournalStageEvent.objects.all()
         else:
@@ -253,7 +253,7 @@ class JournalContactListCreateView(generics.ListCreateAPIView):
         )
 
         # Scope by visible users
-        visible = get_visible_user_ids(user)
+        visible = get_visible_user_ids(user, request=self.request)
         if visible is not None:
             queryset = queryset.filter(journal__owner_id__in=visible)
 
@@ -336,7 +336,7 @@ class DecisionListCreateView(generics.ListCreateAPIView):
         )
 
         # Scope by visible users
-        visible = get_visible_user_ids(user)
+        visible = get_visible_user_ids(user, request=self.request)
         if visible is not None:
             queryset = queryset.filter(journal_contact__journal__owner_id__in=visible)
 
@@ -389,7 +389,7 @@ class DecisionDetailView(generics.RetrieveUpdateAPIView):
         )
 
         # Scope by visible users
-        visible = get_visible_user_ids(user)
+        visible = get_visible_user_ids(user, request=self.request)
         if visible is not None:
             queryset = queryset.filter(journal_contact__journal__owner_id__in=visible)
 
@@ -416,7 +416,7 @@ class DecisionHistoryListView(generics.ListAPIView):
         )
 
         # Scope by visible users
-        visible = get_visible_user_ids(user)
+        visible = get_visible_user_ids(user, request=self.request)
         if visible is not None:
             queryset = queryset.filter(decision__journal_contact__journal__owner_id__in=visible)
 
@@ -445,7 +445,7 @@ class NextStepListCreateView(generics.ListCreateAPIView):
         """Filter to next steps in journals owned by user (or all for admin)."""
         user = self.request.user
 
-        visible = get_visible_user_ids(user)
+        visible = get_visible_user_ids(user, request=self.request)
         if visible is None:
             qs = NextStep.objects.all()
         else:
@@ -477,7 +477,7 @@ class NextStepDetailView(generics.RetrieveUpdateDestroyAPIView):
         """Filter to next steps in journals owned by user (or all for admin)."""
         user = self.request.user
 
-        visible = get_visible_user_ids(user)
+        visible = get_visible_user_ids(user, request=self.request)
         if visible is None:
             qs = NextStep.objects.all()
         else:
@@ -493,7 +493,7 @@ class JournalAnalyticsViewSet(viewsets.ViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def _get_visible(self, request):
-        return get_visible_user_ids(request.user)
+        return get_visible_user_ids(request.user, request=self.request)
 
     @action(detail=False, methods=['get'], url_path='decision-trends')
     def decision_trends(self, request):
