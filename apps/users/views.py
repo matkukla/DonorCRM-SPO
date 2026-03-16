@@ -15,6 +15,7 @@ from apps.users.serializers import (
     UserCreateSerializer,
     UserSerializer,
     UserUpdateSerializer,
+    ViewableUserSerializer,
 )
 
 
@@ -106,3 +107,36 @@ class PasswordChangeView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response({'detail': 'Password changed successfully.'})
+
+
+class ViewableUsersView(APIView):
+    """
+    GET /api/users/viewable/
+    Returns list of missionaries the authenticated user can impersonate via View As.
+
+    - Admin: all active missionaries
+    - Supervisor: only missionaries in their supervised_users M2M (filtered to role='missionary', is_active=True)
+    - All other roles: 403 Forbidden
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        if user.role == 'admin':
+            qs = User.objects.filter(
+                role='missionary',
+                is_active=True
+            ).order_by('last_name', 'first_name')
+        elif user.role == 'supervisor':
+            qs = user.supervised_users.filter(
+                role='missionary',
+                is_active=True
+            ).order_by('last_name', 'first_name')
+        else:
+            return Response(
+                {'detail': 'You do not have permission to view this list.'},
+                status=403
+            )
+
+        return Response(ViewableUserSerializer(qs, many=True).data)

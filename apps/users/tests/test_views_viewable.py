@@ -29,7 +29,7 @@ def test_admin_sees_all_missionaries():
 
     client = APIClient()
     client.force_authenticate(user=admin)
-    response = client.get('/api/users/viewable/')
+    response = client.get('/api/v1/users/viewable/')
 
     assert response.status_code == 200
     ids = [item['id'] for item in response.data]
@@ -51,7 +51,7 @@ def test_supervisor_sees_assigned_only():
 
     client = APIClient()
     client.force_authenticate(user=supervisor)
-    response = client.get('/api/users/viewable/')
+    response = client.get('/api/v1/users/viewable/')
 
     assert response.status_code == 200
     ids = [item['id'] for item in response.data]
@@ -68,7 +68,7 @@ def test_missionary_gets_403():
 
     client = APIClient()
     client.force_authenticate(user=missionary)
-    response = client.get('/api/users/viewable/')
+    response = client.get('/api/v1/users/viewable/')
 
     assert response.status_code == 403
 
@@ -77,7 +77,7 @@ def test_missionary_gets_403():
 def test_unauthenticated_gets_401():
     """Unauthenticated GET /api/users/viewable/ returns 401."""
     client = APIClient()
-    response = client.get('/api/users/viewable/')
+    response = client.get('/api/v1/users/viewable/')
 
     assert response.status_code == 401
 
@@ -95,7 +95,7 @@ def test_inactive_missionaries_excluded():
 
     client = APIClient()
     client.force_authenticate(user=admin)
-    response = client.get('/api/users/viewable/')
+    response = client.get('/api/v1/users/viewable/')
 
     assert response.status_code == 200
     ids = [item['id'] for item in response.data]
@@ -117,7 +117,7 @@ def test_non_missionary_roles_excluded():
 
     client = APIClient()
     client.force_authenticate(user=admin)
-    response = client.get('/api/users/viewable/')
+    response = client.get('/api/v1/users/viewable/')
 
     assert response.status_code == 200
     ids = [item['id'] for item in response.data]
@@ -139,7 +139,7 @@ def test_response_shape():
 
     client = APIClient()
     client.force_authenticate(user=admin)
-    response = client.get('/api/users/viewable/')
+    response = client.get('/api/v1/users/viewable/')
 
     assert response.status_code == 200
     assert len(response.data) > 0
