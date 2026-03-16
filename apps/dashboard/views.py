@@ -253,9 +253,10 @@ class UserDashboardLayoutView(APIView):
 
     @extend_schema(tags=['dashboard'], summary='Get user dashboard layout')
     def get(self, request, pk):
-        visible = get_visible_user_ids(request.user)
-        if visible is not None and pk not in visible:
-            raise PermissionDenied('You do not have permission to view this user\'s dashboard.')
+        if request.user.role not in ['admin', 'supervisor']:
+            visible = get_visible_user_ids(request.user)
+            if visible is not None and pk not in visible:
+                raise PermissionDenied('You do not have permission to view this user\'s dashboard.')
         target = User.objects.filter(id=pk, is_active=True).first()
         if not target:
             raise NotFound('User not found.')

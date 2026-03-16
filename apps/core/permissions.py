@@ -21,7 +21,10 @@ def get_visible_user_ids(user):
     """Return set of user IDs whose data this user can see, or None for 'all'.
 
     Roles that see only their own data (return {user.id}):
-      - admin, supervisor, coach, missionary
+      - admin, supervisor, missionary
+
+    Roles that see own + coached users (return {user.id} ∪ coached_user_ids):
+      - coach
 
     Roles that see all users' data (return None sentinel):
       - finance, read_only
