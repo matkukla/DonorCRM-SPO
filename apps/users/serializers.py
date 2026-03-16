@@ -214,3 +214,13 @@ class CurrentUserSerializer(serializers.ModelSerializer):
             qs.values('id', 'first_name', 'last_name', 'email')
             .order_by('last_name', 'first_name')
         )
+
+
+class ViewableUserSerializer(serializers.ModelSerializer):
+    """Minimal serializer for View As user list. Exposes only id and full_name."""
+    id = serializers.UUIDField(read_only=True)
+    full_name = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = User
+        fields = ['id', 'full_name']
