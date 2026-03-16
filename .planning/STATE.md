@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Goal Tracking & View As
 status: executing
-stopped_at: Phase 52 context gathered
-last_updated: "2026-03-16T14:39:49.363Z"
+stopped_at: Completed 52-01-PLAN.md
+last_updated: "2026-03-16T15:08:22.559Z"
 last_activity: 2026-03-12 — Phase 48 Plan 01 complete (monthly_average in MPD views)
 progress:
   total_phases: 7
   completed_phases: 3
-  total_plans: 14
-  completed_plans: 13
+  total_plans: 18
+  completed_plans: 14
   percent: 8
 ---
 
@@ -62,6 +62,7 @@ Progress: [█░░░░░░░░░] 8% — 0/6 phases, 1/2 plans (phase 4
 | Phase 51 P01 | 17min | 1 tasks | 1 files |
 | Phase 51 P02 | 6min | 2 tasks | 2 files |
 | Phase 51 P03 | 2min | 2 tasks | 2 files |
+| Phase 52-view-as-backend P01 | 2min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -101,6 +102,8 @@ Recent decisions relevant to v2.3:
 - [Phase 51]: 15 pre-existing test failures confirmed not caused by Phase 51 changes; documented in deferred-items.md, out of scope
 - [Phase 51-03]: Role guard in _resolve_target_user() placed BEFORE get_visible_user_ids() call — admin/supervisor bypass visibility check entirely for dashboard dropdown, not just after checking it
 - [Phase 51-03]: Dashboard dropdown selection (explicit ?user_id=) and default data scoping are independent access patterns — _resolve_target_user() handles selection, get_visible_user_ids() handles list scoping
+- [Phase 52-01]: test_get_allowed_in_view_as asserts status_code != 403 (not == 200) — middleware should not block; underlying view may return any code
+- [Phase 52-01]: test_view_as_overrides_scoping uses .build() for both users — get_visible_user_ids is synchronous and doesn't query user objects directly, no DB needed
 
 ### Pending Todos
 
@@ -112,6 +115,6 @@ Recent decisions relevant to v2.3:
 
 ## Session Continuity
 
-Last session: 2026-03-16T14:39:49.359Z
-Stopped at: Phase 52 context gathered
+Last session: 2026-03-16T15:08:22.555Z
+Stopped at: Completed 52-01-PLAN.md
 Resume: Plan Phase 49 with `/gsd:plan-phase 49`
