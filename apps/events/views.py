@@ -27,7 +27,7 @@ class EventListView(generics.ListAPIView):
         user = self.request.user
 
         # Admin can see all events when ?all is passed, others see only their own
-        visible = get_visible_user_ids(user)
+        visible = get_visible_user_ids(user, request=self.request)
         if visible is None and self.request.query_params.get('all'):
             return Event.objects.all()
 
@@ -43,7 +43,7 @@ class EventDetailView(generics.RetrieveAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        visible = get_visible_user_ids(user)
+        visible = get_visible_user_ids(user, request=self.request)
         if visible is None:
             return Event.objects.all()
         return Event.objects.filter(user=user)

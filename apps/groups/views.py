@@ -20,7 +20,7 @@ class GroupListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        visible = get_visible_user_ids(user)
+        visible = get_visible_user_ids(user, request=self.request)
         if visible is None:
             queryset = Group.objects.all()
         else:
@@ -48,7 +48,7 @@ class GroupDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        visible = get_visible_user_ids(user)
+        visible = get_visible_user_ids(user, request=self.request)
         if visible is None:
             queryset = Group.objects.all()
         else:
@@ -79,7 +79,7 @@ class GroupContactsView(APIView):
 
     def get_group(self, pk):
         user = self.request.user
-        visible = get_visible_user_ids(user)
+        visible = get_visible_user_ids(user, request=self.request)
         try:
             if visible is None:
                 return Group.objects.get(pk=pk)
@@ -155,7 +155,7 @@ class GroupContactEmailsView(APIView):
 
     def get(self, request, pk):
         user = request.user
-        visible = get_visible_user_ids(user)
+        visible = get_visible_user_ids(user, request=request)
         try:
             if visible is None:
                 group = Group.objects.get(pk=pk)

@@ -30,7 +30,7 @@ class TaskListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         user = self.request.user
 
-        visible = get_visible_user_ids(user)
+        visible = get_visible_user_ids(user, request=self.request)
         if visible is None:
             queryset = Task.objects.all()
         else:
@@ -55,7 +55,7 @@ class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        visible = get_visible_user_ids(user)
+        visible = get_visible_user_ids(user, request=self.request)
         if visible is None:
             return Task.objects.all()
         return Task.objects.filter(owner_id__in=visible)
@@ -70,7 +70,7 @@ class TaskCompleteView(APIView):
     def post(self, request, pk):
         user = request.user
         try:
-            visible = get_visible_user_ids(user)
+            visible = get_visible_user_ids(user, request=request)
             if visible is None:
                 task = Task.objects.get(pk=pk)
             else:
@@ -107,7 +107,7 @@ class OverdueTasksView(generics.ListAPIView):
             due_date__lt=today
         )
 
-        visible = get_visible_user_ids(user)
+        visible = get_visible_user_ids(user, request=self.request)
         if visible is not None:
             base_query = base_query.filter(owner_id__in=visible)
         return base_query
@@ -132,7 +132,7 @@ class UpcomingTasksView(generics.ListAPIView):
             due_date__lte=end_date
         )
 
-        visible = get_visible_user_ids(user)
+        visible = get_visible_user_ids(user, request=self.request)
         if visible is not None:
             base_query = base_query.filter(owner_id__in=visible)
         return base_query

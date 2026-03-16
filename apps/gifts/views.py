@@ -39,7 +39,7 @@ class GiftListCreateView(generics.ListCreateAPIView):
         if user.role == 'coach':
             return Gift.objects.none()
         qs = Gift.objects.select_related('donor_contact', 'donor_contact__owner', 'fund').all()
-        visible = get_visible_user_ids(user)
+        visible = get_visible_user_ids(user, request=self.request)
         if visible is not None:
             qs = qs.filter(donor_contact__owner_id__in=visible)
         return qs.order_by('-gift_date')
@@ -71,7 +71,7 @@ class GiftDetailView(generics.RetrieveUpdateDestroyAPIView):
         qs = Gift.objects.select_related('donor_contact', 'donor_contact__owner', 'fund').prefetch_related(
             'credits__solicitor'
         ).all()
-        visible = get_visible_user_ids(user)
+        visible = get_visible_user_ids(user, request=self.request)
         if visible is not None:
             qs = qs.filter(donor_contact__owner_id__in=visible)
         return qs
@@ -103,7 +103,7 @@ class RecurringGiftListCreateView(generics.ListCreateAPIView):
         if user.role == 'coach':
             return RecurringGift.objects.none()
         qs = RecurringGift.objects.select_related('donor_contact', 'donor_contact__owner', 'fund').all()
-        visible = get_visible_user_ids(user)
+        visible = get_visible_user_ids(user, request=self.request)
         if visible is not None:
             qs = qs.filter(donor_contact__owner_id__in=visible)
         return qs.order_by('-start_date')
@@ -134,7 +134,7 @@ class RecurringGiftDetailView(generics.RetrieveUpdateDestroyAPIView):
         if user.role == 'coach':
             return RecurringGift.objects.none()
         qs = RecurringGift.objects.select_related('donor_contact', 'donor_contact__owner', 'fund').all()
-        visible = get_visible_user_ids(user)
+        visible = get_visible_user_ids(user, request=self.request)
         if visible is not None:
             qs = qs.filter(donor_contact__owner_id__in=visible)
         return qs

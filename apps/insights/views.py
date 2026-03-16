@@ -59,7 +59,7 @@ class DonationsByMonthView(APIView):
         if not is_financial_role(request.user):
             return Response({'detail': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
         year = get_safe_year_param(request, 'year')
-        return Response(get_donations_by_month(request.user, year=year))
+        return Response(get_donations_by_month(request.user, year=year, request=request))
 
 
 class DonationsByYearView(APIView):
@@ -79,7 +79,7 @@ class DonationsByYearView(APIView):
         if not is_financial_role(request.user):
             return Response({'detail': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
         years = get_safe_int_param(request, 'years', default=5, min_val=1, max_val=50)
-        return Response(get_donations_by_year(request.user, years=years))
+        return Response(get_donations_by_year(request.user, years=years, request=request))
 
 
 class MonthlyCommitmentsView(APIView):
@@ -92,7 +92,7 @@ class MonthlyCommitmentsView(APIView):
     def get(self, request):
         if not is_financial_role(request.user):
             return Response({'detail': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
-        return Response(get_monthly_commitments(request.user))
+        return Response(get_monthly_commitments(request.user, request=request))
 
 
 class LateDonationsView(APIView):
@@ -130,7 +130,7 @@ class FollowUpsView(APIView):
     )
     def get(self, request):
         limit = get_safe_int_param(request, 'limit', default=50, min_val=1, max_val=500)
-        return Response(get_follow_ups(request.user, limit=limit))
+        return Response(get_follow_ups(request.user, limit=limit, request=request))
 
 
 class TransactionsView(APIView):

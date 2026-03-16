@@ -31,7 +31,7 @@ class TaskExportCSVView(APIView):
         user = request.user
 
         # Same owner-scoping as TaskListCreateView
-        visible = get_visible_user_ids(user)
+        visible = get_visible_user_ids(user, request=request)
         if visible is None:
             queryset = Task.objects.all()
         else:
