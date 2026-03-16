@@ -203,7 +203,12 @@ Plans:
   1. GET /api/users/viewable returns all missionaries for admin; returns only assigned missionaries for supervisor
   2. Any POST, PUT, PATCH, or DELETE request sent with the X-View-As-User-Id header returns 403 Forbidden
   3. A supervisor sending X-View-As-User-Id for a missionary not in their assigned list receives 403 Forbidden; an admin is never blocked by this check
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 52-01-PLAN.md — Wave 1: test scaffolds (test_middleware, test_views_viewable, test_view_as_overrides_scoping)
+- [ ] 52-02-PLAN.md — Wave 2: ViewAsMiddleware implementation + settings MIDDLEWARE entry
+- [ ] 52-03-PLAN.md — Wave 2: get_visible_user_ids() request param + all caller pass-throughs
+- [ ] 52-04-PLAN.md — Wave 2: ViewableUserSerializer + ViewableUsersView + URL registration
 
 ### Phase 53: View As — Frontend
 **Goal**: Admins and supervisors can enter View As mode via a selector, see all data belonging to the selected missionary, and exit cleanly — with mutations blocked throughout the session
