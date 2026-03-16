@@ -101,3 +101,19 @@ def test_missionary_sees_only_own_data():
     result = get_visible_user_ids(missionary)
     assert result == {missionary.id}
     assert result is not None
+
+
+# --- VIEW AS OVERRIDE (Phase 52) ---
+
+def test_view_as_overrides_scoping():
+    """When request.view_as_user is set, get_visible_user_ids returns {view_as_user.id} regardless of viewer role."""
+    from apps.core.permissions import get_visible_user_ids
+    from apps.users.tests.factories import AdminUserFactory, UserFactory
+    import types
+
+    admin = AdminUserFactory.build()
+    view_as_user = UserFactory.build()
+
+    mock_request = types.SimpleNamespace(view_as_user=view_as_user)
+    result = get_visible_user_ids(admin, request=mock_request)
+    assert result == {view_as_user.id}
