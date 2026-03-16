@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Goal Tracking & View As
 status: executing
-stopped_at: Completed 52-04-PLAN.md
-last_updated: "2026-03-16T15:24:19.376Z"
+stopped_at: Completed 52-03-PLAN.md
+last_updated: "2026-03-16T15:32:58.594Z"
 last_activity: 2026-03-12 — Phase 48 Plan 01 complete (monthly_average in MPD views)
 progress:
   total_phases: 7
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 18
-  completed_plans: 15
+  completed_plans: 17
   percent: 8
 ---
 
@@ -64,6 +64,8 @@ Progress: [█░░░░░░░░░] 8% — 0/6 phases, 1/2 plans (phase 4
 | Phase 51 P03 | 2min | 2 tasks | 2 files |
 | Phase 52-view-as-backend P01 | 2min | 2 tasks | 3 files |
 | Phase 52 P04 | 15min | 2 tasks | 4 files |
+| Phase 52-view-as-backend P03 | 17min | 2 tasks | 15 files |
+| Phase 52-view-as-backend P02 | 18min | 1 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -107,6 +109,11 @@ Recent decisions relevant to v2.3:
 - [Phase 52-01]: test_view_as_overrides_scoping uses .build() for both users — get_visible_user_ids is synchronous and doesn't query user objects directly, no DB needed
 - [Phase 52]: viewable/ URL registered before <uuid:pk>/ to prevent literal path being caught by UUID converter
 - [Phase 52]: Test URL in scaffold corrected from /api/users/viewable/ to /api/v1/users/viewable/ (all API endpoints use /api/v1/ prefix)
+- [Phase 52-03]: dashboard/services.py not updated — target user already resolved via _resolve_target_user(request) in view layer
+- [Phase 52-03]: insights _scope_* helpers and parent service functions gain request=None for view-context callers to thread request through
+- [Phase 52-02]: _resolve_viewer() checks _force_auth_user (DRF test hook) before session auth and JWT Bearer — required for force_authenticate() to work in middleware
+- [Phase 52-02]: DRF Response used for 403s in ViewAsMiddleware (not JsonResponse) — response.data['detail'] accessible to DRF test client assertions
+- [Phase 52-02]: Mutation guard placed after _validate_and_attach — invalid target gets 'Invalid View As target' regardless of HTTP method; valid target + POST gets 'Mutations are not allowed'
 
 ### Pending Todos
 
@@ -118,6 +125,6 @@ Recent decisions relevant to v2.3:
 
 ## Session Continuity
 
-Last session: 2026-03-16T15:24:19.372Z
-Stopped at: Completed 52-04-PLAN.md
+Last session: 2026-03-16T15:32:44.332Z
+Stopped at: Completed 52-03-PLAN.md
 Resume: Plan Phase 49 with `/gsd:plan-phase 49`
