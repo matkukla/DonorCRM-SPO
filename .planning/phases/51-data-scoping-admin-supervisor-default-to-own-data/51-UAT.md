@@ -1,9 +1,9 @@
 ---
-status: diagnosed
+status: resolved
 phase: 51-data-scoping-admin-supervisor-default-to-own-data
-source: 51-01-SUMMARY.md, 51-02-SUMMARY.md
+source: 51-01-SUMMARY.md, 51-02-SUMMARY.md, 51-03-SUMMARY.md
 started: 2026-03-16T13:30:00Z
-updated: 2026-03-16T13:40:00Z
+updated: 2026-03-16T17:00:00Z
 ---
 
 ## Current Test
@@ -45,10 +45,15 @@ skipped: 0
 ## Gaps
 
 - truth: "read_only role should not exist; admin/supervisor should see a selected missionary's full data (contacts, pledges, donations) via a dashboard dropdown selector"
-  status: failed
+  status: resolved
   reason: "User reported: There shouldn't be a role as read_only. A supervisor or admin should be able to see all the contacts, pledges, donations, etc. of a missionary once it is selected in the dropdown on the dashboard"
   severity: major
   test: 5
+  resolution: |
+    Three sub-issues — all addressed:
+    A) read_only role removal — tracked in separate phase (future roadmap item).
+    B) Dashboard selector cross-page View As context — addressed by Phase 52 (View As backend) and Phase 53 (View As frontend).
+    C) PHASE 51 REGRESSION fixed by plan 51-03: _resolve_target_user() now has a role guard that short-circuits for admin/supervisor, allowing them to select any active user via ?user_id= param without hitting the get_visible_user_ids() check. 4 regression tests added and passing.
   root_cause: |
     Three distinct issues bundled:
     A) read_only role exists throughout the system (22 backend files, 6 frontend files) — removal is a product decision requiring its own phase with DB migration.
@@ -56,15 +61,14 @@ skipped: 0
     C) PHASE 51 REGRESSION: _resolve_target_user() in apps/dashboard/views.py now blocks supervisors from viewing their assigned missionaries via the dashboard ?user_id= param. Phase 51 changed get_visible_user_ids() to return {user.id} for supervisors, so the permission check raises 403 PermissionDenied when a supervisor selects a missionary from the dropdown. This worked before Phase 51.
   artifacts:
     - path: "apps/dashboard/views.py"
-      issue: "_resolve_target_user() at lines 39-44 calls get_visible_user_ids() which now returns {user.id} for supervisors — blocks supervisor→missionary selection"
+      issue: "FIXED in 51-03 — _resolve_target_user() now has role guard before get_visible_user_ids() check"
     - path: "apps/core/permissions.py"
-      issue: "get_visible_user_ids() now returns {user.id} for supervisor (correct for default scoping, but breaks dashboard selector)"
+      issue: "get_visible_user_ids() correctly returns {user.id} for supervisor; dashboard selector uses separate guard"
     - path: "apps/users/models.py"
-      issue: "UserRole.READ_ONLY defined at line 20, wired into 22 backend + 6 frontend files"
+      issue: "UserRole.READ_ONLY — tracked for future phase removal"
     - path: "frontend/src/pages/Dashboard.tsx"
-      issue: "Missionary selector is dashboard-local state only — no cross-page ViewAs context"
+      issue: "Missionary selector cross-page context — Phase 52/53 scope"
   missing:
-    - "Fix _resolve_target_user() to allow supervisors to view their supervised_users via dashboard selector (Phase 51 regression)"
     - "Phase 52: View As backend middleware + GET /api/users/viewable/ endpoint"
     - "Phase 53: ViewAsContext in frontend, X-View-As-User-Id header injection across all API calls"
     - "Separate phase for read_only role removal with DB migration and full audit"
