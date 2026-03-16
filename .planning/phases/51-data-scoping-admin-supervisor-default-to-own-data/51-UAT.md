@@ -1,5 +1,5 @@
 ---
-status: complete
+status: diagnosed
 phase: 51-data-scoping-admin-supervisor-default-to-own-data
 source: 51-01-SUMMARY.md, 51-02-SUMMARY.md
 started: 2026-03-16T13:30:00Z
@@ -49,5 +49,22 @@ skipped: 0
   reason: "User reported: There shouldn't be a role as read_only. A supervisor or admin should be able to see all the contacts, pledges, donations, etc. of a missionary once it is selected in the dropdown on the dashboard"
   severity: major
   test: 5
-  artifacts: []
-  missing: []
+  root_cause: |
+    Three distinct issues bundled:
+    A) read_only role exists throughout the system (22 backend files, 6 frontend files) — removal is a product decision requiring its own phase with DB migration.
+    B) Dashboard missionary selector is dashboard-local only; contacts/pledges/donations/etc do not change when missionary selected — this is Phase 52/53 scope (View As backend + frontend context).
+    C) PHASE 51 REGRESSION: _resolve_target_user() in apps/dashboard/views.py now blocks supervisors from viewing their assigned missionaries via the dashboard ?user_id= param. Phase 51 changed get_visible_user_ids() to return {user.id} for supervisors, so the permission check raises 403 PermissionDenied when a supervisor selects a missionary from the dropdown. This worked before Phase 51.
+  artifacts:
+    - path: "apps/dashboard/views.py"
+      issue: "_resolve_target_user() at lines 39-44 calls get_visible_user_ids() which now returns {user.id} for supervisors — blocks supervisor→missionary selection"
+    - path: "apps/core/permissions.py"
+      issue: "get_visible_user_ids() now returns {user.id} for supervisor (correct for default scoping, but breaks dashboard selector)"
+    - path: "apps/users/models.py"
+      issue: "UserRole.READ_ONLY defined at line 20, wired into 22 backend + 6 frontend files"
+    - path: "frontend/src/pages/Dashboard.tsx"
+      issue: "Missionary selector is dashboard-local state only — no cross-page ViewAs context"
+  missing:
+    - "Fix _resolve_target_user() to allow supervisors to view their supervised_users via dashboard selector (Phase 51 regression)"
+    - "Phase 52: View As backend middleware + GET /api/users/viewable/ endpoint"
+    - "Phase 53: ViewAsContext in frontend, X-View-As-User-Id header injection across all API calls"
+    - "Separate phase for read_only role removal with DB migration and full audit"
