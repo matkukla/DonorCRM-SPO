@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Goal Tracking & View As
 status: executing
-stopped_at: Completed 51-02-PLAN.md
-last_updated: "2026-03-16T13:30:46.675Z"
+stopped_at: Completed 51-03-PLAN.md
+last_updated: "2026-03-16T13:57:45.389Z"
 last_activity: 2026-03-12 — Phase 48 Plan 01 complete (monthly_average in MPD views)
 progress:
   total_phases: 7
   completed_phases: 3
-  total_plans: 13
-  completed_plans: 12
+  total_plans: 14
+  completed_plans: 13
   percent: 8
 ---
 
@@ -61,6 +61,7 @@ Progress: [█░░░░░░░░░] 8% — 0/6 phases, 1/2 plans (phase 4
 | Phase 50 P04 | 6min | 3 tasks | 3 files |
 | Phase 51 P01 | 17min | 1 tasks | 1 files |
 | Phase 51 P02 | 6min | 2 tasks | 2 files |
+| Phase 51 P03 | 2min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -98,6 +99,8 @@ Recent decisions relevant to v2.3:
 - [Phase 51-01]: Supervisor test assigns a missionary (missionary.supervisors.add(sup)) to trigger RED state — supervisor with no supervised users already returns {sup.id} matching target assertion, so the test would have passed incorrectly without the assignment
 - [Phase 51]: Admin and supervisor branches removed from get_visible_user_ids(); fallthrough return {user.id} handles all non-coach non-finance roles uniformly
 - [Phase 51]: 15 pre-existing test failures confirmed not caused by Phase 51 changes; documented in deferred-items.md, out of scope
+- [Phase 51-03]: Role guard in _resolve_target_user() placed BEFORE get_visible_user_ids() call — admin/supervisor bypass visibility check entirely for dashboard dropdown, not just after checking it
+- [Phase 51-03]: Dashboard dropdown selection (explicit ?user_id=) and default data scoping are independent access patterns — _resolve_target_user() handles selection, get_visible_user_ids() handles list scoping
 
 ### Pending Todos
 
@@ -109,6 +112,6 @@ Recent decisions relevant to v2.3:
 
 ## Session Continuity
 
-Last session: 2026-03-16T13:25:20.850Z
-Stopped at: Completed 51-02-PLAN.md
+Last session: 2026-03-16T13:57:45.386Z
+Stopped at: Completed 51-03-PLAN.md
 Resume: Plan Phase 49 with `/gsd:plan-phase 49`
