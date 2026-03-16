@@ -30,18 +30,27 @@ from apps.events.services import mark_events_as_not_new
 def _resolve_target_user(request):
     """Resolve the target user for dashboard data.
 
-    If ?user_id= is provided and the requesting user has visibility,
-    return that user. Otherwise return the requesting user.
+    If ?user_id= is provided, return that user if the requester has permission:
+      - Admin and supervisor: may select any active user (dashboard dropdown).
+      - Other roles: only users within their get_visible_user_ids() set.
+
+    Without ?user_id= (or when ?user_id= matches self), returns the requesting user.
+    Default data scoping (what shows in list views) is governed separately by
+    get_visible_user_ids() and is not affected by this function.
     """
     user = request.user
     target_user_id = request.query_params.get('user_id')
 
     if target_user_id and str(target_user_id) != str(user.id):
-        visible = get_visible_user_ids(user)
-        if visible is not None and uuid.UUID(target_user_id) not in visible:
-            raise PermissionDenied(
-                'You do not have permission to view this user\'s dashboard.'
-            )
+        # Admin and supervisor may explicitly select any active user via the
+        # dashboard dropdown. This is distinct from default data scoping
+        # (get_visible_user_ids), which governs list views, not dashboard selection.
+        if user.role not in ['admin', 'supervisor']:
+            visible = get_visible_user_ids(user)
+            if visible is not None and uuid.UUID(target_user_id) not in visible:
+                raise PermissionDenied(
+                    'You do not have permission to view this user\'s dashboard.'
+                )
         target_user = User.objects.filter(
             id=target_user_id, is_active=True
         ).first()
