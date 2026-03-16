@@ -28,7 +28,7 @@ def test_mutation_blocked_post():
     client = APIClient()
     client.force_authenticate(user=admin)
     response = client.post(
-        '/api/contacts/',
+        '/api/v1/contacts/',
         data={'name': 'Test'},
         HTTP_X_VIEW_AS_USER_ID=str(target.id),
     )
@@ -47,7 +47,7 @@ def test_mutation_blocked_put():
     client = APIClient()
     client.force_authenticate(user=admin)
     response = client.put(
-        '/api/contacts/',
+        '/api/v1/contacts/',
         data={'name': 'Test'},
         HTTP_X_VIEW_AS_USER_ID=str(target.id),
     )
@@ -66,7 +66,7 @@ def test_mutation_blocked_patch():
     client = APIClient()
     client.force_authenticate(user=admin)
     response = client.patch(
-        '/api/contacts/',
+        '/api/v1/contacts/',
         data={'name': 'Test'},
         HTTP_X_VIEW_AS_USER_ID=str(target.id),
     )
@@ -85,7 +85,7 @@ def test_mutation_blocked_delete():
     client = APIClient()
     client.force_authenticate(user=admin)
     response = client.delete(
-        '/api/contacts/',
+        '/api/v1/contacts/',
         HTTP_X_VIEW_AS_USER_ID=str(target.id),
     )
     assert response.status_code == 403
@@ -105,7 +105,7 @@ def test_get_allowed_in_view_as():
     client = APIClient()
     client.force_authenticate(user=admin)
     response = client.get(
-        '/api/contacts/',
+        '/api/v1/contacts/',
         HTTP_X_VIEW_AS_USER_ID=str(target.id),
     )
     # Should not be 403 from middleware (may be 200, 404, etc. from the view)
@@ -125,7 +125,7 @@ def test_unauthorized_role_blocked():
     client = APIClient()
     client.force_authenticate(user=missionary)
     response = client.get(
-        '/api/contacts/',
+        '/api/v1/contacts/',
         HTTP_X_VIEW_AS_USER_ID=str(target.id),
     )
     assert response.status_code == 403
@@ -143,7 +143,7 @@ def test_admin_can_view_as_any_missionary():
     client = APIClient()
     client.force_authenticate(user=admin)
     response = client.get(
-        '/api/contacts/',
+        '/api/v1/contacts/',
         HTTP_X_VIEW_AS_USER_ID=str(target.id),
     )
     # Middleware should not block this — admin can view any missionary
@@ -161,7 +161,7 @@ def test_supervisor_blocked_for_unassigned():
     client = APIClient()
     client.force_authenticate(user=supervisor)
     response = client.get(
-        '/api/contacts/',
+        '/api/v1/contacts/',
         HTTP_X_VIEW_AS_USER_ID=str(unassigned_missionary.id),
     )
     assert response.status_code == 403
@@ -180,7 +180,7 @@ def test_supervisor_allowed_for_assigned():
     client = APIClient()
     client.force_authenticate(user=supervisor)
     response = client.get(
-        '/api/contacts/',
+        '/api/v1/contacts/',
         HTTP_X_VIEW_AS_USER_ID=str(assigned_missionary.id),
     )
     # Middleware should not block — supervisor can view assigned missionary
@@ -199,7 +199,7 @@ def test_invalid_user_id_returns_403():
     client = APIClient()
     client.force_authenticate(user=admin)
     response = client.get(
-        '/api/contacts/',
+        '/api/v1/contacts/',
         HTTP_X_VIEW_AS_USER_ID=non_existent_id,
     )
     assert response.status_code == 403
@@ -217,7 +217,7 @@ def test_inactive_target_returns_403():
     client = APIClient()
     client.force_authenticate(user=admin)
     response = client.get(
-        '/api/contacts/',
+        '/api/v1/contacts/',
         HTTP_X_VIEW_AS_USER_ID=str(inactive_target.id),
     )
     assert response.status_code == 403
@@ -234,7 +234,7 @@ def test_unauthenticated_with_header():
     client = APIClient()
     # No force_authenticate — unauthenticated request
     response = client.get(
-        '/api/contacts/',
+        '/api/v1/contacts/',
         HTTP_X_VIEW_AS_USER_ID=some_id,
     )
     # Middleware should pass through (not 403); DRF authentication returns 401
