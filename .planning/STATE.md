@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Goal Tracking & View As
 status: executing
-stopped_at: Completed 52-01-PLAN.md
-last_updated: "2026-03-16T15:08:22.559Z"
+stopped_at: Completed 52-04-PLAN.md
+last_updated: "2026-03-16T15:24:19.376Z"
 last_activity: 2026-03-12 — Phase 48 Plan 01 complete (monthly_average in MPD views)
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 18
-  completed_plans: 14
+  completed_plans: 15
   percent: 8
 ---
 
@@ -63,6 +63,7 @@ Progress: [█░░░░░░░░░] 8% — 0/6 phases, 1/2 plans (phase 4
 | Phase 51 P02 | 6min | 2 tasks | 2 files |
 | Phase 51 P03 | 2min | 2 tasks | 2 files |
 | Phase 52-view-as-backend P01 | 2min | 2 tasks | 3 files |
+| Phase 52 P04 | 15min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -104,6 +105,8 @@ Recent decisions relevant to v2.3:
 - [Phase 51-03]: Dashboard dropdown selection (explicit ?user_id=) and default data scoping are independent access patterns — _resolve_target_user() handles selection, get_visible_user_ids() handles list scoping
 - [Phase 52-01]: test_get_allowed_in_view_as asserts status_code != 403 (not == 200) — middleware should not block; underlying view may return any code
 - [Phase 52-01]: test_view_as_overrides_scoping uses .build() for both users — get_visible_user_ids is synchronous and doesn't query user objects directly, no DB needed
+- [Phase 52]: viewable/ URL registered before <uuid:pk>/ to prevent literal path being caught by UUID converter
+- [Phase 52]: Test URL in scaffold corrected from /api/users/viewable/ to /api/v1/users/viewable/ (all API endpoints use /api/v1/ prefix)
 
 ### Pending Todos
 
@@ -115,6 +118,6 @@ Recent decisions relevant to v2.3:
 
 ## Session Continuity
 
-Last session: 2026-03-16T15:08:22.555Z
-Stopped at: Completed 52-01-PLAN.md
+Last session: 2026-03-16T15:24:19.372Z
+Stopped at: Completed 52-04-PLAN.md
 Resume: Plan Phase 49 with `/gsd:plan-phase 49`
