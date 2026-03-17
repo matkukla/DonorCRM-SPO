@@ -111,3 +111,13 @@ export async function updateAssignments(assignments: AssignmentUpdate[]): Promis
   const response = await apiClient.patch('/users/admin/assignments/', { assignments })
   return response.data
 }
+
+export interface ViewableUser {
+  id: string
+  full_name: string
+}
+
+export async function getViewableUsers(): Promise<ViewableUser[]> {
+  const response = await apiClient.get("/users/viewable/")
+  return response.data
+}

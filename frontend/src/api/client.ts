@@ -44,6 +44,11 @@ apiClient.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
+    // View As scoping header — reads sessionStorage directly (interceptor lives outside React tree)
+    const viewAsUserId = sessionStorage.getItem("donorcrm_view_as_user_id")
+    if (viewAsUserId) {
+      config.headers["X-View-As-User-Id"] = viewAsUserId
+    }
     return config
   },
   (error) => {
