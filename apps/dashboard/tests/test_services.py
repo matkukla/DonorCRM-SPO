@@ -2,6 +2,7 @@
 Tests for dashboard service functions.
 """
 from datetime import date, timedelta
+from decimal import Decimal
 
 import pytest
 from django.utils import timezone
@@ -515,3 +516,75 @@ class TestGetDashboardSummary:
 
         assert result['late_donations_count'] == len(result['late_donations'])
         assert result['late_donations_count'] >= 1
+
+    def test_recent_gifts_amount_preserves_cents(self):
+        """Regression: recent_gifts amount must not truncate fractional dollars.
+
+        Bug: F('amount_cents') / Value(100) performs integer division in
+        PostgreSQL, truncating $150.50 (15050 cents) to $150.
+        Fix: Divide by Decimal('100') so PostgreSQL uses numeric division.
+        """
+        user = UserFactory(role='missionary')
+        contact = ContactFactory(owner=user)
+        today = date.today()
+
+        GiftFactory(
+            donor_contact=contact,
+            amount_cents=15050,  # $150.50
+            gift_date=today,
+        )
+
+        result = get_dashboard_summary(user)
+
+        assert len(result['recent_gifts']) == 1
+        amount = result['recent_gifts'][0]['amount']
+        # Must preserve fractional dollars, not truncate to 150
+        assert Decimal(str(amount)) == Decimal('150.50')
+
+
+@pytest.mark.django_db
+class TestLateDonationsMonthlyEquivalent:
+    """Regression tests for late donation monthly equivalent field."""
+
+    def test_quarterly_gift_returns_monthly_equivalent(self):
+        """Regression: late donation must include correct monthly_equivalent.
+
+        Bug: frontend displayed per-installment amount with '/mo' label.
+        The backend sends both 'amount' (per-installment) and
+        'monthly_equivalent' (actual monthly value). Frontend must use
+        monthly_equivalent. This test verifies the backend field is correct.
+        """
+        user = UserFactory(role='missionary')
+        contact = ContactFactory(owner=user, last_gift_date=date.today() - timedelta(days=200))
+        RecurringGiftFactory(
+            donor_contact=contact,
+            amount_cents=30000,  # $300 per quarter
+            frequency='quarterly',
+            start_date=date.today() - timedelta(days=300),
+        )
+
+        result = get_late_donations(user)
+
+        assert len(result) == 1
+        # Per-installment amount (Decimal str may omit trailing zeros)
+        assert Decimal(result[0]['amount']) == Decimal('300')
+        # Monthly equivalent: $300/quarter = $100/month
+        assert result[0]['monthly_equivalent'] == 100.0
+        assert result[0]['frequency'] == 'quarterly'
+
+    def test_annual_gift_returns_monthly_equivalent(self):
+        """Annual $1200 gift should show $100/month equivalent."""
+        user = UserFactory(role='missionary')
+        contact = ContactFactory(owner=user, last_gift_date=date.today() - timedelta(days=600))
+        RecurringGiftFactory(
+            donor_contact=contact,
+            amount_cents=120000,  # $1200 annually
+            frequency='annually',
+            start_date=date.today() - timedelta(days=700),
+        )
+
+        result = get_late_donations(user)
+
+        assert len(result) == 1
+        assert Decimal(result[0]['amount']) == Decimal('1200')
+        assert result[0]['monthly_equivalent'] == 100.0
