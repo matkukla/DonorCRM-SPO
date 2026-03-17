@@ -23,6 +23,7 @@ import {
   Target,
 } from "lucide-react"
 import { useAuth } from "@/providers/AuthProvider"
+import { useViewAs } from "@/providers/ViewAsProvider"
 import spoLogo from "@/assets/spo_logo.png"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
@@ -68,8 +69,11 @@ interface SidebarProps {
 
 const INSIGHTS_OPEN_KEY = "insights-nav-open"
 
+const VIEW_AS_HIDDEN_HREFS = new Set(["/import-export", "/admin"])
+
 export function Sidebar({ className, onNavClick }: SidebarProps) {
   const { user } = useAuth()
+  const { isViewingAs } = useViewAs()
   const location = useLocation()
 
   // Check if any insights route is active
@@ -104,7 +108,9 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
     return roleHierarchy[user.role] >= roleHierarchy[item.requiredRole]
   }
 
-  const filteredInsightsItems = insightsItems.filter(canAccess)
+  const filteredInsightsItems = insightsItems
+    .filter(canAccess)
+    .filter((item) => !isViewingAs || item.href !== "/insights/transactions")
 
   return (
     <aside className={cn("flex flex-col h-full bg-background border-r border-border", className)}>
@@ -187,7 +193,10 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
       {/* Bottom Navigation */}
       <div className="border-t border-border py-4">
         <ul className="space-y-1 px-3">
-          {bottomNavItems.filter(canAccess).map((item) => (
+          {bottomNavItems
+            .filter(canAccess)
+            .filter((item) => !isViewingAs || !VIEW_AS_HIDDEN_HREFS.has(item.href))
+            .map((item) => (
             <li key={item.href}>
               <NavLink
                 to={item.href}

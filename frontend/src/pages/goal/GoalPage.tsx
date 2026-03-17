@@ -10,6 +10,7 @@ import { useGoalData, useUpdateGoal } from "@/hooks/useGoal"
 import { GoalProgressBar } from "@/components/goal/GoalProgressBar"
 import { useJournals } from "@/hooks/useJournals"
 import { useAuth } from "@/providers/AuthProvider"
+import { useViewAs } from "@/providers/ViewAsProvider"
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -69,7 +70,8 @@ export default function GoalPage() {
   const { data: goalData, isLoading } = useGoalData()
   const updateGoal = useUpdateGoal()
   const { user } = useAuth()
-  const isReadOnly = false // TODO(phase-52): re-enable when View As context exists
+  const { isViewingAs } = useViewAs()
+  const isReadOnly = isViewingAs
 
   // Goal Settings local state
   const [goalDollars, setGoalDollars] = useState("")

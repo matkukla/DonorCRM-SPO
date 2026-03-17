@@ -220,7 +220,12 @@ Plans:
   3. All data visible on every page (contacts, journals, gifts, dashboard, prayers, tasks) belongs to the selected missionary while in View As mode
   4. All create, edit, and delete actions are disabled or hidden for the duration of the View As session; admin-only navigation sections (user management, import, analytics admin) are also hidden
   5. View As selection persists across page navigation until the Exit button is clicked; all React Query caches are invalidated when the selected user changes
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 53-01-PLAN.md — Infrastructure: ViewAsProvider, sessionStorage, Axios interceptor, API types, App.tsx nesting
+- [ ] 53-02-PLAN.md — UI: ViewAsBanner, AppLayout slot, Dashboard selector promotion to ViewAsContext
+- [ ] 53-03-PLAN.md — Breadth: sidebar hiding, mutation blocking across all pages, GoalPage isReadOnly fix
+- [ ] 53-04-PLAN.md — Checkpoint: human verification of all 9 VIEWAS requirements
 
 ### Phase 54: MPD Resources Tab
 **Goal**: Missionaries, supervisors, and admins can access a standalone MPD Resources page with an interactive Support Raising Calculator that computes pacing targets in real-time from a goal amount and weeks input
@@ -264,7 +269,7 @@ Plans:
 | 50. Goal Page — Frontend UI | 4/5 | In Progress|  | - |
 | 51. Data Scoping | 3/3 | Complete    | 2026-03-16 | - |
 | 52. View As — Backend | 4/4 | Complete    | 2026-03-16 | - |
-| 53. View As — Frontend | v2.3 | 0/TBD | Not started | - |
+| 53. View As — Frontend | 3/4 | In Progress|  | - |
 | 54. MPD Resources Tab | v2.3 | 0/1 | Not started | - |
 
 **Total:** 7 milestones shipped, 141 plans executed across 47 phases. v2.3 in progress (1/7 phases complete).

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { useAuth } from "@/providers/AuthProvider"
+import { useViewAs } from "@/providers/ViewAsProvider"
 import { useUsers } from "@/hooks/useUsers"
 import { useContacts, useMarkContactThanked } from "@/hooks/useContacts"
 import { useFilterParams, contactFilterParsers } from "@/hooks/useFilterParams"
@@ -57,6 +58,7 @@ function formatCurrency(amount: string | number): string {
 export default function ContactList() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { isViewingAs } = useViewAs()
   const isAdmin = user?.role === "admin"
   const canSeeOwner = user?.role === "admin" || user?.role === "supervisor" || user?.role === "coach"
 
@@ -215,7 +217,7 @@ export default function ContactList() {
               >
                 View details
               </DropdownMenuItem>
-              {canEdit && (
+              {canEdit && !isViewingAs && (
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation()
@@ -226,7 +228,7 @@ export default function ContactList() {
                   Log Entry
                 </DropdownMenuItem>
               )}
-              {canEdit && row.original.needs_thank_you && (
+              {canEdit && !isViewingAs && row.original.needs_thank_you && (
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation()
@@ -262,10 +264,12 @@ export default function ContactList() {
                 <Copy className="h-4 w-4 mr-2" />
                 {isCopyingEmails ? "Copying..." : "Copy Emails"}
               </Button>
-              <Button onClick={() => navigate("/contacts/new")}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Contact
-              </Button>
+              {!isViewingAs && (
+                <Button onClick={() => navigate("/contacts/new")}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Contact
+                </Button>
+              )}
             </div>
           </div>
 
