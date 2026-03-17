@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useJournal, useJournalMembers } from "@/hooks/useJournals"
 import { JournalGrid, EventTimelineDrawer, JournalHeader, JournalReport, AddContactsDialog } from "./components"
+import { useViewAs } from "@/providers/ViewAsProvider"
 import type { PipelineStage } from "@/types/journals"
 
 /**
@@ -31,6 +32,7 @@ const initialDrawerState: DrawerState = {
  */
 export default function JournalDetail() {
   const { id } = useParams<{ id: string }>()
+  const { isViewingAs } = useViewAs()
 
   // Fetch journal details
   const { data: journal, isLoading: journalLoading, isError: journalError } = useJournal(id ?? "")
@@ -110,10 +112,12 @@ export default function JournalDetail() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
-        <Button variant="outline" onClick={() => setShowAddContacts(true)}>
-          <UserPlus className="h-4 w-4 mr-2" />
-          Add Contacts
-        </Button>
+        {!isViewingAs && (
+          <Button variant="outline" onClick={() => setShowAddContacts(true)}>
+            <UserPlus className="h-4 w-4 mr-2" />
+            Add Contacts
+          </Button>
+        )}
       </div>
 
       {/* Header with stats */}

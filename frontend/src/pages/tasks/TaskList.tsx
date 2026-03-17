@@ -1,5 +1,6 @@
 import { useNavigate, useSearchParams, Link } from "react-router-dom"
 import { useAuth } from "@/providers/AuthProvider"
+import { useViewAs } from "@/providers/ViewAsProvider"
 import { useTasks, useCompleteTask } from "@/hooks/useTasks"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
@@ -62,6 +63,7 @@ const typeIcons: Record<TaskType, React.ReactNode> = {
 export default function TaskList() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { isViewingAs } = useViewAs()
   const canSeeOwner = user?.role === "admin" || user?.role === "supervisor" || user?.role === "coach"
   const ownerOptions = user?.role === "admin"
     ? [] // admin can see all via usersData (not loaded here -- owner column always visible)
@@ -250,7 +252,7 @@ export default function TaskList() {
               >
                 View details
               </DropdownMenuItem>
-              {canEdit && (
+              {canEdit && !isViewingAs && (
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation()
@@ -260,7 +262,7 @@ export default function TaskList() {
                   Edit
                 </DropdownMenuItem>
               )}
-              {canEdit && row.original.status !== "completed" && row.original.status !== "cancelled" && (
+              {canEdit && !isViewingAs && row.original.status !== "completed" && row.original.status !== "cancelled" && (
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
@@ -295,10 +297,12 @@ export default function TaskList() {
                 Manage your action items and reminders
               </p>
             </div>
-            <Button onClick={() => navigate("/tasks/new")}>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Task
-            </Button>
+            {!isViewingAs && (
+              <Button onClick={() => navigate("/tasks/new")}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Task
+              </Button>
+            )}
           </div>
 
           {/* Filters */}

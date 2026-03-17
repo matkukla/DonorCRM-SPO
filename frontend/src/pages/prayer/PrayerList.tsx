@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { useAuth } from "@/providers/AuthProvider"
+import { useViewAs } from "@/providers/ViewAsProvider"
 import { usePrayers, useUpdatePrayer } from "@/hooks/usePrayers"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -37,6 +38,7 @@ const PAGE_SIZE = 20
 
 export default function PrayerList() {
   const { user } = useAuth()
+  const { isViewingAs } = useViewAs()
   const canSeeOwner = user?.role === "admin" || user?.role === "supervisor" || user?.role === "coach"
   const ownerOptions = user?.role === "admin"
     ? [] // admin sees all; no dropdown without usersData
@@ -184,10 +186,12 @@ export default function PrayerList() {
 
         {/* Controls bar */}
         <div className="flex flex-wrap items-center gap-3">
-          <Button onClick={openCreate} className="gap-1.5">
-            <Plus className="h-4 w-4" />
-            Add Prayer
-          </Button>
+          {!isViewingAs && (
+            <Button onClick={openCreate} className="gap-1.5">
+              <Plus className="h-4 w-4" />
+              Add Prayer
+            </Button>
+          )}
 
           <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
             <SelectTrigger className="w-[140px]">
@@ -285,8 +289,8 @@ export default function PrayerList() {
                   {data.results.map((intention) => (
                     <tr
                       key={intention.id}
-                      className="border-b border-amber-50 dark:border-amber-900/30 hover:bg-amber-50/50 dark:hover:bg-amber-950/30 cursor-pointer transition-colors"
-                      onClick={() => openEdit(intention)}
+                      className={`border-b border-amber-50 dark:border-amber-900/30 hover:bg-amber-50/50 dark:hover:bg-amber-950/30 transition-colors ${isViewingAs ? "" : "cursor-pointer"}`}
+                      onClick={() => !isViewingAs && openEdit(intention)}
                     >
                       <td className="px-4 py-3">
                         <span className="font-medium text-amber-900 dark:text-amber-100">
@@ -297,21 +301,25 @@ export default function PrayerList() {
                         {intention.contact_name}
                       </td>
                       <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                        <Select
-                          value={intention.status}
-                          onValueChange={(v) =>
-                            handleInlineStatusChange(intention, v)
-                          }
-                        >
-                          <SelectTrigger className="w-[120px] h-8 text-xs border-amber-200 dark:border-amber-800">
-                            <StatusBadge status={intention.status} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="active">Active</SelectItem>
-                            <SelectItem value="answered">Answered</SelectItem>
-                            <SelectItem value="archived">Archived</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        {isViewingAs ? (
+                          <StatusBadge status={intention.status} />
+                        ) : (
+                          <Select
+                            value={intention.status}
+                            onValueChange={(v) =>
+                              handleInlineStatusChange(intention, v)
+                            }
+                          >
+                            <SelectTrigger className="w-[120px] h-8 text-xs border-amber-200 dark:border-amber-800">
+                              <StatusBadge status={intention.status} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="active">Active</SelectItem>
+                              <SelectItem value="answered">Answered</SelectItem>
+                              <SelectItem value="archived">Archived</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
                       </td>
                       {canSeeOwner && (
                         <td className="px-4 py-3 text-sm text-amber-700/80 dark:text-amber-400/60">

@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
+import { useViewAs } from "@/providers/ViewAsProvider"
 import { useGroups, useCreateGroup, useDeleteGroup } from "@/hooks/useGroups"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
@@ -40,6 +41,7 @@ const DEFAULT_COLORS = [
 
 export default function GroupList() {
   const navigate = useNavigate()
+  const { isViewingAs } = useViewAs()
   const { data: groups, isLoading, error } = useGroups()
 
   // Debug logging
@@ -110,13 +112,15 @@ export default function GroupList() {
                 Organize contacts into groups for targeted communication
               </p>
             </div>
-            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Group
-                </Button>
-              </DialogTrigger>
+            <Dialog open={isViewingAs ? false : isCreateOpen} onOpenChange={isViewingAs ? undefined : setIsCreateOpen}>
+              {!isViewingAs && (
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Group
+                  </Button>
+                </DialogTrigger>
+              )}
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Create Group</DialogTitle>
@@ -210,16 +214,18 @@ export default function GroupList() {
                           >
                             View details
                           </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              navigate(`/groups/${group.id}/edit`)
-                            }}
-                          >
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          {!group.is_system && (
+                          {!isViewingAs && (
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                navigate(`/groups/${group.id}/edit`)
+                              }}
+                            >
+                              <Edit className="h-4 w-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                          )}
+                          {!isViewingAs && !group.is_system && (
                             <DropdownMenuItem
                               onClick={(e) => {
                                 e.stopPropagation()
@@ -274,10 +280,12 @@ export default function GroupList() {
               <p className="text-muted-foreground mb-4">
                 Create your first group to start organizing contacts
               </p>
-              <Button onClick={() => setIsCreateOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Group
-              </Button>
+              {!isViewingAs && (
+                <Button onClick={() => setIsCreateOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Group
+                </Button>
+              )}
             </Card>
           )}
         </div>

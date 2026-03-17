@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { useNavigate, Link } from "react-router-dom"
 import { useAuth } from "@/providers/AuthProvider"
+import { useViewAs } from "@/providers/ViewAsProvider"
 import { useRecurringGifts } from "@/hooks/useGifts"
 import { useFilterParams, recurringGiftFilterParsers } from "@/hooks/useFilterParams"
 import { recurringGiftPresets } from "@/lib/filter-presets"
@@ -46,6 +47,7 @@ function formatCurrency(amount: string | number): string {
 export default function PledgeList() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { isViewingAs } = useViewAs()
   const canSeeOwner = user?.role === "admin" || user?.role === "supervisor" || user?.role === "coach"
   const ownerOptions = user?.role === "admin"
     ? [] // admin sees all; no dropdown without usersData
@@ -154,10 +156,12 @@ export default function PledgeList() {
                 Manage recurring giving commitments
               </p>
             </div>
-            <Button onClick={() => navigate("/pledges/new")}>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Pledge
-            </Button>
+            {!isViewingAs && (
+              <Button onClick={() => navigate("/pledges/new")}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Pledge
+              </Button>
+            )}
           </div>
 
           {/* Filters */}
