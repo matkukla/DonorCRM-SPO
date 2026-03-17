@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useStageEventsInfinite } from "@/hooks/useJournals"
 import { LogEventDialog } from "./LogEventDialog"
+import { useViewAs } from "@/providers/ViewAsProvider"
 import type { PipelineStage, StageEvent } from "@/types/journals"
 import { STAGE_LABELS } from "@/types/journals"
 
@@ -41,6 +42,7 @@ export function EventTimelineDrawer({
   onClose,
 }: EventTimelineDrawerProps) {
   const [logEventOpen, setLogEventOpen] = React.useState(false)
+  const { isViewingAs } = useViewAs()
 
   const {
     data,
@@ -80,13 +82,15 @@ export function EventTimelineDrawer({
                     : "No events recorded yet"}
                 </DialogDescription>
               </div>
-              <Button
-                size="sm"
-                onClick={() => setLogEventOpen(true)}
-                disabled={!journalContactId}
-              >
-                Log Event
-              </Button>
+              {!isViewingAs && (
+                <Button
+                  size="sm"
+                  onClick={() => setLogEventOpen(true)}
+                  disabled={!journalContactId}
+                >
+                  Log Event
+                </Button>
+              )}
             </div>
           </DialogHeader>
 

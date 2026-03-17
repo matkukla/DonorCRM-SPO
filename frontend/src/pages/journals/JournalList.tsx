@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
 import { useAuth } from "@/providers/AuthProvider"
+import { useViewAs } from "@/providers/ViewAsProvider"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -22,6 +23,7 @@ import { formatLocalDate } from "@/lib/utils"
 
 export default function JournalList() {
   const { user } = useAuth()
+  const { isViewingAs } = useViewAs()
   const canSeeOwner = user?.role === "admin" || user?.role === "supervisor" || user?.role === "coach"
   const ownerOptions = user?.role === "admin"
     ? [] // admin sees all; no dropdown needed without usersData
@@ -67,10 +69,12 @@ export default function JournalList() {
                 Your fundraising pipeline journals
               </p>
             </div>
-            <Button onClick={() => setShowCreateDialog(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              New Journal
-            </Button>
+            {!isViewingAs && (
+              <Button onClick={() => setShowCreateDialog(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                New Journal
+              </Button>
+            )}
           </div>
 
           {/* Filters */}

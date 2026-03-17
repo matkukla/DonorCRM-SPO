@@ -1,5 +1,6 @@
 import { useParams, useNavigate, Link } from "react-router-dom"
 import { useAuth } from "@/providers/AuthProvider"
+import { useViewAs } from "@/providers/ViewAsProvider"
 import { useGift, useDeleteGift } from "@/hooks/useGifts"
 import { Button } from "@/components/ui/button"
 import {
@@ -50,12 +51,13 @@ interface DonationDetailPanelProps {
 export function DonationDetailPanel({ open, giftId, onClose }: DonationDetailPanelProps) {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { isViewingAs } = useViewAs()
   const { data: gift, isLoading } = useGift(giftId)
   const deleteMutation = useDeleteGift()
 
-  // Read-only for supervisors/coaches viewing a missionary's gift
+  // Read-only for supervisors/coaches viewing a missionary's gift, or when in View As mode
   const currentUserName = user ? `${user.first_name} ${user.last_name}` : ""
-  const isReadOnly = (user?.role === "supervisor" || user?.role === "coach") && !!gift?.owner_name && gift.owner_name !== currentUserName
+  const isReadOnly = isViewingAs || ((user?.role === "supervisor" || user?.role === "coach") && !!gift?.owner_name && gift.owner_name !== currentUserName)
 
   const handleDelete = () => {
     if (!giftId) return

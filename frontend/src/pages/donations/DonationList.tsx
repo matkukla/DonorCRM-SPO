@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
 import { useNavigate, Link } from "react-router-dom"
+import { useViewAs } from "@/providers/ViewAsProvider"
 import { useGifts } from "@/hooks/useGifts"
 import { useFilterParams, giftFilterParsers } from "@/hooks/useFilterParams"
 import { giftPresets } from "@/lib/filter-presets"
@@ -39,6 +40,7 @@ function formatCurrency(amount: string | number): string {
 export default function DonationList() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { isViewingAs } = useViewAs()
   const isAdmin = user?.role === "admin"
   const canSeeOwner = user?.role === "admin" || user?.role === "supervisor" || user?.role === "coach"
 
@@ -142,10 +144,12 @@ export default function DonationList() {
                 Track and manage donor contributions
               </p>
             </div>
-            <Button onClick={() => navigate("/donations/new")}>
-              <Plus className="h-4 w-4 mr-2" />
-              Record Donation
-            </Button>
+            {!isViewingAs && (
+              <Button onClick={() => navigate("/donations/new")}>
+                <Plus className="h-4 w-4 mr-2" />
+                Record Donation
+              </Button>
+            )}
           </div>
 
           {/* Filters */}
