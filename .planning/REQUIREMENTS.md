@@ -32,10 +32,10 @@
 - [x] **VIEWAS-03**: When viewing as a missionary, a persistent banner appears showing the missionary's name and a read-only indicator
 - [x] **VIEWAS-04**: Banner includes an "Exit" button that returns the user to their own view
 - [x] **VIEWAS-05**: All data shown while in View As mode belongs to the selected missionary (contacts, journals, gifts, dashboard stats, prayers, tasks)
-- [ ] **VIEWAS-06**: All create/edit/delete actions are disabled or hidden in View As mode (frontend)
+- [x] **VIEWAS-06**: All create/edit/delete actions are disabled or hidden in View As mode (frontend)
 - [x] **VIEWAS-07**: Backend enforces read-only: mutations return 403 when `X-View-As-User-Id` header is present
 - [x] **VIEWAS-08**: Backend validates viewer has permission before allowing View As (admin → any missionary; supervisor → assigned only)
-- [ ] **VIEWAS-09**: Admin-only navigation sections (user management, import, analytics admin) are hidden while in View As mode
+- [x] **VIEWAS-09**: Admin-only navigation sections (user management, import, analytics admin) are hidden while in View As mode
 - [x] **VIEWAS-10**: View As selection persists across page navigation (sessionStorage) until explicitly exited
 - [x] **VIEWAS-11**: All React Query caches are invalidated when View As user changes
 - [x] **VIEWAS-12**: GET /api/users/viewable returns the correct list of users per role (admin → all missionaries; supervisor → assigned only)
@@ -102,8 +102,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VIEWAS-03 | Phase 53 | Complete |
 | VIEWAS-04 | Phase 53 | Complete |
 | VIEWAS-05 | Phase 53 | Complete |
-| VIEWAS-06 | Phase 53 | Pending |
-| VIEWAS-09 | Phase 53 | Pending |
+| VIEWAS-06 | Phase 53 | Complete |
+| VIEWAS-09 | Phase 53 | Complete |
 | VIEWAS-10 | Phase 53 | Complete |
 | VIEWAS-11 | Phase 53 | Complete |
 
