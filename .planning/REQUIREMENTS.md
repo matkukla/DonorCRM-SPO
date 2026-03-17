@@ -27,10 +27,10 @@
 
 ### View As Mode
 
-- [ ] **VIEWAS-01**: Admin can select any missionary from a dropdown to view as
-- [ ] **VIEWAS-02**: Supervisor can select any of their assigned missionaries from a dropdown to view as
-- [ ] **VIEWAS-03**: When viewing as a missionary, a persistent banner appears showing the missionary's name and a read-only indicator
-- [ ] **VIEWAS-04**: Banner includes an "Exit" button that returns the user to their own view
+- [x] **VIEWAS-01**: Admin can select any missionary from a dropdown to view as
+- [x] **VIEWAS-02**: Supervisor can select any of their assigned missionaries from a dropdown to view as
+- [x] **VIEWAS-03**: When viewing as a missionary, a persistent banner appears showing the missionary's name and a read-only indicator
+- [x] **VIEWAS-04**: Banner includes an "Exit" button that returns the user to their own view
 - [x] **VIEWAS-05**: All data shown while in View As mode belongs to the selected missionary (contacts, journals, gifts, dashboard stats, prayers, tasks)
 - [ ] **VIEWAS-06**: All create/edit/delete actions are disabled or hidden in View As mode (frontend)
 - [x] **VIEWAS-07**: Backend enforces read-only: mutations return 403 when `X-View-As-User-Id` header is present
@@ -97,10 +97,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VIEWAS-07 | Phase 52 | Complete |
 | VIEWAS-08 | Phase 52 | Complete |
 | VIEWAS-12 | Phase 52 | Complete |
-| VIEWAS-01 | Phase 53 | Pending |
-| VIEWAS-02 | Phase 53 | Pending |
-| VIEWAS-03 | Phase 53 | Pending |
-| VIEWAS-04 | Phase 53 | Pending |
+| VIEWAS-01 | Phase 53 | Complete |
+| VIEWAS-02 | Phase 53 | Complete |
+| VIEWAS-03 | Phase 53 | Complete |
+| VIEWAS-04 | Phase 53 | Complete |
 | VIEWAS-05 | Phase 53 | Complete |
 | VIEWAS-06 | Phase 53 | Pending |
 | VIEWAS-09 | Phase 53 | Pending |
