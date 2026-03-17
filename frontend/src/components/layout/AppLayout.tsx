@@ -1,6 +1,7 @@
 import type { ReactNode } from "react"
 import { Sidebar } from "./Sidebar"
 import { Header } from "./Header"
+import { ViewAsBanner } from "./ViewAsBanner"
 
 interface AppLayoutProps {
   children: ReactNode
@@ -20,6 +21,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       {/* Main content area */}
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header />
+        <ViewAsBanner />
         <main className="flex-1 overflow-y-auto">
           {children}
         </main>
