@@ -7,6 +7,7 @@ import {
   deactivateUser,
   getAssignments,
   updateAssignments,
+  getViewableUsers,
 } from "@/api/users"
 import type { UserCreate, UserUpdate, AssignmentUpdate } from "@/api/users"
 
@@ -74,5 +75,12 @@ export function useUpdateAssignments() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assignments'] })
     },
+  })
+}
+
+export function useViewableUsers() {
+  return useQuery({
+    queryKey: ["viewable-users"],
+    queryFn: () => getViewableUsers(),
   })
 }
