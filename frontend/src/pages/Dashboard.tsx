@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react"
 import { useAuth } from "@/providers/AuthProvider"
+import { useViewAs } from "@/providers/ViewAsProvider"
 import { markEventsSeen } from "@/api/dashboard"
 import { useDashboardSummary } from "@/hooks/useDashboard"
 import { useDashboardLayout } from "@/hooks/useDashboard"
-import { useUsers } from "@/hooks/useUsers"
+import { useViewableUsers } from "@/hooks/useUsers"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
 import { StatCard } from "@/components/dashboard/StatCard"
@@ -18,7 +19,7 @@ import { LogEventDialog } from "@/pages/journals/components/LogEventDialog"
 import { useMPDMyData, useMPDOverview } from "@/hooks/useMPD"
 import { MPDStatsInline } from "@/components/mpd/MPDStatsInline"
 import { MPDOverviewTable } from "@/components/mpd/MPDOverviewTable"
-import { Users, DollarSign, FileText, CheckSquare, RotateCcw, ChevronDown, Check, Info } from "lucide-react"
+import { Users, DollarSign, FileText, CheckSquare, RotateCcw, ChevronDown, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -55,16 +56,12 @@ const TILE_SIZES: Record<string, number> = {
 export default function Dashboard() {
   const { user } = useAuth()
   const isSupervisorOrAdmin = user?.role === "admin" || user?.role === "supervisor" || user?.role === "coach"
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
-  const isViewingOther = selectedUserId !== null && selectedUserId !== user?.id
-  const effectiveUserId = selectedUserId || undefined
+  const { viewAsUserId, viewAsUserName, setViewAsUser, exitViewAs, isViewingAs } = useViewAs()
+  const effectiveUserId = viewAsUserId || undefined
 
-  // For admin: fetch all users for the dropdown
-  // For supervisor: use supervised_users from auth user
-  const { data: allUsers } = useUsers()
-  const missionaryOptions = user?.role === "admin"
-    ? (allUsers?.filter((u) => u.id !== user.id && u.is_active) || [])
-    : (user?.supervised_users || [])
+  // Fetch viewable users for the dropdown (scoped by backend to role)
+  const { data: viewableUsers } = useViewableUsers()
+  const missionaryOptions = viewableUsers || []
 
   const { data, isLoading, error } = useDashboardSummary(effectiveUserId)
   const { data: mpdData, isLoading: mpdLoading } = useMPDMyData()
@@ -90,35 +87,23 @@ export default function Dashboard() {
   const markedSeen = useRef(false)
 
   useEffect(() => {
-    if (data && !isLoading && !markedSeen.current && !isViewingOther) {
+    if (data && !isLoading && !markedSeen.current && !isViewingAs) {
       markedSeen.current = true
       markEventsSeen().catch(() => {
         // Silently ignore -- marking seen is best-effort
       })
     }
-  }, [data, isLoading, isViewingOther])
+  }, [data, isLoading, isViewingAs])
 
   // Use backend-aggregated total (includes ALL gifts, not just first 10)
   const totalDonationsThisMonth = data?.recent_gifts_total || 0
 
-  // Get name of the selected missionary for display
-  const selectedUserName = isViewingOther
-    ? (() => {
-        const found = missionaryOptions.find((u) => u.id === selectedUserId)
-        return found ? `${found.first_name} ${found.last_name}` : "Unknown"
-      })()
-    : null
+  // Name comes directly from context (stored when setViewAsUser was called)
+  const selectedUserName = viewAsUserName
 
-  // When viewing another missionary, derive their MPD data from the admin overview
-  const viewedMissionaryMpdData = isViewingOther && selectedUserId
-    ? mpdOverviewData?.missionaries.find((m) => m.user_id === selectedUserId)
-    : null
-
-  // Effective MPD data: own data when on own dashboard, viewed missionary's data when viewing other
-  const effectiveMpdData = isViewingOther ? viewedMissionaryMpdData : mpdData
-  const effectiveMpdHasData = isViewingOther
-    ? !!viewedMissionaryMpdData
-    : mpdData?.has_data
+  // With X-View-As-User-Id header, mpdData is already scoped to the viewed missionary
+  const effectiveMpdData = mpdData
+  const effectiveMpdHasData = mpdData?.has_data
 
   function handleDragStart(event: DragStartEvent) {
     const id = event.active.id as string
@@ -162,8 +147,7 @@ export default function Dashboard() {
       case "late-donations":
         return <LateDonations donations={data?.late_donations || []} totalCount={data?.late_donations_count || 0} isLoading={isLoading} onQuickLog={(contactId) => setQuickLogContactId(contactId)} />
       case "mpd-financial-overview": {
-        const isLoadingMpd = isViewingOther ? mpdOverviewLoading : mpdLoading
-        if (isLoadingMpd) return (
+        if (mpdLoading) return (
           <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="h-24 bg-muted rounded-lg animate-pulse" />
@@ -183,7 +167,7 @@ export default function Dashboard() {
         )
       }
       case "mpd-overview-table":
-        if (user?.role !== "admin" || isViewingOther) return null
+        if (user?.role !== "admin" || isViewingAs) return null
         return <MPDOverviewTable />
       default: return null
     }
@@ -264,7 +248,7 @@ export default function Dashboard() {
                 Welcome back, {user?.first_name || "User"}
               </p>
             </div>
-            {!isViewingOther && (
+            {!isViewingAs && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -284,7 +268,7 @@ export default function Dashboard() {
               <Popover open={viewingPickerOpen} onOpenChange={setViewingPickerOpen}>
                 <PopoverTrigger asChild>
                   <Button variant="secondary" size="sm" className="gap-2">
-                    {isViewingOther ? selectedUserName : "My Dashboard"}
+                    {isViewingAs ? selectedUserName : "My Dashboard"}
                     <ChevronDown className="h-4 w-4" />
                   </Button>
                 </PopoverTrigger>
@@ -296,19 +280,19 @@ export default function Dashboard() {
                       <CommandGroup>
                         <CommandItem
                           value="my-dashboard"
-                          onSelect={() => { setSelectedUserId(null); setViewingPickerOpen(false) }}
+                          onSelect={() => { exitViewAs(); setViewingPickerOpen(false) }}
                         >
-                          <Check className={cn("mr-2 h-4 w-4", !isViewingOther ? "opacity-100" : "opacity-0")} />
+                          <Check className={cn("mr-2 h-4 w-4", !isViewingAs ? "opacity-100" : "opacity-0")} />
                           My Dashboard
                         </CommandItem>
                         {missionaryOptions.map((u) => (
                           <CommandItem
                             key={u.id}
-                            value={`${u.first_name} ${u.last_name} ${u.email}`}
-                            onSelect={() => { setSelectedUserId(u.id); setViewingPickerOpen(false) }}
+                            value={`${u.full_name} ${u.id}`}
+                            onSelect={() => { setViewAsUser(u.id, u.full_name); setViewingPickerOpen(false) }}
                           >
-                            <Check className={cn("mr-2 h-4 w-4", selectedUserId === u.id ? "opacity-100" : "opacity-0")} />
-                            {u.first_name} {u.last_name}
+                            <Check className={cn("mr-2 h-4 w-4", viewAsUserId === u.id ? "opacity-100" : "opacity-0")} />
+                            {u.full_name}
                           </CommandItem>
                         ))}
                       </CommandGroup>
@@ -316,14 +300,6 @@ export default function Dashboard() {
                   </Command>
                 </PopoverContent>
               </Popover>
-            </div>
-          )}
-
-          {/* Read-only banner when viewing another user */}
-          {isViewingOther && selectedUserName && (
-            <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 border rounded-md text-sm text-muted-foreground">
-              <Info className="h-4 w-4 shrink-0" />
-              Viewing {selectedUserName}&apos;s dashboard (read-only)
             </div>
           )}
 

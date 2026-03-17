@@ -60,6 +60,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [])
 
   const logout = useCallback(() => {
+    sessionStorage.removeItem("donorcrm_view_as_user_id")
+    sessionStorage.removeItem("donorcrm_view_as_user_name")
+    window.dispatchEvent(new CustomEvent("viewas:clear"))
     queryClient.clear()
     apiLogout()
     setUser(null)

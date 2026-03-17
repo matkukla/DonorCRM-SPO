@@ -11,6 +11,7 @@ import {
 import type { StageEventSummary, PipelineStage, StageEventType } from "@/types/journals"
 import { getFreshnessColor, STAGE_LABELS } from "@/types/journals"
 import { useCreateStageEvent, useDeleteStageEventsByStage } from "@/hooks/useJournals"
+import { useViewAs } from "@/providers/ViewAsProvider"
 
 /**
  * Get the highest pipeline stage that has events.
@@ -75,9 +76,11 @@ export const StageCell = React.memo<StageCellProps>(
   ({ contactId, journalContactId, stage, eventSummary, onCellClick }) => {
     const { mutate: createEvent, isPending: isCreating } = useCreateStageEvent()
     const { mutate: deleteEvents, isPending: isDeleting } = useDeleteStageEventsByStage()
+    const { isViewingAs } = useViewAs()
     const isPending = isCreating || isDeleting
 
     const handleClick = React.useCallback(() => {
+      if (isViewingAs) return
       if (!eventSummary.has_events) {
         // JRNL-08: Instant toggle -- auto-create stage event, no dialog
         createEvent({
@@ -89,7 +92,7 @@ export const StageCell = React.memo<StageCellProps>(
         // Has events -- uncheck by deleting all events for this stage
         deleteEvents({ journalContactId, stage })
       }
-    }, [journalContactId, stage, eventSummary.has_events, createEvent, deleteEvents])
+    }, [isViewingAs, journalContactId, stage, eventSummary.has_events, createEvent, deleteEvents])
 
     // Empty state - no events logged for this stage
     if (!eventSummary.has_events) {

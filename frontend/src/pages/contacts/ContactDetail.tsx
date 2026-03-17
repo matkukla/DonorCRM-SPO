@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
 import { useAuth } from "@/providers/AuthProvider"
+import { useViewAs } from "@/providers/ViewAsProvider"
 import { formatDistanceToNow } from "date-fns"
 import {
   useContact,
@@ -72,6 +73,7 @@ export default function ContactDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { isViewingAs } = useViewAs()
 
   const { data: contact, isLoading, error } = useContact(id!)
   const { data: donations } = useContactDonations(id!)
@@ -107,7 +109,7 @@ export default function ContactDetail() {
 
   const isCoach = user?.role === "coach"
   const showFinancialTabs = !isCoach || String(contact?.owner) === String(user?.id)
-  const isReadOnly = (user?.role === "supervisor" || user?.role === "coach") && contact?.owner !== undefined && String(contact?.owner) !== String(user?.id)
+  const isReadOnly = isViewingAs || ((user?.role === "supervisor" || user?.role === "coach") && contact?.owner !== undefined && String(contact?.owner) !== String(user?.id))
 
   const markThankedMutation = useMarkContactThanked()
   const deleteMutation = useDeleteContact()
