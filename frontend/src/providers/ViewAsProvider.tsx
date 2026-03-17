@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from "react"
+import { createContext, useContext, useState, useCallback, useEffect } from "react"
 import type { ReactNode } from "react"
 import { queryClient } from "@/providers/QueryProvider"
 
@@ -41,6 +41,16 @@ export function ViewAsProvider({ children }: ViewAsProviderProps) {
     setViewAsUserId(null)
     setViewAsUserName(null)
     queryClient.clear()
+  }, [])
+
+  // Clear View As state when AuthProvider signals logout
+  useEffect(() => {
+    const handleLogout = () => {
+      setViewAsUserId(null)
+      setViewAsUserName(null)
+    }
+    window.addEventListener("viewas:clear", handleLogout)
+    return () => window.removeEventListener("viewas:clear", handleLogout)
   }, [])
 
   const value: ViewAsContextType = {
