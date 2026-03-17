@@ -269,7 +269,7 @@ Plans:
 | 50. Goal Page — Frontend UI | 4/5 | In Progress|  | - |
 | 51. Data Scoping | 3/3 | Complete    | 2026-03-16 | - |
 | 52. View As — Backend | 4/4 | Complete    | 2026-03-16 | - |
-| 53. View As — Frontend | 1/4 | In Progress|  | - |
+| 53. View As — Frontend | 2/4 | In Progress|  | - |
 | 54. MPD Resources Tab | v2.3 | 0/1 | Not started | - |
 
 **Total:** 7 milestones shipped, 141 plans executed across 47 phases. v2.3 in progress (1/7 phases complete).
