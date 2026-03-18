@@ -86,13 +86,6 @@ export interface DashboardSummary {
   recent_gifts: RecentGift[]
 }
 
-export interface DashboardStats {
-  total_contacts: number
-  donations_this_month: number
-  active_pledges: number
-  overdue_tasks: number
-}
-
 export interface GivingSummary {
   given: number
   expecting: number
@@ -133,26 +126,6 @@ export async function getDashboardSummary(userId?: string): Promise<DashboardSum
   const params = userId ? { user_id: userId } : undefined
   const response = await apiClient.get<DashboardSummary>("/dashboard/", { params })
   return response.data
-}
-
-/**
- * Get basic stats (contacts count, donations this month, etc.)
- */
-export async function getDashboardStats(): Promise<DashboardStats> {
-  // Fetch from multiple endpoints to get stats
-  const [contactsRes, donationsRes, pledgesRes, tasksRes] = await Promise.all([
-    apiClient.get("/contacts/", { params: { page_size: 1 } }),
-    apiClient.get("/donations/", { params: { page_size: 1 } }),
-    apiClient.get("/pledges/", { params: { page_size: 1, status: "active" } }),
-    apiClient.get("/tasks/", { params: { page_size: 1, status: "pending" } }),
-  ])
-
-  return {
-    total_contacts: contactsRes.data.count || 0,
-    donations_this_month: donationsRes.data.count || 0,
-    active_pledges: pledgesRes.data.count || 0,
-    overdue_tasks: tasksRes.data.count || 0,
-  }
 }
 
 /**

@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query"
 import { useState, useRef, useCallback } from "react"
 import { useAuth } from "@/providers/AuthProvider"
-import { getDashboardSummary, getDashboardStats, getGivingSummary, getMonthlyGifts, getUserDashboardLayout, saveDashboardLayout } from "@/api/dashboard"
+import { getDashboardSummary, getGivingSummary, getMonthlyGifts, getUserDashboardLayout, saveDashboardLayout } from "@/api/dashboard"
 
 export const DEFAULT_TILE_ORDER = [
   "giving-summary", "monthly-gifts",
@@ -79,14 +79,6 @@ export function useDashboardSummary(userId?: string) {
   return useQuery({
     queryKey: ["dashboard", "summary", userId ?? "me"],
     queryFn: () => getDashboardSummary(userId),
-    staleTime: 2 * 60 * 1000, // 2 minutes
-  })
-}
-
-export function useDashboardStats() {
-  return useQuery({
-    queryKey: ["dashboard", "stats"],
-    queryFn: getDashboardStats,
     staleTime: 2 * 60 * 1000, // 2 minutes
   })
 }

@@ -357,7 +357,7 @@ def get_dashboard_summary(user):
         'recent_gifts_total': recent_gifts_total,
         'recent_gifts': list(get_recent_gifts(user).annotate(
             amount=ExpressionWrapper(
-                F('amount_cents') / Value(100),
+                F('amount_cents') * Value(Decimal('0.01')),
                 output_field=DecimalField(max_digits=12, decimal_places=2),
             ),
             date=F('gift_date'),
