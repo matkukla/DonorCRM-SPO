@@ -76,7 +76,7 @@ export function LateDonations({ donations, totalCount, isLoading, onQuickLog }: 
                     {donation.contact_name}
                   </Link>
                   <p className="text-sm text-muted-foreground">
-                    {formatCurrency(donation.amount)}/mo &middot; Last: {formatDate(donation.last_gift_date)}
+                    {formatCurrency(donation.monthly_equivalent)}/mo &middot; Last: {formatDate(donation.last_gift_date)}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 ml-2 shrink-0">

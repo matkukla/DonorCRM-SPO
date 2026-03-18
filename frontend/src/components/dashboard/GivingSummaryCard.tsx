@@ -97,7 +97,7 @@ export function GivingSummaryCard({ userId }: { userId?: string }) {
             {/* Center label */}
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
               <span className="text-2xl font-bold">{percentage}%</span>
-              <span className="text-xs text-muted-foreground">{formatCurrency(data.given)}</span>
+              <span className="text-xs text-muted-foreground">{formatCurrency(data.total)}</span>
             </div>
           </div>
 
