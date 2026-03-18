@@ -3,7 +3,7 @@ Management command to wipe all data, remove non-kept users,
 and create fresh missionary accounts from test_solicitors.csv.
 """
 from django.core.management.base import BaseCommand
-from django.db import transaction
+from django.db import connection, transaction
 from django.db.models import Q
 
 from apps.contacts.models import Contact
@@ -156,6 +156,15 @@ class Command(BaseCommand):
         # --- Event, Task (CASCADE from User or have owner FK) ---
         self._log_delete('Event', Event.objects.exclude(user_id__in=kept_ids))
         self._log_delete('Task', Task.objects.exclude(owner_id__in=kept_ids))
+
+        # --- Legacy tables (donations, pledges) not in Django models ---
+        # These FK to contacts and funds; must be cleared before those tables.
+        with connection.cursor() as cursor:
+            for table in ('donations', 'pledges'):
+                cursor.execute(f"SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = '{table}')")
+                if cursor.fetchone()[0]:
+                    cursor.execute(f"DELETE FROM {table}")
+                    self.stdout.write(f'  Deleted legacy {table}: {cursor.rowcount}')
 
         # --- Contact (PROTECT from User — must delete before user) ---
         self._log_delete('Contact', Contact.objects.exclude(owner_id__in=kept_ids))
