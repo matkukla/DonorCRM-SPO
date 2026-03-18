@@ -6,10 +6,10 @@ these tests read the actual test_data/ fixture files from disk. This exercises
 real header aliases, column layouts, and data formats.
 
 Fixture files:
-  test_data/test_solicitors.csv      — type-label "Solicitor", 25 missionaries
-  test_data/test_gifts.csv           — type-label "Gift", "Fund Split Amount" alias
-  test_data/test_recurring_gifts.csv — type-label "Recurring Gift", 100 rows
-  test_data/test_constituents.csv    — type-label "Constituent", 100+ rows
+  test_data/test_solicitors.csv      — type-label "Solicitor", 20 missionaries
+  test_data/test_gifts.csv           — type-label "Gift", "Fund Split Amount" alias, 100 rows
+  test_data/test_recurring_gifts.csv — type-label "Recurring Gift", 300 rows
+  test_data/test_constituents.csv    — type-label "Constituent", 400 rows
 """
 import os
 
@@ -49,7 +49,7 @@ class TestSolicitorsFixtureMapping(TestCase):
     """Tests for test_solicitors.csv → reconcile_missionaries()."""
 
     def test_reconcile_missionaries_with_fixture(self):
-        """test_solicitors.csv maps all 25 missionaries without failure."""
+        """test_solicitors.csv maps all 20 missionaries without failure."""
         from apps.imports.spo_services import reconcile_missionaries
 
         admin = _make_admin()
@@ -58,11 +58,11 @@ class TestSolicitorsFixtureMapping(TestCase):
         batch = reconcile_missionaries(file_bytes, 'test_solicitors.csv', admin)
 
         self.assertEqual(batch.status, ImportBatchStatus.COMPLETED)
-        self.assertEqual(batch.created_count, 25)
-        self.assertEqual(batch.summary['missionaries_expected'], 25)
-        self.assertEqual(batch.summary['created'], 25)
+        self.assertEqual(batch.created_count, 20)
+        self.assertEqual(batch.summary['missionaries_expected'], 20)
+        self.assertEqual(batch.summary['created'], 20)
         self.assertEqual(batch.summary['unresolved'], 0)
-        self.assertEqual(User.objects.filter(role='missionary').count(), 25)
+        self.assertEqual(User.objects.filter(role='missionary').count(), 20)
 
     def test_reconcile_creates_solicitor_records(self):
         """reconcile_missionaries() creates one Solicitor per missionary."""
@@ -74,7 +74,7 @@ class TestSolicitorsFixtureMapping(TestCase):
 
         reconcile_missionaries(file_bytes, 'test_solicitors.csv', admin)
 
-        self.assertEqual(Solicitor.objects.count(), 25)
+        self.assertEqual(Solicitor.objects.count(), 20)
 
 
 # ---------------------------------------------------------------------------
@@ -85,15 +85,22 @@ class TestGiftsFixtureMapping(TestCase):
     """Tests for test_gifts.csv → import_spo_gifts()."""
 
     def setUp(self):
-        """Create admin and reconcile missionaries so gift import has solicitor records."""
+        """Create admin, reconcile missionaries, and import constituents so gift import
+        can resolve all contact lookups and solicitor credit records."""
+        from apps.imports.re_services import import_re_constituents
         from apps.imports.spo_services import reconcile_missionaries
 
         self.admin = _make_admin()
+        self.owner = _make_staff_owner()
         solicitors_bytes = _fixture_bytes('test_solicitors.csv')
         reconcile_missionaries(solicitors_bytes, 'test_solicitors.csv', self.admin)
+        # Import constituents so gift contact lookups succeed (all gifts reference
+        # constituent IDs that exist in test_constituents.csv)
+        constituents_bytes = _fixture_bytes('test_constituents.csv')
+        import_re_constituents(constituents_bytes, 'test_constituents.csv', self.admin, self.owner)
 
     def test_import_spo_gifts_with_fixture(self):
-        """test_gifts.csv imports without parse errors; anonymous/blank gifts created."""
+        """test_gifts.csv imports all 100 rows without parse errors."""
         from apps.imports.spo_services import import_spo_gifts
 
         file_bytes = _fixture_bytes('test_gifts.csv')
@@ -101,7 +108,7 @@ class TestGiftsFixtureMapping(TestCase):
 
         self.assertEqual(batch.status, ImportBatchStatus.COMPLETED)
         self.assertEqual(batch.error_count, 0)
-        self.assertGreater(batch.created_count, 0)
+        self.assertEqual(batch.created_count, 100)
 
     def test_gifts_fund_split_amount_header_resolves(self):
         """'Fund Split Amount' header alias resolves as gift_amount without errors."""
@@ -118,17 +125,22 @@ class TestGiftsFixtureMapping(TestCase):
         # Amounts parsed from Fund Split Amount column — not left as 0
         self.assertTrue(Gift.objects.filter(amount_cents__gt=0).exists())
 
-    def test_gifts_anonymous_rows_imported(self):
-        """Rows with Gift Is Anonymous = 'Yes' create gifts via anonymous contact."""
-        from apps.contacts.models import Contact
+    def test_gifts_all_rows_imported_via_named_contacts(self):
+        """All test gifts reference named constituents — all 100 rows create gifts.
+
+        test_gifts.csv contains no anonymous rows (Gift Is Anonymous = No for all rows).
+        All 100 constituent IDs resolve to contacts imported from test_constituents.csv.
+        """
+        from apps.gifts.models import Gift
         from apps.imports.spo_services import import_spo_gifts
 
         file_bytes = _fixture_bytes('test_gifts.csv')
-        import_spo_gifts(file_bytes, 'test_gifts.csv', self.admin)
+        batch = import_spo_gifts(file_bytes, 'test_gifts.csv', self.admin)
 
-        self.assertTrue(
-            Contact.objects.filter(first_name='Anonymous', last_name='Donor').exists()
-        )
+        self.assertEqual(batch.status, ImportBatchStatus.COMPLETED)
+        self.assertEqual(batch.error_count, 0)
+        self.assertEqual(batch.created_count, 100)
+        self.assertEqual(Gift.objects.count(), 100)
 
 
 # ---------------------------------------------------------------------------
@@ -164,10 +176,10 @@ class TestRecurringGiftsFixtureMapping(TestCase):
 
         self.assertEqual(batch.status, ImportBatchStatus.COMPLETED)
         self.assertEqual(batch.error_count, 0)
-        self.assertEqual(batch.total_rows, 100)
+        self.assertEqual(batch.total_rows, 300)
 
     def test_recurring_gifts_type_label_row_skipped(self):
-        """Type-label 'Recurring Gift' row is skipped; data row count is 100, not 101."""
+        """Type-label 'Recurring Gift' row is skipped; data row count is 300, not 301."""
         from apps.imports.re_services import import_re_recurring_gifts
 
         file_bytes = _fixture_bytes('test_recurring_gifts.csv')
@@ -175,8 +187,8 @@ class TestRecurringGiftsFixtureMapping(TestCase):
             file_bytes, 'test_recurring_gifts.csv', self.admin, self.owner,
         )
 
-        # 100 data rows (type-label row stripped, header row not counted)
-        self.assertEqual(batch.total_rows, 100)
+        # 300 data rows (type-label row stripped, header row not counted)
+        self.assertEqual(batch.total_rows, 300)
 
 
 # ---------------------------------------------------------------------------
