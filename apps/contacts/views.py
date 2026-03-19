@@ -143,6 +143,7 @@ class ContactGiftsView(generics.ListAPIView):
     GET: List gifts for a specific contact
     """
     permission_classes = [permissions.IsAuthenticated, IsContactOwnerOrReadAccess]
+    pagination_class = None
 
     def get_queryset(self):
         from apps.gifts.models import Gift
@@ -167,6 +168,7 @@ class ContactRecurringGiftsView(generics.ListAPIView):
     GET: List recurring gifts for a specific contact
     """
     permission_classes = [permissions.IsAuthenticated, IsContactOwnerOrReadAccess]
+    pagination_class = None
 
     def get_queryset(self):
         from apps.gifts.models import RecurringGift
@@ -191,6 +193,7 @@ class ContactTasksView(generics.ListAPIView):
     GET: List tasks for a specific contact
     """
     permission_classes = [permissions.IsAuthenticated]
+    pagination_class = None
 
     def get_queryset(self):
         from apps.tasks.models import Task
@@ -213,7 +216,8 @@ class ContactTasksView(generics.ListAPIView):
 
 class ContactEmailsView(APIView):
     """
-    GET: Return all email addresses for the user's contacts.
+    GET: Return email addresses for the user's contacts, respecting the
+    same filters as the contact list (status, search, group, owner, etc.).
     """
     permission_classes = [permissions.IsAuthenticated]
 
@@ -224,6 +228,26 @@ class ContactEmailsView(APIView):
             queryset = Contact.objects.all()
         else:
             queryset = Contact.objects.filter(owner_id__in=visible)
+
+        # Apply owner filter (same logic as ContactListCreateView)
+        owner_id = request.query_params.get('owner')
+        if owner_id and user.role in ['admin', 'supervisor', 'coach']:
+            queryset = queryset.filter(owner_id=owner_id)
+
+        # Apply ContactFilterSet (status, needs_thank_you, date range, group)
+        filterset = ContactFilterSet(request.query_params, queryset=queryset)
+        if filterset.is_valid():
+            queryset = filterset.qs
+
+        # Apply search filter (same fields as ContactListCreateView)
+        search = request.query_params.get('search', '').strip()
+        if search:
+            queryset = queryset.filter(
+                Q(first_name__icontains=search)
+                | Q(last_name__icontains=search)
+                | Q(email__icontains=search)
+                | Q(organization_name__icontains=search)
+            )
 
         emails = list(
             queryset.exclude(email__isnull=True).exclude(email='')

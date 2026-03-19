@@ -207,8 +207,8 @@ export async function getContactJournals(contactId: string): Promise<ContactJour
   return response.data
 }
 
-/** Get all email addresses for the user's contacts */
-export async function getContactEmails(): Promise<{ emails: string[]; count: number }> {
-  const response = await apiClient.get<{ emails: string[]; count: number }>("/contacts/emails/")
+/** Get email addresses for contacts matching the given filters */
+export async function getContactEmails(params: Record<string, string> = {}): Promise<{ emails: string[]; count: number }> {
+  const response = await apiClient.get<{ emails: string[]; count: number }>("/contacts/emails/", { params })
   return response.data
 }

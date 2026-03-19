@@ -18,7 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { useMPDOverview } from "@/hooks/useMPD"
-import { formatMPDCurrency } from "@/api/mpd"
+import { formatMPDCurrency, formatMonthsRemaining } from "@/api/mpd"
 import type { MPDMissionaryOverview } from "@/api/mpd"
 
 const columnHelper = createColumnHelper<MPDMissionaryOverview>()
@@ -128,7 +128,7 @@ export function MPDOverviewTable() {
             <ArrowUpDown className="h-4 w-4" />
           </button>
         ),
-        cell: (info) => info.getValue() || "--",
+        cell: (info) => formatMonthsRemaining(info.getValue()),
         sortingFn: (rowA, rowB, columnId) => {
           const a = rowA.getValue<string>(columnId)
           const b = rowB.getValue<string>(columnId)
@@ -162,7 +162,7 @@ export function MPDOverviewTable() {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="p-4 pl-7">
         <CardTitle>MPD Overview</CardTitle>
       </CardHeader>
       <CardContent>

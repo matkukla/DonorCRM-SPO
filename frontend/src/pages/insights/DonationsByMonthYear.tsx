@@ -76,6 +76,7 @@ export default function DonationsByMonthYear() {
                         <XAxis dataKey="short_label" fontSize={12} tickLine={false} axisLine={false} />
                         <YAxis fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
                         <Tooltip
+                          isAnimationActive={false}
                           formatter={(value: number | undefined) => [formatCurrency(value ?? 0), "Total"]}
                           labelFormatter={(label) => label}
                         />

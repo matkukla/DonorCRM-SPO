@@ -19,6 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { FilterCombobox } from "@/components/shared/FilterCombobox"
 import { formatLocalDate } from "@/lib/utils"
 import { Plus, Search, Filter, MoreHorizontal, Heart, Mail, Phone, BookOpen, Copy } from "lucide-react"
 import { toast } from "sonner"
@@ -99,7 +100,7 @@ export default function ContactList() {
   const handleCopyEmails = async () => {
     setIsCopyingEmails(true)
     try {
-      const result = await getContactEmails()
+      const result = await getContactEmails(toQueryParams())
       if (result.emails.length === 0) {
         toast.info("No emails to copy")
         return
@@ -126,10 +127,15 @@ export default function ContactList() {
     navigate(`/contacts/${contact.id}`)
   }
 
+  const handleOrderingChange = (ordering: string | null) => {
+    setFilters({ ordering: ordering, page: 1 })
+  }
+
   const columns: ColumnDef<ContactListItem>[] = [
     {
       accessorKey: "full_name",
       header: "Name",
+      meta: { serverSortKey: "last_name" },
       cell: ({ row }) => (
         <div>
           <div className="font-medium">{row.original.full_name}</div>
@@ -167,6 +173,7 @@ export default function ContactList() {
     {
       accessorKey: "total_given",
       header: "Total Given",
+      meta: { serverSortKey: "total_given" },
       cell: ({ row }) => (
         <span className="font-medium">
           {formatCurrency(row.original.total_given)}
@@ -176,6 +183,7 @@ export default function ContactList() {
     {
       accessorKey: "last_gift_date",
       header: "Last Gift",
+      meta: { serverSortKey: "last_gift_date" },
       cell: ({ row }) => formatLocalDate(row.original.last_gift_date),
     },
     {
@@ -303,65 +311,54 @@ export default function ContactList() {
             exportUrl="/contacts/export/csv/"
             exportParams={toQueryParams()}
           >
-            {/* Search input */}
-            <form onSubmit={handleSearch} className="flex gap-2 flex-1 min-w-[200px]">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by name or email..."
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-              <Button type="submit" variant="secondary">
-                Search
-              </Button>
-            </form>
-
-            {/* Status dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="secondary" size="sm" className="gap-2">
-                  <Filter className="h-4 w-4" />
-                  {filters.status ? statusLabels[filters.status as ContactStatus] || filters.status : "All Status"}
+            {/* Row 1: Search */}
+            <div className="flex flex-wrap items-center gap-2 w-full">
+              <form onSubmit={handleSearch} className="flex gap-2 flex-1 min-w-[200px]">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by name or email..."
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                <Button type="submit" variant="secondary">
+                  Search
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => setFilters({ status: null, page: 1 })}>
-                  All Status
-                </DropdownMenuItem>
-                {(Object.keys(statusLabels) as ContactStatus[]).map((s) => (
-                  <DropdownMenuItem key={s} onClick={() => setFilters({ status: s, page: 1 })}>
-                    {statusLabels[s]}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+              </form>
+            </div>
 
-            {/* Owner dropdown (admin + supervisor) */}
-            {canSeeOwner && ownerOptions.length > 0 && (
+            {/* Row 2: Status + owner */}
+            <div className="flex flex-wrap items-center gap-2 w-full">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="secondary" size="sm" className="gap-2">
                     <Filter className="h-4 w-4" />
-                    {filters.owner
-                      ? ownerOptions.find((u) => u.id === filters.owner)?.full_name || "Owner"
-                      : "All Owners"}
+                    {filters.status ? statusLabels[filters.status as ContactStatus] || filters.status : "All Status"}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
-                  <DropdownMenuItem onClick={() => setFilters({ owner: null, page: 1 })}>
-                    All Owners
+                  <DropdownMenuItem onClick={() => setFilters({ status: null, page: 1 })}>
+                    All Status
                   </DropdownMenuItem>
-                  {ownerOptions.map((u) => (
-                    <DropdownMenuItem key={u.id} onClick={() => setFilters({ owner: u.id, page: 1 })}>
-                      {u.full_name}
+                  {(Object.keys(statusLabels) as ContactStatus[]).map((s) => (
+                    <DropdownMenuItem key={s} onClick={() => setFilters({ status: s, page: 1 })}>
+                      {statusLabels[s]}
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
-            )}
+              {canSeeOwner && ownerOptions.length > 0 && (
+                <FilterCombobox
+                  value={filters.owner || null}
+                  onSelect={(value) => setFilters({ owner: value, page: 1 })}
+                  options={ownerOptions.map((u) => ({ value: u.id, label: u.full_name }))}
+                  allLabel="All Owners"
+                  searchPlaceholder="Search owners..."
+                />
+              )}
+            </div>
           </FilterBar>
 
           {/* Data Table */}
@@ -375,6 +372,8 @@ export default function ContactList() {
             totalCount={data?.count}
             onPageChange={handlePageChange}
             onRowClick={handleRowClick}
+            ordering={filters.ordering}
+            onOrderingChange={handleOrderingChange}
             aria-label="Contacts"
           />
         </div>

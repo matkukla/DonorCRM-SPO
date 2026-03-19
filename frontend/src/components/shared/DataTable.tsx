@@ -13,7 +13,15 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react"
+
+// Augment tanstack column meta to include our server sort key
+declare module "@tanstack/react-table" {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface ColumnMeta<TData, TValue> {
+    serverSortKey?: string
+  }
+}
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -27,8 +35,22 @@ interface DataTableProps<TData, TValue> {
   totalCount?: number
   // Row click
   onRowClick?: (row: TData) => void
+  // Server-side sorting
+  ordering?: string | null
+  onOrderingChange?: (ordering: string | null) => void
   // Accessibility
   "aria-label"?: string
+}
+
+/**
+ * Parse a DRF ordering string like "-gift_date" into { field, direction }.
+ */
+function parseOrdering(ordering: string | null | undefined): { field: string; direction: "asc" | "desc" } | null {
+  if (!ordering) return null
+  if (ordering.startsWith("-")) {
+    return { field: ordering.slice(1), direction: "desc" }
+  }
+  return { field: ordering, direction: "asc" }
 }
 
 export function DataTable<TData, TValue>({
@@ -41,6 +63,8 @@ export function DataTable<TData, TValue>({
   onPageChange,
   totalCount,
   onRowClick,
+  ordering,
+  onOrderingChange,
   "aria-label": ariaLabel,
 }: DataTableProps<TData, TValue>) {
   const table = useReactTable({
@@ -50,6 +74,24 @@ export function DataTable<TData, TValue>({
     manualPagination: true,
     pageCount,
   })
+
+  const currentSort = parseOrdering(ordering)
+
+  const handleSort = (serverSortKey: string) => {
+    if (!onOrderingChange) return
+    if (currentSort?.field === serverSortKey) {
+      if (currentSort.direction === "asc") {
+        // asc -> desc
+        onOrderingChange(`-${serverSortKey}`)
+      } else {
+        // desc -> clear
+        onOrderingChange(null)
+      }
+    } else {
+      // new field -> asc
+      onOrderingChange(serverSortKey)
+    }
+  }
 
   const startItem = pageIndex * pageSize + 1
   const endItem = Math.min((pageIndex + 1) * pageSize, totalCount || 0)
@@ -61,16 +103,41 @@ export function DataTable<TData, TValue>({
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
+                {headerGroup.headers.map((header) => {
+                  const serverSortKey = header.column.columnDef.meta?.serverSortKey
+                  const isSortable = !!serverSortKey && !!onOrderingChange
+                  const isActive = serverSortKey ? currentSort?.field === serverSortKey : false
+                  const direction = isActive ? currentSort?.direction : undefined
+
+                  return (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder ? null : isSortable ? (
+                        <button
+                          className="flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer select-none"
+                          onClick={() => handleSort(serverSortKey!)}
+                          aria-label={`Sort by ${typeof header.column.columnDef.header === "string" ? header.column.columnDef.header : serverSortKey}${direction === "asc" ? ", currently ascending" : direction === "desc" ? ", currently descending" : ""}`}
+                        >
+                          {flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                          {direction === "asc" ? (
+                            <ArrowUp className="h-4 w-4 text-foreground" />
+                          ) : direction === "desc" ? (
+                            <ArrowDown className="h-4 w-4 text-foreground" />
+                          ) : (
+                            <ArrowUpDown className="h-3.5 w-3.5 opacity-50" />
+                          )}
+                        </button>
+                      ) : (
+                        flexRender(
                           header.column.columnDef.header,
                           header.getContext()
-                        )}
-                  </TableHead>
-                ))}
+                        )
+                      )}
+                    </TableHead>
+                  )
+                })}
               </TableRow>
             ))}
           </TableHeader>
