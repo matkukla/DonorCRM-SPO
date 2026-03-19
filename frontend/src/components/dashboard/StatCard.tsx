@@ -26,12 +26,12 @@ export function StatCard({
 }: StatCardProps) {
   return (
     <Card className={cn(className)}>
-      <CardHeader className="p-4 pb-2">
+      <CardHeader className="p-4 pl-7 pb-2">
         <div className="flex items-center justify-between">
           <CardDescription>{title}</CardDescription>
           {Icon && <Icon className="h-4 w-4 text-muted-foreground" />}
         </div>
-        <CardTitle className="text-3xl">
+        <CardTitle className="text-2xl">
           {isLoading ? (
             <span className="text-muted-foreground">--</span>
           ) : (

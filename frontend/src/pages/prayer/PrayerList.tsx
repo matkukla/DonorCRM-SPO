@@ -12,12 +12,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -25,7 +19,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Plus, Search, ChevronLeft, ChevronRight, Filter } from "lucide-react"
+import { FilterCombobox } from "@/components/shared/FilterCombobox"
+import { Plus, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react"
 import { formatLocalDate } from "@/lib/utils"
 import { TodaysFocus } from "./components/TodaysFocus"
 import { StatusBadge } from "./components/StatusBadge"
@@ -65,6 +60,7 @@ export default function PrayerList() {
   const [searchInput, setSearchInput] = useState("")
   const [page, setPage] = useState(1)
   const [ownerFilter, setOwnerFilter] = useState<string | null>(null)
+  const [ordering, setOrdering] = useState<string | null>(null)
 
   // Answered note dialog state
   const [noteDialogOpen, setNoteDialogOpen] = useState(false)
@@ -76,6 +72,7 @@ export default function PrayerList() {
   if (statusFilter !== "all") params.status = statusFilter
   if (searchQuery) params.search = searchQuery
   if (ownerFilter) params.owner = ownerFilter
+  if (ordering) params.ordering = ordering
 
   const { data, isLoading } = usePrayers(params)
   const { data: activeIntentionsData } = usePrayers({ status: "active", page_size: "1" })
@@ -95,6 +92,21 @@ export default function PrayerList() {
     e.preventDefault()
     setSearchQuery(searchInput)
     setPage(1)
+  }
+
+  const handleOrderingChange = (sortKey: string) => {
+    setOrdering((prev) => {
+      if (!prev || (prev !== sortKey && prev !== `-${sortKey}`)) return sortKey
+      if (prev === sortKey) return `-${sortKey}`
+      return null // was desc, clear
+    })
+    setPage(1)
+  }
+
+  const getSortIcon = (sortKey: string) => {
+    if (ordering === sortKey) return <ArrowUp className="h-3.5 w-3.5 inline ml-1" />
+    if (ordering === `-${sortKey}`) return <ArrowDown className="h-3.5 w-3.5 inline ml-1" />
+    return <ArrowUpDown className="h-3 w-3 inline ml-1 opacity-50" />
   }
 
   const handleStatusFilterChange = (value: string) => {
@@ -222,26 +234,13 @@ export default function PrayerList() {
 
           {/* Owner filter (supervisor) */}
           {canSeeOwner && ownerOptions.length > 0 && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="secondary" size="sm" className="gap-2">
-                  <Filter className="h-4 w-4" />
-                  {ownerFilter
-                    ? ownerOptions.find((u) => u.id === ownerFilter)?.full_name || "Owner"
-                    : "All Owners"}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => { setOwnerFilter(null); setPage(1) }}>
-                  All Owners
-                </DropdownMenuItem>
-                {ownerOptions.map((u) => (
-                  <DropdownMenuItem key={u.id} onClick={() => { setOwnerFilter(u.id); setPage(1) }}>
-                    {u.full_name}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <FilterCombobox
+              value={ownerFilter}
+              onSelect={(value) => { setOwnerFilter(value); setPage(1) }}
+              options={ownerOptions.map((u) => ({ value: u.id, label: u.full_name }))}
+              allLabel="All Owners"
+              searchPlaceholder="Search owners..."
+            />
           )}
         </div>
 
@@ -270,7 +269,13 @@ export default function PrayerList() {
                       Contact
                     </th>
                     <th scope="col" className="text-left px-4 py-3 text-sm font-medium text-amber-800 dark:text-amber-300">
-                      Status
+                      <button
+                        className="flex items-center gap-0.5 hover:text-amber-950 dark:hover:text-amber-100 transition-colors cursor-pointer select-none"
+                        onClick={() => handleOrderingChange("status")}
+                      >
+                        Status
+                        {getSortIcon("status")}
+                      </button>
                     </th>
                     {canSeeOwner && (
                       <th scope="col" className="text-left px-4 py-3 text-sm font-medium text-amber-800 dark:text-amber-300">
@@ -278,7 +283,13 @@ export default function PrayerList() {
                       </th>
                     )}
                     <th scope="col" className="text-left px-4 py-3 text-sm font-medium text-amber-800 dark:text-amber-300">
-                      Created
+                      <button
+                        className="flex items-center gap-0.5 hover:text-amber-950 dark:hover:text-amber-100 transition-colors cursor-pointer select-none"
+                        onClick={() => handleOrderingChange("created_at")}
+                      >
+                        Created
+                        {getSortIcon("created_at")}
+                      </button>
                     </th>
                     <th scope="col" className="text-left px-4 py-3 text-sm font-medium text-amber-800 dark:text-amber-300">
                       Description

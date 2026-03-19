@@ -18,6 +18,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { FilterCombobox } from "@/components/shared/FilterCombobox"
 import { Plus, Search, Filter } from "lucide-react"
 import type { ColumnDef } from "@tanstack/react-table"
 import type { Gift } from "@/api/gifts"
@@ -86,6 +87,10 @@ export default function DonationList() {
     setFilters({ page: newPage + 1 })
   }
 
+  const handleOrderingChange = (ordering: string | null) => {
+    setFilters({ ordering: ordering, page: 1 })
+  }
+
   const columns: ColumnDef<Gift>[] = [
     {
       accessorKey: "donor_contact_name",
@@ -103,6 +108,7 @@ export default function DonationList() {
     {
       accessorKey: "amount_dollars",
       header: "Amount",
+      meta: { serverSortKey: "amount_cents" },
       cell: ({ row }) => (
         <span className="font-semibold">{formatCurrency(row.original.amount_dollars)}</span>
       ),
@@ -110,6 +116,7 @@ export default function DonationList() {
     {
       accessorKey: "gift_date",
       header: "Date",
+      meta: { serverSortKey: "gift_date" },
       cell: ({ row }) => formatLocalDate(row.original.gift_date),
     },
     {
@@ -176,99 +183,84 @@ export default function DonationList() {
             exportUrl="/donations/export/csv/"
             exportParams={toQueryParams()}
           >
-            {/* Search input */}
-            <form onSubmit={handleSearch} className="flex gap-2 flex-1 min-w-[200px]">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by donor name..."
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-              <Button type="submit" variant="secondary">
-                Search
-              </Button>
-            </form>
-
-            {/* Date range */}
-            <Input
-              type="date"
-              placeholder="From date"
-              value={filters.gift_date_after || ""}
-              onChange={(e) => setFilters({ gift_date_after: e.target.value || null, page: 1 })}
-              className="w-[150px]"
-            />
-            <Input
-              type="date"
-              placeholder="To date"
-              value={filters.gift_date_before || ""}
-              onChange={(e) => setFilters({ gift_date_before: e.target.value || null, page: 1 })}
-              className="w-[150px]"
-            />
-
-            {/* Amount range */}
-            <Input
-              type="number"
-              placeholder="Min $"
-              value={filters.min_amount || ""}
-              onChange={(e) => setFilters({ min_amount: e.target.value || null, page: 1 })}
-              className="w-[100px]"
-            />
-            <Input
-              type="number"
-              placeholder="Max $"
-              value={filters.max_amount || ""}
-              onChange={(e) => setFilters({ max_amount: e.target.value || null, page: 1 })}
-              className="w-[100px]"
-            />
-
-            {/* Payment type dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="secondary" size="sm" className="gap-2">
-                  <Filter className="h-4 w-4" />
-                  {filters.payment_type
-                    ? giftPaymentTypeLabels[filters.payment_type] || "Type"
-                    : "All Types"}
+            {/* Row 1: Search + amount range */}
+            <div className="flex flex-wrap items-center gap-2 w-full">
+              <form onSubmit={handleSearch} className="flex gap-2 flex-1 min-w-[200px]">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by donor name..."
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                <Button type="submit" variant="secondary">
+                  Search
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => setFilters({ payment_type: null, page: 1 })}>
-                  All Types
-                </DropdownMenuItem>
-                {Object.entries(giftPaymentTypeLabels).map(([value, label]) => (
-                  <DropdownMenuItem key={value} onClick={() => setFilters({ payment_type: value, page: 1 })}>
-                    {label}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+              </form>
+              <Input
+                type="number"
+                placeholder="Min $"
+                value={filters.min_amount || ""}
+                onChange={(e) => setFilters({ min_amount: e.target.value || null, page: 1 })}
+                className="w-[110px]"
+              />
+              <Input
+                type="number"
+                placeholder="Max $"
+                value={filters.max_amount || ""}
+                onChange={(e) => setFilters({ max_amount: e.target.value || null, page: 1 })}
+                className="w-[110px]"
+              />
+            </div>
 
-            {/* Owner dropdown (admin + supervisor) */}
-            {canSeeOwner && ownerOptions.length > 0 && (
+            {/* Row 2: Date range + type + owner */}
+            <div className="flex flex-wrap items-center gap-2 w-full">
+              <Input
+                type="date"
+                placeholder="From date"
+                value={filters.gift_date_after || ""}
+                onChange={(e) => setFilters({ gift_date_after: e.target.value || null, page: 1 })}
+                className="w-[150px]"
+              />
+              <Input
+                type="date"
+                placeholder="To date"
+                value={filters.gift_date_before || ""}
+                onChange={(e) => setFilters({ gift_date_before: e.target.value || null, page: 1 })}
+                className="w-[150px]"
+              />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="secondary" size="sm" className="gap-2">
                     <Filter className="h-4 w-4" />
-                    {filters.owner
-                      ? ownerOptions.find((u) => u.id === filters.owner)?.full_name || "Owner"
-                      : "All Owners"}
+                    {filters.payment_type
+                      ? giftPaymentTypeLabels[filters.payment_type] || "Type"
+                      : "All Types"}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
-                  <DropdownMenuItem onClick={() => setFilters({ owner: null, page: 1 })}>
-                    All Owners
+                  <DropdownMenuItem onClick={() => setFilters({ payment_type: null, page: 1 })}>
+                    All Types
                   </DropdownMenuItem>
-                  {ownerOptions.map((u) => (
-                    <DropdownMenuItem key={u.id} onClick={() => setFilters({ owner: u.id, page: 1 })}>
-                      {u.full_name}
+                  {Object.entries(giftPaymentTypeLabels).map(([value, label]) => (
+                    <DropdownMenuItem key={value} onClick={() => setFilters({ payment_type: value, page: 1 })}>
+                      {label}
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
-            )}
+              {canSeeOwner && ownerOptions.length > 0 && (
+                <FilterCombobox
+                  value={filters.owner || null}
+                  onSelect={(value) => setFilters({ owner: value, page: 1 })}
+                  options={ownerOptions.map((u) => ({ value: u.id, label: u.full_name }))}
+                  allLabel="All Owners"
+                  searchPlaceholder="Search owners..."
+                />
+              )}
+            </div>
           </FilterBar>
 
           {/* Data Table */}
@@ -282,6 +274,8 @@ export default function DonationList() {
             totalCount={data?.count}
             onPageChange={handlePageChange}
             onRowClick={(gift) => setSelectedGiftId(gift.id)}
+            ordering={filters.ordering}
+            onOrderingChange={handleOrderingChange}
             aria-label="Gifts"
           />
 

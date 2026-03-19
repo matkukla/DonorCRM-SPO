@@ -20,11 +20,11 @@ export function SupportProgress({ data, isLoading }: SupportProgressProps) {
 
   return (
     <Card>
-      <CardHeader className="p-4">
+      <CardHeader className="p-4 pl-7">
         <CardTitle>Monthly Support Goal</CardTitle>
         <CardDescription>Progress toward your fundraising target</CardDescription>
       </CardHeader>
-      <CardContent className="px-4 pt-0 pb-4">
+      <CardContent className="px-4 pl-7 pt-0 pb-4">
         {isLoading ? (
           <div className="space-y-4">
             <div className="h-4 bg-muted rounded animate-pulse" />

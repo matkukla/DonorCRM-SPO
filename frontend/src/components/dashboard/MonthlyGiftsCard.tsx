@@ -37,12 +37,12 @@ export function MonthlyGiftsCard({ userId }: { userId?: string }) {
   if (isLoading) {
     return (
       <Card>
-        <CardHeader className="p-4">
+        <CardHeader className="p-4 pl-7">
           <div className="flex items-center justify-between">
             <CardTitle>Monthly Gifts</CardTitle>
           </div>
         </CardHeader>
-        <CardContent className="px-4 pt-0 pb-4">
+        <CardContent className="px-4 pl-7 pt-0 pb-4">
           <div className="min-h-[220px] bg-muted rounded animate-pulse" />
         </CardContent>
       </Card>
@@ -52,7 +52,7 @@ export function MonthlyGiftsCard({ userId }: { userId?: string }) {
   if (!data || data.months.every((m) => m.total === 0)) {
     return (
       <Card>
-        <CardHeader className="p-4">
+        <CardHeader className="p-4 pl-7">
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>Monthly Gifts</CardTitle>
@@ -60,7 +60,7 @@ export function MonthlyGiftsCard({ userId }: { userId?: string }) {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="px-4 pt-0 pb-4">
+        <CardContent className="px-4 pl-7 pt-0 pb-4">
           <p className="text-muted-foreground text-sm py-8 text-center">
             No donations recorded yet.
           </p>
@@ -71,7 +71,7 @@ export function MonthlyGiftsCard({ userId }: { userId?: string }) {
 
   return (
     <Card>
-      <CardHeader className="p-4">
+      <CardHeader className="p-4 pl-7">
         <div className="flex items-center justify-between">
           <div>
             <CardTitle>Monthly Gifts</CardTitle>
@@ -105,7 +105,7 @@ export function MonthlyGiftsCard({ userId }: { userId?: string }) {
           </div>
         </div>
       </CardHeader>
-      <CardContent className="px-4 pt-0 pb-4">
+      <CardContent className="px-4 pl-7 pt-0 pb-4">
         <div key={chartType} className="animate-in fade-in duration-300">
           <ChartContainer config={chartConfig} className="min-h-[220px] w-full">
             {chartType === "bar" ? (
@@ -123,6 +123,7 @@ export function MonthlyGiftsCard({ userId }: { userId?: string }) {
                   axisLine={false}
                 />
                 <ChartTooltip
+                  isAnimationActive={false}
                   content={
                     <ChartTooltipContent
                       labelKey="total"
@@ -165,13 +166,14 @@ export function MonthlyGiftsCard({ userId }: { userId?: string }) {
                   axisLine={false}
                 />
                 <ChartTooltip
+                  isAnimationActive={false}
                   content={
                     <ChartTooltipContent
                       labelKey="total"
                       formatter={(value) => formatCurrency(value as number)}
                     />
                   }
-                  cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }}
+                  cursor={{ stroke: "hsl(var(--muted-foreground))", strokeWidth: 1 }}
                 />
                 {data.monthly_goal > 0 && (
                   <ReferenceLine

@@ -35,11 +35,11 @@ function formatDate(dateStr: string): string {
 export function RecentDonations({ donations, isLoading }: RecentDonationsProps) {
   return (
     <Card>
-      <CardHeader className="p-4">
+      <CardHeader className="p-4 pl-7">
         <CardTitle>Recent Donations</CardTitle>
         <CardDescription>Latest gifts received</CardDescription>
       </CardHeader>
-      <CardContent className="px-4 pt-0 pb-4">
+      <CardContent className="px-4 pl-7 pt-0 pb-4">
         {isLoading ? (
           <div className="space-y-3">
             {[...Array(5)].map((_, i) => (
@@ -63,7 +63,7 @@ export function RecentDonations({ donations, isLoading }: RecentDonationsProps) 
                 <div>
                   <Link
                     to={`/contacts/${donation.contact_id}`}
-                    className="font-medium hover:underline"
+                    className="text-sm font-medium text-primary hover:underline"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {donation.contact__first_name} {donation.contact__last_name}
@@ -72,7 +72,7 @@ export function RecentDonations({ donations, isLoading }: RecentDonationsProps) 
                     {formatDate(donation.date)}
                   </p>
                 </div>
-                <span className="font-semibold text-primary">
+                <span className="text-sm font-semibold text-primary">
                   {formatCurrency(donation.amount)}
                 </span>
               </div>
