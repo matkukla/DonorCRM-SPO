@@ -34,7 +34,7 @@ export function SortableDashboardTile({ id, children, className }: SortableDashb
       )}
     >
       <button
-        className="absolute top-5 left-1.5 z-10 p-0.5 rounded cursor-grab active:cursor-grabbing text-muted-foreground/0 group-hover:text-muted-foreground hover:text-foreground transition-colors duration-150"
+        className="absolute top-5 left-2 z-10 p-0.5 rounded cursor-grab active:cursor-grabbing text-muted-foreground/0 group-hover:text-muted-foreground hover:text-foreground transition-colors duration-150"
         {...attributes}
         {...listeners}
         aria-label="Drag to reorder"

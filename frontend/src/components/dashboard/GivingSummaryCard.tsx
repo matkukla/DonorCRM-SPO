@@ -24,10 +24,10 @@ export function GivingSummaryCard({ userId }: { userId?: string }) {
   if (isLoading) {
     return (
       <Card>
-        <CardHeader className="p-4">
+        <CardHeader className="p-4 pl-7">
           <CardTitle>Given and Expecting</CardTitle>
         </CardHeader>
-        <CardContent className="px-4 pt-0 pb-4">
+        <CardContent className="px-4 pl-7 pt-0 pb-4">
           <div className="flex flex-col md:flex-row gap-6 items-center">
             <div className="h-[180px] w-[180px] bg-muted rounded-full animate-pulse" />
             <div className="flex-1 space-y-3 w-full">
@@ -44,11 +44,11 @@ export function GivingSummaryCard({ userId }: { userId?: string }) {
   if (!data || data.annual_goal === 0) {
     return (
       <Card>
-        <CardHeader className="p-4">
+        <CardHeader className="p-4 pl-7">
           <CardTitle>Given and Expecting</CardTitle>
           <CardDescription>Track progress toward your annual goal</CardDescription>
         </CardHeader>
-        <CardContent className="px-4 pt-0 pb-4">
+        <CardContent className="px-4 pl-7 pt-0 pb-4">
           <p className="text-muted-foreground text-sm py-8 text-center">
             Set a monthly goal in settings to track giving progress.
           </p>
@@ -68,13 +68,13 @@ export function GivingSummaryCard({ userId }: { userId?: string }) {
 
   return (
     <Card>
-      <CardHeader className="p-4">
+      <CardHeader className="p-4 pl-7">
         <CardTitle>Given and Expecting</CardTitle>
         <CardDescription>
           Annual Goal {formatCurrency(data.annual_goal)} ({formatCurrency(data.monthly_goal)} monthly)
         </CardDescription>
       </CardHeader>
-      <CardContent className="px-4 pt-0 pb-4">
+      <CardContent className="px-4 pl-7 pt-0 pb-4">
         <div className="flex flex-col md:flex-row gap-6 items-center">
           {/* Donut Chart */}
           <div className="relative">

@@ -33,6 +33,7 @@ import {
 import type { ColumnDef } from "@tanstack/react-table"
 import type { Task, TaskStatus, TaskPriority, TaskType } from "@/api/tasks"
 import { taskStatusLabels, taskPriorityLabels, taskTypeLabels } from "@/api/tasks"
+import { FilterCombobox } from "@/components/shared/FilterCombobox"
 import { formatLocalDate } from "@/lib/utils"
 
 const PAGE_SIZE = 20
@@ -84,6 +85,7 @@ export default function TaskList() {
   const taskType = searchParams.get("task_type") as TaskType | undefined
   const search = searchParams.get("search") || ""
   const ownerFilter = searchParams.get("owner") || undefined
+  const ordering = searchParams.get("ordering") || undefined
 
   const { data, isLoading } = useTasks({
     page,
@@ -93,6 +95,7 @@ export default function TaskList() {
     task_type: taskType,
     search: search || undefined,
     owner: ownerFilter,
+    ordering,
   })
 
   const completeMutation = useCompleteTask()
@@ -161,6 +164,17 @@ export default function TaskList() {
     setSearchParams(params)
   }
 
+  const handleOrderingChange = (newOrdering: string | null) => {
+    const params = new URLSearchParams(searchParams)
+    if (newOrdering) {
+      params.set("ordering", newOrdering)
+    } else {
+      params.delete("ordering")
+    }
+    params.set("page", "1")
+    setSearchParams(params)
+  }
+
   const handleComplete = (id: string) => {
     completeMutation.mutate(id)
   }
@@ -192,6 +206,7 @@ export default function TaskList() {
     {
       accessorKey: "priority",
       header: "Priority",
+      meta: { serverSortKey: "priority" },
       cell: ({ row }) => (
         <Badge variant={priorityVariants[row.original.priority]}>
           {taskPriorityLabels[row.original.priority]}
@@ -218,6 +233,7 @@ export default function TaskList() {
     {
       accessorKey: "due_date",
       header: "Due Date",
+      meta: { serverSortKey: "due_date" },
       cell: ({ row }) => (
         <span className={row.original.is_overdue ? "text-destructive font-medium" : ""}>
           {formatLocalDate(row.original.due_date)}
@@ -386,26 +402,14 @@ export default function TaskList() {
 
               {/* Owner filter (supervisor) */}
               {canSeeOwner && ownerOptions.length > 0 && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="secondary" className="gap-2">
-                      <Filter className="h-4 w-4" />
-                      {ownerFilter
-                        ? ownerOptions.find((u) => u.id === ownerFilter)?.full_name || "Owner"
-                        : "All Owners"}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuItem onClick={() => handleOwnerFilter(null)}>
-                      All Owners
-                    </DropdownMenuItem>
-                    {ownerOptions.map((u) => (
-                      <DropdownMenuItem key={u.id} onClick={() => handleOwnerFilter(u.id)}>
-                        {u.full_name}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <FilterCombobox
+                  value={ownerFilter || null}
+                  onSelect={(value) => handleOwnerFilter(value)}
+                  options={ownerOptions.map((u) => ({ value: u.id, label: u.full_name }))}
+                  allLabel="All Owners"
+                  searchPlaceholder="Search owners..."
+                  size="default"
+                />
               )}
             </div>
           </Card>
@@ -421,6 +425,8 @@ export default function TaskList() {
             totalCount={data?.count}
             onPageChange={handlePageChange}
             onRowClick={(task) => navigate(`/tasks/${task.id}`)}
+            ordering={ordering}
+            onOrderingChange={handleOrderingChange}
             aria-label="Tasks"
           />
         </div>

@@ -7,16 +7,11 @@ import { Section } from "@/components/layout/Section"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { useJournals } from "@/hooks/useJournals"
 import { useFilterParams, journalFilterParsers } from "@/hooks/useFilterParams"
 import { journalPresets } from "@/lib/filter-presets"
 import { FilterBar } from "@/components/shared/FilterBar"
+import { FilterCombobox } from "@/components/shared/FilterCombobox"
 import { BookOpen, ChevronRight, Plus, Search, Filter } from "lucide-react"
 import { CreateJournalDialog } from "./components"
 import { formatLocalDate } from "@/lib/utils"
@@ -148,26 +143,13 @@ export default function JournalList() {
 
             {/* Owner filter (supervisor) */}
             {canSeeOwner && ownerOptions.length > 0 && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="secondary" size="sm" className="gap-2">
-                    <Filter className="h-4 w-4" />
-                    {filters.owner
-                      ? ownerOptions.find((u) => u.id === filters.owner)?.full_name || "Owner"
-                      : "All Owners"}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem onClick={() => setFilters({ owner: null, page: 1 })}>
-                    All Owners
-                  </DropdownMenuItem>
-                  {ownerOptions.map((u) => (
-                    <DropdownMenuItem key={u.id} onClick={() => setFilters({ owner: u.id, page: 1 })}>
-                      {u.full_name}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <FilterCombobox
+                value={filters.owner || null}
+                onSelect={(value) => setFilters({ owner: value, page: 1 })}
+                options={ownerOptions.map((u) => ({ value: u.id, label: u.full_name }))}
+                allLabel="All Owners"
+                searchPlaceholder="Search owners..."
+              />
             )}
           </FilterBar>
 

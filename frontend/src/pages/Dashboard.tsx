@@ -173,11 +173,11 @@ export default function Dashboard() {
     }
   }
 
-  function getTileColSpan(id: string) {
+  function getTileClasses(id: string) {
     const size = TILE_SIZES[id]
     if (size === 4) return "col-span-2 lg:col-span-4"
-    if (size === 2) return "col-span-2"
-    return "col-span-1"
+    if (size === 2) return "col-span-2 min-h-[280px] [&>*]:h-full"
+    return "col-span-1 min-h-[120px] [&>*]:h-full"
   }
 
   // Render tile grid -- either with DnD (own dashboard) or static (viewing other)
@@ -191,14 +191,14 @@ export default function Dashboard() {
             <SortableDashboardTile
               key={id}
               id={id}
-              className={getTileColSpan(id)}
+              className={getTileClasses(id)}
             >
               {content}
             </SortableDashboardTile>
           ) : (
             <div
               key={id}
-              className={getTileColSpan(id)}
+              className={getTileClasses(id)}
             >
               {content}
             </div>
