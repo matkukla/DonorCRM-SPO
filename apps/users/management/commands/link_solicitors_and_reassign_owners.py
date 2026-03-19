@@ -15,7 +15,7 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.db.models import Sum
 
-from apps.gifts.models import GiftCredit, Solicitor
+from apps.gifts.models import GiftCredit, RecurringGiftCredit, Solicitor
 from apps.users.models import User, UserRole
 
 
@@ -117,17 +117,28 @@ class Command(BaseCommand):
         skipped_no_credits = 0
 
         for contact in contacts_to_fix:
-            # Find solicitor with highest total credit amount for this contact's gifts
-            top = (
+            # Find solicitor with highest total credit amount across both
+            # one-time gifts (GiftCredit) and recurring gifts (RecurringGiftCredit).
+            gift_credits = (
                 GiftCredit.objects
                 .filter(gift__donor_contact=contact, solicitor__user__isnull=False)
                 .values('solicitor__user')
                 .annotate(total=Sum('amount_cents'))
-                .order_by('-total')
-                .first()
+            )
+            recurring_credits = (
+                RecurringGiftCredit.objects
+                .filter(recurring_gift__donor_contact=contact, solicitor__user__isnull=False)
+                .values('solicitor__user')
+                .annotate(total=Sum('amount_cents'))
             )
 
-            if not top:
+            combined: dict[int, int] = {}
+            for row in gift_credits:
+                combined[row['solicitor__user']] = combined.get(row['solicitor__user'], 0) + row['total']
+            for row in recurring_credits:
+                combined[row['solicitor__user']] = combined.get(row['solicitor__user'], 0) + row['total']
+
+            if not combined:
                 skipped_no_credits += 1
                 self.stdout.write(
                     f'  SKIP {contact.id} ({contact.first_name} {contact.last_name})'
@@ -135,7 +146,7 @@ class Command(BaseCommand):
                 )
                 continue
 
-            new_owner_id = top['solicitor__user']
+            new_owner_id = max(combined, key=combined.get)
             new_owner = User.objects.get(pk=new_owner_id)
             self.stdout.write(
                 f'  REASSIGN {contact.first_name} {contact.last_name or contact.organization_name}'

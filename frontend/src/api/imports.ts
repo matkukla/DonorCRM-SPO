@@ -145,6 +145,13 @@ export interface REImportResponse {
   total_rows: number
   summary: {
     errors?: Array<{ row: number; error: string }>
+    skipped_details?: Array<{
+      row: number
+      reason: string
+      match_type: string
+      contact_name: string
+      constituent_id: string
+    }>
     [key: string]: unknown
   }
 }

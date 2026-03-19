@@ -14,6 +14,45 @@ interface ImportResultBannerProps {
   onDismiss?: () => void
 }
 
+function SkipDetailsCollapsible({ result }: { result: REImportResponse }) {
+  const [open, setOpen] = useState(false)
+  const skippedDetails = result.summary?.skipped_details ?? []
+
+  if (skippedDetails.length === 0) return null
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} className="mt-3">
+      <CollapsibleTrigger asChild>
+        <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs">
+          {open ? (
+            <ChevronUp className="h-3 w-3" />
+          ) : (
+            <ChevronDown className="h-3 w-3" />
+          )}
+          {open ? "Hide" : "Show"} skip details ({skippedDetails.length})
+        </Button>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="mt-2 max-h-60 overflow-y-auto space-y-1 text-sm">
+          {skippedDetails.map((detail, index) => (
+            <div
+              key={index}
+              className="flex items-start gap-2 text-muted-foreground"
+            >
+              <span className="shrink-0">Row {detail.row}:</span>
+              <span>
+                {detail.contact_name}
+                {detail.constituent_id && ` (ID: ${detail.constituent_id})`}
+                {" \u2014 "}matched by {detail.match_type}, all fields already populated
+              </span>
+            </div>
+          ))}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  )
+}
+
 export function ImportResultBanner({ result, onDismiss }: ImportResultBannerProps) {
   const [errorsOpen, setErrorsOpen] = useState(false)
 
@@ -79,6 +118,7 @@ export function ImportResultBanner({ result, onDismiss }: ImportResultBannerProp
             </span>
           )}
         </div>
+        <SkipDetailsCollapsible result={result} />
       </div>
     )
   }
@@ -149,6 +189,8 @@ export function ImportResultBanner({ result, onDismiss }: ImportResultBannerProp
           </CollapsibleContent>
         </Collapsible>
       )}
+
+      <SkipDetailsCollapsible result={result} />
     </div>
   )
 }
