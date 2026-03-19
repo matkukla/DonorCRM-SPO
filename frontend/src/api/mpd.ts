@@ -115,3 +115,21 @@ export function formatMPDCurrency(value: string | null): string {
     maximumFractionDigits: 0,
   }).format(num)
 }
+
+/**
+ * Format months remaining value for display.
+ *
+ * - "infinite" or empty/null -> "N/A"
+ * - Whole numbers -> no decimal (e.g. "3")
+ * - Fractional -> 1 decimal place (e.g. "3.5")
+ */
+export function formatMonthsRemaining(value: string | null | undefined): string {
+  if (!value) return "--"
+  if (value.toLowerCase() === "infinite") return "N/A"
+  const num = parseFloat(value)
+  if (isNaN(num)) return "--"
+  if (!isFinite(num)) return "N/A"
+  // Round to 1 decimal; drop ".0" for whole numbers
+  const rounded = Math.round(num * 10) / 10
+  return rounded % 1 === 0 ? String(rounded) : rounded.toFixed(1)
+}

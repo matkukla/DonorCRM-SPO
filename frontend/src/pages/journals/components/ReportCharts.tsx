@@ -260,7 +260,7 @@ export function JournalReport({ journalId, goalAmount }: JournalReportProps) {
                     axisLine={false}
                   />
                   <YAxis allowDecimals={false} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <ChartTooltip isAnimationActive={false} content={<ChartTooltipContent />} />
                   <Bar dataKey="count" radius={4}>
                     {stageBarData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.fill} />
@@ -286,7 +286,7 @@ export function JournalReport({ journalId, goalAmount }: JournalReportProps) {
             {decisionDonutData.length > 0 ? (
               <ChartContainer config={decisionChartConfig} className="min-h-[300px] w-full">
                 <PieChart>
-                  <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+                  <ChartTooltip isAnimationActive={false} content={<ChartTooltipContent nameKey="name" />} />
                   <Pie
                     data={decisionDonutData}
                     dataKey="value"

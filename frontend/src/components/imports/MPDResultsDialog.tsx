@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/table"
 import { CheckCircle, AlertTriangle, FileSpreadsheet } from "lucide-react"
 import type { MPDUploadResult } from "@/api/mpd"
-import { formatMPDCurrency } from "@/api/mpd"
+import { formatMPDCurrency, formatMonthsRemaining } from "@/api/mpd"
 
 interface MPDResultsDialogProps {
   open: boolean
@@ -124,7 +124,7 @@ export function MPDResultsDialog({ open, onClose, result }: MPDResultsDialogProp
                         {formatMPDCurrency(row.latest_roll_forward_balance)}
                       </TableCell>
                       <TableCell className="text-right">
-                        {row.months_remaining_rf || "--"}
+                        {formatMonthsRemaining(row.months_remaining_rf)}
                       </TableCell>
                     </TableRow>
                   ))}

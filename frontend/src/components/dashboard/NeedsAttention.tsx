@@ -35,16 +35,16 @@ export function NeedsAttention({
 
   return (
     <Card>
-      <CardHeader className="p-4">
-        <div className="flex items-center gap-2">
-          <AlertTriangle className="h-5 w-5 text-amber-500 dark:text-amber-400" />
+      <CardHeader className="p-4 pl-7">
+        <div className="flex items-center gap-1.5">
+          <AlertTriangle className="h-4 w-4 text-amber-500 dark:text-amber-400 shrink-0" />
           <div>
             <CardTitle>Needs Attention</CardTitle>
             <CardDescription>Items requiring your action</CardDescription>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="px-4 pt-0 pb-4">
+      <CardContent className="px-4 pl-7 pt-0 pb-4">
         {isLoading ? (
           <div className="space-y-4">
             {[...Array(3)].map((_, i) => (
@@ -63,7 +63,7 @@ export function NeedsAttention({
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <CheckSquare className="h-4 w-4 text-red-600 dark:text-red-400" />
-                    <span className="font-medium text-red-900 dark:text-red-200">
+                    <span className="text-sm font-medium text-red-900 dark:text-red-200">
                       {overdueTaskCount} Overdue Task{overdueTaskCount !== 1 ? "s" : ""}
                     </span>
                   </div>
@@ -87,7 +87,7 @@ export function NeedsAttention({
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <Heart className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    <span className="font-medium text-blue-900 dark:text-blue-200">
+                    <span className="text-sm font-medium text-blue-900 dark:text-blue-200">
                       {thankYouCount} Thank You{thankYouCount !== 1 ? "s" : ""} Needed
                     </span>
                   </div>
