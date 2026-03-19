@@ -566,3 +566,182 @@ class TestImportREGiftsOwnerReassignment:
         assert contact.owner == admin1, (
             f"Expected owner to remain {admin1}, got {contact.owner}"
         )
+
+
+# ---------------------------------------------------------------------------
+# Recurring gift owner reassignment tests
+# ---------------------------------------------------------------------------
+
+@pytest.mark.django_db
+class TestImportRERecurringGiftsOwnerReassignment:
+    """Test that import_re_recurring_gifts reassigns contact owner
+    to the matched solicitor's user (mirrors gift import behavior)."""
+
+    @pytest.fixture
+    def admin1(self):
+        return AdminUserFactory(email='rg-admin1@test.com')
+
+    @pytest.fixture
+    def missionary(self):
+        return UserFactory(email='rg-missionary@test.com')
+
+    def test_recurring_gift_reassigns_contact_owner_from_admin(
+        self, admin1, missionary,
+    ):
+        """Contact owned by admin should be reassigned to missionary when
+        recurring gifts are imported with a solicitor linked to that missionary."""
+        contact = Contact.objects.create(
+            owner=admin1,
+            external_constituent_id='C-RGREOWN-01',
+            first_name='Recurring',
+            last_name='Donor',
+        )
+        Solicitor.objects.create(
+            normalized_name='doe, john',
+            external_solicitor_id='SOL-RGREOWN-01',
+            user=missionary,
+        )
+        csv_data = _to_bytes(
+            'Gift_ID,Constituent_ID,Amount,Frequency,Start_Date,Status,'
+            'Solicitor_Name,Credit_Amount\n'
+            'RG-REOWN-01,C-RGREOWN-01,200.00,Monthly,2025-01-01,Active,'
+            '"Doe, John",200.00\n'
+        )
+        batch = import_re_recurring_gifts(csv_data, 'rg_reown.csv', admin1, admin1)
+        assert batch.status == ImportBatchStatus.COMPLETED
+        contact.refresh_from_db()
+        assert contact.owner == missionary, (
+            f"Expected owner={missionary}, got {contact.owner}"
+        )
+
+    def test_recurring_gift_no_reassign_if_already_missionary(
+        self, admin1, missionary,
+    ):
+        """Contact already owned by a missionary should NOT be reassigned."""
+        Solicitor.objects.create(
+            normalized_name='existing, missionary',
+            external_solicitor_id='SOL-RGEXIST-01',
+            user=missionary,
+        )
+        contact = Contact.objects.create(
+            owner=missionary,
+            external_constituent_id='C-RGEXIST-01',
+            first_name='Already',
+            last_name='Missionary',
+        )
+        other_missionary = UserFactory(email='rg-other@test.com')
+        Solicitor.objects.create(
+            normalized_name='other, solicitor',
+            external_solicitor_id='SOL-RGOTHER-01',
+            user=other_missionary,
+        )
+        csv_data = _to_bytes(
+            'Gift_ID,Constituent_ID,Amount,Frequency,Start_Date,Status,'
+            'Solicitor_Name,Credit_Amount\n'
+            'RG-EXIST-01,C-RGEXIST-01,150.00,Monthly,2025-01-01,Active,'
+            '"Other, Solicitor",150.00\n'
+        )
+        batch = import_re_recurring_gifts(csv_data, 'rg_exist.csv', admin1, admin1)
+        assert batch.status == ImportBatchStatus.COMPLETED
+        contact.refresh_from_db()
+        assert contact.owner == missionary, (
+            f"Expected owner to remain {missionary}, got {contact.owner}"
+        )
+
+    def test_recurring_gift_no_reassign_if_solicitor_unlinked(self, admin1):
+        """If solicitor has no linked user, contact stays with admin."""
+        contact = Contact.objects.create(
+            owner=admin1,
+            external_constituent_id='C-RGUNLINK-01',
+            first_name='Unlinked',
+            last_name='Solicitor',
+        )
+        Solicitor.objects.create(
+            normalized_name='doe, john',
+            external_solicitor_id='SOL-RGUNLINK-01',
+            user=None,  # Not linked to any user
+        )
+        csv_data = _to_bytes(
+            'Gift_ID,Constituent_ID,Amount,Frequency,Start_Date,Status,'
+            'Solicitor_Name,Credit_Amount\n'
+            'RG-UNLINK-01,C-RGUNLINK-01,100.00,Monthly,2025-01-01,Active,'
+            '"Doe, John",100.00\n'
+        )
+        batch = import_re_recurring_gifts(csv_data, 'rg_unlink.csv', admin1, admin1)
+        assert batch.status == ImportBatchStatus.COMPLETED
+        contact.refresh_from_db()
+        assert contact.owner == admin1, (
+            f"Expected owner to remain {admin1}, got {contact.owner}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Constituent import skip details tests
+# ---------------------------------------------------------------------------
+
+@pytest.mark.django_db
+class TestConstituentSkipDetails:
+    """Test that skipped_details are included in constituent import summary."""
+
+    def test_skip_fully_populated_includes_details(self, admin_user, staff_user):
+        """When all fields are already populated, skip details include reason and match_type."""
+        Contact.objects.create(
+            owner=staff_user,
+            external_constituent_id='C-SKIP-01',
+            first_name='Alice',
+            last_name='Johnson',
+            email='alice@example.com',
+            phone='555-0001',
+            street_address='123 Main St',
+            city='Anytown',
+            state='CA',
+            postal_code='90210',
+            country='US',
+        )
+        csv_data = _to_bytes(
+            'Constituent_ID,First_Name,Last_Name,Email,Phone,'
+            'Address,City,State,ZIP,Country\n'
+            'C-SKIP-01,Alice,Johnson,alice@example.com,555-0001,'
+            '123 Main St,Anytown,CA,90210,US\n'
+        )
+        batch = import_re_constituents(csv_data, 'skip.csv', admin_user, staff_user)
+        assert batch.status == ImportBatchStatus.COMPLETED
+        assert batch.skipped_count == 1
+        assert batch.created_count == 0
+        details = batch.summary['skipped_details']
+        assert len(details) == 1
+        assert details[0]['reason'] == 'all_fields_populated'
+        assert details[0]['match_type'] == 'constituent_id'
+        assert details[0]['contact_name'] == 'Alice Johnson'
+        assert details[0]['constituent_id'] == 'C-SKIP-01'
+
+    def test_merge_partial_no_skip_details(self, admin_user, staff_user):
+        """When merge fills blank fields, no skip details are recorded."""
+        Contact.objects.create(
+            owner=staff_user,
+            external_constituent_id='C-MERGE-01',
+            first_name='Bob',
+            last_name='Williams',
+            email='',  # blank -- will be filled
+        )
+        csv_data = _to_bytes(
+            'Constituent_ID,First_Name,Last_Name,Email\n'
+            'C-MERGE-01,Bob,Williams,bob@example.com\n'
+        )
+        batch = import_re_constituents(csv_data, 'merge.csv', admin_user, staff_user)
+        assert batch.status == ImportBatchStatus.COMPLETED
+        assert batch.updated_count == 1
+        assert batch.skipped_count == 0
+        assert batch.summary['skipped_details'] == []
+
+    def test_no_skips_empty_details(self, admin_user, staff_user):
+        """Fresh import with no pre-existing contacts has empty skipped_details."""
+        csv_data = _to_bytes(
+            'Constituent_ID,First_Name,Last_Name,Email\n'
+            'C-NEW-01,Charlie,Brown,charlie@example.com\n'
+        )
+        batch = import_re_constituents(csv_data, 'fresh.csv', admin_user, staff_user)
+        assert batch.status == ImportBatchStatus.COMPLETED
+        assert batch.created_count == 1
+        assert batch.skipped_count == 0
+        assert batch.summary['skipped_details'] == []
