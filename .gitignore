@@ -93,7 +93,6 @@ credentials.json
 
 # Claude Code local config and skills
 .claude/
-.planning/
 
 # Local test data
 test_data/
