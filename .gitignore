@@ -93,9 +93,11 @@ credentials.json
 
 # Claude Code local config and skills
 .claude/
+.planning/
 
 # Local test data
 test_data/
+prompts/
 prompts/roles.md
 prompts/CSV_import_system_1.md
 prompts/CSV_import_system_2.md
@@ -115,3 +117,5 @@ test_data/transactions.csv
 test_data/pledges.csv
 test_data/funds.csv
 test_data/entities.csv
+SYSTEM_README.md
+bug_list.csv
