@@ -728,6 +728,7 @@ def import_re_constituents(
     # Step 4: Iterate rows with error collection
     errors: list[dict] = []
     warnings: list[dict] = []
+    skipped_details: list[dict] = []
     created_count = 0
     updated_count = 0
     skipped_count = 0
@@ -783,6 +784,13 @@ def import_re_constituents(
                             updated_count += 1
                         else:
                             skipped_count += 1
+                            skipped_details.append({
+                                'row': row_number,
+                                'reason': 'all_fields_populated',
+                                'match_type': match_type,
+                                'contact_name': f'{contact.first_name} {contact.last_name}'.strip(),
+                                'constituent_id': ext_id,
+                            })
 
                         # Record warnings for ID match conflicts
                         if match_type == 'constituent_id':
@@ -870,6 +878,7 @@ def import_re_constituents(
         summary={
             'errors': errors,
             'warnings': warnings,
+            'skipped_details': skipped_details,
         },
     )
 
@@ -1836,6 +1845,26 @@ def import_re_recurring_gifts(
                             solicitor=solicitor,
                             amount_cents=credit_amount,
                         )
+
+                    # Reassign contact owner to first resolved solicitor's user.
+                    # Mirror of the same logic in import_re_gifts() (one-time gifts).
+                    # Only reassign if the contact is not already owned by a
+                    # linked missionary (i.e. the owner has a Solicitor record).
+                    contact_owner_is_missionary = Solicitor.objects.filter(
+                        user=contact.owner,
+                    ).exists()
+                    if not contact_owner_is_missionary:
+                        for row in rows:
+                            sol_name = row.get('solicitor_name', '')
+                            if not sol_name:
+                                continue
+                            sol = solicitor_lookup.get(
+                                normalize_solicitor_name(sol_name),
+                            )
+                            if sol and sol.user_id:
+                                contact.owner = sol.user
+                                contact.save(update_fields=['owner'])
+                                break
 
                     # Extract prayer intention from recurring gift (no Gift M2M link)
                     prayer_text = first_row.get('prayer_description', '').strip()
