@@ -56,6 +56,10 @@ const LateDonations = React.lazy(() => import("@/pages/insights/LateDonations"))
 const FollowUps = React.lazy(() => import("@/pages/insights/FollowUps"))
 const Transactions = React.lazy(() => import("@/pages/insights/Transactions"))
 
+// Lazy-loaded MPD Resources pages
+const LinksPage = React.lazy(() => import("@/pages/mpd-resources/LinksPage"))
+const PacingCalculatorPage = React.lazy(() => import("@/pages/mpd-resources/PacingCalculatorPage"))
+
 /**
  * Loading fallback shown inside the app layout while lazy chunks load.
  */
@@ -135,6 +139,10 @@ function App() {
                   <Route path="/insights/follow-ups" element={<ProtectedPage><FollowUps /></ProtectedPage>} />
                   <Route path="/insights/review-queue" element={<Navigate to="/admin/analytics/dashboard" replace />} />
                   <Route path="/insights/transactions" element={<ProtectedPage requiredRole="admin"><Transactions /></ProtectedPage>} />
+
+                  {/* MPD Resources routes */}
+                  <Route path="/mpd-resources/links" element={<ProtectedPage><LinksPage /></ProtectedPage>} />
+                  <Route path="/mpd-resources/pacing" element={<ProtectedPage><PacingCalculatorPage /></ProtectedPage>} />
 
                   <Route path="/settings" element={<ProtectedPage><Settings /></ProtectedPage>} />
                   <Route path="/admin" element={<ProtectedPage requiredRole="admin"><AdminUsers /></ProtectedPage>} />
