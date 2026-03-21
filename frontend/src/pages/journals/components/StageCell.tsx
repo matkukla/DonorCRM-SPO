@@ -1,6 +1,7 @@
 import * as React from "react"
-import { Check, Square } from "lucide-react"
-import { formatDistanceToNow } from "date-fns"
+import { useState } from "react"
+import { CalendarDays, Check, Square } from "lucide-react"
+import { format, formatDistanceToNow, parseISO } from "date-fns"
 import { Badge } from "@/components/ui/badge"
 import {
   Tooltip,
@@ -12,6 +13,7 @@ import type { StageEventSummary, PipelineStage, StageEventType } from "@/types/j
 import { getFreshnessColor, STAGE_LABELS } from "@/types/journals"
 import { useCreateStageEvent, useDeleteStageEventsByStage } from "@/hooks/useJournals"
 import { useViewAs } from "@/providers/ViewAsProvider"
+import { LogEventDialog } from "./LogEventDialog"
 
 /**
  * Get the highest pipeline stage that has events.
@@ -20,7 +22,7 @@ import { useViewAs } from "@/providers/ViewAsProvider"
 export function getHighestStageWithEvents(
   stageEvents: Record<PipelineStage, StageEventSummary>
 ): PipelineStage | null {
-  const stages: PipelineStage[] = ['next_steps', 'thank', 'decision', 'close', 'meet', 'contact']
+  const stages: PipelineStage[] = ['next_steps', 'thank', 'decision', 'close', 'meet', 'scheduled', 'contact']
   for (const stage of stages) {
     if (stageEvents[stage]?.has_events) {
       return stage
@@ -36,6 +38,7 @@ export function getHighestStageWithEvents(
 function getDefaultEventType(stage: PipelineStage): StageEventType {
   const defaults: Record<PipelineStage, StageEventType> = {
     contact: 'call_logged',
+    scheduled: 'meeting_scheduled',
     meet: 'meeting_completed',
     close: 'ask_made',
     decision: 'decision_received',
@@ -77,10 +80,21 @@ export const StageCell = React.memo<StageCellProps>(
     const { mutate: createEvent, isPending: isCreating } = useCreateStageEvent()
     const { mutate: deleteEvents, isPending: isDeleting } = useDeleteStageEventsByStage()
     const { isViewingAs } = useViewAs()
+    const [logEventOpen, setLogEventOpen] = useState(false)
     const isPending = isCreating || isDeleting
 
     const handleClick = React.useCallback(() => {
       if (isViewingAs) return
+      if (stage === 'scheduled') {
+        if (!eventSummary.has_events) {
+          // D-10: Always open dialog for scheduled (date input required)
+          setLogEventOpen(true)
+        } else {
+          // Uncheck: delete events (same as other stages)
+          deleteEvents({ journalContactId, stage })
+        }
+        return
+      }
       if (!eventSummary.has_events) {
         // JRNL-08: Instant toggle -- auto-create stage event, no dialog
         createEvent({
@@ -96,6 +110,30 @@ export const StageCell = React.memo<StageCellProps>(
 
     // Empty state - no events logged for this stage
     if (!eventSummary.has_events) {
+      if (stage === 'scheduled') {
+        return (
+          <>
+            <button
+              onClick={handleClick}
+              disabled={isPending}
+              className="h-10 w-10 flex items-center justify-center rounded hover:bg-muted/50 transition-colors disabled:opacity-50"
+              aria-label="Scheduled - Click to schedule a meeting"
+            >
+              {isPending ? (
+                <div className="h-5 w-5 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <CalendarDays className="h-5 w-5 text-muted-foreground/40" />
+              )}
+            </button>
+            <LogEventDialog
+              open={logEventOpen}
+              onOpenChange={setLogEventOpen}
+              journalContactId={journalContactId}
+              stage="scheduled"
+            />
+          </>
+        )
+      }
       return (
         <button
           onClick={handleClick}
@@ -109,6 +147,54 @@ export const StageCell = React.memo<StageCellProps>(
             <Square className="h-5 w-5 text-muted-foreground" />
           )}
         </button>
+      )
+    }
+
+    // Scheduled stage with events - show calendar icon with date label
+    if (stage === 'scheduled' && eventSummary.has_events) {
+      const scheduledDate = eventSummary.scheduled_date
+      return (
+        <TooltipProvider>
+          <Tooltip delayDuration={300}>
+            <TooltipTrigger asChild>
+              <button
+                onClick={handleClick}
+                disabled={isPending}
+                className="h-10 w-10 flex items-center justify-center rounded hover:bg-muted/50 transition-colors disabled:opacity-50"
+                aria-label="Scheduled - Click to uncheck"
+              >
+                {isPending ? (
+                  <div className="h-5 w-5 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <div className="flex flex-col items-center gap-0.5">
+                    <CalendarDays className="h-4 w-4 text-primary" />
+                    {scheduledDate && (
+                      <span className="text-[10px] text-muted-foreground leading-none">
+                        {format(parseISO(scheduledDate), 'MMM d')}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-xs">
+              <p className="text-sm font-medium">Meeting Scheduled</p>
+              {scheduledDate && (
+                <p className="text-xs text-muted-foreground">
+                  {format(parseISO(scheduledDate), 'MMM d, yyyy')}
+                </p>
+              )}
+              {eventSummary.last_event_notes && (
+                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                  {eventSummary.last_event_notes}
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground mt-1">
+                {eventSummary.event_count} event{eventSummary.event_count !== 1 ? 's' : ''} total
+              </p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       )
     }
 
