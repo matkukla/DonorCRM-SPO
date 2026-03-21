@@ -123,6 +123,8 @@ export default function PacingCalculatorPage() {
               approximately {callsNeeded} calls and {meetingsNeeded} meetings{goalWeeks > 0 && (
                 <> ({callsPerWeek} calls and {meetingsPerWeek} meetings per week over {goalWeeks} weeks)</>
               )}.
+            </p>
+          )}
         </CardContent>
       </Card>
 
