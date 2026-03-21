@@ -3,17 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { useGoalData } from "@/hooks/useGoal"
 import { useViewAs } from "@/providers/ViewAsProvider"
+import { computePacingTargets } from "@/lib/pacing"
 
 // ---------------------------------------------------------------------------
-// Constants
+// Helpers
 // ---------------------------------------------------------------------------
-
-const PACING_CONFIG = {
-  AVG_GIFT_AMOUNT: 80,
-  CALLS_PER_PARTNER: 9,
-  CONVOS_PER_PARTNER: 3,
-  APPTS_PER_PARTNER: 1.5,
-} as const
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -29,13 +23,24 @@ function formatCurrency(dollars: number): string {
 // PacingTile sub-component
 // ---------------------------------------------------------------------------
 
-function PacingTile({ label, value }: { label: string; value: string }) {
+function PacingTile({
+  label,
+  value,
+  subtitle,
+}: {
+  label: string
+  value: string
+  subtitle?: string
+}) {
   return (
     <div className="rounded-lg border bg-card p-4">
       <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
         {label}
       </p>
       <p className="text-2xl font-bold mt-1">{value}</p>
+      {subtitle && (
+        <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
+      )}
     </div>
   )
 }
@@ -48,32 +53,16 @@ export default function PacingCalculatorPage() {
   const { data: goalData, isLoading } = useGoalData()
   const { isViewingAs } = useViewAs()
 
-  // Pacing computations
   const goalCents = goalData?.monthly_support_goal_cents ?? 0
   const goalDollarsNum = goalCents / 100
+  const goalWeeks = goalData?.goal_weeks ?? 0
   const pacingDisabled = goalCents === 0
 
-  const partnersNeeded = pacingDisabled
-    ? null
-    : Math.ceil(goalDollarsNum / PACING_CONFIG.AVG_GIFT_AMOUNT)
-  const callsNeeded =
-    partnersNeeded !== null
-      ? Math.round(partnersNeeded * PACING_CONFIG.CALLS_PER_PARTNER)
-      : null
-  const convosNeeded =
-    partnersNeeded !== null
-      ? Math.round(partnersNeeded * PACING_CONFIG.CONVOS_PER_PARTNER)
-      : null
-  const apptsNeeded =
-    partnersNeeded !== null
-      ? Math.round(partnersNeeded * PACING_CONFIG.APPTS_PER_PARTNER)
-      : null
-  const apptsPerWeek =
-    apptsNeeded !== null && (goalData?.goal_weeks ?? 0) > 0
-      ? Math.ceil(apptsNeeded / goalData!.goal_weeks)
-      : null
+  const { callsNeeded, meetingsNeeded, callsPerWeek, meetingsPerWeek } =
+    computePacingTargets(goalCents, goalWeeks)
 
-  const fmt = (val: number | null) => (val !== null ? String(val) : "\u2014")
+  const callsMade = goalData?.calls_count ?? 0
+  const meetingsHeld = goalData?.meetings_count ?? 0
 
   // Loading state
   if (isLoading) {
@@ -105,10 +94,24 @@ export default function PacingCalculatorPage() {
           className={cn(pacingDisabled && "opacity-40 pointer-events-none")}
         >
           <div className="grid gap-4 sm:grid-cols-2">
-            <PacingTile label="Partners Needed" value={fmt(partnersNeeded)} />
-            <PacingTile label="Calls Needed" value={fmt(callsNeeded)} />
-            <PacingTile label="Appointments Needed" value={fmt(apptsNeeded)} />
-            <PacingTile label="Appointments / Week" value={fmt(apptsPerWeek)} />
+            <PacingTile
+              label="Calls Needed"
+              value={pacingDisabled ? "\u2014" : String(callsNeeded)}
+              subtitle={pacingDisabled ? undefined : `${callsMade} made`}
+            />
+            <PacingTile
+              label="Meetings Needed"
+              value={pacingDisabled ? "\u2014" : String(meetingsNeeded)}
+              subtitle={pacingDisabled ? undefined : `${meetingsHeld} completed`}
+            />
+            <PacingTile
+              label="Calls / Week"
+              value={pacingDisabled || callsPerWeek === 0 ? "\u2014" : String(callsPerWeek)}
+            />
+            <PacingTile
+              label="Meetings / Week"
+              value={pacingDisabled || meetingsPerWeek === 0 ? "\u2014" : String(meetingsPerWeek)}
+            />
           </div>
           {pacingDisabled ? (
             <p className="text-xs text-muted-foreground mt-3">
@@ -116,27 +119,24 @@ export default function PacingCalculatorPage() {
             </p>
           ) : (
             <p className="text-xs text-muted-foreground mt-3">
-              Based on your {formatCurrency(goalDollarsNum)} goal, we estimate
-              you need about {fmt(partnersNeeded)} mission partners, which means
-              approximately {fmt(callsNeeded)} calls and {fmt(apptsNeeded)}{" "}
-              appointments.
+              Based on your {formatCurrency(goalDollarsNum)} goal, you need
+              approximately {callsNeeded} calls and {meetingsNeeded} meetings
+              {goalWeeks > 0 && (
+                <> ({callsPerWeek} calls and {meetingsPerWeek} meetings per week over {goalWeeks} weeks)</>
+              )}
+              .
             </p>
           )}
         </CardContent>
       </Card>
 
-      {/* Additional context card */}
-      {!pacingDisabled && convosNeeded !== null && (
+      {/* Progress context card */}
+      {!pacingDisabled && (callsMade > 0 || meetingsHeld > 0) && (
         <Card>
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">
-              Of those {fmt(callsNeeded)} calls, you should aim for roughly{" "}
-              {fmt(convosNeeded)} connected conversations that lead to{" "}
-              {fmt(apptsNeeded)} appointments
-              {apptsPerWeek !== null && (
-                <> ({fmt(apptsPerWeek)} per week over {goalData?.goal_weeks} weeks)</>
-              )}
-              .
+              You&apos;ve made {callsMade} of {callsNeeded} calls and completed{" "}
+              {meetingsHeld} of {meetingsNeeded} meetings so far.
             </p>
           </CardContent>
         </Card>
