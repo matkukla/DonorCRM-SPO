@@ -5,7 +5,7 @@ milestone_name: Goal Tracking & View As
 status: executing
 stopped_at: Completed 53-03-PLAN.md
 last_updated: "2026-03-17T07:27:08.157Z"
-last_activity: 2026-03-21 - Completed quick task 260321-e71: add MPD Resources sidebar section
+last_activity: 2026-03-21 - Phase 55 planned (3 plans, 2 waves)
 progress:
   total_phases: 7
   completed_phases: 4
@@ -124,6 +124,10 @@ Recent decisions relevant to v2.3:
 - [Phase 53-02]: effectiveMpdData = mpdData directly — X-View-As-User-Id header scopes MPD server-side, no client-side missionary lookup needed
 - [Phase 53]: [53-03]: StageCell and EventTimelineDrawer use useViewAs() directly inside the component rather than via props — avoids prop drilling through JournalGrid intermediary
 - [Phase 53]: [53-03]: ContactDetail/DonationDetail isReadOnly extended as isViewingAs || existingCondition — existing !isReadOnly guards cover all mutations automatically
+
+### Roadmap Evolution
+
+- Phase 55 added: Add Scheduled pipeline stage to journal system
 
 ### Pending Todos
 
