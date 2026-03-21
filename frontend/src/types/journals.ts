@@ -6,6 +6,7 @@
 /** Pipeline stages matching PipelineStage Django TextChoices */
 export type PipelineStage =
   | 'contact'
+  | 'scheduled'
   | 'meet'
   | 'close'
   | 'decision'
@@ -80,6 +81,7 @@ export interface StageEventSummary {
   last_event_date: string | null
   last_event_type: StageEventType | null
   last_event_notes: string | null
+  scheduled_date?: string | null
 }
 
 /** Stage event from API */
@@ -179,6 +181,7 @@ export function getFreshnessColor(lastEventDate: string | null): FreshnessColor 
 /** Human-readable stage labels */
 export const STAGE_LABELS: Record<PipelineStage, string> = {
   contact: 'Contact',
+  scheduled: 'Scheduled',
   meet: 'Meet',
   close: 'Close',
   decision: 'Decision',
@@ -189,6 +192,7 @@ export const STAGE_LABELS: Record<PipelineStage, string> = {
 /** Ordered list of stages for grid columns */
 export const PIPELINE_STAGES: PipelineStage[] = [
   'contact',
+  'scheduled',
   'meet',
   'close',
   'decision',
@@ -238,12 +242,16 @@ export interface StageTransitionCheck {
 /** Stage order for transition checking */
 export const STAGE_ORDER: Record<PipelineStage, number> = {
   contact: 1,
-  meet: 2,
-  close: 3,
-  decision: 4,
-  thank: 5,
-  next_steps: 6,
+  scheduled: 2,
+  meet: 3,
+  close: 4,
+  decision: 5,
+  thank: 6,
+  next_steps: 7,
 }
+
+/** Stages that can be skipped without triggering a warning */
+const OPTIONAL_STAGES: PipelineStage[] = ['scheduled']
 
 /**
  * Check if a stage transition is sequential.
@@ -273,10 +281,14 @@ export function checkStageTransition(
   // Skipping forward
   if (targetOrder > currentOrder + 1) {
     const skipped = Object.entries(STAGE_ORDER)
-      .filter(([_, order]) => order > currentOrder && order < targetOrder)
+      .filter(([stage, order]) =>
+        order > currentOrder &&
+        order < targetOrder &&
+        !OPTIONAL_STAGES.includes(stage as PipelineStage)
+      )
       .map(([stage]) => STAGE_LABELS[stage as PipelineStage])
     return {
-      isSequential: false,
+      isSequential: skipped.length === 0,
       skippedStages: skipped,
       isRevisiting: false,
     }
@@ -295,6 +307,7 @@ export interface DecisionTrendItem {
 export interface StageActivityItem {
   date: string  // 'YYYY-MM'
   contact: number
+  scheduled: number
   meet: number
   close: number
   decision: number
