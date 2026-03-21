@@ -10,6 +10,7 @@ import { GoalProgressBar } from "@/components/goal/GoalProgressBar"
 import { useJournals } from "@/hooks/useJournals"
 import { useAuth } from "@/providers/AuthProvider"
 import { useViewAs } from "@/providers/ViewAsProvider"
+import { computePacingTargets } from "@/lib/pacing"
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -75,18 +76,18 @@ export default function GoalPage() {
   }, [goalData])
 
   // ---------------------------------------------------------------------------
-  // Pacing computations (shared by Progress card and Pacing Targets card)
+  // Progress computations
   // ---------------------------------------------------------------------------
 
   const goalCents = goalData?.monthly_support_goal_cents ?? 0
 
-  // ---------------------------------------------------------------------------
-  // Progress computations
-  // ---------------------------------------------------------------------------
-
   const supportPct = goalCents > 0 && goalData
     ? Math.round((goalData.effective_monthly_support / (goalCents / 100)) * 100)
     : 0
+
+  const { callsNeeded, meetingsNeeded } = computePacingTargets(goalCents, goalData?.goal_weeks ?? 0)
+  const callsPct = callsNeeded > 0 ? Math.round(((goalData?.calls_count ?? 0) / callsNeeded) * 100) : 0
+  const meetingsPct = meetingsNeeded > 0 ? Math.round(((goalData?.meetings_count ?? 0) / meetingsNeeded) * 100) : 0
 
   const emptyState = !goalData?.monthly_support_goal_cents
     ? "no_goal"
@@ -285,24 +286,54 @@ export default function GoalPage() {
             )}
           </div>
 
-          {/* Row 2 — Calls / Conversations (read-only count from server) */}
+          {/* Row 2 — Calls */}
           <div className="space-y-1">
             <div className="flex items-center justify-between text-sm font-medium">
-              <span>Calls / Conversations</span>
+              <span>Calls</span>
               <span className="text-muted-foreground tabular-nums">
-                {goalData?.calls_count ?? 0}
+                {goalData && callsNeeded > 0 ? `${goalData.calls_count} / ${callsNeeded}` : "— / —"}
               </span>
             </div>
+            <GoalProgressBar
+              value={callsPct}
+              disabled={!!emptyState}
+              label="Calls progress"
+            />
+            {emptyState === "no_goal" && (
+              <p className="text-xs text-muted-foreground">
+                Set a goal amount above to see your calls progress
+              </p>
+            )}
+            {emptyState === "no_journals" && (
+              <p className="text-xs text-muted-foreground">
+                Select journals above to see your calls progress
+              </p>
+            )}
           </div>
 
-          {/* Row 3 — Appointments (read-only count from server) */}
+          {/* Row 3 — Meetings */}
           <div className="space-y-1">
             <div className="flex items-center justify-between text-sm font-medium">
-              <span>Appointments</span>
+              <span>Meetings</span>
               <span className="text-muted-foreground tabular-nums">
-                {goalData?.meetings_count ?? 0}
+                {goalData && meetingsNeeded > 0 ? `${goalData.meetings_count} / ${meetingsNeeded}` : "— / —"}
               </span>
             </div>
+            <GoalProgressBar
+              value={meetingsPct}
+              disabled={!!emptyState}
+              label="Meetings progress"
+            />
+            {emptyState === "no_goal" && (
+              <p className="text-xs text-muted-foreground">
+                Set a goal amount above to see your meetings progress
+              </p>
+            )}
+            {emptyState === "no_journals" && (
+              <p className="text-xs text-muted-foreground">
+                Select journals above to see your meetings progress
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
