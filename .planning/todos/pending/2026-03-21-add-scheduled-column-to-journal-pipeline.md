@@ -2,6 +2,9 @@
 created: 2026-03-21T03:16:02.649Z
 title: Add scheduled column to journal pipeline
 area: ui
+priority: P1
+source: "GitHub Issue #25 — Simple Fix #2 - Scheduled column in journal"
+backlog_ref: "Row 26"
 files:
   - apps/journals/models.py
   - apps/journals/views.py
