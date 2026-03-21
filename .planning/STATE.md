@@ -127,7 +127,7 @@ Recent decisions relevant to v2.3:
 
 ### Pending Todos
 
-20 pending todo(s). See `.planning/todos/pending/`.
+21 pending todo(s). See `.planning/todos/pending/`.
 
 ### Blockers/Concerns
 
