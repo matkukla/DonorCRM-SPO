@@ -46,6 +46,7 @@ interface JournalReportProps {
 const stageChartConfig = {
   count: { label: "Contacts" },
   contact: { label: "Contact", color: "hsl(var(--chart-1))" },
+  scheduled: { label: "Scheduled", color: "hsl(200 60% 50%)" },
   meet: { label: "Meet", color: "hsl(var(--chart-2))" },
   close: { label: "Close", color: "hsl(var(--chart-3))" },
   decision: { label: "Decision", color: "hsl(var(--chart-4))" },
@@ -55,6 +56,7 @@ const stageChartConfig = {
 
 const STAGE_COLOR_MAP: Record<string, string> = {
   contact: "hsl(var(--chart-1))",
+  scheduled: "hsl(200 60% 50%)",
   meet: "hsl(var(--chart-2))",
   close: "hsl(var(--chart-3))",
   decision: "hsl(var(--chart-4))",
