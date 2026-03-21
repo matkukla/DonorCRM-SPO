@@ -5,7 +5,7 @@ milestone_name: Goal Tracking & View As
 status: executing
 stopped_at: Completed 53-03-PLAN.md
 last_updated: "2026-03-17T07:27:08.157Z"
-last_activity: 2026-03-18 - Completed quick task 260318-gc8: check test_data mapping
+last_activity: 2026-03-21 - Completed quick task 260321-e71: add MPD Resources sidebar section
 progress:
   total_phases: 7
   completed_phases: 4
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-03-12)
 Phase: 48 of 53 (MPD Dashboard Enhancements)
 Plan: 02 of 2 (next to execute)
 Status: Executing — Plan 01 complete, Plan 02 pending
-Last activity: 2026-03-18 - Completed quick task 260318-gc8: check test_data mapping
+Last activity: 2026-03-21 - Completed quick task 260321-e71: add MPD Resources sidebar section
 
 Progress: [█░░░░░░░░░] 8% — 0/6 phases, 1/2 plans (phase 48)
 
@@ -138,9 +138,10 @@ Recent decisions relevant to v2.3:
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260318-gc8 | check all the files in the test_data folder and make sure all the data in them will get mapped to the application correctly | 2026-03-18 | 53a8b34 | [260318-gc8-check-all-the-files-in-the-test-data-fol](./quick/260318-gc8-check-all-the-files-in-the-test-data-fol/) |
+| 260321-e71 | Add MPD Resources sidebar section with Links and Pacing Calculator pages | 2026-03-21 | c12ee1d | [260321-e71-add-mpd-resources-sidebar-section-with-l](./quick/260321-e71-add-mpd-resources-sidebar-section-with-l/) |
 
 ## Session Continuity
 
-Last session: 2026-03-17T07:27:08.138Z
-Stopped at: Completed 53-03-PLAN.md
+Last session: 2026-03-21T09:19:38Z
+Stopped at: Completed quick task 260321-e71
 Resume: Plan Phase 49 with `/gsd:plan-phase 49`
