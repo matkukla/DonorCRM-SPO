@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Loader2, ShieldCheck, CheckCircle } from "lucide-react"
-import { cn } from "@/lib/utils"
 import { useGoalData, useUpdateGoal } from "@/hooks/useGoal"
 import { GoalProgressBar } from "@/components/goal/GoalProgressBar"
 import { useJournals } from "@/hooks/useJournals"
@@ -15,13 +14,6 @@ import { useViewAs } from "@/providers/ViewAsProvider"
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
-
-const PACING_CONFIG = {
-  AVG_GIFT_AMOUNT: 80,       // $80/month default gift per partner
-  CALLS_PER_PARTNER: 9,      // call attempts per potential partner
-  CONVOS_PER_PARTNER: 3,     // connected conversations per partner (Bar 2 target)
-  APPTS_PER_PARTNER: 1.5,    // appointments per partner (Bar 3 target)
-} as const
 
 const MILESTONE_MESSAGES: Record<number, string> = {
   0:   "Every journey starts with a first step — you've got this!",
@@ -47,19 +39,6 @@ const currencyFormatter = new Intl.NumberFormat("en-US", {
 
 function formatCurrency(dollars: number): string {
   return currencyFormatter.format(dollars)
-}
-
-// ---------------------------------------------------------------------------
-// PacingTile sub-component
-// ---------------------------------------------------------------------------
-
-function PacingTile({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border bg-card p-4">
-      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">{label}</p>
-      <p className="text-2xl font-bold mt-1">{value}</p>
-    </div>
-  )
 }
 
 // ---------------------------------------------------------------------------
@@ -100,18 +79,6 @@ export default function GoalPage() {
   // ---------------------------------------------------------------------------
 
   const goalCents = goalData?.monthly_support_goal_cents ?? 0
-  const goalDollarsNum = goalCents / 100
-  const pacingDisabled = goalCents === 0
-
-  const partnersNeeded = pacingDisabled ? null : Math.ceil(goalDollarsNum / PACING_CONFIG.AVG_GIFT_AMOUNT)
-  const callsNeeded    = partnersNeeded !== null ? Math.round(partnersNeeded * PACING_CONFIG.CALLS_PER_PARTNER) : null
-  const convosNeeded   = partnersNeeded !== null ? Math.round(partnersNeeded * PACING_CONFIG.CONVOS_PER_PARTNER) : null
-  const apptsNeeded    = partnersNeeded !== null ? Math.round(partnersNeeded * PACING_CONFIG.APPTS_PER_PARTNER) : null
-  const apptsPerWeek   = (apptsNeeded !== null && (goalData?.goal_weeks ?? 0) > 0)
-    ? Math.ceil(apptsNeeded / goalData!.goal_weeks)
-    : null
-
-  const fmt = (val: number | null) => val !== null ? String(val) : "—"
 
   // ---------------------------------------------------------------------------
   // Progress computations
@@ -318,19 +285,14 @@ export default function GoalPage() {
             )}
           </div>
 
-          {/* Row 2 — Calls / Convos (read-only count from server) */}
+          {/* Row 2 — Calls / Conversations (read-only count from server) */}
           <div className="space-y-1">
             <div className="flex items-center justify-between text-sm font-medium">
-              <span>Calls / Convos</span>
+              <span>Calls / Conversations</span>
               <span className="text-muted-foreground tabular-nums">
-                {goalData?.calls_count ?? 0} / {convosNeeded !== null ? convosNeeded : "—"}
+                {goalData?.calls_count ?? 0}
               </span>
             </div>
-            <GoalProgressBar
-              value={convosNeeded ? Math.round(((goalData?.calls_count ?? 0) / convosNeeded) * 100) : 0}
-              disabled={!goalData?.monthly_support_goal_cents}
-              label="Calls and conversations progress"
-            />
           </div>
 
           {/* Row 3 — Appointments (read-only count from server) */}
@@ -338,43 +300,10 @@ export default function GoalPage() {
             <div className="flex items-center justify-between text-sm font-medium">
               <span>Appointments</span>
               <span className="text-muted-foreground tabular-nums">
-                {goalData?.meetings_count ?? 0} / {apptsNeeded !== null ? apptsNeeded : "—"}
+                {goalData?.meetings_count ?? 0}
               </span>
             </div>
-            <GoalProgressBar
-              value={apptsNeeded ? Math.round(((goalData?.meetings_count ?? 0) / apptsNeeded) * 100) : 0}
-              disabled={!goalData?.monthly_support_goal_cents}
-              label="Appointments progress"
-            />
           </div>
-        </CardContent>
-      </Card>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* Pacing Targets Card                                                 */}
-      {/* ------------------------------------------------------------------ */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Pacing Targets</CardTitle>
-        </CardHeader>
-        <CardContent className={cn(pacingDisabled && "opacity-40 pointer-events-none")}>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <PacingTile label="Partners Needed" value={fmt(partnersNeeded)} />
-            <PacingTile label="Calls Needed" value={fmt(callsNeeded)} />
-            <PacingTile label="Appointments Needed" value={fmt(apptsNeeded)} />
-            <PacingTile label="Appointments / Week" value={fmt(apptsPerWeek)} />
-          </div>
-          {pacingDisabled ? (
-            <p className="text-xs text-muted-foreground mt-3">
-              Set a goal amount above to see pacing targets
-            </p>
-          ) : (
-            <p className="text-xs text-muted-foreground mt-3">
-              Based on your {formatCurrency(goalDollarsNum)} goal, we estimate you need about{" "}
-              {fmt(partnersNeeded)} mission partners, which means approximately {fmt(callsNeeded)}{" "}
-              calls and {fmt(apptsNeeded)} appointments.
-            </p>
-          )}
         </CardContent>
       </Card>
     </div>
