@@ -274,6 +274,18 @@ Plans:
 
 **Total:** 7 milestones shipped, 141 plans executed across 47 phases. v2.3 in progress (1/7 phases complete).
 
+### Phase 55: Add Scheduled pipeline stage to journal system
+
+**Goal:** Add a "Scheduled" pipeline stage between Contact and Meet with event logging, date/time metadata, calendar icon display, and analytics inclusion
+**Requirements**: D-01 through D-18 (from 55-CONTEXT.md)
+**Depends on:** Phase 54
+**Plans:** 3 plans (2 waves)
+
+Plans:
+- [ ] 55-01: Backend model, migration, serializer, views, tests (Wave 1)
+- [ ] 55-02: Frontend types, StageCell, JournalGrid (Wave 2)
+- [ ] 55-03: LogEventDialog, EventTimelineDrawer, ReportCharts (Wave 2)
+
 ---
 
-*Last updated: 2026-03-12 (Phase 49 planned — 4 plans; Phase 48 complete)*
+*Last updated: 2026-03-21 (Phase 55 planned — 3 plans)*
