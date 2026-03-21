@@ -299,6 +299,16 @@ export default function GoalPage() {
               disabled={!!emptyState}
               label="Calls progress"
             />
+            {emptyState === "no_goal" && (
+              <p className="text-xs text-muted-foreground">
+                Set a goal amount above to see your calls progress
+              </p>
+            )}
+            {emptyState === "no_journals" && (
+              <p className="text-xs text-muted-foreground">
+                Select journals above to see your calls progress
+              </p>
+            )}
           </div>
 
           {/* Row 3 — Meetings */}
@@ -314,6 +324,16 @@ export default function GoalPage() {
               disabled={!!emptyState}
               label="Meetings progress"
             />
+            {emptyState === "no_goal" && (
+              <p className="text-xs text-muted-foreground">
+                Set a goal amount above to see your meetings progress
+              </p>
+            )}
+            {emptyState === "no_journals" && (
+              <p className="text-xs text-muted-foreground">
+                Select journals above to see your meetings progress
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>

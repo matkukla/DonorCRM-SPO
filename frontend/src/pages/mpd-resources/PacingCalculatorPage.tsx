@@ -120,11 +120,9 @@ export default function PacingCalculatorPage() {
           ) : (
             <p className="text-xs text-muted-foreground mt-3">
               Based on your {formatCurrency(goalDollarsNum)} goal, you need
-              approximately {callsNeeded} calls and {meetingsNeeded} meetings
-              {goalWeeks > 0 && (
+              approximately {callsNeeded} calls and {meetingsNeeded} meetings{goalWeeks > 0 && (
                 <> ({callsPerWeek} calls and {meetingsPerWeek} meetings per week over {goalWeeks} weeks)</>
-              )}
-              .
+              )}.
             </p>
           )}
         </CardContent>
