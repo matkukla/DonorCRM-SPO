@@ -2,6 +2,9 @@
 created: 2026-03-21T03:17:38.210Z
 title: Add decisions progress bar to goal page
 area: ui
+priority: P1
+source: "GitHub Issue #26 — simple fix #3 - add progress bar for decisions into goal tab and journal goal in journals"
+backlog_ref: "Row 26"
 files:
   - apps/journals/models.py
   - apps/users/goal_services.py
