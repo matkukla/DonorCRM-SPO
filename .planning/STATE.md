@@ -2,16 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Goal Tracking & View As
-status: executing
-stopped_at: Completed 53-03-PLAN.md
-last_updated: "2026-03-17T07:27:08.157Z"
-last_activity: 2026-03-21 - Phase 55 planned (3 plans, 2 waves)
+status: unknown
+stopped_at: Completed 55-01-PLAN.md
+last_updated: "2026-03-21T23:13:16.136Z"
 progress:
-  total_phases: 7
+  total_phases: 8
   completed_phases: 4
-  total_plans: 22
-  completed_plans: 20
-  percent: 8
+  total_plans: 25
+  completed_plans: 21
 ---
 
 # Project State
@@ -21,20 +19,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-12)
 
 **Core value:** Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems, and leadership can proactively support their teams through cross-missionary analytics.
-**Current focus:** Phase 48 — MPD Dashboard Enhancements (ready to plan)
+**Current focus:** Phase 55 — add-scheduled-pipeline-stage-to-journal-system
 
 ## Current Position
 
-Phase: 48 of 53 (MPD Dashboard Enhancements)
-Plan: 02 of 2 (next to execute)
-Status: Executing — Plan 01 complete, Plan 02 pending
-Last activity: 2026-03-21 - Completed quick task 260321-e71: add MPD Resources sidebar section
-
-Progress: [█░░░░░░░░░] 8% — 0/6 phases, 1/2 plans (phase 48)
+Phase: 55 (add-scheduled-pipeline-stage-to-journal-system) — EXECUTING
+Plan: 2 of 3
 
 ## Performance Metrics
 
 **Velocity:**
+
 - Total plans completed: 141 (across v1.0–v2.2)
 - Total phases: 47 complete
 - Total milestones: 7 shipped
@@ -69,6 +64,7 @@ Progress: [█░░░░░░░░░] 8% — 0/6 phases, 1/2 plans (phase 4
 | Phase 53 P01 | 3min | 2 tasks | 6 files |
 | Phase 53-view-as-frontend P02 | 8min | 2 tasks | 3 files |
 | Phase 53 P03 | 10min | 2 tasks | 14 files |
+| Phase 55 P01 | 4min | 1 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -77,9 +73,11 @@ Progress: [█░░░░░░░░░] 8% — 0/6 phases, 1/2 plans (phase 4
 All decisions logged in PROJECT.md Key Decisions table.
 
 Recent decisions relevant to v2.3 (Phase 48):
+
 - [48-01]: monthly_average positioned after user_name and before current_mpd_cap in MPDOverviewView — matches intended table column order
 
 Recent decisions relevant to v2.3:
+
 - [quick-15]: get_support_progress() scoped to donor_contact__owner=user for all roles — Monthly Support Goal is personal
 - [Phase 47]: get_visible_user_ids() returns None sentinel for all-access roles — this sentinel will need to change under SCOPE-01 (admins default to own data)
 - [Phase 46]: supervised_users field name kept in CurrentUserSerializer — frontend uses it for supervisor and coach
@@ -124,6 +122,7 @@ Recent decisions relevant to v2.3:
 - [Phase 53-02]: effectiveMpdData = mpdData directly — X-View-As-User-Id header scopes MPD server-side, no client-side missionary lookup needed
 - [Phase 53]: [53-03]: StageCell and EventTimelineDrawer use useViewAs() directly inside the component rather than via props — avoids prop drilling through JournalGrid intermediary
 - [Phase 53]: [53-03]: ContactDetail/DonationDetail isReadOnly extended as isViewingAs || existingCondition — existing !isReadOnly guards cover all mutations automatically
+- [Phase 55]: SCHEDULED inserted between CONTACT and MEET, making 7-stage pipeline; migration is choices-only AlterField; goal services already exclude meeting_scheduled via inclusive allowlist
 
 ### Roadmap Evolution
 
@@ -146,6 +145,6 @@ Recent decisions relevant to v2.3:
 
 ## Session Continuity
 
-Last session: 2026-03-21T09:19:38Z
-Stopped at: Completed quick task 260321-e71
+Last session: 2026-03-21T23:13:16.132Z
+Stopped at: Completed 55-01-PLAN.md
 Resume: Plan Phase 49 with `/gsd:plan-phase 49`
