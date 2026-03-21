@@ -30,14 +30,14 @@ Missionaries can manage donor relationships efficiently, with accurate data impo
 - **Security:** Rate-limited auth (20/min demo mode), CSP headers (django-csp), authenticated API docs, security-scanned dependencies
 - **Roles:** missionary, supervisor (M2M scoped visibility), coach (M2M, contacts+journals only), admin — get_visible_user_ids() centralized helper
 - **Total milestones shipped:** 7 (v1.0, v1.1, v1.2, v1.3, v2.0, v2.1, v2.2)
-- **Total plans executed:** 141 across 47 phases
+- **Total plans executed:** 144 across 48 phases
 
 ### What's New in v2.2
 
 - UI polish: centered dialogs system-wide, "Potential Donor" rename, gift list Type column, analytics Review Queue and heatmap removed
 - Dashboard: bar/line chart toggle, cross-section drag-and-drop, tightened tile gaps, stale text removed
 - Journal report rebuilt: 4 metric cards, goal progress bar, Contacts by Stage and Decision Status charts, conditional alerts
-- Journal grid: single-click stage checkbox auto-creates event; Decision column between Close and Thank
+- Journal grid: single-click stage checkbox auto-creates event; Decision column between Close and Thank; Scheduled pipeline stage between Contact and Meet with calendar icon, date/time metadata, and analytics
 - Begin Prayer: dedicated "Begin Prayer" button launching expanded Focus Mode with intention selection dialog
 - Mission Supervisor role with scoped visibility → upgraded to M2M (multiple supervisors and coaches per missionary)
 - Roles Redesign: staff→missionary, mission_supervisor→supervisor, Coach role with financial data block
@@ -248,4 +248,4 @@ Missionaries can manage donor relationships efficiently, with accurate data impo
 | staff_users() in managers.py uses stale role='staff' (v2.2 tech debt) | Method appears unused in production; accepted as low-priority tech debt | ⚠️ Revisit |
 
 ---
-*Last updated: 2026-03-12 after v2.3 milestone started*
+*Last updated: 2026-03-21 after Phase 55 complete*
