@@ -19,7 +19,7 @@ import { STAGE_LABELS } from "@/types/journals"
  * Excludes 'decision' -- that stage is replaced by the DecisionCell card
  * positioned between Close and Thank per JRNL-07.
  */
-const STAGES_BEFORE_DECISION: PipelineStage[] = ['contact', 'meet', 'close']
+const STAGES_BEFORE_DECISION: PipelineStage[] = ['contact', 'scheduled', 'meet', 'close']
 const STAGES_AFTER_DECISION: PipelineStage[] = ['thank']
 
 export interface JournalGridProps {
@@ -77,7 +77,7 @@ export function JournalGrid({
 
   return (
     <div className="relative w-full overflow-x-auto border rounded-lg">
-      <Table className="min-w-[1100px]" aria-label="Journal grid">
+      <Table className="min-w-[1200px]" aria-label="Journal grid">
         <TableHeader>
           <TableRow className="bg-background">
             {/* Intersection cell: sticky both directions, highest z-index */}
