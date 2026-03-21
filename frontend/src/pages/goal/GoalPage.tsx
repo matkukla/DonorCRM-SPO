@@ -291,7 +291,7 @@ export default function GoalPage() {
             <div className="flex items-center justify-between text-sm font-medium">
               <span>Calls</span>
               <span className="text-muted-foreground tabular-nums">
-                {goalData ? `${goalData.calls_count} / ${callsNeeded}` : "— / —"}
+                {goalData && callsNeeded > 0 ? `${goalData.calls_count} / ${callsNeeded}` : "— / —"}
               </span>
             </div>
             <GoalProgressBar
@@ -316,7 +316,7 @@ export default function GoalPage() {
             <div className="flex items-center justify-between text-sm font-medium">
               <span>Meetings</span>
               <span className="text-muted-foreground tabular-nums">
-                {goalData ? `${goalData.meetings_count} / ${meetingsNeeded}` : "— / —"}
+                {goalData && meetingsNeeded > 0 ? `${goalData.meetings_count} / ${meetingsNeeded}` : "— / —"}
               </span>
             </div>
             <GoalProgressBar
