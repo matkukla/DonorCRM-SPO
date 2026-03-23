@@ -69,7 +69,8 @@ class AuditImportHealthSolicitorsTest(TestCase):
     def test_section1_near_miss_user_fullname(self):
         """Detects near-misses by comparing unlinked solicitor names to User full names."""
         # Unlinked solicitor with name very close to a User's full name
-        Solicitor.objects.create(normalized_name='Smith, Jon', user=None)
+        # Use "First Last" format so SequenceMatcher ratio >= 0.8
+        Solicitor.objects.create(normalized_name='Jon Smith', user=None)
 
         out = StringIO()
         call_command('audit_import_health', '--verbose', stdout=out)
