@@ -9,7 +9,7 @@ from django.db.models import Sum
 from apps.core.fiscal_year import fiscal_year_start, months_remaining
 from apps.core.gift_utils import _monthly_equivalent_aggregate
 from apps.gifts.models import Gift, RecurringGift, RecurringGiftStatus
-from apps.journals.models import JournalContact, JournalStageEvent
+from apps.journals.models import Decision, Journal, JournalContact, JournalStageEvent
 from apps.users.models import GoalJournalSelection
 
 
@@ -97,4 +97,71 @@ def get_goal_progress(user):
         'one_time_monthly': round(one_time_monthly, 2),
         'calls_count': calls_count,
         'meetings_count': meetings_count,
+    }
+
+
+# Cadence multipliers for monthly normalization of decisions.
+# NOTE: Differs from Decision.monthly_equivalent property which treats ONE_TIME as 0.
+# Per GH-26 spec: one-time decisions are divided by 12.
+_DECISION_CADENCE_MULTIPLIERS = {
+    'one_time': Decimal('1') / Decimal('12'),
+    'monthly': Decimal('1'),
+    'quarterly': Decimal('1') / Decimal('3'),
+    'annual': Decimal('1') / Decimal('12'),
+}
+
+
+def get_decisions_progress(user):
+    """
+    Calculate monthly-normalized decision amounts vs journal goal sums for the user's
+    selected journals.
+
+    Only active + pending decisions are counted. One-time / 12, monthly * 1,
+    quarterly / 3, annual / 12.
+
+    Returns:
+        dict with keys:
+            decisions_current (float, dollars) - sum of monthly-normalized decision amounts
+            decisions_goal (float, dollars)    - sum of Journal.goal_amount for selected journals
+            decisions_percentage (float)       - (current / goal) * 100, or 0.0 if no goal
+    """
+    selected_journal_ids = list(
+        GoalJournalSelection.objects.filter(user=user)
+        .values_list('journal_id', flat=True)
+    )
+
+    if not selected_journal_ids:
+        return {
+            'decisions_current': 0.0,
+            'decisions_goal': 0.0,
+            'decisions_percentage': 0.0,
+        }
+
+    # Sum journal goal amounts (dollars, DecimalField)
+    goal_total = (
+        Journal.objects.filter(id__in=selected_journal_ids, owner=user)
+        .aggregate(total=Sum('goal_amount'))['total']
+    ) or Decimal('0')
+    decisions_goal = float(goal_total)
+
+    # Query active + pending decisions scoped to selected journals + user ownership
+    decisions = Decision.objects.filter(
+        journal_contact__journal_id__in=selected_journal_ids,
+        journal_contact__journal__owner=user,
+        status__in=['active', 'pending'],
+    ).values_list('amount', 'cadence')
+
+    # Compute monthly-normalized sum
+    monthly_total = Decimal('0')
+    for amount, cadence in decisions:
+        multiplier = _DECISION_CADENCE_MULTIPLIERS.get(cadence, Decimal('0'))
+        monthly_total += amount * multiplier
+
+    decisions_current = float(round(monthly_total, 2))
+    decisions_percentage = round((decisions_current / decisions_goal) * 100, 2) if decisions_goal > 0 else 0.0
+
+    return {
+        'decisions_current': decisions_current,
+        'decisions_goal': decisions_goal,
+        'decisions_percentage': decisions_percentage,
     }

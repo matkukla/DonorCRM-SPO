@@ -1,5 +1,10 @@
 import * as React from "react"
 import { Progress } from "@/components/ui/progress"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Pencil, Check } from "lucide-react"
+import { useUpdateJournal } from "@/hooks/useJournals"
+import { useViewAs } from "@/providers/ViewAsProvider"
 import type { JournalDetail, JournalMember, DecisionSummary } from "@/types/journals"
 import { formatLocalDate } from "@/lib/utils"
 
@@ -18,9 +23,19 @@ export interface JournalHeaderProps {
  * - Shows total decisions made (count) and total amount pledged
  * - Shows percentage toward goal
  *
+ * Per GH-26:
+ * - Goal amount is inline-editable via pencil icon (hidden in View As mode)
+ *
  * Stats are memoized to prevent cascade re-renders when individual cells update.
  */
 export function JournalHeader({ journal, members }: JournalHeaderProps) {
+  const { isViewingAs } = useViewAs()
+  const updateJournal = useUpdateJournal()
+
+  // Inline edit state for goal amount
+  const [isEditingGoal, setIsEditingGoal] = React.useState(false)
+  const [editGoalValue, setEditGoalValue] = React.useState("")
+
   // Calculate stats from cached member data
   // Memoize to prevent re-renders (per Phase 5 success criteria #7)
   const stats = React.useMemo(() => {
@@ -53,18 +68,76 @@ export function JournalHeader({ journal, members }: JournalHeaderProps) {
     return { totalPledged, totalMonthly, decisionCount, progressPercent }
   }, [members, journal.goal_amount])
 
+  function handleStartEdit() {
+    setEditGoalValue(parseFloat(journal.goal_amount).toString())
+    setIsEditingGoal(true)
+  }
+
+  function handleSaveGoal() {
+    const parsed = parseFloat(editGoalValue)
+    if (isNaN(parsed) || parsed < 0.01) return
+    updateJournal.mutate(
+      { id: journal.id, data: { goal_amount: parsed.toFixed(2) } },
+      { onSuccess: () => setIsEditingGoal(false) }
+    )
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter") handleSaveGoal()
+    if (e.key === "Escape") setIsEditingGoal(false)
+  }
+
   return (
     <div className="space-y-4 p-4 bg-card rounded-lg border">
       {/* Title and stats row */}
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold">{journal.name}</h1>
-          <p className="text-muted-foreground">
-            Goal: ${parseFloat(journal.goal_amount).toLocaleString()}
+          <div className="flex items-center gap-1 text-muted-foreground">
+            {isEditingGoal ? (
+              <span className="flex items-center gap-1">
+                <span>Goal: $</span>
+                <Input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  value={editGoalValue}
+                  onChange={(e) => setEditGoalValue(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  className="h-7 w-28 text-sm"
+                  autoFocus
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={handleSaveGoal}
+                  disabled={updateJournal.isPending}
+                >
+                  <Check className="h-3.5 w-3.5" />
+                </Button>
+              </span>
+            ) : (
+              <span className="flex items-center gap-1">
+                <span>
+                  Goal: ${parseFloat(journal.goal_amount).toLocaleString()}
+                </span>
+                {!isViewingAs && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={handleStartEdit}
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </Button>
+                )}
+              </span>
+            )}
             {journal.deadline && (
               <span> &bull; Due {formatLocalDate(journal.deadline)}</span>
             )}
-          </p>
+          </div>
         </div>
         <div className="text-right text-sm space-y-1">
           <p className="text-muted-foreground">
