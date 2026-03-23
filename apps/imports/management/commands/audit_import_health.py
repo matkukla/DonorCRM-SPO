@@ -14,7 +14,7 @@ import json
 from decimal import Decimal
 
 from django.core.management.base import BaseCommand
-from django.db.models import Count, Sum
+from django.db.models import Count, Q, Sum
 
 from apps.contacts.models import Contact
 from apps.gifts.models import (
@@ -118,34 +118,33 @@ class Command(BaseCommand):
         linked_pct = round(linked / total * 100, 1) if total else 0
         unlinked_pct = round(unlinked / total * 100, 1) if total else 0
 
-        # Unlinked solicitor names for verbose output
+        # Unlinked solicitor details for verbose output
         unlinked_solicitors = list(
             Solicitor.objects.filter(user__isnull=True)
-            .values_list('normalized_name', flat=True)
+            .values('id', 'normalized_name', 'external_solicitor_id')
         )
 
         # Near-miss detection
         near_misses = []
         if unlinked_solicitors:
-            # Build candidate list from Users and MissionaryAliases
-            user_names = [
-                f'{fn} {ln}'
-                for fn, ln in User.objects.values_list('first_name', 'last_name')
-            ]
-            alias_names = list(
-                MissionaryAlias.objects.values_list('source_name', flat=True)
-            )
-            candidates = user_names + alias_names
+            # Build candidate list: "First Last", "Last, First", and aliases
+            candidates = []
+            for fn, ln in User.objects.values_list('first_name', 'last_name'):
+                candidates.append({'name': f'{fn} {ln}', 'format': 'first_last'})
+                candidates.append({'name': f'{ln}, {fn}', 'format': 'last_first'})
+            for alias in MissionaryAlias.objects.filter(user__isnull=False).values_list('source_name', flat=True):
+                candidates.append({'name': alias, 'format': 'alias'})
 
-            for sol_name in unlinked_solicitors:
-                for candidate in candidates:
+            for sol in unlinked_solicitors:
+                for c in candidates:
                     ratio = difflib.SequenceMatcher(
-                        None, sol_name.lower(), candidate.lower()
+                        None, sol['normalized_name'].lower(), c['name'].lower()
                     ).ratio()
                     if ratio >= 0.8:
                         near_misses.append({
-                            'solicitor_name': sol_name,
-                            'candidate': candidate,
+                            'solicitor_name': sol['normalized_name'],
+                            'candidate': c['name'],
+                            'format': c['format'],
                             'score': round(ratio, 3),
                         })
 
@@ -171,11 +170,15 @@ class Command(BaseCommand):
             .order_by('owner__role')
         )
 
-        # Misattribution detection
+        # Misattribution detection: admin/supervisor-owned contacts with
+        # gift credits OR recurring gift credits pointing to a missionary
         misattributed_contacts = (
             Contact.objects.filter(
                 owner__role__in=['admin', 'supervisor'],
-                gifts__credits__solicitor__user__role='missionary',
+            )
+            .filter(
+                Q(gifts__credits__solicitor__user__role='missionary')
+                | Q(recurring_gifts__credits__solicitor__user__role='missionary')
             )
             .distinct()
             .select_related('owner')
@@ -183,20 +186,19 @@ class Command(BaseCommand):
 
         misattributions = []
         for contact in misattributed_contacts:
-            # Find the missionary solicitor(s) credited
-            missionary_solicitors = (
-                Solicitor.objects.filter(
-                    gift_credits__gift__donor_contact=contact,
-                    user__role='missionary',
-                )
-                .distinct()
-                .values_list('normalized_name', flat=True)
-            )
+            # Find missionary user(s) credited via solicitor (gifts + recurring)
+            missionary_solicitors = Solicitor.objects.filter(
+                Q(gift_credits__gift__donor_contact=contact)
+                | Q(recurring_gift_credits__recurring_gift__donor_contact=contact),
+                user__role='missionary',
+            ).distinct().select_related('user')
             misattributions.append({
+                'contact_id': contact.id,
                 'contact_name': f'{contact.first_name} {contact.last_name}',
-                'owner_name': contact.owner.full_name,
+                'external_constituent_id': contact.external_constituent_id,
+                'owner_email': contact.owner.email,
                 'owner_role': contact.owner.role,
-                'missionary_solicitor_names': list(missionary_solicitors),
+                'missionary_emails': [s.user.email for s in missionary_solicitors],
             })
 
         return {
@@ -211,16 +213,22 @@ class Command(BaseCommand):
     def _section3_gift_credit_integrity(self):
         total_gifts = Gift.objects.count()
         total_credits = GiftCredit.objects.count()
+        linked_credits = GiftCredit.objects.filter(
+            solicitor__user__isnull=False
+        ).count()
+        unlinked_credits = total_credits - linked_credits
 
         orphaned_gifts = Gift.objects.annotate(
             credit_count=Count('credits')
         ).filter(credit_count=0)
         orphaned_count = orphaned_gifts.count()
 
-        unlinked_value = (
-            orphaned_gifts.aggregate(total=Sum('amount_cents'))['total'] or 0
+        # Dollar value of credits referencing unlinked solicitors
+        unlinked_credit_value = (
+            GiftCredit.objects.filter(solicitor__user__isnull=True)
+            .aggregate(total=Sum('amount_cents'))['total'] or 0
         )
-        unlinked_dollars = Decimal(unlinked_value) / Decimal(100)
+        unlinked_dollars = Decimal(unlinked_credit_value) / Decimal(100)
 
         # Orphaned gift details for verbose
         orphaned_details = list(
@@ -233,6 +241,8 @@ class Command(BaseCommand):
         return {
             'total_gifts': total_gifts,
             'total_credits': total_credits,
+            'linked_credits': linked_credits,
+            'unlinked_credits': unlinked_credits,
             'orphaned_count': orphaned_count,
             'unlinked_dollars': f'{unlinked_dollars:.2f}',
             'orphaned_details': orphaned_details,
@@ -248,28 +258,39 @@ class Command(BaseCommand):
         total_credits = RecurringGiftCredit.objects.filter(
             recurring_gift__status='active'
         ).count()
+        linked_credits = RecurringGiftCredit.objects.filter(
+            recurring_gift__status='active',
+            solicitor__user__isnull=False,
+        ).count()
+        unlinked_credits = total_credits - linked_credits
 
         orphaned = active_recurring.annotate(
             credit_count=Count('credits')
         ).filter(credit_count=0)
         orphaned_count = orphaned.count()
 
-        unlinked_value = (
-            orphaned.aggregate(total=Sum('amount_cents'))['total'] or 0
+        # Dollar value of active recurring credits referencing unlinked solicitors
+        unlinked_credit_value = (
+            RecurringGiftCredit.objects.filter(
+                recurring_gift__status='active',
+                solicitor__user__isnull=True,
+            ).aggregate(total=Sum('amount_cents'))['total'] or 0
         )
-        unlinked_dollars = Decimal(unlinked_value) / Decimal(100)
+        unlinked_dollars = Decimal(unlinked_credit_value) / Decimal(100)
 
         # Orphaned details for verbose
         orphaned_details = list(
             orphaned.values_list(
                 'id', 'donor_contact__first_name',
-                'donor_contact__last_name', 'amount_cents',
+                'donor_contact__last_name', 'amount_cents', 'frequency',
             )[:20]
         )
 
         return {
             'total_active': total_active,
             'total_credits': total_credits,
+            'linked_credits': linked_credits,
+            'unlinked_credits': unlinked_credits,
             'orphaned_count': orphaned_count,
             'unlinked_dollars': f'{unlinked_dollars:.2f}',
             'orphaned_details': orphaned_details,
@@ -290,11 +311,12 @@ class Command(BaseCommand):
                 Gift.objects.filter(donor_contact__owner=user)
                 .aggregate(total=Sum('amount_cents'))['total'] or 0
             )
+            active_recurring_qs = RecurringGift.objects.filter(
+                donor_contact__owner=user, status='active'
+            )
+            recurring_count = active_recurring_qs.count()
             recurring_sum = (
-                RecurringGift.objects.filter(
-                    donor_contact__owner=user, status='active'
-                )
-                .aggregate(total=Sum('amount_cents'))['total'] or 0
+                active_recurring_qs.aggregate(total=Sum('amount_cents'))['total'] or 0
             )
             credit_count = GiftCredit.objects.filter(
                 solicitor__user=user
@@ -305,6 +327,7 @@ class Command(BaseCommand):
                 'user_email': user.email,
                 'contacts': contacts_count,
                 'gift_dollars': str(Decimal(gift_sum) / Decimal(100)),
+                'active_recurring_count': recurring_count,
                 'recurring_dollars': str(Decimal(recurring_sum) / Decimal(100)),
                 'credit_count': credit_count,
                 'flagged': False,
@@ -312,13 +335,17 @@ class Command(BaseCommand):
             }
 
             flag_reasons = []
+            if contacts_count == 0:
+                flag_reasons.append(
+                    '0 contacts — will see empty dashboard'
+                )
             if contacts_count == 0 and credit_count > 0:
                 flag_reasons.append(
                     '0 contacts but has gift credits via solicitor'
                 )
             if gift_sum == 0 and credit_count > 0:
                 flag_reasons.append(
-                    '0 gifts (by ownership) but has gift credits via solicitor'
+                    '0 gifts (by ownership) but has gift credits via solicitor — suggests contact ownership not reassigned'
                 )
 
             if flag_reasons:
@@ -355,13 +382,17 @@ class Command(BaseCommand):
                 for nm in s1['near_misses']:
                     self.stdout.write(
                         f'    - "{nm["solicitor_name"]}" ~ '
-                        f'"{nm["candidate"]}" (score: {nm["score"]})'
+                        f'"{nm["candidate"]}" ({nm["format"]}, score: {nm["score"]})'
                     )
 
         if verbose and s1['unlinked_solicitors']:
             self.stdout.write('  Unlinked solicitors:')
-            for name in s1['unlinked_solicitors']:
-                self.stdout.write(f'    - {name}')
+            for sol in s1['unlinked_solicitors']:
+                ext_id = sol['external_solicitor_id']
+                id_str = f', ext_id={ext_id}' if ext_id else ''
+                self.stdout.write(
+                    f'    - #{sol["id"]} {sol["normalized_name"]}{id_str}'
+                )
 
         # Section 2
         s2 = report['contact_ownership']
@@ -380,9 +411,10 @@ class Command(BaseCommand):
             if verbose:
                 for ma in s2['misattributions']:
                     self.stdout.write(
-                        f'    - {ma["contact_name"]} owned by '
-                        f'{ma["owner_name"]} ({ma["owner_role"]}) '
-                        f'but credited to {", ".join(ma["missionary_solicitor_names"])}'
+                        f'    - {ma["contact_name"]} '
+                        f'(ext: {ma["external_constituent_id"] or "N/A"}) '
+                        f'owned by {ma["owner_email"]} ({ma["owner_role"]}) '
+                        f'but credited to {", ".join(ma["missionary_emails"])}'
                     )
         else:
             self.stdout.write(self.style.SUCCESS(
@@ -396,8 +428,10 @@ class Command(BaseCommand):
         ))
         self.stdout.write(f'  Total gifts: {s3["total_gifts"]}')
         self.stdout.write(f'  Total credits: {s3["total_credits"]}')
-        self.stdout.write(f'  Orphaned gifts: {s3["orphaned_count"]}')
-        self.stdout.write(f'  Unlinked dollar value: ${s3["unlinked_dollars"]}')
+        self.stdout.write(f'  Credits linked: {s3["linked_credits"]}')
+        self.stdout.write(f'  Credits unlinked: {s3["unlinked_credits"]}')
+        self.stdout.write(f'  Orphaned gifts (no credits): {s3["orphaned_count"]}')
+        self.stdout.write(f'  Unlinked credit dollar value: ${s3["unlinked_dollars"]}')
 
         if verbose and s3['orphaned_details']:
             self.stdout.write('  Orphaned gift details:')
@@ -414,19 +448,21 @@ class Command(BaseCommand):
         ))
         self.stdout.write(f'  Active recurring gifts: {s4["total_active"]}')
         self.stdout.write(f'  Active recurring credits: {s4["total_credits"]}')
+        self.stdout.write(f'  Credits linked: {s4["linked_credits"]}')
+        self.stdout.write(f'  Credits unlinked: {s4["unlinked_credits"]}')
         self.stdout.write(
             f'  Orphaned active recurring gifts: {s4["orphaned_count"]}'
         )
         self.stdout.write(
-            f'  Unlinked dollar value: ${s4["unlinked_dollars"]}'
+            f'  Unlinked credit dollar value: ${s4["unlinked_dollars"]}'
         )
 
         if verbose and s4['orphaned_details']:
             self.stdout.write('  Orphaned recurring gift details:')
-            for rgid, fn, ln, cents in s4['orphaned_details']:
+            for rgid, fn, ln, cents, freq in s4['orphaned_details']:
                 dollars = Decimal(cents) / Decimal(100)
                 self.stdout.write(
-                    f'    - RecurringGift #{rgid}: {fn} {ln}, ${dollars:.2f}'
+                    f'    - RecurringGift #{rgid}: {fn} {ln}, ${dollars:.2f}/{freq}'
                 )
 
         # Section 5
@@ -457,10 +493,10 @@ class Command(BaseCommand):
             for m in s5['missionaries']:
                 flag_marker = ' [FLAGGED]' if m['flagged'] else ''
                 self.stdout.write(
-                    f'    - {m["user_name"]}: '
+                    f'    - {m["user_name"]} ({m["user_email"]}): '
                     f'{m["contacts"]} contacts, '
                     f'${m["gift_dollars"]} gifts, '
-                    f'${m["recurring_dollars"]} recurring, '
+                    f'{m["active_recurring_count"]} active recurring (${m["recurring_dollars"]}), '
                     f'{m["credit_count"]} credits{flag_marker}'
                 )
 
