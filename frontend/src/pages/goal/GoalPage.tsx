@@ -89,11 +89,18 @@ export default function GoalPage() {
   const callsPct = callsNeeded > 0 ? Math.round(((goalData?.calls_count ?? 0) / callsNeeded) * 100) : 0
   const meetingsPct = meetingsNeeded > 0 ? Math.round(((goalData?.meetings_count ?? 0) / meetingsNeeded) * 100) : 0
 
+  const decisionsPct = goalData && goalData.decisions_goal > 0
+    ? Math.round((goalData.decisions_current / goalData.decisions_goal) * 100)
+    : 0
+
   const emptyState = !goalData?.monthly_support_goal_cents
     ? "no_goal"
     : goalData.selected_journal_ids.length === 0
       ? "no_journals"
       : null
+
+  // Decisions-specific empty state: has main goal + journals but no journal goals set
+  const noJournalGoals = !emptyState && goalData && goalData.decisions_goal === 0
 
   // ---------------------------------------------------------------------------
   // Save handler
@@ -332,6 +339,38 @@ export default function GoalPage() {
             {emptyState === "no_journals" && (
               <p className="text-xs text-muted-foreground">
                 Select journals above to see your meetings progress
+              </p>
+            )}
+          </div>
+
+          {/* Row 4 — Decisions */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-sm font-medium">
+              <span>Decisions</span>
+              <span className="text-muted-foreground tabular-nums">
+                {goalData && goalData.decisions_goal > 0
+                  ? `${formatCurrency(goalData.decisions_current)} / ${formatCurrency(goalData.decisions_goal)}`
+                  : "-- / --"}
+              </span>
+            </div>
+            <GoalProgressBar
+              value={decisionsPct}
+              disabled={!!emptyState || !!noJournalGoals}
+              label="Decisions progress"
+            />
+            {emptyState === "no_goal" && (
+              <p className="text-xs text-muted-foreground">
+                Set a goal amount above to see your decisions progress
+              </p>
+            )}
+            {emptyState === "no_journals" && (
+              <p className="text-xs text-muted-foreground">
+                Select journals above to see your decisions progress
+              </p>
+            )}
+            {noJournalGoals && (
+              <p className="text-xs text-muted-foreground">
+                Set goal amounts on your journals to track decision progress
               </p>
             )}
           </div>

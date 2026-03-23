@@ -17,6 +17,9 @@ export interface GoalData {
   one_time_monthly: number            // dollars (float)
   calls_count: number                 // integer, 0+ (read-only, from journal events)
   meetings_count: number              // integer, 0+ (read-only, from journal events)
+  decisions_current: number           // dollars (float), monthly-normalized decision sum
+  decisions_goal: number              // dollars (float), sum of journal goal_amounts
+  decisions_percentage: number        // 0-100+ (float), (current/goal)*100
 }
 
 /**
