@@ -62,9 +62,8 @@ class AuditImportHealthSolicitorsTest(TestCase):
         output = out.getvalue()
         self.assertIn('Solicitor Linking', output)
         self.assertIn('Total: 2', output)
-        self.assertIn('Linked: 1', output)
-        self.assertIn('Unlinked: 1', output)
-        self.assertIn('50.0%', output)
+        self.assertIn('Linked: 1 (50.0%)', output)
+        self.assertIn('Unlinked: 1 (50.0%)', output)
 
     def test_section1_near_miss_user_fullname(self):
         """Detects near-misses by comparing unlinked solicitor names to User full names."""
@@ -196,7 +195,7 @@ class AuditImportHealthGiftCreditTest(TestCase):
         out = StringIO()
         call_command('audit_import_health', stdout=out)
         output = out.getvalue()
-        self.assertIn('Orphaned gifts: 1', output)
+        self.assertIn('Orphaned gifts (no credits): 1', output)
         self.assertIn('250.00', output)
 
 
