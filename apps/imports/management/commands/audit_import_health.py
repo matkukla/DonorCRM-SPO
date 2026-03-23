@@ -223,12 +223,11 @@ class Command(BaseCommand):
         ).filter(credit_count=0)
         orphaned_count = orphaned_gifts.count()
 
-        # Dollar value of credits referencing unlinked solicitors
-        unlinked_credit_value = (
-            GiftCredit.objects.filter(solicitor__user__isnull=True)
-            .aggregate(total=Sum('amount_cents'))['total'] or 0
+        # Dollar value of orphaned gifts (no credits — cannot route to any missionary)
+        orphaned_value = (
+            orphaned_gifts.aggregate(total=Sum('amount_cents'))['total'] or 0
         )
-        unlinked_dollars = Decimal(unlinked_credit_value) / Decimal(100)
+        unlinked_dollars = Decimal(orphaned_value) / Decimal(100)
 
         # Orphaned gift details for verbose
         orphaned_details = list(
@@ -269,14 +268,11 @@ class Command(BaseCommand):
         ).filter(credit_count=0)
         orphaned_count = orphaned.count()
 
-        # Dollar value of active recurring credits referencing unlinked solicitors
-        unlinked_credit_value = (
-            RecurringGiftCredit.objects.filter(
-                recurring_gift__status='active',
-                solicitor__user__isnull=True,
-            ).aggregate(total=Sum('amount_cents'))['total'] or 0
+        # Dollar value of orphaned active recurring gifts (no credits)
+        orphaned_value = (
+            orphaned.aggregate(total=Sum('amount_cents'))['total'] or 0
         )
-        unlinked_dollars = Decimal(unlinked_credit_value) / Decimal(100)
+        unlinked_dollars = Decimal(orphaned_value) / Decimal(100)
 
         # Orphaned details for verbose
         orphaned_details = list(
