@@ -213,11 +213,26 @@ function EventCard({ event, isLast }: EventCardProps) {
         {/* Metadata display (if present) */}
         {Object.keys(event.metadata).length > 0 && (
           <div className="mt-2 text-xs text-muted-foreground">
-            {Object.entries(event.metadata).map(([key, value]) => (
-              <span key={key} className="mr-2">
-                {key}: {String(value)}
-              </span>
-            ))}
+            {event.event_type === 'meeting_scheduled' ? (
+              <>
+                {event.metadata.scheduled_date && (
+                  <span className="mr-2">
+                    Date: {format(new Date(event.metadata.scheduled_date + 'T00:00:00'), 'MMM d, yyyy')}
+                  </span>
+                )}
+                {event.metadata.scheduled_time && (
+                  <span className="mr-2">
+                    Time: {String(event.metadata.scheduled_time)}
+                  </span>
+                )}
+              </>
+            ) : (
+              Object.entries(event.metadata).map(([key, value]) => (
+                <span key={key} className="mr-2">
+                  {key}: {String(value)}
+                </span>
+              ))
+            )}
           </div>
         )}
       </div>

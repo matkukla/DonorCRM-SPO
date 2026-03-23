@@ -528,7 +528,7 @@ class JournalAnalyticsViewSet(viewsets.ViewSet):
 
         # Pivot data so each month has all stage counts
         by_month = defaultdict(lambda: {
-            'contact': 0, 'meet': 0, 'close': 0,
+            'contact': 0, 'scheduled': 0, 'meet': 0, 'close': 0,
             'decision': 0, 'thank': 0, 'next_steps': 0
         })
 
