@@ -272,13 +272,15 @@ def test_decisions_progress_multiple_journals_sum_goals():
 
 
 @pytest.mark.django_db
-def test_goal_api_includes_decisions_fields(client):
+def test_goal_api_includes_decisions_fields():
     """GH-26: GET /api/v1/goals/me/ includes decisions_current, decisions_goal, decisions_percentage."""
+    from rest_framework.test import APIClient
     user = UserFactory()
-    client.force_login(user)
-    response = client.get('/api/v1/goals/me/')
+    api_client = APIClient()
+    api_client.force_authenticate(user=user)
+    response = api_client.get('/api/v1/goals/me/')
     assert response.status_code == 200
-    data = response.json()
+    data = response.data
     assert 'decisions_current' in data
     assert 'decisions_goal' in data
     assert 'decisions_percentage' in data
