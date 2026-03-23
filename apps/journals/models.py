@@ -12,8 +12,9 @@ from apps.core.models import TimeStampedModel
 
 
 class PipelineStage(models.TextChoices):
-    """Six-stage donor engagement pipeline."""
+    """Seven-stage donor engagement pipeline."""
     CONTACT = 'contact', 'Contact'
+    SCHEDULED = 'scheduled', 'Scheduled'
     MEET = 'meet', 'Meet'
     CLOSE = 'close', 'Close'
     DECISION = 'decision', 'Decision'
