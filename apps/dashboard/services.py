@@ -246,8 +246,7 @@ def get_giving_summary(user, year=None):
 
     given_float = float(given)
 
-    # Last completed import timestamp
-    # Last completed import timestamp (gift-related types only)
+    # Last completed gift-related import timestamp (scoped to this user's uploads)
     gift_import_types = [
         ImportBatchType.RE_GIFT,
         ImportBatchType.RE_RECURRING_GIFT,
@@ -258,6 +257,7 @@ def get_giving_summary(user, year=None):
         ImportBatch.objects.filter(
             status=ImportBatchStatus.COMPLETED,
             import_type__in=gift_import_types,
+            uploaded_by=user,
         )
         .order_by('-created_at')
         .values_list('created_at', flat=True)
