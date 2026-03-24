@@ -75,7 +75,7 @@ export function JournalHeader({ journal, members }: JournalHeaderProps) {
           </p>
           {stats.totalMonthly > 0 && (
             <p className="text-xs text-muted-foreground">
-              ${stats.totalMonthly.toLocaleString()}/mo recurring
+              ${stats.totalMonthly.toLocaleString()}/mo equivalent
             </p>
           )}
         </div>
