@@ -243,7 +243,7 @@ Plans:
 
 - [x] **Phase 48: MPD Dashboard Enhancements** - Monthly Average tile and Admin MPD Overview section (completed 2026-03-12)
 - [x] **Phase 49: Goal Page — Data Model & Backend** - Fiscal year utility, User.monthly_support_goal_cents, GoalJournalSelection model, and goal calculation API endpoints (completed 2026-03-13)
-- [ ] **Phase 50: Goal Page — Frontend UI** - Goal page with progress bars, pacing targets, milestone messages, sidebar nav, and read-only mode
+- [x] **Phase 50: Goal Page — Frontend UI** - Goal page with progress bars, pacing targets, milestone messages, sidebar nav, and read-only mode (completed 2026-03-24)
 - [x] **Phase 51: Data Scoping** - Admin and supervisor default to own data; cross-user access only via View As (completed 2026-03-16)
 - [x] **Phase 52: View As — Backend** - X-View-As-User-Id middleware, permission checks, mutation blocking, viewable users endpoint (completed 2026-03-16)
 - [ ] **Phase 53: View As — Frontend** - ViewAsContext, API header injection, persistent banner, selector, nav hiding, cache invalidation
@@ -266,7 +266,7 @@ Plans:
 | 38-47 | v2.2 | 34/34 | Complete | 2026-03-11 |
 | 48. MPD Dashboard Enhancements | v2.3 | 2/2 | Complete | 2026-03-12 |
 | 49. Goal Page — Data Model & Backend | 4/4 | Complete    | 2026-03-13 | - |
-| 50. Goal Page — Frontend UI | 4/5 | In Progress|  | - |
+| 50. Goal Page — Frontend UI | 5/5 | Complete | 2026-03-24 | - |
 | 51. Data Scoping | 3/3 | Complete    | 2026-03-16 | - |
 | 52. View As — Backend | 4/4 | Complete    | 2026-03-16 | - |
 | 53. View As — Frontend | 3/4 | In Progress|  | - |
@@ -285,6 +285,16 @@ Plans:
 - [x] 55-01: Backend model, migration, serializer, views, tests (Wave 1)
 - [x] 55-02: Frontend types, StageCell, JournalGrid (Wave 2)
 - [x] 55-03: LogEventDialog, EventTimelineDrawer, ReportCharts (Wave 2)
+
+### Phase 56: Task Broadcasting — broadcast tasks to targeted user groups with completion tracking
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 55
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 56 to break down)
 
 ---
 
