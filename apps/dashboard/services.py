@@ -13,6 +13,7 @@ from apps.contacts.models import Contact
 from apps.core.gift_utils import FREQUENCY_MULTIPLIERS, _monthly_equivalent_aggregate
 from apps.core.permissions import get_visible_user_ids
 from apps.events.models import Event
+from apps.imports.models import ImportBatch, ImportBatchStatus
 from apps.gifts.models import Gift, RecurringGift, RecurringGiftFrequency, RecurringGiftStatus
 from apps.tasks.models import Task, TaskStatus
 
@@ -245,6 +246,14 @@ def get_giving_summary(user, year=None):
 
     given_float = float(given)
 
+    # Last completed import timestamp
+    last_import_at = (
+        ImportBatch.objects.filter(status=ImportBatchStatus.COMPLETED)
+        .order_by('-created_at')
+        .values_list('created_at', flat=True)
+        .first()
+    )
+
     return {
         'given': given_float,
         'expecting': expecting,
@@ -256,6 +265,7 @@ def get_giving_summary(user, year=None):
         'percentage': ((given_float + expecting) / annual_goal * 100) if annual_goal > 0 else 0,
         'year': year,
         'active_pledge_count': active_recurring.count(),
+        'last_import_at': last_import_at.isoformat() if last_import_at else None,
     }
 
 

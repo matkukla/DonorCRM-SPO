@@ -87,6 +87,8 @@ export const giftPaymentTypeLabels: Record<string, string> = {
   credit_card: "Credit Card",
   direct_deposit: "Direct Deposit",
   check: "Check",
+  cash: "Cash",
+  online: "Online",
 }
 
 export const recurringGiftStatusLabels: Record<RecurringGiftStatus, string> = {

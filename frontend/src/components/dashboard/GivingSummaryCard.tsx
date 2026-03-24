@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ChartContainer } from "@/components/ui/chart"
 import type { ChartConfig } from "@/components/ui/chart"
 import { useGivingSummary } from "@/hooks/useDashboard"
+import { formatLocalDate } from "@/lib/utils"
 
 const chartConfig = {
   given: { label: "Given", color: "hsl(var(--chart-1))" },
@@ -133,7 +134,9 @@ export function GivingSummaryCard({ userId }: { userId?: string }) {
 
         {/* Footer */}
         <p className="text-xs text-muted-foreground mt-4">
-          Updated today
+          {data.last_import_at
+            ? `Last updated ${formatLocalDate(data.last_import_at)}`
+            : "No import data available"}
         </p>
       </CardContent>
     </Card>

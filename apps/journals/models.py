@@ -282,7 +282,7 @@ class Decision(TimeStampedModel):
     def monthly_equivalent(self):
         """Calculate normalized monthly value for this decision."""
         multipliers = {
-            DecisionCadence.ONE_TIME: Decimal('0'),
+            DecisionCadence.ONE_TIME: Decimal('1') / Decimal('12'),
             DecisionCadence.MONTHLY: Decimal('1'),
             DecisionCadence.QUARTERLY: Decimal('1') / Decimal('3'),
             DecisionCadence.ANNUAL: Decimal('1') / Decimal('12'),

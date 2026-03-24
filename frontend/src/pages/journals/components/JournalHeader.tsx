@@ -47,7 +47,7 @@ export function JournalHeader({ journal, members }: JournalHeaderProps) {
     // Progress toward goal
     const goalAmount = parseFloat(journal.goal_amount)
     const progressPercent = goalAmount > 0
-      ? Math.min((totalPledged / goalAmount) * 100, 100)
+      ? Math.min((totalMonthly / goalAmount) * 100, 100)
       : 0
 
     return { totalPledged, totalMonthly, decisionCount, progressPercent }
@@ -60,7 +60,7 @@ export function JournalHeader({ journal, members }: JournalHeaderProps) {
         <div>
           <h1 className="text-2xl font-bold">{journal.name}</h1>
           <p className="text-muted-foreground">
-            Goal: ${parseFloat(journal.goal_amount).toLocaleString()}
+            Monthly Goal: ${parseFloat(journal.goal_amount).toLocaleString()}
             {journal.deadline && (
               <span> &bull; Due {formatLocalDate(journal.deadline)}</span>
             )}
@@ -71,11 +71,11 @@ export function JournalHeader({ journal, members }: JournalHeaderProps) {
             {stats.decisionCount} {stats.decisionCount === 1 ? 'decision' : 'decisions'} made
           </p>
           <p className="font-semibold text-lg">
-            ${stats.totalPledged.toLocaleString()} pledged
+            ${stats.totalMonthly.toLocaleString()}/mo pledged
           </p>
-          {stats.totalMonthly > 0 && (
+          {stats.totalPledged !== stats.totalMonthly && (
             <p className="text-xs text-muted-foreground">
-              ${stats.totalMonthly.toLocaleString()}/mo recurring
+              ${stats.totalPledged.toLocaleString()} total pledged
             </p>
           )}
         </div>

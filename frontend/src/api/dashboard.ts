@@ -97,6 +97,7 @@ export interface GivingSummary {
   percentage: number
   year: number
   active_pledge_count: number
+  last_import_at: string | null
 }
 
 export interface MonthlyGiftData {
