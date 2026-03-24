@@ -59,7 +59,7 @@ export function JournalHeader({ journal, members }: JournalHeaderProps) {
     // Count of decisions made
     const decisionCount = decisions.length
 
-    // Progress toward goal
+    // Progress toward goal (goal_amount is a total campaign target)
     const goalAmount = parseFloat(journal.goal_amount)
     const progressPercent = goalAmount > 0
       ? Math.min((totalPledged / goalAmount) * 100, 100)
@@ -148,7 +148,7 @@ export function JournalHeader({ journal, members }: JournalHeaderProps) {
           </p>
           {stats.totalMonthly > 0 && (
             <p className="text-xs text-muted-foreground">
-              ${stats.totalMonthly.toLocaleString()}/mo recurring
+              ${stats.totalMonthly.toLocaleString()}/mo equivalent
             </p>
           )}
         </div>

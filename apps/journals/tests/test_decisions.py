@@ -513,7 +513,7 @@ class DecisionHistoryTests(APITestCase):
         self.assertEqual(str(response.data['monthly_equivalent']), '100.00')
 
     def test_monthly_equivalent_one_time(self):
-        """Test monthly equivalent for one_time cadence is 0."""
+        """Test monthly equivalent for one_time cadence is amount / 12."""
         # Create new jc for this test
         contact4 = Contact.objects.create(
             owner=self.user_a,
@@ -530,7 +530,7 @@ class DecisionHistoryTests(APITestCase):
             'cadence': 'one_time'
         }, format='json')
 
-        self.assertEqual(str(response.data['monthly_equivalent']), '0.00')
+        self.assertEqual(str(response.data['monthly_equivalent']), '41.67')
 
     def test_monthly_equivalent_updates_after_cadence_change(self):
         """Test that monthly_equivalent recalculates when cadence changes."""
