@@ -34,6 +34,57 @@ class TaskType(models.TextChoices):
     OTHER = 'other', 'Other'
 
 
+class BroadcastTask(TimeStampedModel):
+    """Parent record for a broadcast task distribution."""
+    sender = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='sent_broadcasts',
+        db_index=True,
+    )
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    task_type = models.CharField(
+        max_length=20,
+        choices=TaskType.choices,
+        default=TaskType.OTHER,
+    )
+    priority = models.CharField(
+        max_length=20,
+        choices=TaskPriority.choices,
+        default=TaskPriority.MEDIUM,
+    )
+    due_date = models.DateField()
+
+    # Target specification (snapshot at send time)
+    target_type = models.CharField(
+        max_length=30,
+        choices=[
+            ('all_missionaries', 'All Missionaries'),
+            ('all_supervisors', 'All Supervisors'),
+            ('specific_users', 'Specific Users'),
+            ('my_team', 'My Team'),
+        ],
+    )
+    # Store resolved recipient IDs at send time for audit trail
+    recipient_ids = models.JSONField(default=list)
+    recipient_count = models.PositiveIntegerField(default=0)
+
+    # Status
+    is_cancelled = models.BooleanField(default=False)
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'broadcast_tasks'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['sender', '-created_at']),
+        ]
+
+    def __str__(self):
+        return f'Broadcast: {self.title} ({self.recipient_count} recipients)'
+
+
 class Task(TimeStampedModel):
     """
     Action item or reminder, optionally linked to a contact.
@@ -63,6 +114,16 @@ class Task(TimeStampedModel):
         blank=True,
         related_name='tasks',
         help_text='Optional journal this task belongs to'
+    )
+
+    # Optional broadcast link (for broadcast-distributed tasks)
+    broadcast = models.ForeignKey(
+        'tasks.BroadcastTask',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='copies',
+        db_index=True,
     )
 
     # Task details
@@ -128,6 +189,7 @@ class Task(TimeStampedModel):
             models.Index(fields=['contact', 'status']),
             models.Index(fields=['status', 'due_date']),
             models.Index(fields=['journal', 'status']),
+            models.Index(fields=['broadcast', 'status']),
         ]
 
     def __str__(self):
