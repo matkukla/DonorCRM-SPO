@@ -103,8 +103,8 @@ export const DecisionCell = React.memo(function DecisionCell({
           {STATUS_LABELS[decision.status]}
         </Badge>
 
-        {/* Monthly equivalent (for non-one-time) */}
-        {decision.cadence !== "one_time" && parseFloat(decision.monthly_equivalent) > 0 && (
+        {/* Monthly equivalent */}
+        {parseFloat(decision.monthly_equivalent) > 0 && (
           <div className="text-xs text-muted-foreground">
             ${parseFloat(decision.monthly_equivalent).toLocaleString()}/mo
           </div>

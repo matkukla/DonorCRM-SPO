@@ -21,6 +21,8 @@ class PaymentType(models.TextChoices):
     CREDIT_CARD = 'credit_card', 'Credit Card'
     DIRECT_DEPOSIT = 'direct_deposit', 'Direct Deposit'
     CHECK = 'check', 'Check'
+    CASH = 'cash', 'Cash'
+    ONLINE = 'online', 'Online'
 
 
 class RecurringGiftStatus(models.TextChoices):
@@ -145,7 +147,7 @@ class Gift(TimeStampedModel):
         max_length=20,
         choices=PaymentType.choices,
         blank=True,
-        help_text='Payment method: Credit Card, Direct Deposit, or Check'
+        help_text='Payment method: Credit Card, Direct Deposit, Check, Cash, or Online'
     )
 
     class Meta:

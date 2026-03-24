@@ -184,7 +184,7 @@ export default function DonationList() {
             exportParams={toQueryParams()}
           >
             {/* Row 1: Search + amount range */}
-            <div className="flex flex-wrap items-center gap-2 w-full">
+            <div className="flex flex-wrap items-center gap-3 w-full">
               <form onSubmit={handleSearch} className="flex gap-2 flex-1 min-w-[200px]">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -216,20 +216,20 @@ export default function DonationList() {
             </div>
 
             {/* Row 2: Date range + type + owner */}
-            <div className="flex flex-wrap items-center gap-2 w-full">
+            <div className="flex flex-wrap items-center gap-3 w-full">
               <Input
                 type="date"
                 placeholder="From date"
                 value={filters.gift_date_after || ""}
                 onChange={(e) => setFilters({ gift_date_after: e.target.value || null, page: 1 })}
-                className="w-[150px]"
+                className="w-[160px]"
               />
               <Input
                 type="date"
                 placeholder="To date"
                 value={filters.gift_date_before || ""}
                 onChange={(e) => setFilters({ gift_date_before: e.target.value || null, page: 1 })}
-                className="w-[150px]"
+                className="w-[160px]"
               />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
