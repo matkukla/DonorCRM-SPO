@@ -21,7 +21,7 @@ class Migration(migrations.Migration):
                     ("cash", "Cash"),
                     ("online", "Online"),
                 ],
-                help_text="Payment method: Credit Card, Direct Deposit, or Check",
+                help_text="Payment method: Credit Card, Direct Deposit, Check, Cash, or Online",
                 max_length=20,
                 verbose_name="payment type",
             ),
