@@ -288,14 +288,30 @@ Plans:
 
 ### Phase 56: Task Broadcasting — broadcast tasks to targeted user groups with completion tracking
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Admins and supervisors can broadcast tasks to targeted user groups; each recipient gets a Task copy in their regular Tasks tab with visual distinction; senders track completion progress via dedicated tracking views
+**Requirements**: BC-01 through BC-11
 **Depends on:** Phase 55
-**Plans:** 0 plans
+**Plans:** 5 plans
+**Success Criteria** (what must be TRUE):
+  1. Admin can create a broadcast task targeting All Missionaries, All Supervisors, or Specific Users
+  2. Supervisor can create a broadcast task targeting My Team or Specific Members (server-side enforced)
+  3. Each recipient gets their own Task copy in their regular Tasks tab
+  4. Broadcast tasks appear in dashboard needs-attention (overdue/due today) automatically
+  5. Broadcast tasks are visually distinguished with Megaphone icon + "Assigned by [Name]" subtitle
+  6. Missionary can mark broadcast task complete but cannot edit/delete
+  7. Admin can view all broadcasts with completion progress at /admin/broadcasts
+  8. Supervisor can view their broadcasts with completion progress on Team page
+  9. Broadcast edit cascades to incomplete copies only; completed copies are untouched
+  10. Broadcast cancel removes incomplete copies, keeps completed ones
+  11. Confirmation dialog shows recipient count before sending
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 56 to break down)
+- [ ] 56-01-PLAN.md — Backend foundation: BroadcastTask model, migration, services, serializers (Wave 1)
+- [ ] 56-02-PLAN.md — Backend API: views, URL patterns, TaskSerializer extension, tests (Wave 2)
+- [ ] 56-03-PLAN.md — Frontend foundation: Task type extension, broadcasts API client, React Query hooks (Wave 2)
+- [ ] 56-04-PLAN.md — Frontend creation + display: BroadcastTaskDialog, TaskList badge+button, TaskDetail restrictions (Wave 3)
+- [ ] 56-05-PLAN.md — Frontend tracking + navigation: BroadcastList, BroadcastDetail, TeamPage section, sidebar, routing (Wave 3)
 
 ---
 
-*Last updated: 2026-03-21 (Phase 55 planned — 3 plans)*
+*Last updated: 2026-03-24 (Phase 56 planned — 5 plans)*
