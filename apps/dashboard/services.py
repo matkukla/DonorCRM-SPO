@@ -247,8 +247,18 @@ def get_giving_summary(user, year=None):
     given_float = float(given)
 
     # Last completed import timestamp
+    # Last completed import timestamp (gift-related types only)
+    gift_import_types = [
+        ImportBatchType.RE_GIFT,
+        ImportBatchType.RE_RECURRING_GIFT,
+        ImportBatchType.GENERIC_DONATIONS,
+        ImportBatchType.SPO_GIFT,
+    ]
     last_import_at = (
-        ImportBatch.objects.filter(status=ImportBatchStatus.COMPLETED)
+        ImportBatch.objects.filter(
+            status=ImportBatchStatus.COMPLETED,
+            import_type__in=gift_import_types,
+        )
         .order_by('-created_at')
         .values_list('created_at', flat=True)
         .first()
