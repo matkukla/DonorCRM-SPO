@@ -13,7 +13,7 @@ from apps.contacts.models import Contact
 from apps.core.gift_utils import FREQUENCY_MULTIPLIERS, _monthly_equivalent_aggregate
 from apps.core.permissions import get_visible_user_ids
 from apps.events.models import Event
-from apps.imports.models import ImportBatch, ImportBatchStatus
+from apps.imports.models import ImportBatch, ImportBatchStatus, ImportBatchType
 from apps.gifts.models import Gift, RecurringGift, RecurringGiftFrequency, RecurringGiftStatus
 from apps.tasks.models import Task, TaskStatus
 
