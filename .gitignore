@@ -118,3 +118,4 @@ test_data/funds.csv
 test_data/entities.csv
 SYSTEM_README.md
 bug_list.csv
+bug_lists/
