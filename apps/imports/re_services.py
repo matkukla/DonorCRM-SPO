@@ -906,8 +906,8 @@ _PAYMENT_TYPE_MAP: dict[str, str] = {
     'direct debit': 'direct_deposit',
     'direct deposit': 'direct_deposit',
     'ach': 'direct_deposit',
-    'cash': '',
-    'online': '',
+    'cash': 'cash',
+    'online': 'online',
 }
 
 

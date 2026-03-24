@@ -124,6 +124,7 @@ export function MonthlyGiftsCard({ userId }: { userId?: string }) {
                 />
                 <ChartTooltip
                   isAnimationActive={false}
+                  position={{ y: 10 }}
                   content={
                     <ChartTooltipContent
                       labelKey="total"
@@ -167,6 +168,7 @@ export function MonthlyGiftsCard({ userId }: { userId?: string }) {
                 />
                 <ChartTooltip
                   isAnimationActive={false}
+                  position={{ y: 10 }}
                   content={
                     <ChartTooltipContent
                       labelKey="total"
