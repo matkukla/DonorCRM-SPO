@@ -36,7 +36,7 @@ class TaskListCreateView(generics.ListCreateAPIView):
         else:
             queryset = Task.objects.filter(owner_id__in=visible)
 
-        return queryset.select_related('owner', 'contact')
+        return queryset.select_related('owner', 'contact', 'broadcast__sender')
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -57,8 +57,36 @@ class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
         user = self.request.user
         visible = get_visible_user_ids(user, request=self.request)
         if visible is None:
-            return Task.objects.all()
-        return Task.objects.filter(owner_id__in=visible)
+            return Task.objects.all().select_related('owner', 'contact', 'broadcast__sender')
+        return Task.objects.filter(owner_id__in=visible).select_related(
+            'owner', 'contact', 'broadcast__sender'
+        )
+
+    def update(self, request, *args, **kwargs):
+        task = self.get_object()
+        if (
+            task.broadcast_id
+            and str(task.owner_id) == str(request.user.id)
+            and request.user.role == 'missionary'
+        ):
+            return Response(
+                {'detail': 'Broadcast tasks cannot be edited by recipients.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        task = self.get_object()
+        if (
+            task.broadcast_id
+            and str(task.owner_id) == str(request.user.id)
+            and request.user.role == 'missionary'
+        ):
+            return Response(
+                {'detail': 'Broadcast tasks cannot be deleted by recipients.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().destroy(request, *args, **kwargs)
 
 
 class TaskCompleteView(APIView):
