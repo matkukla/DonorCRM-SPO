@@ -27,6 +27,8 @@ export interface Task {
   completed_by: string | null
   auto_generated: boolean
   source_event: string | null
+  broadcast_id: string | null
+  broadcast_sender_name: string | null
   created_at: string
   updated_at: string
 }
