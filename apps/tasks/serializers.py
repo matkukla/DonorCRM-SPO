@@ -23,6 +23,14 @@ class TaskSerializer(serializers.ModelSerializer):
     )
     journal_name = serializers.CharField(source='journal.name', read_only=True, allow_null=True)
 
+    # Broadcast fields (read-only)
+    broadcast_id = serializers.UUIDField(
+        source='broadcast.id', read_only=True, allow_null=True, default=None
+    )
+    broadcast_sender_name = serializers.CharField(
+        source='broadcast.sender.full_name', read_only=True, allow_null=True, default=None
+    )
+
     class Meta:
         model = Task
         fields = [
@@ -34,11 +42,13 @@ class TaskSerializer(serializers.ModelSerializer):
             'due_date', 'due_time', 'reminder_date',
             'is_overdue', 'completed_at', 'completed_by',
             'auto_generated', 'source_event',
+            'broadcast_id', 'broadcast_sender_name',
             'created_at', 'updated_at'
         ]
         read_only_fields = [
             'id', 'owner', 'completed_at', 'completed_by',
             'auto_generated', 'source_event',
+            'broadcast_id', 'broadcast_sender_name',
             'created_at', 'updated_at'
         ]
 

@@ -8,7 +8,7 @@ from django.utils import timezone
 from faker import Faker
 
 from apps.contacts.tests.factories import ContactFactory
-from apps.tasks.models import Task, TaskPriority, TaskStatus, TaskType
+from apps.tasks.models import BroadcastTask, Task, TaskPriority, TaskStatus, TaskType
 from apps.users.tests.factories import UserFactory
 
 fake = Faker()
@@ -51,3 +51,20 @@ class CompletedTaskFactory(TaskFactory):
     """Factory for completed tasks."""
     status = TaskStatus.COMPLETED
     completed_at = factory.LazyFunction(timezone.now)
+
+
+class BroadcastTaskFactory(factory.django.DjangoModelFactory):
+    """Factory for creating BroadcastTask instances."""
+
+    class Meta:
+        model = BroadcastTask
+
+    sender = factory.SubFactory(UserFactory)
+    title = factory.LazyFunction(lambda: fake.sentence(nb_words=4))
+    description = ''
+    task_type = TaskType.OTHER
+    priority = TaskPriority.MEDIUM
+    due_date = factory.LazyFunction(lambda: timezone.now().date() + timedelta(days=7))
+    target_type = 'all_missionaries'
+    recipient_ids = factory.LazyFunction(list)
+    recipient_count = 0
