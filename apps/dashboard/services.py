@@ -57,23 +57,24 @@ def get_needs_attention(user):
 
     today = date.today()
 
-    # Overdue tasks
+    # Overdue tasks (exclude broadcasts — they have their own section)
     overdue_tasks = tasks.filter(
         status__in=[TaskStatus.PENDING, TaskStatus.IN_PROGRESS],
-        due_date__lt=today
+        due_date__lt=today,
+        broadcast__isnull=True,
     )
 
-    # Tasks due today
+    # Tasks due today (exclude broadcasts — they have their own section)
     tasks_due_today = tasks.filter(
         status__in=[TaskStatus.PENDING, TaskStatus.IN_PROGRESS],
-        due_date=today
+        due_date=today,
+        broadcast__isnull=True,
     )
 
-    # Pending broadcast tasks not already counted as overdue or due today
+    # Pending broadcast tasks (regardless of due date)
     broadcast_tasks = tasks.filter(
         status__in=[TaskStatus.PENDING, TaskStatus.IN_PROGRESS],
         broadcast__isnull=False,
-        due_date__gt=today,
     )
 
     # Contacts needing thank-you
