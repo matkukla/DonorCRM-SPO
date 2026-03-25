@@ -78,3 +78,12 @@ class BroadcastCreateSerializer(serializers.Serializer):
                 )
 
         return attrs
+
+
+class BroadcastUpdateSerializer(serializers.Serializer):
+    """Serializer for validating broadcast update requests (all fields optional)."""
+    title = serializers.CharField(max_length=255, required=False)
+    description = serializers.CharField(required=False)
+    task_type = serializers.ChoiceField(choices=TaskType.choices, required=False)
+    priority = serializers.ChoiceField(choices=TaskPriority.choices, required=False)
+    due_date = serializers.DateField(required=False)
