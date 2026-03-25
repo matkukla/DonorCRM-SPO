@@ -122,6 +122,7 @@ class NeedsAttentionView(APIView):
         # late_pledges is already an empty list (no serialization needed)
         data['overdue_tasks'] = TaskSerializer(data['overdue_tasks'], many=True).data
         data['tasks_due_today'] = TaskSerializer(data['tasks_due_today'], many=True).data
+        data['broadcast_tasks'] = TaskSerializer(data['broadcast_tasks'], many=True).data
         data['thank_you_needed'] = ContactListSerializer(data['thank_you_needed'], many=True).data
 
         return Response(data)
