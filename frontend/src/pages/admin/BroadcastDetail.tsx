@@ -107,7 +107,7 @@ export default function BroadcastDetail() {
           <Button
             variant="ghost"
             className="gap-2 -ml-2"
-            onClick={() => navigate("/admin/broadcasts")}
+            onClick={() => navigate("/broadcasts")}
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Broadcasts
