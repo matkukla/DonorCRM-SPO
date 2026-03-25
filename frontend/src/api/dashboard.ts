@@ -74,6 +74,8 @@ export interface DashboardSummary {
     overdue_task_count: number
     tasks_due_today: OverdueTask[]
     tasks_due_today_count: number
+    broadcast_tasks: OverdueTask[]
+    broadcast_task_count: number
     thank_you_needed: ThankYouContact[]
     thank_you_needed_count: number
   }
