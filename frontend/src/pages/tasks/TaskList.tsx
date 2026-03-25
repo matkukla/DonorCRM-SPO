@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { useNavigate, useSearchParams, Link } from "react-router-dom"
 import { useAuth } from "@/providers/AuthProvider"
 import { useViewAs } from "@/providers/ViewAsProvider"
@@ -29,7 +30,9 @@ import {
   Users,
   MessageSquare,
   MoreVertical,
+  Megaphone,
 } from "lucide-react"
+import BroadcastTaskDialog from "./BroadcastTaskDialog"
 import type { ColumnDef } from "@tanstack/react-table"
 import type { Task, TaskStatus, TaskPriority, TaskType } from "@/api/tasks"
 import { taskStatusLabels, taskPriorityLabels, taskTypeLabels } from "@/api/tasks"
@@ -65,6 +68,8 @@ export default function TaskList() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { isViewingAs } = useViewAs()
+  const [broadcastDialogOpen, setBroadcastDialogOpen] = useState(false)
+  const canBroadcast = (user?.role === "admin" || user?.role === "supervisor") && !isViewingAs
   const canSeeOwner = user?.role === "admin" || user?.role === "supervisor" || user?.role === "coach"
   const ownerOptions = user?.role === "admin"
     ? [] // admin can see all via usersData (not loaded here -- owner column always visible)
@@ -190,7 +195,14 @@ export default function TaskList() {
           </div>
           <div>
             <div className="font-medium">{row.original.title}</div>
-            {row.original.contact_name && (
+            {row.original.broadcast_id ? (
+              <div className="flex items-center gap-1 mt-0.5">
+                <Megaphone className="h-3 w-3 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">
+                  Assigned by {row.original.broadcast_sender_name}
+                </span>
+              </div>
+            ) : row.original.contact_name ? (
               <Link
                 to={`/contacts/${row.original.contact}`}
                 className="text-sm text-primary hover:underline"
@@ -198,7 +210,7 @@ export default function TaskList() {
               >
                 {row.original.contact_name}
               </Link>
-            )}
+            ) : null}
           </div>
         </div>
       ),
@@ -250,8 +262,10 @@ export default function TaskList() {
     {
       id: "actions",
       cell: ({ row }) => {
+        const isBroadcast = !!row.original.broadcast_id
         const isOwnItem = String(row.original.owner) === String(user?.id)
-        const canEdit = user?.role === "admin" || isOwnItem
+        const canEdit = (user?.role === "admin" || isOwnItem) && !(isBroadcast && user?.role === "missionary")
+        const canComplete = !isViewingAs && row.original.status !== "completed" && row.original.status !== "cancelled"
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
@@ -278,7 +292,7 @@ export default function TaskList() {
                   Edit
                 </DropdownMenuItem>
               )}
-              {canEdit && !isViewingAs && row.original.status !== "completed" && row.original.status !== "cancelled" && (
+              {canComplete && (
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
@@ -314,10 +328,18 @@ export default function TaskList() {
               </p>
             </div>
             {!isViewingAs && (
-              <Button onClick={() => navigate("/tasks/new")}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Task
-              </Button>
+              <div className="flex gap-2">
+                {canBroadcast && (
+                  <Button variant="secondary" onClick={() => setBroadcastDialogOpen(true)}>
+                    <Megaphone className="h-4 w-4 mr-2" />
+                    Broadcast Task
+                  </Button>
+                )}
+                <Button onClick={() => navigate("/tasks/new")}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Task
+                </Button>
+              </div>
             )}
           </div>
 
@@ -430,6 +452,8 @@ export default function TaskList() {
             aria-label="Tasks"
           />
         </div>
+
+        <BroadcastTaskDialog open={broadcastDialogOpen} onOpenChange={setBroadcastDialogOpen} />
       </Container>
     </Section>
   )
