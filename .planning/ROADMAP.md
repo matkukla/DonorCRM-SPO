@@ -291,7 +291,7 @@ Plans:
 **Goal:** Admins and supervisors can broadcast tasks to targeted user groups; each recipient gets a Task copy in their regular Tasks tab with visual distinction; senders track completion progress via dedicated tracking views
 **Requirements**: BC-01 through BC-11
 **Depends on:** Phase 55
-**Plans:** 5 plans
+**Plans:** 5/5 plans complete
 **Success Criteria** (what must be TRUE):
   1. Admin can create a broadcast task targeting All Missionaries, All Supervisors, or Specific Users
   2. Supervisor can create a broadcast task targeting My Team or Specific Members (server-side enforced)
@@ -306,9 +306,9 @@ Plans:
   11. Confirmation dialog shows recipient count before sending
 
 Plans:
-- [ ] 56-01-PLAN.md — Backend foundation: BroadcastTask model, migration, services, serializers (Wave 1)
-- [ ] 56-02-PLAN.md — Backend API: views, URL patterns, TaskSerializer extension, tests (Wave 2)
-- [ ] 56-03-PLAN.md — Frontend foundation: Task type extension, broadcasts API client, React Query hooks (Wave 2)
+- [x] 56-01-PLAN.md — Backend foundation: BroadcastTask model, migration, services, serializers (Wave 1)
+- [x] 56-02-PLAN.md — Backend API: views, URL patterns, TaskSerializer extension, tests (Wave 2)
+- [x] 56-03-PLAN.md — Frontend foundation: Task type extension, broadcasts API client, React Query hooks (Wave 2)
 - [ ] 56-04-PLAN.md — Frontend creation + display: BroadcastTaskDialog, TaskList badge+button, TaskDetail restrictions (Wave 3)
 - [ ] 56-05-PLAN.md — Frontend tracking + navigation: BroadcastList, BroadcastDetail, TeamPage section, sidebar, routing (Wave 3)
 
