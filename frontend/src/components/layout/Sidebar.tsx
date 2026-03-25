@@ -36,6 +36,7 @@ interface NavItem {
   icon: React.ReactNode
   requiredRole?: "admin" | "missionary" | "finance" | "read_only" | "supervisor" | "coach"
   visibleRoles?: string[]
+  end?: boolean
 }
 
 const navItems: NavItem[] = [
@@ -67,7 +68,7 @@ const mpdResourcesItems: NavItem[] = [
 const bottomNavItems: NavItem[] = [
   { label: "Import/Export", href: "/import-export", icon: <FileUp className="h-5 w-5" /> },
   { label: "Settings", href: "/settings", icon: <Settings className="h-5 w-5" /> },
-  { label: "Admin", href: "/admin", icon: <ShieldCheck className="h-5 w-5" />, requiredRole: "admin" },
+  { label: "Admin", href: "/admin", icon: <ShieldCheck className="h-5 w-5" />, requiredRole: "admin", end: true },
   { label: "Broadcasts", href: "/admin/broadcasts", icon: <Megaphone className="h-5 w-5" />, requiredRole: "admin" },
 ]
 
@@ -277,6 +278,7 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
               <NavLink
                 to={item.href}
                 onClick={onNavClick}
+                end={item.end}
                 className={({ isActive }) =>
                   cn(
                     "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
