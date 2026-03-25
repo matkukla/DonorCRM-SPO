@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Search, Megaphone } from "lucide-react"
+import { Search, Megaphone, Plus } from "lucide-react"
 import { formatLocalDate } from "@/lib/utils"
 import {
   Table,
@@ -20,10 +20,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import BroadcastTaskDialog from "@/pages/tasks/BroadcastTaskDialog"
 
 export default function TeamPage() {
   const { user } = useAuth()
   const [search, setSearch] = useState("")
+  const [broadcastDialogOpen, setBroadcastDialogOpen] = useState(false)
   const { data: broadcastsData } = useBroadcasts({ page_size: 10 })
   const broadcasts = broadcastsData?.results || []
 
@@ -106,14 +108,20 @@ export default function TeamPage() {
           {/* Broadcast Tasks Section */}
           {user?.role === "supervisor" && (
             <div className="space-y-4">
-              <div>
-                <h2 className="text-xl font-semibold tracking-tight flex items-center gap-2">
-                  <Megaphone className="h-5 w-5" />
-                  Broadcast Tasks
-                </h2>
-                <p className="text-muted-foreground text-sm mt-1">
-                  Tasks you've sent to your team
-                </p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold tracking-tight flex items-center gap-2">
+                    <Megaphone className="h-5 w-5" />
+                    Broadcast Tasks
+                  </h2>
+                  <p className="text-muted-foreground text-sm mt-1">
+                    Tasks you've sent to your team
+                  </p>
+                </div>
+                <Button onClick={() => setBroadcastDialogOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Broadcast Task
+                </Button>
               </div>
 
               {broadcasts.length === 0 ? (
@@ -169,6 +177,8 @@ export default function TeamPage() {
             </div>
           )}
         </div>
+
+        <BroadcastTaskDialog open={broadcastDialogOpen} onOpenChange={setBroadcastDialogOpen} />
       </Container>
     </Section>
   )
