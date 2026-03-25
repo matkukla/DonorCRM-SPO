@@ -1,4 +1,5 @@
 import { useParams, useNavigate, Link } from "react-router-dom"
+import { useAuth } from "@/providers/AuthProvider"
 import { useTask, useCompleteTask, useDeleteTask } from "@/hooks/useTasks"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
@@ -20,6 +21,7 @@ import {
   Users,
   MessageSquare,
   MoreVertical,
+  Megaphone,
 } from "lucide-react"
 import type { TaskStatus, TaskPriority, TaskType } from "@/api/tasks"
 import { taskStatusLabels, taskPriorityLabels, taskTypeLabels } from "@/api/tasks"
@@ -73,6 +75,7 @@ function formatTime(timeStr: string | null): string {
 export default function TaskDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { user } = useAuth()
 
   const { data: task, isLoading, error } = useTask(id!)
   const completeMutation = useCompleteTask()
@@ -122,11 +125,21 @@ export default function TaskDetail() {
   }
 
   const canComplete = task.status !== "completed" && task.status !== "cancelled"
+  const isBroadcast = !!task.broadcast_id
+  const canModify = !(isBroadcast && user?.role === "missionary")
 
   return (
     <Section>
       <Container>
         <div className="space-y-6">
+          {/* Broadcast info bar */}
+          {isBroadcast && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+              <Megaphone className="h-4 w-4" />
+              <span>Broadcast task assigned by {task.broadcast_sender_name}</span>
+            </div>
+          )}
+
           {/* Header */}
           <div className="flex items-start justify-between">
             <div className="space-y-2">
@@ -171,18 +184,22 @@ export default function TaskDetail() {
                   Mark Complete
                 </Button>
               )}
-              <Button variant="secondary" onClick={() => navigate(`/tasks/${id}/edit`)}>
-                <Edit className="h-4 w-4 mr-2" />
-                Edit
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={handleDelete}
-                disabled={deleteMutation.isPending}
-                className="text-destructive hover:text-destructive"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              {canModify && (
+                <Button variant="secondary" onClick={() => navigate(`/tasks/${id}/edit`)}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit
+                </Button>
+              )}
+              {canModify && (
+                <Button
+                  variant="secondary"
+                  onClick={handleDelete}
+                  disabled={deleteMutation.isPending}
+                  className="text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           </div>
 
