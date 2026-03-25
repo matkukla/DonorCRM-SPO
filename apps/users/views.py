@@ -112,10 +112,10 @@ class PasswordChangeView(APIView):
 class ViewableUsersView(APIView):
     """
     GET /api/users/viewable/
-    Returns list of missionaries the authenticated user can impersonate via View As.
+    Returns list of users the authenticated user can impersonate via View As.
 
-    - Admin: all active missionaries
-    - Supervisor: only missionaries in their supervised_users M2M (filtered to role='missionary', is_active=True)
+    - Admin: all active missionaries and supervisors
+    - Supervisor: only missionaries in their supervised_users M2M
     - All other roles: 403 Forbidden
     """
     permission_classes = [permissions.IsAuthenticated]
@@ -125,9 +125,9 @@ class ViewableUsersView(APIView):
 
         if user.role == 'admin':
             qs = User.objects.filter(
-                role='missionary',
+                role__in=['missionary', 'supervisor'],
                 is_active=True
-            ).order_by('last_name', 'first_name')
+            ).exclude(id=user.id).order_by('last_name', 'first_name')
         elif user.role == 'supervisor':
             qs = user.supervised_users.filter(
                 role='missionary',
