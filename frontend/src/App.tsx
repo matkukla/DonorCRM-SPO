@@ -42,6 +42,8 @@ const ImportExport = React.lazy(() => import("@/pages/imports/ImportExport"))
 const AdminAnalyticsDashboard = React.lazy(() => import("@/pages/admin/analytics/AdminAnalyticsDashboard"))
 const PrayerList = React.lazy(() => import("@/pages/prayer/PrayerList"))
 const AdminAssignments = React.lazy(() => import("@/pages/admin/AdminAssignments"))
+const BroadcastList = React.lazy(() => import("@/pages/admin/BroadcastList"))
+const BroadcastDetail = React.lazy(() => import("@/pages/admin/BroadcastDetail"))
 const TeamPage = React.lazy(() => import("@/pages/team/TeamPage"))
 const MissionaryProfilePage = React.lazy(() => import("@/pages/team/MissionaryProfilePage"))
 
@@ -147,6 +149,8 @@ function App() {
                   <Route path="/settings" element={<ProtectedPage><Settings /></ProtectedPage>} />
                   <Route path="/admin" element={<ProtectedPage requiredRole="admin"><AdminUsers /></ProtectedPage>} />
                   <Route path="/admin/assignments" element={<ProtectedPage requiredRole="admin"><AdminAssignments /></ProtectedPage>} />
+                  <Route path="/admin/broadcasts" element={<ProtectedPage requiredRole="admin"><BroadcastList /></ProtectedPage>} />
+                  <Route path="/admin/broadcasts/:id" element={<ProtectedPage requiredRole="admin"><BroadcastDetail /></ProtectedPage>} />
                   <Route path="/admin/analytics" element={<Navigate to="/admin/analytics/dashboard" replace />} />
                   <Route path="/admin/analytics/dashboard" element={<ProtectedPage requiredRole="admin"><AdminAnalyticsDashboard /></ProtectedPage>} />
                   <Route path="/admin/analytics/stalled" element={<ProtectedPage requiredRole="admin"><StalledContacts /></ProtectedPage>} />
