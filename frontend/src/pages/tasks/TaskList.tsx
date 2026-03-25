@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { useNavigate, useSearchParams, Link } from "react-router-dom"
 import { useAuth } from "@/providers/AuthProvider"
 import { useViewAs } from "@/providers/ViewAsProvider"
@@ -36,6 +37,7 @@ import type { Task, TaskStatus, TaskPriority, TaskType } from "@/api/tasks"
 import { taskStatusLabels, taskPriorityLabels, taskTypeLabels } from "@/api/tasks"
 import { FilterCombobox } from "@/components/shared/FilterCombobox"
 import { formatLocalDate } from "@/lib/utils"
+import BroadcastTaskDialog from "./BroadcastTaskDialog"
 
 const PAGE_SIZE = 20
 
@@ -66,6 +68,8 @@ export default function TaskList() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { isViewingAs } = useViewAs()
+  const [broadcastDialogOpen, setBroadcastDialogOpen] = useState(false)
+  const canBroadcast = (user?.role === "admin" || user?.role === "supervisor") && !isViewingAs
   const canSeeOwner = user?.role === "admin" || user?.role === "supervisor" || user?.role === "coach"
   const ownerOptions = user?.role === "admin"
     ? [] // admin can see all via usersData (not loaded here -- owner column always visible)
@@ -324,10 +328,18 @@ export default function TaskList() {
               </p>
             </div>
             {!isViewingAs && (
-              <Button onClick={() => navigate("/tasks/new")}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Task
-              </Button>
+              <div className="flex gap-2">
+                {canBroadcast && (
+                  <Button variant="secondary" onClick={() => setBroadcastDialogOpen(true)}>
+                    <Megaphone className="h-4 w-4 mr-2" />
+                    Broadcast Task
+                  </Button>
+                )}
+                <Button onClick={() => navigate("/tasks/new")}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Task
+                </Button>
+              </div>
             )}
           </div>
 
@@ -441,6 +453,7 @@ export default function TaskList() {
           />
         </div>
 
+        <BroadcastTaskDialog open={broadcastDialogOpen} onOpenChange={setBroadcastDialogOpen} />
       </Container>
     </Section>
   )
