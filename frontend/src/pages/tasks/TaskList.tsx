@@ -265,7 +265,7 @@ export default function TaskList() {
         const isBroadcast = !!row.original.broadcast_id
         const isOwnItem = String(row.original.owner) === String(user?.id)
         const canEdit = (user?.role === "admin" || isOwnItem) && !(isBroadcast && user?.role === "missionary")
-        const canComplete = !isViewingAs && row.original.status !== "completed" && row.original.status !== "cancelled"
+        const canComplete = !isViewingAs && (isOwnItem || user?.role === "admin") && row.original.status !== "completed" && row.original.status !== "cancelled"
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
