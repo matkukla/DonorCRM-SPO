@@ -1,6 +1,7 @@
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { useAuth } from "@/providers/AuthProvider"
 import { useCreateBroadcast } from "@/hooks/useBroadcasts"
+import { useViewableUsers } from "@/hooks/useUsers"
 import type { BroadcastTargetType } from "@/api/broadcasts"
 import { broadcastTargetLabels } from "@/api/broadcasts"
 import type { TaskType, TaskPriority } from "@/api/tasks"
@@ -55,12 +56,21 @@ export default function BroadcastTaskDialog({ open, onOpenChange }: BroadcastTas
   const [specificUserIds, setSpecificUserIds] = useState<string[]>([])
 
   const targetOptions = isAdmin ? adminTargetOptions : supervisorTargetOptions
-  const teamMembers = user?.supervised_users || []
+  const supervisedMembers = user?.supervised_users || []
+  const { data: viewableUsers } = useViewableUsers()
+
+  // Admin uses viewable users from API; supervisor uses supervised_users from auth
+  const selectableUsers = useMemo(() => {
+    if (isAdmin && viewableUsers) {
+      return viewableUsers.map((u) => ({ id: u.id, first_name: u.full_name, last_name: "" }))
+    }
+    return supervisedMembers
+  }, [isAdmin, viewableUsers, supervisedMembers])
 
   const getRecipientLabel = (): string => {
     if (targetType === "all_missionaries") return "all missionaries"
     if (targetType === "all_supervisors") return "all supervisors"
-    if (targetType === "my_team") return `${teamMembers.length} team member${teamMembers.length !== 1 ? "s" : ""}`
+    if (targetType === "my_team") return `${selectableUsers.length} team member${selectableUsers.length !== 1 ? "s" : ""}`
     if (targetType === "specific_users") return `${specificUserIds.length} user${specificUserIds.length !== 1 ? "s" : ""}`
     return "selected users"
   }
@@ -241,11 +251,11 @@ export default function BroadcastTaskDialog({ open, onOpenChange }: BroadcastTas
               </div>
 
               {/* Specific Users Selection */}
-              {targetType === "specific_users" && teamMembers.length > 0 && (
+              {targetType === "specific_users" && selectableUsers.length > 0 && (
                 <div className="space-y-2">
                   <Label>Select Users</Label>
                   <div className="border rounded-lg max-h-48 overflow-y-auto">
-                    {teamMembers.map((member) => (
+                    {selectableUsers.map((member) => (
                       <label
                         key={member.id}
                         className="flex items-center gap-3 px-3 py-2 hover:bg-muted cursor-pointer"
@@ -255,7 +265,7 @@ export default function BroadcastTaskDialog({ open, onOpenChange }: BroadcastTas
                           onCheckedChange={() => handleUserToggle(String(member.id))}
                         />
                         <span className="text-sm">
-                          {member.first_name} {member.last_name}
+                          {member.last_name ? `${member.first_name} ${member.last_name}` : member.first_name}
                         </span>
                       </label>
                     ))}
@@ -268,9 +278,9 @@ export default function BroadcastTaskDialog({ open, onOpenChange }: BroadcastTas
                 </div>
               )}
 
-              {targetType === "specific_users" && teamMembers.length === 0 && isAdmin && (
+              {targetType === "specific_users" && selectableUsers.length === 0 && (
                 <p className="text-sm text-muted-foreground">
-                  Enter specific user IDs when creating the broadcast. The server will validate recipients.
+                  Loading available users...
                 </p>
               )}
             </div>
