@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { useBroadcasts } from "@/hooks/useBroadcasts"
 import { broadcastTargetLabels } from "@/api/broadcasts"
@@ -8,10 +9,12 @@ import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
 import { DataTable } from "@/components/shared/DataTable"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { Megaphone } from "lucide-react"
+import { Megaphone, Plus } from "lucide-react"
 import { formatLocalDate } from "@/lib/utils"
 import type { ColumnDef } from "@tanstack/react-table"
+import BroadcastTaskDialog from "@/pages/tasks/BroadcastTaskDialog"
 
 const PAGE_SIZE = 20
 
@@ -94,6 +97,7 @@ const columns: ColumnDef<BroadcastTask>[] = [
 export default function BroadcastList() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
+  const [broadcastDialogOpen, setBroadcastDialogOpen] = useState(false)
 
   const page = parseInt(searchParams.get("page") || "1", 10)
 
@@ -112,14 +116,20 @@ export default function BroadcastList() {
       <Container>
         <div className="space-y-6">
           {/* Header */}
-          <div>
-            <div className="flex items-center gap-3">
-              <Megaphone className="h-7 w-7 text-muted-foreground" />
-              <h1 className="text-3xl font-semibold tracking-tight">Broadcasts</h1>
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-3">
+                <Megaphone className="h-7 w-7 text-muted-foreground" />
+                <h1 className="text-3xl font-semibold tracking-tight">Broadcasts</h1>
+              </div>
+              <p className="text-muted-foreground mt-1">
+                Track broadcast task completion across your organization
+              </p>
             </div>
-            <p className="text-muted-foreground mt-1">
-              Track broadcast task completion across your organization
-            </p>
+            <Button onClick={() => setBroadcastDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Broadcast Task
+            </Button>
           </div>
 
           {/* Data Table */}
@@ -136,6 +146,8 @@ export default function BroadcastList() {
             aria-label="Broadcasts"
           />
         </div>
+
+        <BroadcastTaskDialog open={broadcastDialogOpen} onOpenChange={setBroadcastDialogOpen} />
       </Container>
     </Section>
   )
