@@ -103,14 +103,15 @@ class ViewAsMiddleware:
         try:
             target = User.objects.get(
                 pk=target_id_str,
-                role='missionary',
+                role__in=['missionary', 'supervisor'],
                 is_active=True
             )
         except (User.DoesNotExist, ValueError):
             return 'Invalid View As target.'
 
+        # Supervisors can only view their assigned missionaries (not other supervisors)
         if viewer.role == 'supervisor':
-            if not viewer.supervised_users.filter(pk=target.pk).exists():
+            if target.role != 'missionary' or not viewer.supervised_users.filter(pk=target.pk).exists():
                 return 'You do not have permission to view as this user.'
 
         request.view_as_user = target
