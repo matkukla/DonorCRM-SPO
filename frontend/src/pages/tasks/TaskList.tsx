@@ -453,7 +453,7 @@ export default function TaskList() {
           />
         </div>
 
-        <BroadcastTaskDialog open={broadcastDialogOpen} onOpenChange={setBroadcastDialogOpen} />
+        {canBroadcast && <BroadcastTaskDialog open={broadcastDialogOpen} onOpenChange={setBroadcastDialogOpen} />}
       </Container>
     </Section>
   )
