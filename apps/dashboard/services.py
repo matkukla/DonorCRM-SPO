@@ -69,6 +69,12 @@ def get_needs_attention(user):
         due_date=today
     )
 
+    # Pending broadcast tasks (regardless of due date)
+    broadcast_tasks = tasks.filter(
+        status__in=[TaskStatus.PENDING, TaskStatus.IN_PROGRESS],
+        broadcast__isnull=False,
+    )
+
     # Contacts needing thank-you
     thank_you_needed = contacts.filter(needs_thank_you=True)
 
@@ -79,6 +85,8 @@ def get_needs_attention(user):
         'overdue_task_count': overdue_tasks.count(),
         'tasks_due_today': tasks_due_today[:5],
         'tasks_due_today_count': tasks_due_today.count(),
+        'broadcast_tasks': broadcast_tasks[:5],
+        'broadcast_task_count': broadcast_tasks.count(),
         'thank_you_needed': thank_you_needed[:5],
         'thank_you_needed_count': thank_you_needed.count()
     }
@@ -340,6 +348,9 @@ def get_dashboard_summary(user):
         'id', 'title', 'due_date', 'priority'
     ))
     needs_attention['tasks_due_today'] = list(needs_attention['tasks_due_today'].values(
+        'id', 'title', 'due_date', 'priority'
+    ))
+    needs_attention['broadcast_tasks'] = list(needs_attention['broadcast_tasks'].values(
         'id', 'title', 'due_date', 'priority'
     ))
     needs_attention['thank_you_needed'] = list(needs_attention['thank_you_needed'].values(
