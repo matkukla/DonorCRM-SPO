@@ -149,8 +149,8 @@ function App() {
                   <Route path="/settings" element={<ProtectedPage><Settings /></ProtectedPage>} />
                   <Route path="/admin" element={<ProtectedPage requiredRole="admin"><AdminUsers /></ProtectedPage>} />
                   <Route path="/admin/assignments" element={<ProtectedPage requiredRole="admin"><AdminAssignments /></ProtectedPage>} />
-                  <Route path="/broadcasts" element={<ProtectedPage requiredRole="supervisor"><BroadcastList /></ProtectedPage>} />
-                  <Route path="/broadcasts/:id" element={<ProtectedPage requiredRole="supervisor"><BroadcastDetail /></ProtectedPage>} />
+                  <Route path="/broadcasts" element={<ProtectedPage requiredRole="admin"><BroadcastList /></ProtectedPage>} />
+                  <Route path="/broadcasts/:id" element={<ProtectedPage requiredRole="admin"><BroadcastDetail /></ProtectedPage>} />
                   <Route path="/admin/analytics" element={<Navigate to="/admin/analytics/dashboard" replace />} />
                   <Route path="/admin/analytics/dashboard" element={<ProtectedPage requiredRole="admin"><AdminAnalyticsDashboard /></ProtectedPage>} />
                   <Route path="/admin/analytics/stalled" element={<ProtectedPage requiredRole="admin"><StalledContacts /></ProtectedPage>} />

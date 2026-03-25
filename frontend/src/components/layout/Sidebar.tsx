@@ -69,7 +69,7 @@ const bottomNavItems: NavItem[] = [
   { label: "Import/Export", href: "/import-export", icon: <FileUp className="h-5 w-5" /> },
   { label: "Settings", href: "/settings", icon: <Settings className="h-5 w-5" /> },
   { label: "Admin", href: "/admin", icon: <ShieldCheck className="h-5 w-5" />, requiredRole: "admin", end: true },
-  { label: "Broadcasts", href: "/broadcasts", icon: <Megaphone className="h-5 w-5" />, visibleRoles: ["admin", "supervisor"] },
+  { label: "Broadcasts", href: "/broadcasts", icon: <Megaphone className="h-5 w-5" />, requiredRole: "admin" },
 ]
 
 interface SidebarProps {
