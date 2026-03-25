@@ -69,10 +69,11 @@ def get_needs_attention(user):
         due_date=today
     )
 
-    # Pending broadcast tasks (regardless of due date)
+    # Pending broadcast tasks not already counted as overdue or due today
     broadcast_tasks = tasks.filter(
         status__in=[TaskStatus.PENDING, TaskStatus.IN_PROGRESS],
         broadcast__isnull=False,
+        due_date__gt=today,
     )
 
     # Contacts needing thank-you
