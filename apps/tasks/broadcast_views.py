@@ -9,6 +9,7 @@ from apps.tasks.broadcast_serializers import (
     BroadcastCreateSerializer,
     BroadcastTaskDetailSerializer,
     BroadcastTaskListSerializer,
+    BroadcastUpdateSerializer,
 )
 from apps.tasks.broadcast_services import cancel_broadcast, create_broadcast, update_broadcast
 from apps.tasks.models import BroadcastTask, Task, TaskStatus
@@ -101,12 +102,10 @@ class BroadcastDetailView(generics.RetrieveUpdateAPIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        fields = {}
-        for field in ('title', 'description', 'task_type', 'priority', 'due_date'):
-            if field in request.data:
-                fields[field] = request.data[field]
+        serializer = BroadcastUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-        update_broadcast(broadcast, **fields)
+        update_broadcast(broadcast, **serializer.validated_data)
 
         # Re-query with annotations
         annotated = self.get_queryset().get(pk=broadcast.pk)
