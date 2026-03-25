@@ -142,7 +142,7 @@ export default function BroadcastList() {
             pageSize={PAGE_SIZE}
             totalCount={data?.count}
             onPageChange={handlePageChange}
-            onRowClick={(broadcast) => navigate(`/admin/broadcasts/${broadcast.id}`)}
+            onRowClick={(broadcast) => navigate(`/broadcasts/${broadcast.id}`)}
             aria-label="Broadcasts"
           />
         </div>
