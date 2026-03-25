@@ -69,7 +69,7 @@ const bottomNavItems: NavItem[] = [
   { label: "Import/Export", href: "/import-export", icon: <FileUp className="h-5 w-5" /> },
   { label: "Settings", href: "/settings", icon: <Settings className="h-5 w-5" /> },
   { label: "Admin", href: "/admin", icon: <ShieldCheck className="h-5 w-5" />, requiredRole: "admin", end: true },
-  { label: "Broadcasts", href: "/admin/broadcasts", icon: <Megaphone className="h-5 w-5" />, requiredRole: "admin" },
+  { label: "Broadcasts", href: "/broadcasts", icon: <Megaphone className="h-5 w-5" />, visibleRoles: ["admin", "supervisor"] },
 ]
 
 interface SidebarProps {
@@ -80,7 +80,7 @@ interface SidebarProps {
 const INSIGHTS_OPEN_KEY = "insights-nav-open"
 const MPD_RESOURCES_OPEN_KEY = "mpd-resources-nav-open"
 
-const VIEW_AS_HIDDEN_HREFS = new Set(["/import-export", "/admin", "/admin/broadcasts"])
+const VIEW_AS_HIDDEN_HREFS = new Set(["/import-export", "/admin", "/broadcasts"])
 
 export function Sidebar({ className, onNavClick }: SidebarProps) {
   const { user } = useAuth()
