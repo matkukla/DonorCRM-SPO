@@ -30,7 +30,9 @@ def resolve_recipients(sender, target_type, specific_user_ids=None):
     if target_type == 'all_missionaries':
         if sender.role != 'admin':
             raise PermissionError("Only admins can target all missionaries")
-        return list(User.objects.filter(role='missionary', is_active=True))
+        return list(User.objects.filter(
+            role__in=['missionary', 'supervisor'], is_active=True
+        ).exclude(id=sender.id))
 
     elif target_type == 'all_supervisors':
         if sender.role != 'admin':

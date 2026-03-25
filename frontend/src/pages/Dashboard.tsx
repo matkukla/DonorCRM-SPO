@@ -139,7 +139,7 @@ export default function Dashboard() {
         return <StatCard title="Items Needing Attention" value={(data?.needs_attention?.overdue_task_count || 0) + (data?.needs_attention?.tasks_due_today_count || 0) + (data?.needs_attention?.thank_you_needed_count || 0)} icon={CheckSquare} isLoading={isLoading} />
       // Content section
       case "needs-attention":
-        return <NeedsAttention overdueTasks={data?.needs_attention?.overdue_tasks || []} overdueTaskCount={data?.needs_attention?.overdue_task_count || 0} latePledges={data?.needs_attention?.late_pledges || []} latePledgeCount={data?.needs_attention?.late_pledge_count || 0} thankYouNeeded={data?.needs_attention?.thank_you_needed || []} thankYouCount={data?.needs_attention?.thank_you_needed_count || 0} isLoading={isLoading} />
+        return <NeedsAttention overdueTasks={data?.needs_attention?.overdue_tasks || []} overdueTaskCount={data?.needs_attention?.overdue_task_count || 0} tasksDueToday={data?.needs_attention?.tasks_due_today || []} tasksDueTodayCount={data?.needs_attention?.tasks_due_today_count || 0} latePledges={data?.needs_attention?.late_pledges || []} latePledgeCount={data?.needs_attention?.late_pledge_count || 0} thankYouNeeded={data?.needs_attention?.thank_you_needed || []} thankYouCount={data?.needs_attention?.thank_you_needed_count || 0} isLoading={isLoading} />
       case "support-progress":
         return <SupportProgress data={data?.support_progress || null} isLoading={isLoading} />
       case "recent-donations":

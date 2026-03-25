@@ -22,15 +22,16 @@ from apps.users.tests.factories import UserFactory
 class TestResolveRecipients:
     """Tests for resolve_recipients function."""
 
-    def test_all_missionaries_returns_only_missionaries(self):
+    def test_all_missionaries_includes_supervisors(self):
         admin = UserFactory(role='admin')
         m1 = UserFactory(role='missionary')
         m2 = UserFactory(role='missionary')
-        UserFactory(role='supervisor')  # should not be returned
+        s1 = UserFactory(role='supervisor')
 
         result = resolve_recipients(admin, 'all_missionaries')
         result_ids = {u.id for u in result}
-        assert result_ids == {m1.id, m2.id}
+        assert result_ids == {m1.id, m2.id, s1.id}
+        assert admin.id not in result_ids  # sender excluded
 
     def test_all_supervisors_returns_only_supervisors(self):
         admin = UserFactory(role='admin')
