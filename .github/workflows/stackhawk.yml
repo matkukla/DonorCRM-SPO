@@ -1,0 +1,31 @@
+name: StackHawk Security Scan
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 1' # Weekly on Monday at 6am UTC
+
+jobs:
+  stackhawk:
+    name: HawkScan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get JWT token
+        id: auth
+        run: |
+          TOKEN=$(curl -s -X POST https://donorcrm-web.onrender.com/api/v1/auth/login/ \
+            -H "Content-Type: application/json" \
+            -d '{"email":"${{ secrets.SCAN_USER_EMAIL }}","password":"${{ secrets.SCAN_USER_PASSWORD }}"}' \
+            | python3 -c "import sys,json; print(json.load(sys.stdin)['access'])")
+          echo "::add-mask::$TOKEN"
+          echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
+
+      - name: Run HawkScan
+        uses: stackhawk/hawkscan-action@v2
+        with:
+          apiKey: ${{ secrets.HAWK_API_KEY }}
+          configurationFiles: stackhawk.yml
+        env:
+          SCAN_TOKEN: ${{ steps.auth.outputs.token }}
