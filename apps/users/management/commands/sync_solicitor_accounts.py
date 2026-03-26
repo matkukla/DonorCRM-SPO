@@ -2,6 +2,8 @@
 Management command to ensure all solicitor accounts from test_solicitors.csv
 exist with @spo.org emails and a consistent password.
 """
+import os
+
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 
@@ -35,7 +37,7 @@ SOLICITORS = [
     ("Andrew", "Anderson"),
 ]
 
-SOLICITOR_PASSWORD = "***REMOVED***"
+SOLICITOR_PASSWORD = os.environ.get('DEMO_USER_PASSWORD', 'changeme')
 
 
 def solicitor_email(first, last):

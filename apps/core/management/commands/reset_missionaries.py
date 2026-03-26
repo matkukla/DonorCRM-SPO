@@ -2,6 +2,8 @@
 Management command to wipe all data, remove non-kept users,
 and create fresh missionary accounts from test_solicitors.csv.
 """
+import os
+
 from django.core.management.base import BaseCommand
 from django.db import connection, transaction
 from django.db.models import Q
@@ -31,7 +33,7 @@ from apps.prayers.models import PrayerIntention
 from apps.tasks.models import Task
 from apps.users.models import GoalJournalSelection, User, UserRole
 
-PASSWORD = '***REMOVED***'
+PASSWORD = os.environ.get('DEMO_USER_PASSWORD', 'changeme')
 GOAL_CENTS = 220000
 
 MISSIONARIES = [
