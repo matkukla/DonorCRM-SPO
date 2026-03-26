@@ -1,0 +1,27 @@
+app:
+  applicationId: 6802a8ce-019a-4e7b-a732-ee7a1d37ca19
+  env: production
+  host: https://donorcrm-web.onrender.com
+
+  authentication:
+    loggedInIndicator: "HTTP.*2[0-9][0-9]\\s*O[kK](\\s*)|HTTP.*3[0-9][0-9].*"
+    loggedOutIndicator: "HTTP.*4[0-9][0-9](\\s*)Unauthorized.*"
+    external:
+      values:
+        - type: TOKEN
+          tokenType: Bearer
+          value:
+            name: Authorization
+            val: ${SCAN_TOKEN}
+    testPath:
+      path: /api/v1/users/me/
+      success: ".*200.*"
+      requestMethod: GET
+
+  openApiConf:
+    filePath: openapi-schema.yaml
+    primaryConfig: true
+
+hawk:
+  spider:
+    base: false
