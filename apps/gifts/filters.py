@@ -25,10 +25,14 @@ class GiftFilterSet(django_filters.FilterSet):
         ]
 
     def filter_min_amount(self, queryset, name, value):
-        return queryset.filter(amount_cents__gte=int(value * 100))
+        if value is None:
+            return queryset
+        return queryset.filter(amount_cents__gte=round(value * 100))
 
     def filter_max_amount(self, queryset, name, value):
-        return queryset.filter(amount_cents__lte=int(value * 100))
+        if value is None:
+            return queryset
+        return queryset.filter(amount_cents__lte=round(value * 100))
 
 
 class RecurringGiftFilterSet(django_filters.FilterSet):
