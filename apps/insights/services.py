@@ -28,13 +28,16 @@ def _parse_date_range(date_from=None, date_to=None):
     try:
         if date_from:
             dt_from_val = timezone.make_aware(dt_class.strptime(date_from, '%Y-%m-%d'))
+    except ValueError:
+        pass  # Invalid date_from silently ignored; callers validate at the view layer
+    try:
         if date_to:
             # Include entire day
             dt_to_val = timezone.make_aware(
                 dt_class.strptime(date_to, '%Y-%m-%d')
             ) + timedelta(days=1)
     except ValueError:
-        pass  # Invalid dates are silently ignored; callers validate at the view layer
+        pass  # Invalid date_to silently ignored; callers validate at the view layer
     return dt_from_val, dt_to_val
 
 
