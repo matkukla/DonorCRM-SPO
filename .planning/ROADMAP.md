@@ -10,7 +10,6 @@
 - ✅ **v2.1 Security Hardening** — Phase 37 (shipped 2026-02-25)
 - ✅ **v2.2 UI Polish, Journal Report & Supervisor Role** — Phases 38-47 (shipped 2026-03-11)
 - ✅ **v2.3 Goal Tracking & View As** — Phases 48-56 (shipped 2026-03-25)
-- ✅ **Duplicate Contact Checking + Merging** — Phase 01 (shipped 2026-03-28, GitHub issue #37)
 
 ## Phases
 
@@ -145,24 +144,6 @@ See milestones/v2.3-ROADMAP.md for complete phase details.
 
 </details>
 
-<details>
-<summary>Duplicate Contact Checking + Merging (Phase 01) — SHIPPED 2026-03-28</summary>
-
-See milestones/v1.0-ROADMAP.md for complete phase details.
-
-**Key Features:**
-- pg_trgm fuzzy name matching with 3-tier confidence scoring (High/Medium/Low)
-- Dedicated /contacts/duplicates batch scan page with dismiss and review
-- Side-by-side merge view with field-by-field radio buttons and survivor selection
-- Creation-time duplicate warning dialog with top 3 matches and Create Anyway bypass
-- Atomic FK reassignment for all 6 relationship types (Gift, RecurringGift, Task, PrayerIntention, Event, JournalContact)
-- DismissedDuplicate model with canonical pair ordering
-- Merge audit trail via ContactMergeLog
-
-**Scope:** 8 requirements, 1 phase, 6 plans
-
-</details>
-
 ## Progress
 
 | Milestone | Phases | Plans | Status | Shipped |
@@ -175,9 +156,8 @@ See milestones/v1.0-ROADMAP.md for complete phase details.
 | v2.1 | 37 | 3 | Complete | 2026-02-25 |
 | v2.2 | 38-47 | 34 | Complete | 2026-03-11 |
 | v2.3 | 48-56 | 31 | Complete | 2026-03-25 |
-| Dup Check | 01 | 6 | Complete | 2026-03-28 |
 
-**Total:** 9 milestones shipped, 178 plans executed across 57 phases.
+**Total:** 8 milestones shipped, 172 plans executed across 56 phases.
 
 ### Phase 1: Duplicate Contact Checking + Merging (GitHub issue #37)
 
@@ -196,4 +176,4 @@ Plans:
 
 ---
 
-*Last updated: 2026-03-28 (Duplicate Contact Checking + Merging shipped)*
+*Last updated: 2026-03-27 (Phase 1 planned)*
