@@ -57,7 +57,8 @@ class ContactDetailSerializer(serializers.ModelSerializer):
             'total_given', 'gift_count',
             'has_active_pledge', 'monthly_pledge_amount',
             'last_thanked_at', 'needs_thank_you',
-            'notes', 'groups', 'group_ids',
+            'notes', 'external_id', 'external_constituent_id',
+            'groups', 'group_ids',
             'created_at', 'updated_at'
         ]
         read_only_fields = [
