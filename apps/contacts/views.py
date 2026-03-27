@@ -10,13 +10,19 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.contacts.filters import ContactFilterSet
-from apps.contacts.models import Contact, ContactStatus
+from apps.contacts.models import Contact, ContactStatus, DismissedDuplicate
 from apps.contacts.serializers import (
     ContactCreateSerializer,
     ContactDetailSerializer,
     ContactListSerializer,
     ContactJournalMembershipSerializer,
+    DuplicateCheckSerializer,
+    DuplicateMatchSerializer,
+    DuplicatePairSerializer,
+    MergeRequestSerializer,
+    DismissRequestSerializer,
 )
+from apps.contacts.services import find_duplicates_for_contact, scan_duplicates_for_owner, merge_contacts
 from apps.core.pagination import StandardPagination
 from apps.core.permissions import (
     IsContactOwnerOrReadAccess,
@@ -67,6 +73,9 @@ class ContactListCreateView(generics.ListCreateAPIView):
         else:
             queryset = Contact.objects.filter(owner_id__in=visible)
 
+        # Exclude merged contacts from the list
+        queryset = queryset.filter(is_merged=False)
+
         # Optional owner filter for admin/supervisor (intentionally NOT in FilterSet - security)
         owner_id = self.request.query_params.get('owner')
         if owner_id and user.role in ['admin', 'supervisor', 'coach']:
@@ -98,8 +107,10 @@ class ContactDetailView(generics.RetrieveUpdateDestroyAPIView):
         user = self.request.user
         visible = get_visible_user_ids(user, request=self.request)
         if visible is None:
-            return Contact.objects.all()
-        return Contact.objects.filter(owner_id__in=visible)
+            queryset = Contact.objects.all()
+        else:
+            queryset = Contact.objects.filter(owner_id__in=visible)
+        return queryset.filter(is_merged=False)
 
     def get_serializer_class(self):
         if self.request.method in ['PATCH', 'PUT']:
@@ -280,6 +291,8 @@ class ContactSearchView(generics.ListAPIView):
         else:
             queryset = Contact.objects.filter(owner_id__in=visible)
 
+        queryset = queryset.filter(is_merged=False)
+
         if query:
             queryset = queryset.filter(
                 Q(first_name__icontains=query) |
@@ -399,3 +412,66 @@ class ContactJournalEventsView(generics.ListAPIView):
         if page is not None:
             return self.get_paginated_response(data)
         return Response(data)
+
+
+class DuplicateCheckView(APIView):
+    """POST: Check for duplicates before creating a contact."""
+    permission_classes = [permissions.IsAuthenticated, IsStaffOrAbove]
+
+    @extend_schema(tags=['contacts'], summary='Check for duplicate contacts')
+    def post(self, request):
+        ser = DuplicateCheckSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        duplicates = find_duplicates_for_contact(
+            contact_data=ser.validated_data,
+            owner_id=request.user.id,
+        )
+        out = DuplicateMatchSerializer(duplicates, many=True)
+        return Response(out.data)
+
+
+class DuplicateScanView(APIView):
+    """GET: Scan all contacts for duplicate pairs."""
+    permission_classes = [permissions.IsAuthenticated, IsStaffOrAbove]
+
+    @extend_schema(tags=['contacts'], summary='Scan for duplicate contact pairs')
+    def get(self, request):
+        pairs = scan_duplicates_for_owner(owner_id=request.user.id)
+        out = DuplicatePairSerializer(pairs, many=True)
+        return Response(out.data)
+
+
+class MergeContactsView(APIView):
+    """POST: Merge two contacts."""
+    permission_classes = [permissions.IsAuthenticated, IsStaffOrAbove]
+
+    @extend_schema(tags=['contacts'], summary='Merge two contacts')
+    def post(self, request):
+        ser = MergeRequestSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        try:
+            survivor = merge_contacts(
+                survivor_id=ser.validated_data['survivor_id'],
+                loser_id=ser.validated_data['loser_id'],
+                field_overrides=ser.validated_data.get('field_overrides', {}),
+                merged_by=request.user,
+            )
+        except (Contact.DoesNotExist, ValueError) as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(ContactDetailSerializer(survivor).data)
+
+
+class DismissDuplicateView(APIView):
+    """POST: Dismiss a duplicate pair so it won't be flagged again."""
+    permission_classes = [permissions.IsAuthenticated, IsStaffOrAbove]
+
+    @extend_schema(tags=['contacts'], summary='Dismiss duplicate pair')
+    def post(self, request):
+        ser = DismissRequestSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        DismissedDuplicate.objects.create(
+            contact_a_id=ser.validated_data['contact_a_id'],
+            contact_b_id=ser.validated_data['contact_b_id'],
+            dismissed_by=request.user,
+        )
+        return Response({'detail': 'Pair dismissed.'}, status=status.HTTP_201_CREATED)
