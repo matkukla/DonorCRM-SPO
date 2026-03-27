@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { ConfidenceBadge } from "./ConfidenceBadge"
 import type { DuplicateMatch } from "@/api/contacts"
 
 interface DuplicateWarningDialogProps {
@@ -46,9 +46,7 @@ export function DuplicateWarningDialog({
                       {match.phone && <span>{match.phone}</span>}
                     </div>
                   </div>
-                  <Badge variant={match.confidence === "high" ? "destructive" : match.confidence === "medium" ? "warning" : "secondary"}>
-                    {match.confidence.charAt(0).toUpperCase() + match.confidence.slice(1)}
-                  </Badge>
+                  <ConfidenceBadge confidence={match.confidence} />
                 </div>
                 <div className="mt-2">
                   <a
