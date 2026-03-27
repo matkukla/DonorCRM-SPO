@@ -258,6 +258,10 @@ class UserDashboardLayoutView(APIView):
 
     @extend_schema(tags=['dashboard'], summary='Get user dashboard layout')
     def get(self, request, pk):
+        try:
+            pk = uuid.UUID(pk) if not isinstance(pk, uuid.UUID) else pk
+        except ValueError:
+            raise NotFound('User not found.')
         if request.user.role not in ['admin', 'supervisor']:
             visible = get_visible_user_ids(request.user, request=request)
             if visible is not None and pk not in visible:
