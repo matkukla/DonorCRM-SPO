@@ -73,6 +73,7 @@ Plan: Not started
 | Phase 56 P02 | 6min | 2 tasks | 7 files |
 | Phase 56 P05 | 5min | 2 tasks | 5 files |
 | Phase 56 P04 | 5min | 2 tasks | 3 files |
+| Phase 01-dup P06 | 6min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -143,6 +144,8 @@ Recent decisions relevant to v2.3:
 - [Phase 56]: [56-02]: Missionary edit/delete restriction in TaskDetailView.update/destroy checks broadcast_id + owner_id + role rather than custom permission class
 - [Phase 56]: [56-05]: BroadcastProgress inline helper for fraction + mini bar; supervisor TeamPage section uses simple Table with page_size:10; BroadcastDetail uses local useState for copies pagination
 - [Phase 56]: Button-style toggle for broadcast target selection (no RadioGroup UI component); Mark Complete separated from canModify guard for missionaries
+- [Phase 01-06]: DuplicateWarningDialog-focused tests chosen over full ContactForm render tests for reliability
+- [Phase 01-06]: Pre-save duplicate check only fires for new contacts, not edits; graceful degradation on API failure
 
 ### Roadmap Evolution
 
