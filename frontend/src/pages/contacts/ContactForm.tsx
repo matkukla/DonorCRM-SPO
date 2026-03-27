@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { useContact, useCreateContact, useUpdateContact } from "@/hooks/useContacts"
+import { useContact, useCreateContact, useUpdateContact, useCheckDuplicates } from "@/hooks/useContacts"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
 import { Button } from "@/components/ui/button"
@@ -14,7 +14,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { ArrowLeft, ChevronDown } from "lucide-react"
-import type { ContactStatus, ContactCreate } from "@/api/contacts"
+import { toast } from "sonner"
+import { DuplicateWarningDialog } from "./components/DuplicateWarningDialog"
+import type { ContactStatus, ContactCreate, DuplicateMatch } from "@/api/contacts"
 
 const statusLabels: Record<ContactStatus, string> = {
   prospect: "Potential Donor",
@@ -50,6 +52,9 @@ export default function ContactForm() {
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const checkDuplicatesMutation = useCheckDuplicates()
+  const [duplicateMatches, setDuplicateMatches] = useState<DuplicateMatch[]>([])
+  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false)
 
   useEffect(() => {
     if (existingContact) {
@@ -101,23 +106,62 @@ export default function ContactForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
     if (!validate()) return
 
-    try {
-      if (isEditing) {
+    if (isEditing) {
+      // No duplicate check on edit, just save
+      try {
         await updateMutation.mutateAsync({ id: id!, data: formData })
         navigate(`/contacts/${id}`)
-      } else {
+      } catch {
+        // Error handled by mutation
+      }
+      return
+    }
+
+    // For new contacts: check for duplicates first
+    try {
+      const matches = await checkDuplicatesMutation.mutateAsync({
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        email: formData.email,
+        phone: formData.phone,
+      })
+
+      if (matches.length > 0) {
+        // Show warning dialog
+        setDuplicateMatches(matches)
+        setShowDuplicateDialog(true)
+        return
+      }
+
+      // No duplicates found -- proceed with creation
+      const newContact = await createMutation.mutateAsync(formData)
+      navigate(`/contacts/${newContact.id}`)
+    } catch {
+      // Duplicate check failed -- proceed with creation anyway (per CONTEXT.md: no forced merge)
+      toast.warning("Unable to check for duplicates. You can still create the contact.")
+      try {
         const newContact = await createMutation.mutateAsync(formData)
         navigate(`/contacts/${newContact.id}`)
+      } catch {
+        // Creation error handled by mutation
       }
+    }
+  }
+
+  const handleCreateAnyway = async () => {
+    try {
+      const newContact = await createMutation.mutateAsync(formData)
+      setShowDuplicateDialog(false)
+      navigate(`/contacts/${newContact.id}`)
     } catch {
-      // Error is handled by the mutation
+      // Error handled by mutation
     }
   }
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending
+  const isChecking = checkDuplicatesMutation.isPending
 
   if (isEditing && isLoadingContact) {
     return (
@@ -348,14 +392,23 @@ export default function ContactForm() {
                 <Button type="button" variant="secondary" onClick={() => navigate(-1)}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? "Saving..." : isEditing ? "Save Changes" : "Create Contact"}
+                <Button type="submit" disabled={isSubmitting || isChecking}>
+                  {isChecking ? "Checking..." : isSubmitting ? "Saving..." : isEditing ? "Save Changes" : "Create Contact"}
                 </Button>
               </div>
             </div>
           </form>
         </div>
       </Container>
+
+      <DuplicateWarningDialog
+        open={showDuplicateDialog}
+        onOpenChange={setShowDuplicateDialog}
+        matches={duplicateMatches}
+        onKeepEditing={() => setShowDuplicateDialog(false)}
+        onCreateAnyway={handleCreateAnyway}
+        isCreating={createMutation.isPending}
+      />
     </Section>
   )
 }
