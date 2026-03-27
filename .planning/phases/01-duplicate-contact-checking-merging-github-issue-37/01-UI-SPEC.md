@@ -48,9 +48,11 @@ Exceptions: 44px minimum touch targets for merge radio buttons and action button
 | Role | Size | Weight | Line Height | Tailwind Class |
 |------|------|--------|-------------|----------------|
 | Body | 14px | 400 (regular) | 1.5 | `text-sm` |
-| Label | 14px | 500 (medium) | 1.4 | `text-sm font-medium` |
+| Label | 14px | 400 (regular) | 1.4 | `text-sm` |
 | Heading | 30px | 600 (semibold) | 1.2 | `text-3xl font-semibold tracking-tight` |
 | Subheading | 24px | 600 (semibold) | 1.2 | `text-2xl font-semibold` (CardTitle) |
+
+Labels use the same weight as body text. Visual distinction is achieved through position (above or beside the input), spacing (gap-2 from field), and Tailwind color (`text-muted-foreground` for secondary labels).
 
 Source: Established project convention from ContactList.tsx (h1 text-3xl), card.tsx (CardTitle text-2xl), dialog.tsx (DialogTitle text-lg font-semibold).
 
@@ -123,6 +125,7 @@ Source: CONTEXT.md locked decision on 3-tier confidence scoring. Badge variants 
 ### 1. Duplicate List Page (`/contacts/duplicates`)
 
 **Layout:** Section > Container > space-y-6 (matches ContactList pattern)
+**Focal Point:** The DataTable rows. Each row's confidence badge and "Review" button draw the eye to the highest-priority duplicate pair. The "Scan for Duplicates" CTA is secondary, positioned top-right.
 
 ```
 +--------------------------------------------------+
@@ -130,7 +133,7 @@ Source: CONTEXT.md locked decision on 3-tier confidence scoring. Badge variants 
 | h1: Potential Duplicates                          |
 | p: Review and resolve duplicate contacts          |
 |                                                   |
-| [Scan for Duplicates]          [Filter: All ▼]   |
+| [Scan for Duplicates]          [Filter: All v]   |
 |                                                   |
 | +----------------------------------------------+ |
 | | DataTable                                     | |
@@ -146,13 +149,14 @@ Source: CONTEXT.md locked decision on 3-tier confidence scoring. Badge variants 
 +--------------------------------------------------+
 ```
 
-**Header:** Same pattern as ContactList — h1 left, CTA button right.
+**Header:** Same pattern as ContactList -- h1 left, CTA button right.
 **Table:** DataTable with server-side pagination (PAGE_SIZE = 20).
 **Row click:** Navigates to DuplicateMergeView for that pair.
 
 ### 2. Duplicate Merge View (`/contacts/duplicates/:pairId`)
 
 **Layout:** Section > Container > max-w-4xl mx-auto (wider than ContactForm's max-w-2xl to accommodate side-by-side)
+**Focal Point:** The "Merge Contacts" CTA button at the bottom of the page. The entire page flows top-down through survivor selection, field comparison, and related records summary, funneling the user toward the final merge action.
 
 ```
 +--------------------------------------------------+
@@ -160,7 +164,7 @@ Source: CONTEXT.md locked decision on 3-tier confidence scoring. Badge variants 
 | h1: Merge Contacts                                |
 | p: Compare and merge duplicate records            |
 |                                                   |
-| Confidence: [High] — Exact email match            |
+| Confidence: [High] -- Exact email match           |
 |                                                   |
 | +--- Survivor Selection -----------------------+ |
 | |  ( ) Keep Left: John Smith                    | |
@@ -175,7 +179,7 @@ Source: CONTEXT.md locked decision on 3-tier confidence scoring. Badge variants 
 | | First Name   | (o) John     | ( ) Jon         | |
 | | Last Name    | (o) Smith    | (o) Smith       | |
 | | Email        | (o) john@    | ( ) jon@        | |
-| | Phone        | (o) 555-1234 | ( ) —           | |
+| | Phone        | (o) 555-1234 | ( ) --          | |
 | | Status       | (o) Donor    | ( ) Prospect    | |
 | +----------------------------------------------+ |
 |                                                   |
@@ -183,17 +187,17 @@ Source: CONTEXT.md locked decision on 3-tier confidence scoring. Badge variants 
 | | Card: Records to Migrate                       | |
 | |                                                | |
 | | From "Jon Smith" to "John Smith":              | |
-| |   • 3 Gifts ($1,200 total)                    | |
-| |   • 1 Recurring Gift                          | |
-| |   • 2 Tasks                                   | |
-| |   • 1 Journal Entry                           | |
+| |   - 3 Gifts ($1,200 total)                    | |
+| |   - 1 Recurring Gift                          | |
+| |   - 2 Tasks                                   | |
+| |   - 1 Journal Entry                           | |
 | +----------------------------------------------+ |
 |                                                   |
-| [Cancel]                     [Merge Contacts]     |
+| [Keep Both Contacts]          [Merge Contacts]    |
 +--------------------------------------------------+
 ```
 
-**Survivor selection:** RadioGroup at top — picking a side pre-populates all field radios to that side's values.
+**Survivor selection:** RadioGroup at top -- picking a side pre-populates all field radios to that side's values.
 **Field rows:** Table rows with RadioGroup per field. Pre-selected to survivor's values. Fields with identical values show a single value with no radio (no conflict).
 **Related records summary:** Read-only Card showing FK counts that will be reassigned.
 **Merge CTA:** AlertDialog confirmation before executing.
@@ -201,7 +205,7 @@ Source: CONTEXT.md locked decision on 3-tier confidence scoring. Badge variants 
 ### 3. Creation-Time Warning Dialog
 
 **Trigger:** ContactForm handleSubmit intercepts before save, calls duplicate check API.
-**Component:** Dialog (not AlertDialog — this is informational, not destructive).
+**Component:** Dialog (not AlertDialog -- this is informational, not destructive).
 
 ```
 +------------------------------------------+
@@ -219,11 +223,11 @@ Source: CONTEXT.md locked decision on 3-tier confidence scoring. Badge variants 
 |                                           |
 | +--- Match Card 2 ---------[Medium]----+ |
 | | Jon Smith                             | |
-| | — | 555-5678                          | |
+| | -- | 555-5678                         | |
 | | [View Contact]                        | |
 | +--------------------------------------+ |
 |                                           |
-| [Create Anyway]         [Cancel]          |
+| [Keep Editing]             [Create Anyway]|
 +------------------------------------------+
 ```
 
@@ -231,7 +235,7 @@ Source: CONTEXT.md locked decision on 3-tier confidence scoring. Badge variants 
 **Match card:** Card with contact name, email, phone, confidence badge.
 **"View Contact":** Opens contact detail in new tab.
 **"Create Anyway":** Bypasses check, proceeds with save (CONTEXT.md: no forced merge at creation time).
-**"Cancel":** Closes dialog, returns to form.
+**"Keep Editing":** Closes dialog, returns to form with all field values preserved.
 
 ### 4. Sidebar Navigation Update
 
@@ -262,9 +266,9 @@ Add "Duplicates" as a sub-item under or near the "Contacts" nav link. Pattern: d
 
 | Context | Heading | Body |
 |---------|---------|------|
-| Duplicates page — no duplicates found | No duplicates found | Your contact list looks clean. Run a scan to check for new duplicates. |
-| Duplicates page — all dismissed | All duplicates reviewed | You have reviewed all detected duplicate pairs. Run a new scan to check again. |
-| Merge View — no conflicting fields | No conflicts | Both contacts have identical information. Choose which record to keep. |
+| Duplicates page -- no duplicates found | No duplicates found | Your contact list looks clean. Run a scan to check for new duplicates. |
+| Duplicates page -- all dismissed | All duplicates reviewed | You have reviewed all detected duplicate pairs. Run a new scan to check again. |
+| Merge View -- no conflicting fields | No conflicts | Both contacts have identical information. Choose which record to keep. |
 
 ### Error States
 
@@ -281,7 +285,7 @@ Add "Duplicates" as a sub-item under or near the "Contacts" nav link. Pattern: d
 | "Merge Contacts" button | No survivor selected OR merge in progress | `disabled:pointer-events-none disabled:opacity-50` (Button default) |
 | "Scan for Duplicates" button | Scan in progress | disabled + "Scanning..." label |
 | Field radio buttons | Merge in progress | `disabled:opacity-50` |
-| All mutation controls | isViewingAs === true | Hidden (consistent with existing pattern — ContactList hides "Add Contact" when isViewingAs) |
+| All mutation controls | isViewingAs === true | Hidden (consistent with existing pattern -- ContactList hides "Add Contact" when isViewingAs) |
 
 ---
 
@@ -292,7 +296,7 @@ Add "Duplicates" as a sub-item under or near the "Contacts" nav link. Pattern: d
 | Primary CTA (duplicates page) | Scan for Duplicates |
 | Primary CTA (merge view) | Merge Contacts |
 | Bypass CTA (creation dialog) | Create Anyway |
-| Cancel CTA (creation dialog) | Cancel |
+| Return CTA (creation dialog) | Keep Editing |
 | Empty state heading (no duplicates) | No duplicates found |
 | Empty state body (no duplicates) | Your contact list looks clean. Run a scan to check for new duplicates. |
 | Empty state heading (all reviewed) | All duplicates reviewed |
@@ -303,7 +307,7 @@ Add "Duplicates" as a sub-item under or near the "Contacts" nav link. Pattern: d
 | Destructive confirmation heading | Merge these contacts? |
 | Destructive confirmation body | This will merge "{loser_name}" into "{survivor_name}". All related records (gifts, tasks, journal entries) will be moved to the surviving contact. This action cannot be undone. |
 | Destructive confirmation CTA | Yes, Merge Contacts |
-| Destructive cancel | Cancel |
+| Abort merge CTA | Keep Both Contacts |
 | Dismiss pair label | Not Duplicates |
 | Dismiss success toast | Pair dismissed. They won't be flagged again. |
 | Merge success toast | Contacts merged successfully. |
@@ -338,7 +342,7 @@ No third-party registries declared.
 |-------------|---------------|
 | Radio group keyboard nav | RadioGroup from Radix handles arrow key navigation natively |
 | Merge confirmation focus trap | AlertDialog from Radix traps focus within confirmation dialog |
-| Confidence badge semantics | Badge text includes tier label ("High", "Medium", "Low") — not color-only |
+| Confidence badge semantics | Badge text includes tier label ("High", "Medium", "Low") -- not color-only |
 | Touch targets | All radio buttons and action buttons minimum 44px tap area |
 | Screen reader for merge | RadioGroup items use aria-label: "{field_name}: {value}" |
 | Dialog announcement | DialogTitle used for all dialogs (Radix announces automatically) |
