@@ -144,6 +144,17 @@ See milestones/v2.3-ROADMAP.md for complete phase details.
 
 </details>
 
+### Phase 01: Duplicate Contact Checking & Merging (GitHub issue #37)
+
+| Plan | Description | Status |
+|------|-------------|--------|
+| 01 | Backend Foundation: models, migration, services | Complete |
+| 02 | API Endpoints: duplicate check, scan, merge | Planned |
+| 03 | Frontend: Duplicate Review Page | Planned |
+| 04 | Frontend: Merge Dialog | Planned |
+| 05 | Frontend: Creation-Time Warning | Planned |
+| 06 | Integration Testing & Polish | Planned |
+
 ## Progress
 
 | Milestone | Phases | Plans | Status | Shipped |
@@ -158,7 +169,8 @@ See milestones/v2.3-ROADMAP.md for complete phase details.
 | v2.3 | 48-56 | 31 | Complete | 2026-03-25 |
 
 **Total:** 8 milestones shipped, 172 plans executed across 56 phases.
+**Current:** Phase 01 — Duplicate Contact Checking & Merging (1/6 plans complete)
 
 ---
 
-*Last updated: 2026-03-25 (v2.3 shipped)*
+*Last updated: 2026-03-27 (Phase 01 Plan 01 complete)*
