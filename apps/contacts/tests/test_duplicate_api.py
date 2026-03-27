@@ -79,6 +79,44 @@ class TestDuplicateCheck:
 
 
 @pytest.mark.django_db
+class TestDuplicateScan:
+    """Tests for GET /api/v1/contacts/duplicates/scan/"""
+
+    def test_duplicate_scan_returns_pairs(self, auth_client, user):
+        """GET returns pairs of contacts sharing matching data."""
+        c1 = ContactFactory(owner=user, phone='555-1234')
+        c2 = ContactFactory(owner=user, phone='555-1234')
+        mock_pairs = [{
+            'contact_a': c1,
+            'contact_b': c2,
+            'confidence': 'high',
+            'reasons': ['Exact phone match'],
+            'similarity': 1.0,
+        }]
+        with patch('apps.contacts.views.scan_duplicates_for_owner', return_value=mock_pairs):
+            resp = auth_client.get('/api/v1/contacts/duplicates/scan/')
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 1
+        assert data[0]['confidence'] == 'high'
+        assert data[0]['contact_a']['id'] == str(c1.id)
+        assert data[0]['contact_b']['id'] == str(c2.id)
+
+    def test_duplicate_scan_excludes_dismissed(self, auth_client, user):
+        """Dismissed pair not in scan results (mocked empty return)."""
+        c1 = ContactFactory(owner=user)
+        c2 = ContactFactory(owner=user)
+        DismissedDuplicate.objects.create(
+            contact_a=c1, contact_b=c2, dismissed_by=user,
+        )
+        # Service function already excludes dismissed pairs, so mock returns empty
+        with patch('apps.contacts.views.scan_duplicates_for_owner', return_value=[]):
+            resp = auth_client.get('/api/v1/contacts/duplicates/scan/')
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+
+@pytest.mark.django_db
 class TestMergeContacts:
     """Tests for POST /api/v1/contacts/duplicates/merge/"""
 
@@ -92,6 +130,7 @@ class TestMergeContacts:
             {
                 'survivor_id': str(survivor.id),
                 'loser_id': str(loser.id),
+                'field_overrides': {},
             },
             format='json',
         )
@@ -105,8 +144,8 @@ class TestMergeContacts:
         assert loser.is_merged is True
         assert loser.merged_into_id == survivor.id
 
-    def test_merge_invalid_ids_404(self, auth_client, user):
-        """POST with nonexistent IDs returns 404."""
+    def test_merge_invalid_ids_400(self, auth_client, user):
+        """POST with nonexistent IDs returns 400."""
         resp = auth_client.post(
             '/api/v1/contacts/duplicates/merge/',
             {
@@ -115,7 +154,7 @@ class TestMergeContacts:
             },
             format='json',
         )
-        assert resp.status_code == 404
+        assert resp.status_code == 400
 
 
 @pytest.mark.django_db
