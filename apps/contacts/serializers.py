@@ -57,14 +57,12 @@ class ContactDetailSerializer(serializers.ModelSerializer):
             'total_given', 'gift_count',
             'has_active_pledge', 'monthly_pledge_amount',
             'last_thanked_at', 'needs_thank_you',
-            'notes', 'external_id', 'external_constituent_id',
-            'groups', 'group_ids',
+            'notes', 'groups', 'group_ids',
             'created_at', 'updated_at'
         ]
         read_only_fields = [
             'id', 'owner', 'first_gift_date', 'last_gift_date',
             'last_gift_amount', 'total_given', 'gift_count',
-            'external_id', 'external_constituent_id',
             'created_at', 'updated_at'
         ]
 
@@ -166,10 +164,24 @@ class DuplicateMatchSerializer(serializers.Serializer):
     similarity = serializers.FloatField()
 
 
+class DuplicatePairSerializer(serializers.Serializer):
+    """A pair of potential duplicate contacts from batch scan."""
+    contact_a = ContactListSerializer()
+    contact_b = ContactListSerializer()
+    confidence = serializers.CharField()
+    reasons = serializers.ListField(child=serializers.CharField())
+    similarity = serializers.FloatField()
+
+
 class MergeRequestSerializer(serializers.Serializer):
     """Input for merge operation."""
     survivor_id = serializers.UUIDField()
     loser_id = serializers.UUIDField()
+    field_overrides = serializers.DictField(
+        child=serializers.CharField(),
+        required=False,
+        default=dict
+    )
 
 
 class DismissRequestSerializer(serializers.Serializer):
