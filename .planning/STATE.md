@@ -20,12 +20,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-12)
 
 **Core value:** Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems, and leadership can proactively support their teams through cross-missionary analytics.
-**Current focus:** Phase 56 — task-broadcasting
+**Current focus:** Phase 01 — duplicate-contact-checking-merging (GitHub issue #37)
 
 ## Current Position
 
-Phase: 56
-Plan: Not started
+Phase: 01-duplicate-contact-checking-merging-github-issue-37
+Plan: 01 of 6 complete
 
 ## Performance Metrics
 
@@ -73,6 +73,7 @@ Plan: Not started
 | Phase 56 P02 | 6min | 2 tasks | 7 files |
 | Phase 56 P05 | 5min | 2 tasks | 5 files |
 | Phase 56 P04 | 5min | 2 tasks | 3 files |
+| Phase 01 P01 | 7min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -143,6 +144,9 @@ Recent decisions relevant to v2.3:
 - [Phase 56]: [56-02]: Missionary edit/delete restriction in TaskDetailView.update/destroy checks broadcast_id + owner_id + role rather than custom permission class
 - [Phase 56]: [56-05]: BroadcastProgress inline helper for fraction + mini bar; supervisor TeamPage section uses simple Table with page_size:10; BroadcastDetail uses local useState for copies pagination
 - [Phase 56]: Button-style toggle for broadcast target selection (no RadioGroup UI component); Mark Complete separated from canModify guard for missionaries
+- [Phase 01-01]: Clear unique-constrained fields (email) on loser before saving survivor during field overrides to avoid UNIQUE constraint violations
+- [Phase 01-01]: TrigramSimilarity wrapped in try/except for graceful SQLite degradation in tests -- exact email/phone matching remains SQLite-safe
+- [Phase 01-01]: Canonical pair ordering (min/max UUID string comparison) used in DismissedDuplicate.save() and scan_duplicates_for_owner for consistent dedup
 
 ### Roadmap Evolution
 
@@ -168,7 +172,7 @@ Recent decisions relevant to v2.3:
 
 ## Session Continuity
 
-Last session: 2026-03-25T13:04:00.772Z
-Last activity: 2026-03-25
-Stopped at: Completed 56-04-PLAN.md
-Resume: Plan Phase 49 with `/gsd:plan-phase 49`
+Last session: 2026-03-27T21:45:17Z
+Last activity: 2026-03-27
+Stopped at: Completed 01-01-PLAN.md
+Resume: Continue with Plan 02 (API endpoints for duplicate detection and merge)

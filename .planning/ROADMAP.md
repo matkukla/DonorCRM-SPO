@@ -144,6 +144,17 @@ See milestones/v2.3-ROADMAP.md for complete phase details.
 
 </details>
 
+### Phase 01: Duplicate Contact Checking & Merging (GitHub issue #37)
+
+| Plan | Description | Status |
+|------|-------------|--------|
+| 01 | Backend Foundation: models, migration, services | Complete |
+| 02 | API Endpoints: duplicate check, scan, merge | Planned |
+| 03 | Frontend: Duplicate Review Page | Planned |
+| 04 | Frontend: Merge Dialog | Planned |
+| 05 | Frontend: Creation-Time Warning | Planned |
+| 06 | Integration Testing & Polish | Planned |
+
 ## Progress
 
 | Milestone | Phases | Plans | Status | Shipped |
@@ -158,22 +169,8 @@ See milestones/v2.3-ROADMAP.md for complete phase details.
 | v2.3 | 48-56 | 31 | Complete | 2026-03-25 |
 
 **Total:** 8 milestones shipped, 172 plans executed across 56 phases.
-
-### Phase 1: Duplicate Contact Checking + Merging (GitHub issue #37)
-
-**Goal:** Implement duplicate contact detection and merging so missionaries can keep their contact lists clean, with creation-time warnings, batch scan, side-by-side merge UI, and audit trail.
-**Requirements**: [DUP-01, DUP-02, DUP-03, DUP-04, DUP-05, DUP-06, DUP-07, DUP-08]
-**Depends on:** None (standalone feature)
-**Plans:** 6 plans
-
-Plans:
-- [ ] 01-01-PLAN.md — Backend foundation: models, migration (pg_trgm), services (detect + merge)
-- [ ] 01-02-PLAN.md — Backend API: serializers, views, URLs for check/scan/merge/dismiss
-- [ ] 01-03-PLAN.md — Frontend setup: shadcn components, types, API functions, hooks
-- [ ] 01-04-PLAN.md — Duplicate list page, ConfidenceBadge, sidebar nav, routing
-- [ ] 01-05-PLAN.md — Merge view: side-by-side comparison, field overrides, confirmation
-- [ ] 01-06-PLAN.md — Creation-time duplicate warning in ContactForm
+**Current:** Phase 01 — Duplicate Contact Checking & Merging (1/6 plans complete)
 
 ---
 
-*Last updated: 2026-03-27 (Phase 1 planned)*
+*Last updated: 2026-03-27 (Phase 01 Plan 01 complete)*
