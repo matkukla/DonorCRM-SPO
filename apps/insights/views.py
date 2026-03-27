@@ -159,6 +159,16 @@ class TransactionsView(APIView):
         date_from = request.query_params.get('date_from')
         date_to = request.query_params.get('date_to')
 
+        for param_name, param_val in [('date_from', date_from), ('date_to', date_to)]:
+            if param_val:
+                try:
+                    datetime.strptime(param_val, '%Y-%m-%d')
+                except ValueError:
+                    return Response(
+                        {'detail': f'Invalid {param_name} format. Use YYYY-MM-DD.'},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
         if date_from:
             date_from = datetime.strptime(date_from, '%Y-%m-%d').date()
         if date_to:
