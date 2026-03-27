@@ -10,6 +10,7 @@ vi.mock("@/api/contacts", async () => {
   return {
     ...actual,
     checkDuplicates: vi.fn(),
+    scanDuplicates: vi.fn(),
     mergeContacts: vi.fn(),
     dismissDuplicate: vi.fn(),
   }
@@ -65,12 +66,13 @@ describe("useMergeContacts", () => {
 
     const { result } = renderHook(() => useMergeContacts(), { wrapper: createWrapper() })
 
-    result.current.mutate({ survivor_id: "survivor-1", loser_id: "loser-1" })
+    result.current.mutate({ survivor_id: "survivor-1", loser_id: "loser-1", field_overrides: { email: "right" } })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(mergeContacts).toHaveBeenCalledWith({
       survivor_id: "survivor-1",
       loser_id: "loser-1",
+      field_overrides: { email: "right" },
     })
   })
 })
