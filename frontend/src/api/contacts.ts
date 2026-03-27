@@ -33,8 +33,6 @@ export interface ContactDetail extends ContactListItem {
   monthly_pledge_amount: string | null
   last_thanked_at: string | null
   notes: string | null
-  external_id: string | null
-  external_constituent_id: string | null
   groups: Array<{ id: string; name: string; description: string | null }>
   created_at: string
   updated_at: string
@@ -84,10 +82,20 @@ export interface DuplicateMatch {
   similarity: number
 }
 
+/** A pair of potential duplicate contacts from batch scan */
+export interface DuplicatePair {
+  contact_a: ContactListItem
+  contact_b: ContactListItem
+  confidence: DuplicateConfidence
+  reasons: string[]
+  similarity: number
+}
+
 /** Input for merge operation */
 export interface MergeRequest {
   survivor_id: string
   loser_id: string
+  field_overrides?: Record<string, "left" | "right">
 }
 
 /** Input for dismissing a duplicate pair */
@@ -253,6 +261,12 @@ export async function checkDuplicates(data: {
   phone?: string
 }): Promise<DuplicateMatch[]> {
   const response = await apiClient.post<DuplicateMatch[]>("/contacts/duplicates/check/", data)
+  return response.data
+}
+
+/** Scan all contacts for duplicate pairs */
+export async function scanDuplicates(): Promise<DuplicatePair[]> {
+  const response = await apiClient.get<DuplicatePair[]>("/contacts/duplicates/scan/")
   return response.data
 }
 

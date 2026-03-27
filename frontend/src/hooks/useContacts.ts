@@ -13,6 +13,7 @@ import {
   getContactJournals,
   getContactJournalEvents,
   checkDuplicates,
+  scanDuplicates,
   mergeContacts,
   dismissDuplicate,
 } from "@/api/contacts"
@@ -133,6 +134,15 @@ export function useContactJournalEvents(contactId: string) {
     },
     initialPageParam: 1,
     enabled: !!contactId,
+  })
+}
+
+/** Hook for scanning duplicates */
+export function useDuplicateScan() {
+  return useQuery({
+    queryKey: ["duplicates"],
+    queryFn: () => scanDuplicates(),
+    enabled: false, // Manual trigger only via refetch
   })
 }
 
