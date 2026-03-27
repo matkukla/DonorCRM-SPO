@@ -106,6 +106,53 @@ class TestFindDuplicatesForContact:
 
 
 @pytest.mark.django_db
+class TestScanDuplicatesForOwner:
+    """Test scan_duplicates_for_owner service function."""
+
+    def test_scan_excludes_dismissed_pairs(self):
+        """Dismissed pairs are not returned in scan results."""
+        from apps.contacts.services import scan_duplicates_for_owner
+
+        user = UserFactory()
+        c1 = ContactFactory(owner=user, email='same@example.com')
+        c2 = ContactFactory(owner=user, email='same@example.com')
+
+        # Dismiss the pair
+        DismissedDuplicate.objects.create(
+            contact_a=c1, contact_b=c2, dismissed_by=user
+        )
+
+        results = scan_duplicates_for_owner(user.id)
+
+        pair_ids = {
+            (r['contact_a'].id, r['contact_b'].id)
+            for r in results
+        }
+        # Neither ordering of this pair should appear
+        assert (c1.id, c2.id) not in pair_ids
+        assert (c2.id, c1.id) not in pair_ids
+
+    def test_scan_excludes_merged_contacts(self):
+        """is_merged contacts are not included in scan results."""
+        from apps.contacts.services import scan_duplicates_for_owner
+
+        user = UserFactory()
+        c1 = ContactFactory(owner=user, email='active@example.com')
+        c2 = ContactFactory(
+            owner=user, email='active@example.com', is_merged=True
+        )
+
+        results = scan_duplicates_for_owner(user.id)
+
+        all_contact_ids = set()
+        for r in results:
+            all_contact_ids.add(r['contact_a'].id)
+            all_contact_ids.add(r['contact_b'].id)
+
+        assert c2.id not in all_contact_ids
+
+
+@pytest.mark.django_db
 class TestDismissedDuplicateCanonicalization:
     """Test DismissedDuplicate model canonicalization."""
 
