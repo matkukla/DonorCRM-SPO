@@ -18,7 +18,7 @@ from apps.contacts.models import Contact, ContactMergeLog, DismissedDuplicate
 MERGEABLE_FIELDS = frozenset({
     'first_name', 'last_name', 'email', 'phone', 'phone_secondary',
     'organization_name', 'street_address', 'city', 'state', 'postal_code',
-    'country', 'status', 'notes',
+    'country', 'status', 'notes', 'external_id', 'external_constituent_id',
 })
 
 # Confidence tier ordering for sorting

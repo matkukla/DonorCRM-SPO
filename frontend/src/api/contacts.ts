@@ -33,6 +33,8 @@ export interface ContactDetail extends ContactListItem {
   monthly_pledge_amount: string | null
   last_thanked_at: string | null
   notes: string | null
+  external_id: string | null
+  external_constituent_id: string | null
   groups: Array<{ id: string; name: string; description: string | null }>
   created_at: string
   updated_at: string
