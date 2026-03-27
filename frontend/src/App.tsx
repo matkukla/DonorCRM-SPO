@@ -18,6 +18,7 @@ import Styleguide from "@/pages/Styleguide"
 import ContactList from "@/pages/contacts/ContactList"
 import ContactDetail from "@/pages/contacts/ContactDetail"
 import ContactForm from "@/pages/contacts/ContactForm"
+import DuplicateList from "@/pages/contacts/DuplicateList"
 import DonationList from "@/pages/donations/DonationList"
 import DonationDetail from "@/pages/donations/DonationDetail"
 import DonationForm from "@/pages/donations/DonationForm"
@@ -33,6 +34,9 @@ import GroupForm from "@/pages/groups/GroupForm"
 import Settings from "@/pages/settings/Settings"
 import AdminUsers from "@/pages/admin/AdminUsers"
 import JournalList from "@/pages/journals/JournalList"
+
+// Lazy-loaded duplicate merge view (Plan 05 will implement full component)
+const DuplicateMergeView = React.lazy(() => import("@/pages/contacts/DuplicateMergeView"))
 
 // Lazy-loaded pages (heavy: recharts, dnd-kit, complex sub-components)
 const Dashboard = React.lazy(() => import("@/pages/Dashboard"))
@@ -113,6 +117,8 @@ function App() {
                   <Route path="/goal" element={<ProtectedPage><GoalPage /></ProtectedPage>} />
                   <Route path="/contacts" element={<ProtectedPage><ContactList /></ProtectedPage>} />
                   <Route path="/contacts/new" element={<ProtectedPage requiredRole="missionary"><ContactForm /></ProtectedPage>} />
+                  <Route path="/contacts/duplicates" element={<ProtectedPage><DuplicateList /></ProtectedPage>} />
+                  <Route path="/contacts/duplicates/:pairId" element={<ProtectedPage><DuplicateMergeView /></ProtectedPage>} />
                   <Route path="/contacts/:id" element={<ProtectedPage><ContactDetail /></ProtectedPage>} />
                   <Route path="/contacts/:id/edit" element={<ProtectedPage requiredRole="missionary"><ContactForm /></ProtectedPage>} />
                   <Route path="/donations" element={<ProtectedPage><DonationList /></ProtectedPage>} />
