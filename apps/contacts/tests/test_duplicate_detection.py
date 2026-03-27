@@ -114,8 +114,9 @@ class TestScanDuplicatesForOwner:
         from apps.contacts.services import scan_duplicates_for_owner
 
         user = UserFactory()
-        c1 = ContactFactory(owner=user, email='same@example.com')
-        c2 = ContactFactory(owner=user, email='same@example.com')
+        # Use phone matching to create a duplicate pair (email unique constraint prevents same email)
+        c1 = ContactFactory(owner=user, phone='555-999-0001')
+        c2 = ContactFactory(owner=user, phone='555-999-0001')
 
         # Dismiss the pair
         DismissedDuplicate.objects.create(
@@ -137,9 +138,9 @@ class TestScanDuplicatesForOwner:
         from apps.contacts.services import scan_duplicates_for_owner
 
         user = UserFactory()
-        c1 = ContactFactory(owner=user, email='active@example.com')
+        c1 = ContactFactory(owner=user, phone='555-888-0001')
         c2 = ContactFactory(
-            owner=user, email='active@example.com', is_merged=True
+            owner=user, phone='555-888-0001', is_merged=True
         )
 
         results = scan_duplicates_for_owner(user.id)

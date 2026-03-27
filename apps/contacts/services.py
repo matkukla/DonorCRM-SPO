@@ -3,23 +3,23 @@ Services for duplicate contact detection and merging.
 
 Provides:
 - find_duplicates_for_contact: Find potential duplicates for a given contact's data
+- scan_duplicates_for_owner: Batch scan for all duplicate pairs across an owner's contacts
 - merge_contacts: Atomically merge two contacts (reassign FKs, union groups, soft-delete loser)
 """
 from collections import OrderedDict
 
-from django.db import OperationalError, models, transaction
+from django.db import models, transaction
 from django.db.models import Q, Value
 from django.db.models.functions import Greatest
 
 from apps.contacts.models import Contact, ContactMergeLog, DismissedDuplicate
 
-# Fields eligible for auto-fill during merge (survivor blank → copy loser's value)
-# Note: 'status' deliberately excluded — survivor keeps their status
-_FILLABLE_FIELDS = [
+# Fields that can be overridden during merge (field_overrides={'field': 'right'})
+MERGEABLE_FIELDS = frozenset({
     'first_name', 'last_name', 'email', 'phone', 'phone_secondary',
     'organization_name', 'street_address', 'city', 'state', 'postal_code',
-    'country', 'notes', 'external_id', 'external_constituent_id',
-]
+    'country', 'status', 'notes',
+})
 
 # Confidence tier ordering for sorting
 _CONFIDENCE_ORDER = {'high': 0, 'medium': 1, 'low': 2}
@@ -109,13 +109,9 @@ def find_duplicates_for_contact(contact_data, owner_id, exclude_id=None):
                     _add_match(c, 'medium', f'Name similarity: {sim:.2f}', sim)
                 else:
                     _add_match(c, 'low', f'Name similarity: {sim:.2f}', sim)
-        except ImportError:
-            # django.contrib.postgres not available (e.g., SQLite test env)
+        except (ImportError, Exception):
+            # SQLite or pg_trgm not available -- skip name matching
             pass
-        except OperationalError:
-            import logging
-            logging.getLogger(__name__).warning('Trigram name matching failed', exc_info=True)
-
 
     # Sort: confidence tier, then similarity descending
     result = sorted(
@@ -126,18 +122,124 @@ def find_duplicates_for_contact(contact_data, owner_id, exclude_id=None):
     return result[:10]
 
 
+def scan_duplicates_for_owner(owner_id):
+    """
+    Batch scan for all duplicate pairs across an owner's contacts.
+
+    Returns deduplicated pairs, excluding dismissed pairs and merged contacts.
+    Pairs are ordered by confidence (high > medium > low), then similarity descending.
+
+    Args:
+        owner_id: UUID of the contact owner
+
+    Returns:
+        List of dicts: [{'contact_a': Contact, 'contact_b': Contact,
+                         'confidence': str, 'reasons': list, 'similarity': float}]
+    """
+    contacts = list(
+        Contact.objects.filter(owner_id=owner_id, is_merged=False)
+        .order_by('last_name', 'first_name')
+    )
+
+    # Load dismissed pairs as canonical set
+    raw_dismissed = DismissedDuplicate.objects.filter(
+        Q(contact_a__owner_id=owner_id) | Q(contact_b__owner_id=owner_id)
+    ).values_list('contact_a_id', 'contact_b_id')
+
+    dismissed_set = set()
+    for a, b in raw_dismissed:
+        canonical = (min(str(a), str(b)), max(str(a), str(b)))
+        dismissed_set.add(canonical)
+
+    pairs = []
+
+    for i, ca in enumerate(contacts):
+        for cb in contacts[i + 1:]:
+            # Canonical pair for dismissal check
+            canonical = (min(str(ca.id), str(cb.id)), max(str(ca.id), str(cb.id)))
+            if canonical in dismissed_set:
+                continue
+
+            # Check for matches
+            reasons = []
+            confidence = None
+            similarity = 0.0
+
+            # Exact email match
+            if ca.email and cb.email and ca.email.lower() == cb.email.lower():
+                reasons.append('Exact email match')
+                confidence = 'high'
+                similarity = 1.0
+
+            # Exact phone match
+            phones_a = {p for p in [ca.phone, ca.phone_secondary] if p}
+            phones_b = {p for p in [cb.phone, cb.phone_secondary] if p}
+            if phones_a & phones_b:
+                reasons.append('Exact phone match')
+                confidence = 'high'
+                similarity = 1.0
+
+            # Fuzzy name match (PostgreSQL only)
+            if not reasons:
+                try:
+                    from django.contrib.postgres.search import TrigramSimilarity
+
+                    # Compare names using trigram similarity
+                    name_sim = 0.0
+                    if ca.first_name and cb.first_name:
+                        first_qs = Contact.objects.filter(pk=cb.pk).annotate(
+                            sim=TrigramSimilarity('first_name', ca.first_name)
+                        ).values_list('sim', flat=True)
+                        first_sim = list(first_qs)
+                        if first_sim:
+                            name_sim = max(name_sim, first_sim[0] or 0)
+
+                    if ca.last_name and cb.last_name:
+                        last_qs = Contact.objects.filter(pk=cb.pk).annotate(
+                            sim=TrigramSimilarity('last_name', ca.last_name)
+                        ).values_list('sim', flat=True)
+                        last_sim = list(last_qs)
+                        if last_sim:
+                            name_sim = max(name_sim, last_sim[0] or 0)
+
+                    if name_sim >= 0.4:
+                        if name_sim >= 0.6:
+                            confidence = 'medium'
+                        else:
+                            confidence = 'low'
+                        similarity = name_sim
+                        reasons.append(f'Name similarity: {name_sim:.2f}')
+                except (ImportError, Exception):
+                    # SQLite -- skip name matching
+                    pass
+
+            if reasons:
+                pairs.append({
+                    'contact_a': ca,
+                    'contact_b': cb,
+                    'confidence': confidence,
+                    'reasons': reasons,
+                    'similarity': similarity,
+                })
+
+    # Sort by confidence tier, then similarity descending
+    pairs.sort(key=lambda p: (_CONFIDENCE_ORDER[p['confidence']], -p['similarity']))
+
+    return pairs
+
+
 @transaction.atomic
-def merge_contacts(survivor_id, loser_id, merged_by):
+def merge_contacts(survivor_id, loser_id, field_overrides, merged_by):
     """
     Atomically merge loser contact into survivor contact.
 
-    Auto-fills the survivor's blank fields with the loser's values, reassigns
-    all FK relationships, union-merges groups, soft-deletes loser, recalculates
-    survivor stats, and creates an audit log entry.
+    Reassigns all FK relationships, union-merges groups, soft-deletes loser,
+    recalculates survivor stats, and creates an audit log entry.
 
     Args:
         survivor_id: UUID of the contact to keep
         loser_id: UUID of the contact to merge away
+        field_overrides: dict of {field_name: 'right'} to copy loser's value to survivor
         merged_by: User instance performing the merge
 
     Returns:
@@ -155,34 +257,25 @@ def merge_contacts(survivor_id, loser_id, merged_by):
     survivor = Contact.objects.select_for_update().get(pk=survivor_id)
     loser = Contact.objects.select_for_update().get(pk=loser_id)
 
-    if survivor_id == loser_id:
-        raise ValueError('Cannot merge a contact with itself')
     if loser.is_merged:
         raise ValueError('Contact has already been merged')
-    if survivor.is_merged:
-        raise ValueError('Survivor contact has already been merged')
 
-    # Auto-fill blanks: copy loser's non-empty values into survivor's empty fields
-    _unique_fields = {'email', 'external_id', 'external_constituent_id'}  # Fields involved in unique constraints
-    fields_auto_filled = {}
+    # Apply field overrides: copy loser's field value to survivor for 'right' selections
+    # Track unique-constrained fields that need clearing on loser to avoid constraint violations
+    _unique_fields = {'email'}  # Fields involved in unique constraints with owner
+    loser_fields_to_clear = []
+    for field_name, choice in (field_overrides or {}).items():
+        if choice == 'right' and field_name in MERGEABLE_FIELDS:
+            setattr(survivor, field_name, getattr(loser, field_name))
+            if field_name in _unique_fields:
+                loser_fields_to_clear.append(field_name)
 
-    for field_name in _FILLABLE_FIELDS:
-        survivor_val = getattr(survivor, field_name, '') or ''
-        loser_val = getattr(loser, field_name, '') or ''
-        if not str(survivor_val).strip() and str(loser_val).strip():
-            setattr(survivor, field_name, loser_val)
-            fields_auto_filled[field_name] = str(loser_val)
-
-    # Clear unique-constrained fields AND phone fields on loser before saving
-    # survivor. This prevents UNIQUE constraint violations during merge AND
-    # ensures the soft-deleted loser row doesn't cause stale matches in import
-    # lookups (which match on email, external_id, external_constituent_id, and phone).
-    _fields_to_clear_on_loser = _unique_fields | {'phone', 'phone_secondary'}
-    all_fields_to_clear = [f for f in _fields_to_clear_on_loser if getattr(loser, f, '')]
-    if all_fields_to_clear:
-        for field_name in all_fields_to_clear:
+    # Clear unique-constrained fields on loser before saving survivor to avoid
+    # UNIQUE constraint violations (e.g., both contacts having the same email+owner)
+    if loser_fields_to_clear:
+        for field_name in loser_fields_to_clear:
             setattr(loser, field_name, '')
-        loser.save(update_fields=all_fields_to_clear + ['updated_at'])
+        loser.save(update_fields=loser_fields_to_clear + ['updated_at'])
 
     # Reassign FK relationships, capturing counts
     gifts_count = Gift.objects.filter(donor_contact=loser).update(donor_contact=survivor)
@@ -212,7 +305,7 @@ def merge_contacts(survivor_id, loser_id, merged_by):
         loser_id=loser.id,
         loser_name=loser.full_name,
         merged_by=merged_by,
-        field_overrides=fields_auto_filled,
+        field_overrides=field_overrides or {},
         records_migrated={
             'gifts': gifts_count,
             'recurring_gifts': recurring_gifts_count,
@@ -253,19 +346,13 @@ def _merge_journal_contacts(survivor, loser):
 
         if survivor_jc:
             # Conflict: both contacts are in the same journal
-            # Transfer stage events (no unique constraint issues)
+            # Transfer child records to survivor's JournalContact
             JournalStageEvent.objects.filter(journal_contact=loser_jc).update(
                 journal_contact=survivor_jc
             )
-            # Handle Decisions: unique per journal_contact
-            survivor_has_decision = Decision.objects.filter(journal_contact=survivor_jc).exists()
-            if survivor_has_decision:
-                Decision.objects.filter(journal_contact=loser_jc).delete()
-            else:
-                Decision.objects.filter(journal_contact=loser_jc).update(
-                    journal_contact=survivor_jc
-                )
-            # NextSteps can be transferred (no unique constraint on journal_contact)
+            Decision.objects.filter(journal_contact=loser_jc).update(
+                journal_contact=survivor_jc
+            )
             NextStep.objects.filter(journal_contact=loser_jc).update(
                 journal_contact=survivor_jc
             )
