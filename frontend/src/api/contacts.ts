@@ -84,15 +84,6 @@ export interface DuplicateMatch {
   similarity: number
 }
 
-/** A pair of potential duplicate contacts from batch scan */
-export interface DuplicatePair {
-  contact_a: ContactListItem
-  contact_b: ContactListItem
-  confidence: DuplicateConfidence
-  reasons: string[]
-  similarity: number
-}
-
 /** Input for merge operation */
 export interface MergeRequest {
   survivor_id: string
@@ -262,12 +253,6 @@ export async function checkDuplicates(data: {
   phone?: string
 }): Promise<DuplicateMatch[]> {
   const response = await apiClient.post<DuplicateMatch[]>("/contacts/duplicates/check/", data)
-  return response.data
-}
-
-/** Scan all contacts for duplicate pairs */
-export async function scanDuplicates(): Promise<DuplicatePair[]> {
-  const response = await apiClient.get<DuplicatePair[]>("/contacts/duplicates/scan/")
   return response.data
 }
 

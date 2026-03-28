@@ -24,7 +24,6 @@ import {
   ExternalLink,
   Calculator,
   Megaphone,
-  GitMerge,
 } from "lucide-react"
 import { useAuth } from "@/providers/AuthProvider"
 import { useViewAs } from "@/providers/ViewAsProvider"
@@ -44,7 +43,6 @@ const navItems: NavItem[] = [
   { label: "Dashboard", href: "/", icon: <LayoutDashboard className="h-5 w-5" /> },
   { label: "Goal", href: "/goal", icon: <Target className="h-5 w-5" /> },
   { label: "Contacts", href: "/contacts", icon: <Users className="h-5 w-5" /> },
-  { label: "Duplicates", href: "/contacts/duplicates", icon: <GitMerge className="h-5 w-5" /> },
   { label: "Donations", href: "/donations", icon: <DollarSign className="h-5 w-5" /> },
   { label: "Pledges", href: "/pledges", icon: <FileText className="h-5 w-5" /> },
   { label: "Tasks", href: "/tasks", icon: <CheckSquare className="h-5 w-5" /> },
