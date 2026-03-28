@@ -130,11 +130,12 @@ export default function DuplicateMergeView() {
     const loserId = survivorSide === "left" ? rightId : leftId
 
     // Build field_overrides: only include fields where the override differs from survivor's side
-    const overrides: Record<string, "left" | "right"> = {}
+    const overrides: Record<string, "right"> = {}
     for (const field of MERGE_FIELDS) {
       const overrideSide = fieldOverrides[field.key]
       if (overrideSide && overrideSide !== survivorSide) {
-        overrides[field.key] = overrideSide
+        // Backend expects "right" = use loser's value; the filter above ensures only loser fields are included
+        overrides[field.key] = "right"
       }
     }
 
