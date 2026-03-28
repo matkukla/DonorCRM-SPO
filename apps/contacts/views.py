@@ -453,7 +453,6 @@ class MergeContactsView(APIView):
             survivor = merge_contacts(
                 survivor_id=ser.validated_data['survivor_id'],
                 loser_id=ser.validated_data['loser_id'],
-                field_overrides=ser.validated_data.get('field_overrides', {}),
                 merged_by=request.user,
             )
         except (Contact.DoesNotExist, ValueError) as e:
