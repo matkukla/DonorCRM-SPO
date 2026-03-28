@@ -235,9 +235,9 @@ class ContactEmailsView(APIView):
         user = request.user
         visible = get_visible_user_ids(user, request=request)
         if visible is None:
-            queryset = Contact.objects.all()
+            queryset = Contact.objects.filter(is_merged=False)
         else:
-            queryset = Contact.objects.filter(owner_id__in=visible)
+            queryset = Contact.objects.filter(owner_id__in=visible, is_merged=False)
 
         # Apply owner filter (same logic as ContactListCreateView)
         owner_id = request.query_params.get('owner')
