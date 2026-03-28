@@ -456,6 +456,17 @@ class DismissDuplicateView(APIView):
     def post(self, request):
         ser = DismissRequestSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
+        # Verify both contacts exist and are visible to the user
+        visible = get_visible_user_ids(request.user, request=request)
+        try:
+            if visible is None:
+                Contact.objects.get(pk=ser.validated_data['contact_a_id'])
+                Contact.objects.get(pk=ser.validated_data['contact_b_id'])
+            else:
+                Contact.objects.get(pk=ser.validated_data['contact_a_id'], owner_id__in=visible)
+                Contact.objects.get(pk=ser.validated_data['contact_b_id'], owner_id__in=visible)
+        except Contact.DoesNotExist:
+            return Response({'detail': 'Contact not found.'}, status=status.HTTP_404_NOT_FOUND)
         DismissedDuplicate.objects.create(
             contact_a_id=ser.validated_data['contact_a_id'],
             contact_b_id=ser.validated_data['contact_b_id'],
