@@ -29,7 +29,7 @@ class TestMergeContacts:
         loser = ContactFactory(owner=user)
         gift = GiftFactory(donor_contact=loser)
 
-        merge_contacts(survivor.id, loser.id, field_overrides={}, merged_by=user)
+        merge_contacts(survivor.id, loser.id, merged_by=user)
 
         gift.refresh_from_db()
         assert gift.donor_contact_id == survivor.id
@@ -45,7 +45,7 @@ class TestMergeContacts:
         loser = ContactFactory(owner=user)
         rg = RecurringGiftFactory(donor_contact=loser)
 
-        merge_contacts(survivor.id, loser.id, field_overrides={}, merged_by=user)
+        merge_contacts(survivor.id, loser.id, merged_by=user)
 
         rg.refresh_from_db()
         assert rg.donor_contact_id == survivor.id
@@ -61,7 +61,7 @@ class TestMergeContacts:
         loser = ContactFactory(owner=user)
         task = TaskFactory(owner=user, contact=loser)
 
-        merge_contacts(survivor.id, loser.id, field_overrides={}, merged_by=user)
+        merge_contacts(survivor.id, loser.id, merged_by=user)
 
         task.refresh_from_db()
         assert task.contact_id == survivor.id
@@ -78,7 +78,7 @@ class TestMergeContacts:
             contact=loser, title='Test prayer', description='Desc'
         )
 
-        merge_contacts(survivor.id, loser.id, field_overrides={}, merged_by=user)
+        merge_contacts(survivor.id, loser.id, merged_by=user)
 
         pi.refresh_from_db()
         assert pi.contact_id == survivor.id
@@ -93,7 +93,7 @@ class TestMergeContacts:
         loser = ContactFactory(owner=user)
         event = EventFactory(user=user, contact=loser)
 
-        merge_contacts(survivor.id, loser.id, field_overrides={}, merged_by=user)
+        merge_contacts(survivor.id, loser.id, merged_by=user)
 
         event.refresh_from_db()
         assert event.contact_id == survivor.id
@@ -111,7 +111,7 @@ class TestMergeContacts:
         )
         jc = JournalContact.objects.create(journal=journal, contact=loser)
 
-        merge_contacts(survivor.id, loser.id, field_overrides={}, merged_by=user)
+        merge_contacts(survivor.id, loser.id, merged_by=user)
 
         jc.refresh_from_db()
         assert jc.contact_id == survivor.id
@@ -141,7 +141,7 @@ class TestMergeContacts:
             triggered_by=user
         )
 
-        merge_contacts(survivor.id, loser.id, field_overrides={}, merged_by=user)
+        merge_contacts(survivor.id, loser.id, merged_by=user)
 
         # loser JC should be deleted
         assert not JournalContact.objects.filter(pk=loser_jc.pk).exists()
@@ -163,7 +163,7 @@ class TestMergeContacts:
         survivor.groups.add(group_a, group_shared)
         loser.groups.add(group_b, group_shared)
 
-        merge_contacts(survivor.id, loser.id, field_overrides={}, merged_by=user)
+        merge_contacts(survivor.id, loser.id, merged_by=user)
 
         survivor.refresh_from_db()
         group_ids = set(survivor.groups.values_list('id', flat=True))
@@ -180,7 +180,7 @@ class TestMergeContacts:
         survivor = ContactFactory(owner=user)
         loser = ContactFactory(owner=user)
 
-        merge_contacts(survivor.id, loser.id, field_overrides={}, merged_by=user)
+        merge_contacts(survivor.id, loser.id, merged_by=user)
 
         loser.refresh_from_db()
         assert loser.is_merged is True
@@ -195,7 +195,7 @@ class TestMergeContacts:
         loser = ContactFactory(owner=user)
         loser_id = loser.id
 
-        merge_contacts(survivor.id, loser.id, field_overrides={}, merged_by=user)
+        merge_contacts(survivor.id, loser.id, merged_by=user)
 
         assert ContactMergeLog.objects.count() == 1
         log = ContactMergeLog.objects.first()
@@ -204,23 +204,33 @@ class TestMergeContacts:
         assert log.merged_by_id == user.id
         assert 'gifts' in log.records_migrated
 
-    def test_merge_field_overrides(self):
-        """field_overrides={'email': 'right'} copies loser's email to survivor."""
+    def test_merge_auto_fills_blanks(self):
+        """Survivor's blank fields get filled from loser's non-empty values."""
         from apps.contacts.services import merge_contacts
 
         user = UserFactory()
-        survivor = ContactFactory(owner=user, email='survivor@example.com')
-        loser = ContactFactory(owner=user, email='loser@example.com')
-        loser_email = loser.email
+        survivor = ContactFactory(owner=user, email='survivor@example.com', phone='')
+        loser = ContactFactory(owner=user, email='loser@example.com', phone='555-1234')
 
-        merge_contacts(
-            survivor.id, loser.id,
-            field_overrides={'email': 'right'},
-            merged_by=user
-        )
+        merge_contacts(survivor.id, loser.id, merged_by=user)
 
         survivor.refresh_from_db()
-        assert survivor.email == loser_email
+        assert survivor.phone == '555-1234'  # Auto-filled from loser
+        assert survivor.email == 'survivor@example.com'  # Kept (non-blank)
+
+    def test_merge_does_not_overwrite_survivor_fields(self):
+        """Survivor's populated fields are never overwritten by loser's values."""
+        from apps.contacts.services import merge_contacts
+
+        user = UserFactory()
+        survivor = ContactFactory(owner=user, first_name='Alice', email='alice@example.com')
+        loser = ContactFactory(owner=user, first_name='Bob', email='bob@example.com')
+
+        merge_contacts(survivor.id, loser.id, merged_by=user)
+
+        survivor.refresh_from_db()
+        assert survivor.first_name == 'Alice'  # Not overwritten
+        assert survivor.email == 'alice@example.com'  # Not overwritten
 
     def test_merge_recalculates_stats(self):
         """Survivor's giving stats include transferred gifts after merge."""
@@ -231,7 +241,7 @@ class TestMergeContacts:
         loser = ContactFactory(owner=user)
         GiftFactory(donor_contact=loser, amount_cents=10000, gift_date=date.today())
 
-        merge_contacts(survivor.id, loser.id, field_overrides={}, merged_by=user)
+        merge_contacts(survivor.id, loser.id, merged_by=user)
 
         survivor.refresh_from_db()
         assert survivor.gift_count == 1
@@ -246,4 +256,4 @@ class TestMergeContacts:
         loser = ContactFactory(owner=user, is_merged=True)
 
         with pytest.raises(ValueError, match='already been merged'):
-            merge_contacts(survivor.id, loser.id, field_overrides={}, merged_by=user)
+            merge_contacts(survivor.id, loser.id, merged_by=user)

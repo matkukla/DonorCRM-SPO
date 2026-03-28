@@ -66,13 +66,12 @@ describe("useMergeContacts", () => {
 
     const { result } = renderHook(() => useMergeContacts(), { wrapper: createWrapper() })
 
-    result.current.mutate({ survivor_id: "survivor-1", loser_id: "loser-1", field_overrides: { email: "right" } })
+    result.current.mutate({ survivor_id: "survivor-1", loser_id: "loser-1" })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(mergeContacts).toHaveBeenCalledWith({
       survivor_id: "survivor-1",
       loser_id: "loser-1",
-      field_overrides: { email: "right" },
     })
   })
 })

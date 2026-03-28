@@ -288,7 +288,7 @@ class ContactMergeLog(TimeStampedModel):
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True,
         related_name='merge_logs'
     )
-    field_overrides = models.JSONField(default=dict, help_text='Field resolution choices')
+    field_overrides = models.JSONField(default=dict, help_text='Fields auto-filled from merged contact')
     records_migrated = models.JSONField(default=dict, help_text='Counts of migrated FK records')
 
     class Meta:

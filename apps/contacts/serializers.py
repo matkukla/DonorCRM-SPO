@@ -178,11 +178,6 @@ class MergeRequestSerializer(serializers.Serializer):
     """Input for merge operation."""
     survivor_id = serializers.UUIDField()
     loser_id = serializers.UUIDField()
-    field_overrides = serializers.DictField(
-        child=serializers.CharField(),
-        required=False,
-        default=dict
-    )
 
 
 class DismissRequestSerializer(serializers.Serializer):
