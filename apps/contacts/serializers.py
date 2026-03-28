@@ -165,15 +165,6 @@ class DuplicateMatchSerializer(serializers.Serializer):
     similarity = serializers.FloatField()
 
 
-class DuplicatePairSerializer(serializers.Serializer):
-    """A pair of potential duplicate contacts from batch scan."""
-    contact_a = ContactListSerializer()
-    contact_b = ContactListSerializer()
-    confidence = serializers.CharField()
-    reasons = serializers.ListField(child=serializers.CharField())
-    similarity = serializers.FloatField()
-
-
 class MergeRequestSerializer(serializers.Serializer):
     """Input for merge operation."""
     survivor_id = serializers.UUIDField()

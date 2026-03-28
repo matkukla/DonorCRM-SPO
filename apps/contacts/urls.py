@@ -17,7 +17,6 @@ from apps.contacts.views import (
     ContactTasksView,
     ContactThankView,
     DuplicateCheckView,
-    DuplicateScanView,
     MergeContactsView,
     DismissDuplicateView,
 )
@@ -30,7 +29,6 @@ urlpatterns = [
     path('emails/', ContactEmailsView.as_view(), name='contact-emails'),
     path('search/', ContactSearchView.as_view(), name='contact-search'),
     path('duplicates/check/', DuplicateCheckView.as_view(), name='duplicate-check'),
-    path('duplicates/scan/', DuplicateScanView.as_view(), name='duplicate-scan'),
     path('duplicates/merge/', MergeContactsView.as_view(), name='duplicate-merge'),
     path('duplicates/dismiss/', DismissDuplicateView.as_view(), name='duplicate-dismiss'),
     path('<uuid:pk>/', ContactDetailView.as_view(), name='contact-detail'),
