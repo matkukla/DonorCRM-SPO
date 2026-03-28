@@ -10,7 +10,6 @@ vi.mock("@/api/contacts", async () => {
   return {
     ...actual,
     checkDuplicates: vi.fn(),
-    scanDuplicates: vi.fn(),
     mergeContacts: vi.fn(),
     dismissDuplicate: vi.fn(),
   }
