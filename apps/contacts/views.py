@@ -18,11 +18,10 @@ from apps.contacts.serializers import (
     ContactJournalMembershipSerializer,
     DuplicateCheckSerializer,
     DuplicateMatchSerializer,
-    DuplicatePairSerializer,
     MergeRequestSerializer,
     DismissRequestSerializer,
 )
-from apps.contacts.services import find_duplicates_for_contact, scan_duplicates_for_owner, merge_contacts
+from apps.contacts.services import find_duplicates_for_contact, merge_contacts
 from apps.core.pagination import StandardPagination
 from apps.core.permissions import (
     IsContactOwnerOrReadAccess,
@@ -427,17 +426,6 @@ class DuplicateCheckView(APIView):
             owner_id=request.user.id,
         )
         out = DuplicateMatchSerializer(duplicates, many=True)
-        return Response(out.data)
-
-
-class DuplicateScanView(APIView):
-    """GET: Scan all contacts for duplicate pairs."""
-    permission_classes = [permissions.IsAuthenticated, IsStaffOrAbove]
-
-    @extend_schema(tags=['contacts'], summary='Scan for duplicate contact pairs')
-    def get(self, request):
-        pairs = scan_duplicates_for_owner(owner_id=request.user.id)
-        out = DuplicatePairSerializer(pairs, many=True)
         return Response(out.data)
 
 
