@@ -14,12 +14,13 @@ from django.db.models.functions import Greatest
 
 from apps.contacts.models import Contact, ContactMergeLog, DismissedDuplicate
 
-# Fields that can be overridden during merge (field_overrides={'field': 'right'})
-MERGEABLE_FIELDS = frozenset({
+# Fields eligible for auto-fill during merge (survivor blank → copy loser's value)
+# Note: 'status' deliberately excluded — survivor keeps their status
+_FILLABLE_FIELDS = [
     'first_name', 'last_name', 'email', 'phone', 'phone_secondary',
     'organization_name', 'street_address', 'city', 'state', 'postal_code',
-    'country', 'status', 'notes', 'external_id', 'external_constituent_id',
-})
+    'country', 'notes', 'external_id', 'external_constituent_id',
+]
 
 # Confidence tier ordering for sorting
 _CONFIDENCE_ORDER = {'high': 0, 'medium': 1, 'low': 2}
@@ -229,17 +230,17 @@ def scan_duplicates_for_owner(owner_id):
 
 
 @transaction.atomic
-def merge_contacts(survivor_id, loser_id, field_overrides, merged_by):
+def merge_contacts(survivor_id, loser_id, merged_by):
     """
     Atomically merge loser contact into survivor contact.
 
-    Reassigns all FK relationships, union-merges groups, soft-deletes loser,
-    recalculates survivor stats, and creates an audit log entry.
+    Auto-fills the survivor's blank fields with the loser's values, reassigns
+    all FK relationships, union-merges groups, soft-deletes loser, recalculates
+    survivor stats, and creates an audit log entry.
 
     Args:
         survivor_id: UUID of the contact to keep
         loser_id: UUID of the contact to merge away
-        field_overrides: dict of {field_name: 'right'} to copy loser's value to survivor
         merged_by: User instance performing the merge
 
     Returns:
@@ -260,13 +261,17 @@ def merge_contacts(survivor_id, loser_id, field_overrides, merged_by):
     if loser.is_merged:
         raise ValueError('Contact has already been merged')
 
-    # Apply field overrides: copy loser's field value to survivor for 'right' selections
-    # Track unique-constrained fields that need clearing on loser to avoid constraint violations
+    # Auto-fill blanks: copy loser's non-empty values into survivor's empty fields
     _unique_fields = {'email'}  # Fields involved in unique constraints with owner
+    fields_auto_filled = {}
     loser_fields_to_clear = []
-    for field_name, choice in (field_overrides or {}).items():
-        if choice == 'right' and field_name in MERGEABLE_FIELDS:
-            setattr(survivor, field_name, getattr(loser, field_name))
+
+    for field_name in _FILLABLE_FIELDS:
+        survivor_val = getattr(survivor, field_name, '') or ''
+        loser_val = getattr(loser, field_name, '') or ''
+        if not str(survivor_val).strip() and str(loser_val).strip():
+            setattr(survivor, field_name, loser_val)
+            fields_auto_filled[field_name] = str(loser_val)
             if field_name in _unique_fields:
                 loser_fields_to_clear.append(field_name)
 
@@ -305,7 +310,7 @@ def merge_contacts(survivor_id, loser_id, field_overrides, merged_by):
         loser_id=loser.id,
         loser_name=loser.full_name,
         merged_by=merged_by,
-        field_overrides=field_overrides or {},
+        field_overrides=fields_auto_filled,
         records_migrated={
             'gifts': gifts_count,
             'recurring_gifts': recurring_gifts_count,

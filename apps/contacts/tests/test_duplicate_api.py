@@ -130,7 +130,6 @@ class TestMergeContacts:
             {
                 'survivor_id': str(survivor.id),
                 'loser_id': str(loser.id),
-                'field_overrides': {},
             },
             format='json',
         )

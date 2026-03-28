@@ -97,7 +97,6 @@ export interface DuplicatePair {
 export interface MergeRequest {
   survivor_id: string
   loser_id: string
-  field_overrides?: Record<string, "left" | "right">
 }
 
 /** Input for dismissing a duplicate pair */
