@@ -179,14 +179,13 @@ def merge_contacts(survivor_id, loser_id, merged_by):
 
     # Clear ALL unique-constrained fields on loser before saving survivor.
     # This prevents UNIQUE constraint violations during merge AND ensures the
-    # soft-deleted loser row doesn't block future contacts from using those values.
-    # Clear unique-constrained fields on loser that were auto-filled to survivor.
-    # This prevents UNIQUE constraint violations during the transaction window
-    # where both contacts still have is_merged=False.
-    if loser_fields_to_clear:
-        for field_name in loser_fields_to_clear:
+    # soft-deleted loser row doesn't cause stale matches in import lookups
+    # (which use Contact.objects.filter(external_constituent_id=...) without is_merged filtering).
+    all_unique_fields_to_clear = [f for f in _unique_fields if getattr(loser, f, '')]
+    if all_unique_fields_to_clear:
+        for field_name in all_unique_fields_to_clear:
             setattr(loser, field_name, '')
-        loser.save(update_fields=loser_fields_to_clear + ['updated_at'])
+        loser.save(update_fields=all_unique_fields_to_clear + ['updated_at'])
 
     # Reassign FK relationships, capturing counts
     gifts_count = Gift.objects.filter(donor_contact=loser).update(donor_contact=survivor)
