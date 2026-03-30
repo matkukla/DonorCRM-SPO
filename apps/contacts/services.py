@@ -154,6 +154,8 @@ def merge_contacts(survivor_id, loser_id, merged_by):
 
     if loser.is_merged:
         raise ValueError('Contact has already been merged')
+    if survivor.is_merged:
+        raise ValueError('Survivor contact has already been merged')
 
     # Auto-fill blanks: copy loser's non-empty values into survivor's empty fields
     _unique_fields = {'email', 'external_id', 'external_constituent_id'}  # Fields involved in unique constraints
