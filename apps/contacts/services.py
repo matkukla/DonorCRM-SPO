@@ -156,6 +156,8 @@ def merge_contacts(survivor_id, loser_id, merged_by):
     survivor = Contact.objects.select_for_update().get(pk=survivor_id)
     loser = Contact.objects.select_for_update().get(pk=loser_id)
 
+    if survivor_id == loser_id:
+        raise ValueError('Cannot merge a contact with itself')
     if loser.is_merged:
         raise ValueError('Contact has already been merged')
     if survivor.is_merged:
