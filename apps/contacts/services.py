@@ -110,9 +110,13 @@ def find_duplicates_for_contact(contact_data, owner_id, exclude_id=None):
                     _add_match(c, 'medium', f'Name similarity: {sim:.2f}', sim)
                 else:
                     _add_match(c, 'low', f'Name similarity: {sim:.2f}', sim)
-        except (ImportError, Exception):
-            # SQLite or pg_trgm not available -- skip name matching
+        except ImportError:
+            # django.contrib.postgres not available (e.g., SQLite test env)
             pass
+        except Exception:
+            import logging
+            logging.getLogger(__name__).warning('Trigram name matching failed', exc_info=True)
+
 
     # Sort: confidence tier, then similarity descending
     result = sorted(
