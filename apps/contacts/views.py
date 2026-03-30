@@ -478,9 +478,13 @@ class DismissDuplicateView(APIView):
                 Contact.objects.get(pk=ser.validated_data['contact_b_id'], owner_id__in=visible)
         except Contact.DoesNotExist:
             return Response({'detail': 'Contact not found.'}, status=status.HTTP_404_NOT_FOUND)
+        a_id = ser.validated_data['contact_a_id']
+        b_id = ser.validated_data['contact_b_id']
+        if str(a_id) > str(b_id):
+            a_id, b_id = b_id, a_id
         DismissedDuplicate.objects.get_or_create(
-            contact_a_id=ser.validated_data['contact_a_id'],
-            contact_b_id=ser.validated_data['contact_b_id'],
+            contact_a_id=a_id,
+            contact_b_id=b_id,
             defaults={'dismissed_by': request.user},
         )
         return Response({'detail': 'Pair dismissed.'}, status=status.HTTP_201_CREATED)
