@@ -9,6 +9,13 @@ from django.db import models
 from apps.core.models import TimeStampedModel
 
 
+class ActiveContactManager(models.Manager):
+    """Returns only non-merged contacts."""
+
+    def get_queryset(self):
+        return super().get_queryset().filter(is_merged=False)
+
+
 class ContactStatus(models.TextChoices):
     """
     Status of a contact in the fundraising pipeline.
@@ -25,6 +32,9 @@ class Contact(TimeStampedModel):
     Represents a donor or prospect.
     Each contact is owned by a specific staff member.
     """
+    objects = models.Manager()
+    active = ActiveContactManager()
+
     # Ownership
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
