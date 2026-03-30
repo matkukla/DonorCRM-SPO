@@ -450,6 +450,9 @@ class MergeContactsView(APIView):
             return Response({'detail': 'Contact not found.'}, status=status.HTTP_404_NOT_FOUND)
         if survivor_contact.owner_id != loser_contact.owner_id:
             return Response({'detail': 'Contacts must belong to the same owner.'}, status=status.HTTP_400_BAD_REQUEST)
+        # Only the contact owner or an admin can perform merges
+        if request.user.role != 'admin' and survivor_contact.owner_id != request.user.id:
+            return Response({'detail': 'You do not have permission to merge these contacts.'}, status=status.HTTP_403_FORBIDDEN)
         try:
             survivor = merge_contacts(
                 survivor_id=ser.validated_data['survivor_id'],
@@ -473,13 +476,16 @@ class DismissDuplicateView(APIView):
         visible = get_visible_user_ids(request.user, request=request)
         try:
             if visible is None:
-                Contact.objects.get(pk=ser.validated_data['contact_a_id'])
-                Contact.objects.get(pk=ser.validated_data['contact_b_id'])
+                contact_a = Contact.objects.get(pk=ser.validated_data['contact_a_id'])
+                contact_b = Contact.objects.get(pk=ser.validated_data['contact_b_id'])
             else:
-                Contact.objects.get(pk=ser.validated_data['contact_a_id'], owner_id__in=visible)
-                Contact.objects.get(pk=ser.validated_data['contact_b_id'], owner_id__in=visible)
+                contact_a = Contact.objects.get(pk=ser.validated_data['contact_a_id'], owner_id__in=visible)
+                contact_b = Contact.objects.get(pk=ser.validated_data['contact_b_id'], owner_id__in=visible)
         except Contact.DoesNotExist:
             return Response({'detail': 'Contact not found.'}, status=status.HTTP_404_NOT_FOUND)
+        # Only the contact owner or an admin can dismiss duplicates
+        if request.user.role != 'admin' and contact_a.owner_id != request.user.id:
+            return Response({'detail': 'You do not have permission to dismiss these duplicates.'}, status=status.HTTP_403_FORBIDDEN)
         a_id = ser.validated_data['contact_a_id']
         b_id = ser.validated_data['contact_b_id']
         if str(a_id) > str(b_id):
