@@ -46,7 +46,7 @@ export function DuplicateWarningDialog({
                       {match.phone && <span>{match.phone}</span>}
                     </div>
                   </div>
-                  <Badge variant={match.confidence === "high" ? "destructive" : match.confidence === "medium" ? "secondary" : "outline"}>
+                  <Badge variant={match.confidence === "high" ? "destructive" : match.confidence === "medium" ? "warning" : "secondary"}>
                     {match.confidence.charAt(0).toUpperCase() + match.confidence.slice(1)}
                   </Badge>
                 </div>
