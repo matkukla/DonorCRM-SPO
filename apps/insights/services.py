@@ -982,7 +982,7 @@ def get_user_drilldown(user_id):
         journal_contact__contact=OuterRef('pk')
     ).order_by('-created_at').values('created_at')[:1]
 
-    stalled_count = Contact.objects.filter(
+    stalled_count = Contact.active.filter(
         owner_id=user_id
     ).annotate(
         last_activity_date=Subquery(last_activity)
