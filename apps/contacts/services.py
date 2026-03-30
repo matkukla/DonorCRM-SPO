@@ -177,15 +177,16 @@ def merge_contacts(survivor_id, loser_id, merged_by):
             if field_name in _unique_fields:
                 loser_fields_to_clear.append(field_name)
 
-    # Clear ALL unique-constrained fields on loser before saving survivor.
-    # This prevents UNIQUE constraint violations during merge AND ensures the
-    # soft-deleted loser row doesn't cause stale matches in import lookups
-    # (which use Contact.objects.filter(external_constituent_id=...) without is_merged filtering).
-    all_unique_fields_to_clear = [f for f in _unique_fields if getattr(loser, f, '')]
-    if all_unique_fields_to_clear:
-        for field_name in all_unique_fields_to_clear:
+    # Clear unique-constrained fields AND phone fields on loser before saving
+    # survivor. This prevents UNIQUE constraint violations during merge AND
+    # ensures the soft-deleted loser row doesn't cause stale matches in import
+    # lookups (which match on email, external_id, external_constituent_id, and phone).
+    _fields_to_clear_on_loser = _unique_fields | {'phone', 'phone_secondary'}
+    all_fields_to_clear = [f for f in _fields_to_clear_on_loser if getattr(loser, f, '')]
+    if all_fields_to_clear:
+        for field_name in all_fields_to_clear:
             setattr(loser, field_name, '')
-        loser.save(update_fields=all_unique_fields_to_clear + ['updated_at'])
+        loser.save(update_fields=all_fields_to_clear + ['updated_at'])
 
     # Reassign FK relationships, capturing counts
     gifts_count = Gift.objects.filter(donor_contact=loser).update(donor_contact=survivor)
