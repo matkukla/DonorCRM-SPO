@@ -139,7 +139,7 @@ def parse_contacts_csv(file_content: str, user) -> Tuple[List[dict], List[dict]]
                 row_errors.append(f'Invalid email format: "{email}"')
             elif email in seen_emails:
                 row_errors.append(f'Duplicate email in file: {email}')
-            elif Contact.objects.filter(owner=user, email=email).exists():
+            elif Contact.objects.filter(owner=user, email=email, is_merged=False).exists():
                 row_errors.append(f'Contact with email "{email}" already exists in your account')
             else:
                 seen_emails.add(email)
