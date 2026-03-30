@@ -599,7 +599,7 @@ def _match_contact(row_data: dict, owner: User, row_number: int) -> tuple[Contac
 
     # Tier 1: Match by external_constituent_id (global)
     if ext_id:
-        contact = Contact.objects.filter(external_constituent_id=ext_id).first()
+        contact = Contact.objects.filter(external_constituent_id=ext_id, is_merged=False).first()
         if contact:
             # Log warnings for mismatched email/phone
             if email and contact.email and contact.email != email:
@@ -618,13 +618,13 @@ def _match_contact(row_data: dict, owner: User, row_number: int) -> tuple[Contac
 
     # Tier 2: Match by email (owner-scoped)
     if email:
-        contact = Contact.objects.filter(owner=owner, email=email).first()
+        contact = Contact.objects.filter(owner=owner, email=email, is_merged=False).first()
         if contact:
             return contact, 'email'
 
     # Tier 3: Match by phone (owner-scoped)
     if phone:
-        contact = Contact.objects.filter(owner=owner, phone=phone).first()
+        contact = Contact.objects.filter(owner=owner, phone=phone, is_merged=False).first()
         if contact:
             return contact, 'phone'
 
@@ -1267,6 +1267,7 @@ def import_re_gifts(
                     if constituent_id:
                         contact = Contact.objects.filter(
                             external_constituent_id=constituent_id,
+                            is_merged=False,
                         ).first()
 
                     if not contact:
@@ -1686,6 +1687,7 @@ def import_re_recurring_gifts(
                     if constituent_id:
                         contact = Contact.objects.filter(
                             external_constituent_id=constituent_id,
+                            is_merged=False,
                         ).first()
 
                     if not contact:
