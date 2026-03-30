@@ -64,6 +64,7 @@ class ContactDetailSerializer(serializers.ModelSerializer):
         read_only_fields = [
             'id', 'owner', 'first_gift_date', 'last_gift_date',
             'last_gift_amount', 'total_given', 'gift_count',
+            'external_id', 'external_constituent_id',
             'created_at', 'updated_at'
         ]
 
