@@ -441,13 +441,15 @@ class MergeContactsView(APIView):
         visible = get_visible_user_ids(request.user, request=request)
         try:
             if visible is None:
-                Contact.objects.get(pk=ser.validated_data['survivor_id'])
-                Contact.objects.get(pk=ser.validated_data['loser_id'])
+                survivor_contact = Contact.objects.get(pk=ser.validated_data['survivor_id'])
+                loser_contact = Contact.objects.get(pk=ser.validated_data['loser_id'])
             else:
-                Contact.objects.get(pk=ser.validated_data['survivor_id'], owner_id__in=visible)
-                Contact.objects.get(pk=ser.validated_data['loser_id'], owner_id__in=visible)
+                survivor_contact = Contact.objects.get(pk=ser.validated_data['survivor_id'], owner_id__in=visible)
+                loser_contact = Contact.objects.get(pk=ser.validated_data['loser_id'], owner_id__in=visible)
         except Contact.DoesNotExist:
             return Response({'detail': 'Contact not found.'}, status=status.HTTP_404_NOT_FOUND)
+        if survivor_contact.owner_id != loser_contact.owner_id:
+            return Response({'detail': 'Contacts must belong to the same owner.'}, status=status.HTTP_400_BAD_REQUEST)
         try:
             survivor = merge_contacts(
                 survivor_id=ser.validated_data['survivor_id'],
