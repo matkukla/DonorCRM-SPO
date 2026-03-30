@@ -150,17 +150,17 @@ class Contact(TimeStampedModel):
             models.UniqueConstraint(
                 fields=['owner', 'email'],
                 name='unique_contact_email_per_owner',
-                condition=~models.Q(email='')
+                condition=~models.Q(email='') & models.Q(is_merged=False)
             ),
             models.UniqueConstraint(
                 fields=['owner', 'external_id'],
                 name='unique_contact_external_id_per_owner',
-                condition=~models.Q(external_id='')
+                condition=~models.Q(external_id='') & models.Q(is_merged=False)
             ),
             models.UniqueConstraint(
                 fields=['external_constituent_id'],
                 name='unique_external_constituent_id',
-                condition=~models.Q(external_constituent_id='')
+                condition=~models.Q(external_constituent_id='') & models.Q(is_merged=False)
             ),
         ]
 
