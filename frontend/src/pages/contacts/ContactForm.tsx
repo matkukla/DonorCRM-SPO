@@ -120,33 +120,31 @@ export default function ContactForm() {
     }
 
     // For new contacts: check for duplicates first
+    let matches: Awaited<ReturnType<typeof checkDuplicatesMutation.mutateAsync>> = []
     try {
-      const matches = await checkDuplicatesMutation.mutateAsync({
+      matches = await checkDuplicatesMutation.mutateAsync({
         first_name: formData.first_name,
         last_name: formData.last_name,
         email: formData.email,
         phone: formData.phone,
       })
+    } catch {
+      // Duplicate check failed -- degrade gracefully, proceed with creation
+      toast.warning("Unable to check for duplicates. Creating contact.")
+    }
 
-      if (matches.length > 0) {
-        // Show warning dialog
-        setDuplicateMatches(matches)
-        setShowDuplicateDialog(true)
-        return
-      }
+    if (matches.length > 0) {
+      setDuplicateMatches(matches)
+      setShowDuplicateDialog(true)
+      return
+    }
 
-      // No duplicates found -- proceed with creation
+    // No duplicates (or check failed) -- create the contact
+    try {
       const newContact = await createMutation.mutateAsync(formData)
       navigate(`/contacts/${newContact.id}`)
     } catch {
-      // Duplicate check failed -- proceed with creation anyway (per CONTEXT.md: no forced merge)
-      toast.warning("Unable to check for duplicates. You can still create the contact.")
-      try {
-        const newContact = await createMutation.mutateAsync(formData)
-        navigate(`/contacts/${newContact.id}`)
-      } catch {
-        // Creation error handled by mutation
-      }
+      // Creation error handled by mutation's onError
     }
   }
 
