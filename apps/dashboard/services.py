@@ -49,10 +49,10 @@ def get_needs_attention(user):
     """
     visible = get_visible_user_ids(user)
     if visible is None:
-        contacts = Contact.objects.all()
+        contacts = Contact.active.all()
         tasks = Task.objects.all()
     else:
-        contacts = Contact.objects.filter(owner_id__in=visible)
+        contacts = Contact.active.filter(owner_id__in=visible)
         tasks = Task.objects.filter(owner_id__in=visible)
 
     today = date.today()
@@ -157,9 +157,9 @@ def get_thank_you_queue(user):
     """
     visible = get_visible_user_ids(user)
     if visible is None:
-        contacts = Contact.objects.all()
+        contacts = Contact.active.all()
     else:
-        contacts = Contact.objects.filter(owner_id__in=visible)
+        contacts = Contact.active.filter(owner_id__in=visible)
 
     return contacts.filter(needs_thank_you=True).select_related('owner')
 
