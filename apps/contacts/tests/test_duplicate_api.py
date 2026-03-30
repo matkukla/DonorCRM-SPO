@@ -105,8 +105,8 @@ class TestMergeContacts:
         assert loser.is_merged is True
         assert loser.merged_into_id == survivor.id
 
-    def test_merge_invalid_ids_400(self, auth_client, user):
-        """POST with nonexistent IDs returns 400."""
+    def test_merge_invalid_ids_404(self, auth_client, user):
+        """POST with nonexistent IDs returns 404."""
         resp = auth_client.post(
             '/api/v1/contacts/duplicates/merge/',
             {
@@ -115,7 +115,7 @@ class TestMergeContacts:
             },
             format='json',
         )
-        assert resp.status_code == 400
+        assert resp.status_code == 404
 
 
 @pytest.mark.django_db
