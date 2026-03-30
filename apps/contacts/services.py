@@ -245,13 +245,19 @@ def _merge_journal_contacts(survivor, loser):
 
         if survivor_jc:
             # Conflict: both contacts are in the same journal
-            # Transfer child records to survivor's JournalContact
+            # Transfer stage events (no unique constraint issues)
             JournalStageEvent.objects.filter(journal_contact=loser_jc).update(
                 journal_contact=survivor_jc
             )
-            Decision.objects.filter(journal_contact=loser_jc).update(
-                journal_contact=survivor_jc
-            )
+            # Handle Decisions: unique per journal_contact
+            survivor_has_decision = Decision.objects.filter(journal_contact=survivor_jc).exists()
+            if survivor_has_decision:
+                Decision.objects.filter(journal_contact=loser_jc).delete()
+            else:
+                Decision.objects.filter(journal_contact=loser_jc).update(
+                    journal_contact=survivor_jc
+                )
+            # NextSteps can be transferred (no unique constraint on journal_contact)
             NextStep.objects.filter(journal_contact=loser_jc).update(
                 journal_contact=survivor_jc
             )
