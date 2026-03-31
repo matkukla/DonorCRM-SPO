@@ -119,7 +119,7 @@ class GroupContactsView(APIView):
             )
 
         from apps.contacts.models import Contact
-        contacts = Contact.objects.filter(id__in=contact_ids, owner=request.user)
+        contacts = Contact.objects.filter(id__in=contact_ids, owner=request.user, is_merged=False)
         group.contacts.add(*contacts)
 
         return Response({'detail': f'Added {contacts.count()} contacts to group.'})

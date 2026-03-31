@@ -27,7 +27,7 @@ def detect_at_risk_donors():
     logger.info('Starting at-risk donor detection')
 
     # Find at-risk donors who haven't already been flagged recently
-    at_risk_contacts = Contact.objects.filter(
+    at_risk_contacts = Contact.active.filter(
         status=ContactStatus.DONOR,
         last_gift_date__lt=cutoff_date,
         gift_count__gte=2  # Has given at least twice
