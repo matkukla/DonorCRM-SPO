@@ -1,5 +1,22 @@
 # DonorCRM Milestones
 
+## v1.0 Duplicate Contact Checking + Merging (Shipped: 2026-03-28)
+
+**Phases completed:** 2 phases, 8 plans, 13 tasks
+
+**Key accomplishments:**
+
+- pg_trgm-powered duplicate detection with 3-tier confidence scoring and atomic contact merge handling all 6 FK relationship types including JournalContact conflict resolution
+- 4 DRF APIView endpoints for duplicate check/scan/merge/dismiss with serializers, merged-contact list filtering, and 9 passing API integration tests
+- Shadcn RadioGroup/AlertDialog components, duplicate detection API types and functions, React Query hooks with cache invalidation, and vitest infrastructure with 4 passing behavioral tests
+- DuplicateList page with scan/dismiss/review actions, ConfidenceBadge component, sidebar navigation, and route registration for duplicate contact management
+- Side-by-side contact merge page with survivor selection, 15-field comparison including external IDs, related records summary, and AlertDialog confirmation
+- DuplicateWarningDialog component with ConfidenceBadge, ContactForm pre-save duplicate check integration, and 9 passing vitest behavioral tests
+- Models follow codebase conventions:
+- One-liner:
+
+---
+
 ## v2.3 Goal Tracking & View As (Shipped: 2026-03-25)
 
 **Phases completed:** 8 phases, 30 plans, 52 tasks

@@ -169,9 +169,9 @@ class ContactExportView(APIView):
 
         user = request.user
         if user.role == 'admin':
-            queryset = Contact.objects.all()
+            queryset = Contact.objects.filter(is_merged=False)
         else:
-            queryset = Contact.objects.filter(owner=user)
+            queryset = Contact.objects.filter(owner=user, is_merged=False)
 
         csv_content = export_contacts_csv(queryset)
 
