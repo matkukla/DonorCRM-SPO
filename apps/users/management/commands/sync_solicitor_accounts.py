@@ -109,4 +109,4 @@ class Command(BaseCommand):
         except User.DoesNotExist:
             pass
 
-        self.stdout.write(self.style.SUCCESS(f"\nDone. Password for all accounts: {SOLICITOR_PASSWORD}"))
+        self.stdout.write(self.style.SUCCESS("\nDone. Password set from DEMO_USER_PASSWORD env var."))

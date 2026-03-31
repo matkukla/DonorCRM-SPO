@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Get JWT token
         id: auth
@@ -30,7 +30,7 @@ jobs:
             https://donorcrm-web.onrender.com/api/v1/schema/
 
       - name: Run HawkScan
-        uses: stackhawk/hawkscan-action@v2
+        uses: stackhawk/hawkscan-action@577fc49409a1f6e57f41c8eb8a6d02fe2ea0d79b # v2
         with:
           apiKey: ${{ secrets.HAWK_API_KEY }}
           configurationFiles: stackhawk.yml

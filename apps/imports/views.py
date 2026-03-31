@@ -82,7 +82,9 @@ class ContactImportView(APIView):
                 {'detail': 'File too large (max 10 MB)'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        if not file.name.endswith('.csv'):
+        if not file.name.endswith('.csv') or file.content_type not in (
+            'text/csv', 'application/csv', 'text/plain', 'application/vnd.ms-excel',
+        ):
             return Response(
                 {'detail': 'File must be a CSV.'},
                 status=status.HTTP_400_BAD_REQUEST
@@ -97,7 +99,7 @@ class ContactImportView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        logger.info(f'Contact import started by user {request.user.email}')
+        logger.info(f'Contact import started by user {request.user.id}')
 
         # Parse CSV
         valid_records, errors = parse_contacts_csv(content, request.user)
@@ -260,7 +262,9 @@ class FundImportView(APIView):
                 {'detail': 'File too large (max 10 MB)'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        if not file.name.endswith('.csv'):
+        if not file.name.endswith('.csv') or file.content_type not in (
+            'text/csv', 'application/csv', 'text/plain', 'application/vnd.ms-excel',
+        ):
             return Response(
                 {'detail': 'File must be a CSV.'},
                 status=status.HTTP_400_BAD_REQUEST
@@ -275,7 +279,7 @@ class FundImportView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        logger.info(f'Fund import started by user {request.user.email}')
+        logger.info(f'Fund import started by user {request.user.id}')
 
         # Parse CSV
         valid_records, errors = parse_funds_csv(content)
@@ -355,7 +359,9 @@ class EntityImportView(APIView):
                 {'detail': 'File too large (max 10 MB)'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        if not file.name.endswith('.csv'):
+        if not file.name.endswith('.csv') or file.content_type not in (
+            'text/csv', 'application/csv', 'text/plain', 'application/vnd.ms-excel',
+        ):
             return Response(
                 {'detail': 'File must be a CSV.'},
                 status=status.HTTP_400_BAD_REQUEST
@@ -370,7 +376,7 @@ class EntityImportView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        logger.info(f'Entity import started by user {request.user.email}')
+        logger.info(f'Entity import started by user {request.user.id}')
 
         # Parse CSV
         valid_records, errors = parse_entities_csv(content, request.user)

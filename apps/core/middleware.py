@@ -1,6 +1,10 @@
+import logging
+
 from rest_framework.response import Response
 from rest_framework.renderers import JSONRenderer
 from apps.users.models import User
+
+logger = logging.getLogger(__name__)
 
 
 class ViewAsMiddleware:
@@ -115,4 +119,5 @@ class ViewAsMiddleware:
                 return 'You do not have permission to view as this user.'
 
         request.view_as_user = target
+        logger.info(f'View-As: user {viewer.id} viewing as {target.id}')
         return None
