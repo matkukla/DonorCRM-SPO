@@ -9,6 +9,13 @@ from django.db import models
 from apps.core.models import TimeStampedModel
 
 
+class ActiveContactManager(models.Manager):
+    """Returns only non-merged contacts."""
+
+    def get_queryset(self):
+        return super().get_queryset().filter(is_merged=False)
+
+
 class ContactStatus(models.TextChoices):
     """
     Status of a contact in the fundraising pipeline.
@@ -25,6 +32,9 @@ class Contact(TimeStampedModel):
     Represents a donor or prospect.
     Each contact is owned by a specific staff member.
     """
+    objects = models.Manager()
+    active = ActiveContactManager()
+
     # Ownership
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -108,6 +118,14 @@ class Contact(TimeStampedModel):
     # Notes
     notes = models.TextField('notes', blank=True)
 
+    # Merge tracking
+    is_merged = models.BooleanField('merged', default=False, db_index=True)
+    merged_into = models.ForeignKey(
+        'self', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='merged_contacts',
+        help_text='Contact this was merged into'
+    )
+
     # Groups/tags (many-to-many)
     groups = models.ManyToManyField(
         'groups.Group',
@@ -126,22 +144,23 @@ class Contact(TimeStampedModel):
             models.Index(fields=['last_name', 'first_name']),
             models.Index(fields=['email']),
             models.Index(fields=['needs_thank_you']),
+            models.Index(fields=['owner', 'is_merged']),
         ]
         constraints = [
             models.UniqueConstraint(
                 fields=['owner', 'email'],
                 name='unique_contact_email_per_owner',
-                condition=~models.Q(email='')
+                condition=~models.Q(email='') & models.Q(is_merged=False)
             ),
             models.UniqueConstraint(
                 fields=['owner', 'external_id'],
                 name='unique_contact_external_id_per_owner',
-                condition=~models.Q(external_id='')
+                condition=~models.Q(external_id='') & models.Q(is_merged=False)
             ),
             models.UniqueConstraint(
                 fields=['external_constituent_id'],
                 name='unique_external_constituent_id',
-                condition=~models.Q(external_constituent_id='')
+                condition=~models.Q(external_constituent_id='') & models.Q(is_merged=False)
             ),
         ]
 
@@ -230,3 +249,48 @@ class Contact(TimeStampedModel):
         self.needs_thank_you = False
         self.last_thanked_at = timezone.now()
         self.save(update_fields=['needs_thank_you', 'last_thanked_at'])
+
+
+class DismissedDuplicate(TimeStampedModel):
+    """Tracks dismissed duplicate pairs so they are not re-flagged."""
+    contact_a = models.ForeignKey(Contact, on_delete=models.CASCADE, related_name='+')
+    contact_b = models.ForeignKey(Contact, on_delete=models.CASCADE, related_name='+')
+    dismissed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+        related_name='dismissed_duplicates'
+    )
+
+    class Meta:
+        db_table = 'dismissed_duplicates'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['contact_a', 'contact_b'],
+                name='unique_dismissed_pair'
+            )
+        ]
+
+    def save(self, **kwargs):
+        # Canonicalize: contact_a_id < contact_b_id (string comparison of UUIDs)
+        if str(self.contact_a_id) > str(self.contact_b_id):
+            self.contact_a_id, self.contact_b_id = self.contact_b_id, self.contact_a_id
+        super().save(**kwargs)
+
+
+class ContactMergeLog(TimeStampedModel):
+    """Audit trail for contact merge operations."""
+    survivor = models.ForeignKey(
+        Contact, on_delete=models.SET_NULL, null=True,
+        related_name='merge_logs_as_survivor'
+    )
+    loser_id = models.UUIDField(help_text='ID of the merged-away contact')
+    loser_name = models.CharField(max_length=300, help_text='Name snapshot at merge time')
+    merged_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True,
+        related_name='merge_logs'
+    )
+    field_overrides = models.JSONField(default=dict, help_text='Fields auto-filled from merged contact')
+    records_migrated = models.JSONField(default=dict, help_text='Counts of migrated FK records')
+
+    class Meta:
+        db_table = 'contact_merge_logs'
+        ordering = ['-created_at']

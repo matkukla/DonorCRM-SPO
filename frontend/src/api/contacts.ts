@@ -33,6 +33,8 @@ export interface ContactDetail extends ContactListItem {
   monthly_pledge_amount: string | null
   last_thanked_at: string | null
   notes: string | null
+  external_id: string | null
+  external_constituent_id: string | null
   groups: Array<{ id: string; name: string; description: string | null }>
   created_at: string
   updated_at: string
@@ -62,6 +64,36 @@ export interface PaginatedResponse<T> {
   next: string | null
   previous: string | null
   results: T[]
+}
+
+/** Confidence tier for duplicate matching */
+export type DuplicateConfidence = "high" | "medium" | "low"
+
+/** Single duplicate match from pre-creation check */
+export interface DuplicateMatch {
+  id: string
+  first_name: string
+  last_name: string
+  full_name: string
+  email: string
+  phone: string
+  organization_name: string
+  status: ContactStatus
+  confidence: DuplicateConfidence
+  reasons: string[]
+  similarity: number
+}
+
+/** Input for merge operation */
+export interface MergeRequest {
+  survivor_id: string
+  loser_id: string
+}
+
+/** Input for dismissing a duplicate pair */
+export interface DismissRequest {
+  contact_a_id: string
+  contact_b_id: string
 }
 
 export interface ContactFilters {
@@ -211,4 +243,26 @@ export async function getContactJournals(contactId: string): Promise<ContactJour
 export async function getContactEmails(params: Record<string, string> = {}): Promise<{ emails: string[]; count: number }> {
   const response = await apiClient.get<{ emails: string[]; count: number }>("/contacts/emails/", { params })
   return response.data
+}
+
+/** Check for duplicates before creating a contact */
+export async function checkDuplicates(data: {
+  first_name?: string
+  last_name?: string
+  email?: string
+  phone?: string
+}): Promise<DuplicateMatch[]> {
+  const response = await apiClient.post<DuplicateMatch[]>("/contacts/duplicates/check/", data)
+  return response.data
+}
+
+/** Merge two contacts */
+export async function mergeContacts(data: MergeRequest): Promise<ContactDetail> {
+  const response = await apiClient.post<ContactDetail>("/contacts/duplicates/merge/", data)
+  return response.data
+}
+
+/** Dismiss a duplicate pair */
+export async function dismissDuplicate(data: DismissRequest): Promise<void> {
+  await apiClient.post("/contacts/duplicates/dismiss/", data)
 }

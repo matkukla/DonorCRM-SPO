@@ -16,6 +16,9 @@ from apps.contacts.views import (
     ContactSearchView,
     ContactTasksView,
     ContactThankView,
+    DuplicateCheckView,
+    MergeContactsView,
+    DismissDuplicateView,
 )
 
 app_name = 'contacts'
@@ -25,6 +28,9 @@ urlpatterns = [
     path('export/csv/', ContactExportCSVView.as_view(), name='contact-export-csv'),
     path('emails/', ContactEmailsView.as_view(), name='contact-emails'),
     path('search/', ContactSearchView.as_view(), name='contact-search'),
+    path('duplicates/check/', DuplicateCheckView.as_view(), name='duplicate-check'),
+    path('duplicates/merge/', MergeContactsView.as_view(), name='duplicate-merge'),
+    path('duplicates/dismiss/', DismissDuplicateView.as_view(), name='duplicate-dismiss'),
     path('<uuid:pk>/', ContactDetailView.as_view(), name='contact-detail'),
     path('<uuid:pk>/thank/', ContactThankView.as_view(), name='contact-thank'),
     path('<uuid:pk>/donations/', ContactGiftsView.as_view(), name='contact-donations'),

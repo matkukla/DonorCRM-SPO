@@ -98,7 +98,7 @@ class GroupContactsView(APIView):
             )
 
         from apps.contacts.serializers import ContactListSerializer
-        contacts = group.contacts.all()
+        contacts = group.contacts.filter(is_merged=False)
         serializer = ContactListSerializer(contacts, many=True)
         return Response(serializer.data)
 
@@ -119,7 +119,7 @@ class GroupContactsView(APIView):
             )
 
         from apps.contacts.models import Contact
-        contacts = Contact.objects.filter(id__in=contact_ids, owner=request.user)
+        contacts = Contact.objects.filter(id__in=contact_ids, owner=request.user, is_merged=False)
         group.contacts.add(*contacts)
 
         return Response({'detail': f'Added {contacts.count()} contacts to group.'})

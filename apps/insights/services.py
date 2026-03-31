@@ -289,7 +289,7 @@ def get_dashboard_overview(date_from=None, date_to=None):
     dt_from, dt_to = _parse_date_range(date_from, date_to)
 
     # Filter contacts by created_at if date range provided
-    contacts_qs = Contact.objects.all()
+    contacts_qs = Contact.active.all()
     if dt_from:
         contacts_qs = contacts_qs.filter(created_at__gte=dt_from)
     if dt_to:
@@ -311,7 +311,7 @@ def get_dashboard_overview(date_from=None, date_to=None):
         journal_contact__contact=OuterRef('pk')
     ).order_by('-created_at').values('created_at')[:1]
 
-    stalled_qs = Contact.objects.annotate(
+    stalled_qs = Contact.active.annotate(
         last_activity_date=Subquery(last_activity)
     ).filter(
         Q(last_activity_date__lt=cutoff_date) | Q(last_activity_date__isnull=True),
@@ -385,7 +385,7 @@ def get_stalled_contacts(limit=50, offset=0, sort_by='days_stalled', sort_dir='d
     # Use date_to as "now" if provided, else current time
     cutoff_date = (dt_to if dt_to else timezone.now()) - timedelta(days=14)
 
-    base_qs = Contact.objects.annotate(
+    base_qs = Contact.active.annotate(
         last_activity_date=Subquery(last_activity),
         journal_membership_date=Subquery(journal_membership_date),
     ).filter(
@@ -913,7 +913,7 @@ def get_stage_contacts(stage, limit=100):
     total_count = contact_ids.count()
 
     # Get Contact objects with owner and last activity
-    contacts = Contact.objects.filter(
+    contacts = Contact.active.filter(
         id__in=contact_ids[:limit]
     ).annotate(
         last_activity_date=Subquery(last_activity)
@@ -955,7 +955,7 @@ def get_user_drilldown(user_id):
         return {'detail': 'User not found'}
 
     # Per-user stats (reusing patterns from get_user_performance)
-    total_contacts = Contact.objects.filter(owner_id=user_id).count()
+    total_contacts = Contact.active.filter(owner_id=user_id).count()
     active_journals = Journal.objects.filter(owner_id=user_id, is_archived=False).count()
     decisions_logged = Decision.objects.filter(journal_contact__journal__owner_id=user_id).count()
 
@@ -982,7 +982,7 @@ def get_user_drilldown(user_id):
         journal_contact__contact=OuterRef('pk')
     ).order_by('-created_at').values('created_at')[:1]
 
-    stalled_count = Contact.objects.filter(
+    stalled_count = Contact.active.filter(
         owner_id=user_id
     ).annotate(
         last_activity_date=Subquery(last_activity)

@@ -57,12 +57,14 @@ class ContactDetailSerializer(serializers.ModelSerializer):
             'total_given', 'gift_count',
             'has_active_pledge', 'monthly_pledge_amount',
             'last_thanked_at', 'needs_thank_you',
-            'notes', 'groups', 'group_ids',
+            'notes', 'external_id', 'external_constituent_id',
+            'groups', 'group_ids',
             'created_at', 'updated_at'
         ]
         read_only_fields = [
             'id', 'owner', 'first_gift_date', 'last_gift_date',
             'last_gift_amount', 'total_given', 'gift_count',
+            'external_id', 'external_constituent_id',
             'created_at', 'updated_at'
         ]
 
@@ -139,6 +141,41 @@ class ContactImportSerializer(serializers.Serializer):
     postal_code = serializers.CharField(max_length=20, required=False, allow_blank=True)
     country = serializers.CharField(max_length=100, required=False, default='USA')
     notes = serializers.CharField(required=False, allow_blank=True)
+
+
+class DuplicateCheckSerializer(serializers.Serializer):
+    """Input for pre-creation duplicate check."""
+    first_name = serializers.CharField(max_length=150, required=False, allow_blank=True, default='')
+    last_name = serializers.CharField(max_length=150, required=False, allow_blank=True, default='')
+    email = serializers.EmailField(required=False, allow_blank=True, default='')
+    phone = serializers.CharField(max_length=20, required=False, allow_blank=True, default='')
+
+
+class DuplicateMatchSerializer(serializers.Serializer):
+    """Single duplicate match result."""
+    id = serializers.UUIDField(source='contact.id')
+    first_name = serializers.CharField(source='contact.first_name')
+    last_name = serializers.CharField(source='contact.last_name')
+    full_name = serializers.CharField(source='contact.full_name')
+    email = serializers.EmailField(source='contact.email', allow_blank=True)
+    phone = serializers.CharField(source='contact.phone', allow_blank=True)
+    organization_name = serializers.CharField(source='contact.organization_name', allow_blank=True)
+    status = serializers.CharField(source='contact.status')
+    confidence = serializers.CharField()
+    reasons = serializers.ListField(child=serializers.CharField())
+    similarity = serializers.FloatField()
+
+
+class MergeRequestSerializer(serializers.Serializer):
+    """Input for merge operation."""
+    survivor_id = serializers.UUIDField()
+    loser_id = serializers.UUIDField()
+
+
+class DismissRequestSerializer(serializers.Serializer):
+    """Input for dismissing a duplicate pair."""
+    contact_a_id = serializers.UUIDField()
+    contact_b_id = serializers.UUIDField()
 
 
 class ContactJournalMembershipSerializer(serializers.ModelSerializer):
