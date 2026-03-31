@@ -3,12 +3,11 @@ Services for duplicate contact detection and merging.
 
 Provides:
 - find_duplicates_for_contact: Find potential duplicates for a given contact's data
-- scan_duplicates_for_owner: Batch scan for all duplicate pairs across an owner's contacts
 - merge_contacts: Atomically merge two contacts (reassign FKs, union groups, soft-delete loser)
 """
 from collections import OrderedDict
 
-from django.db import models, transaction
+from django.db import OperationalError, models, transaction
 from django.db.models import Q, Value
 from django.db.models.functions import Greatest
 
@@ -113,7 +112,7 @@ def find_duplicates_for_contact(contact_data, owner_id, exclude_id=None):
         except ImportError:
             # django.contrib.postgres not available (e.g., SQLite test env)
             pass
-        except Exception:
+        except OperationalError:
             import logging
             logging.getLogger(__name__).warning('Trigram name matching failed', exc_info=True)
 
@@ -166,7 +165,6 @@ def merge_contacts(survivor_id, loser_id, merged_by):
     # Auto-fill blanks: copy loser's non-empty values into survivor's empty fields
     _unique_fields = {'email', 'external_id', 'external_constituent_id'}  # Fields involved in unique constraints
     fields_auto_filled = {}
-    loser_fields_to_clear = []
 
     for field_name in _FILLABLE_FIELDS:
         survivor_val = getattr(survivor, field_name, '') or ''
@@ -174,8 +172,6 @@ def merge_contacts(survivor_id, loser_id, merged_by):
         if not str(survivor_val).strip() and str(loser_val).strip():
             setattr(survivor, field_name, loser_val)
             fields_auto_filled[field_name] = str(loser_val)
-            if field_name in _unique_fields:
-                loser_fields_to_clear.append(field_name)
 
     # Clear unique-constrained fields AND phone fields on loser before saving
     # survivor. This prevents UNIQUE constraint violations during merge AND
