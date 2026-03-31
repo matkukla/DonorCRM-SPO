@@ -47,8 +47,7 @@ export default function StalledContacts() {
       if (isValid(fromDate) && isValid(toDate) && fromDate <= toDate) {
         return { from: fromDate, to: toDate }
       }
-      // Invalid dates: clear params and show console warning
-      console.warn('Invalid date params in URL, ignoring:', { dateFrom, dateTo })
+      // Invalid dates: clear params
     }
 
     return null

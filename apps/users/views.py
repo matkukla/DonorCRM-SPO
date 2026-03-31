@@ -5,6 +5,7 @@ from django.db.models import Count, Q
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 
 from apps.core.permissions import IsAdmin
 from apps.users.models import User
@@ -106,6 +107,9 @@ class PasswordChangeView(APIView):
         )
         serializer.is_valid(raise_exception=True)
         serializer.save()
+        # Blacklist all outstanding refresh tokens for this user
+        for token in OutstandingToken.objects.filter(user=request.user):
+            BlacklistedToken.objects.get_or_create(token=token)
         return Response({'detail': 'Password changed successfully.'})
 
 
