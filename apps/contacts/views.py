@@ -134,9 +134,9 @@ class ContactThankView(APIView):
         try:
             visible = get_visible_user_ids(user, request=request)
             if visible is None:
-                contact = Contact.objects.get(pk=pk)
+                contact = Contact.objects.get(pk=pk, is_merged=False)
             else:
-                contact = Contact.objects.get(pk=pk, owner_id__in=visible)
+                contact = Contact.objects.get(pk=pk, owner_id__in=visible, is_merged=False)
         except Contact.DoesNotExist:
             return Response(
                 {'detail': 'Contact not found.'},
