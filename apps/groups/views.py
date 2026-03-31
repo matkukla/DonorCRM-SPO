@@ -98,7 +98,7 @@ class GroupContactsView(APIView):
             )
 
         from apps.contacts.serializers import ContactListSerializer
-        contacts = group.contacts.all()
+        contacts = group.contacts.filter(is_merged=False)
         serializer = ContactListSerializer(contacts, many=True)
         return Response(serializer.data)
 
