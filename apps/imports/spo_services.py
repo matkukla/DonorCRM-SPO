@@ -924,6 +924,7 @@ def import_spo_prayers(
             else:
                 contact = Contact.objects.filter(
                     external_constituent_id=constituent_id,
+                    is_merged=False,
                 ).first()
                 if contact is None:
                     # Best-effort: skip unresolvable contacts
