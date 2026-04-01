@@ -112,6 +112,14 @@ export async function updateAssignments(assignments: AssignmentUpdate[]): Promis
   return response.data
 }
 
+export async function adminResetPassword(
+  userId: string,
+  data: { new_password: string; new_password_confirm: string }
+): Promise<{ detail: string }> {
+  const response = await apiClient.post(`/users/${userId}/password/`, data)
+  return response.data
+}
+
 export interface ViewableUser {
   id: string
   full_name: string

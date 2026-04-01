@@ -4,6 +4,7 @@ URL patterns for user management endpoints.
 from django.urls import path
 
 from apps.users.views import (
+    AdminPasswordResetView,
     CurrentUserView,
     PasswordChangeView,
     UserDetailView,
@@ -20,5 +21,6 @@ urlpatterns = [
     path('me/password/', PasswordChangeView.as_view(), name='password-change'),
     path('admin/assignments/', AssignmentsView.as_view(), name='user-assignments'),
     path('viewable/', ViewableUsersView.as_view(), name='user-viewable'),
+    path('<uuid:pk>/password/', AdminPasswordResetView.as_view(), name='admin-password-reset'),
     path('<uuid:pk>/', UserDetailView.as_view(), name='user-detail'),
 ]
