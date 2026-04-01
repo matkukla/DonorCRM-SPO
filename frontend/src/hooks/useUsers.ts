@@ -5,6 +5,7 @@ import {
   createUser,
   updateUser,
   deactivateUser,
+  adminResetPassword,
   getAssignments,
   updateAssignments,
   getViewableUsers,
@@ -75,6 +76,13 @@ export function useUpdateAssignments() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assignments'] })
     },
+  })
+}
+
+export function useAdminResetPassword() {
+  return useMutation({
+    mutationFn: ({ userId, data }: { userId: string; data: { new_password: string; new_password_confirm: string } }) =>
+      adminResetPassword(userId, data),
   })
 }
 

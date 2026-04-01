@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 from apps.core.permissions import IsAdmin
 from apps.users.models import User
 from apps.users.serializers import (
+    AdminPasswordResetSerializer,
     CurrentUserSerializer,
     PasswordChangeSerializer,
     UserAdminUpdateSerializer,
@@ -107,6 +108,27 @@ class PasswordChangeView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response({'detail': 'Password changed successfully.'})
+
+
+class AdminPasswordResetView(APIView):
+    """
+    POST: Admin resets another user's password (no old password required).
+    """
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    def post(self, request, pk):
+        try:
+            user = User.objects.get(pk=pk)
+        except User.DoesNotExist:
+            return Response(
+                {'detail': 'User not found.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = AdminPasswordResetSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(user=user)
+        return Response({'detail': 'Password reset successfully.'})
 
 
 class ViewableUsersView(APIView):
