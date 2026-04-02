@@ -7,6 +7,7 @@ import { FileDropZone } from "./FileDropZone"
 import { ImportResultBanner } from "./ImportResultBanner"
 import { CSVHeaderReference } from "./CSVHeaderReference"
 import { useREImport } from "@/hooks/useImports"
+import { useAuth } from "@/providers/AuthProvider"
 import type { REImportType, REImportResponse } from "@/api/imports"
 
 interface REImportTabProps {
@@ -26,6 +27,9 @@ export function REImportTab({
 }: REImportTabProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [result, setResult] = useState<REImportResponse | null>(null)
+  const [lastFile, setLastFile] = useState<File | null>(null)
+  const { user } = useAuth()
+  const isAdmin = user?.role === "admin"
 
   const mutation = useREImport(importType)
 
@@ -39,13 +43,17 @@ export function REImportTab({
     setResult(null)
   }
 
-  const handleImport = async () => {
-    if (!selectedFile) return
+  const handleImport = async (force = false) => {
+    const file = force ? lastFile : selectedFile
+    if (!file) return
 
     try {
-      const importResult = await mutation.mutateAsync(selectedFile)
+      const importResult = await mutation.mutateAsync({ file, force })
       setResult(importResult)
-      setSelectedFile(null)
+      if (!force) {
+        setLastFile(selectedFile)
+        setSelectedFile(null)
+      }
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } } }
       toast.error(error.response?.data?.detail || `${title} import failed. Please try again.`)
@@ -73,7 +81,7 @@ export function REImportTab({
 
       {/* Import button */}
       <Button
-        onClick={handleImport}
+        onClick={() => handleImport()}
         disabled={!selectedFile || mutation.isPending}
         className="w-full"
       >
@@ -95,6 +103,8 @@ export function REImportTab({
         <ImportResultBanner
           result={result}
           onDismiss={() => setResult(null)}
+          onReimport={isAdmin && result.is_duplicate && lastFile ? () => handleImport(true) : undefined}
+          isReimporting={mutation.isPending}
         />
       )}
 
