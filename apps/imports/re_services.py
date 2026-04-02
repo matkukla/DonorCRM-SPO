@@ -13,8 +13,8 @@ from collections import defaultdict
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 
-from django.db import IntegrityError, transaction
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError, transaction
 
 from apps.contacts.models import Contact
 from apps.gifts.models import (
@@ -37,6 +37,7 @@ logger = logging.getLogger(__name__)
 # Shared utilities
 # ---------------------------------------------------------------------------
 
+
 def decode_csv_bytes(file_bytes: bytes) -> str:
     """Decode CSV bytes with cascading encoding fallback.
 
@@ -49,20 +50,29 @@ def decode_csv_bytes(file_bytes: bytes) -> str:
     Raises ValueError if no encoding works (should never happen
     since Windows-1252 accepts all byte values 0x00-0xFF).
     """
-    for encoding in ('utf-8-sig', 'utf-8', 'windows-1252'):
+    for encoding in ("utf-8-sig", "utf-8", "windows-1252"):
         try:
             content = file_bytes.decode(encoding)
             # Strip null bytes that can break csv.reader
-            return content.replace('\x00', '')
+            return content.replace("\x00", "")
         except (UnicodeDecodeError, ValueError):
             continue
-    raise ValueError('Unable to decode file with any supported encoding')
+    raise ValueError("Unable to decode file with any supported encoding")
 
 
-_RE_TYPE_LABELS = frozenset({
-    'constituent', 'gift', 'recurring gift', 'solicitor',
-    'pledge', 'action', 'event', 'membership', 'relationship',
-})
+_RE_TYPE_LABELS = frozenset(
+    {
+        "constituent",
+        "gift",
+        "recurring gift",
+        "solicitor",
+        "pledge",
+        "action",
+        "event",
+        "membership",
+        "relationship",
+    }
+)
 
 
 def skip_re_type_label_row(content: str) -> str:
@@ -82,7 +92,7 @@ def skip_re_type_label_row(content: str) -> str:
 
     # Parse first row with csv to respect quoting
     try:
-        first_row = next(csv.reader([lines[0].rstrip('\r\n')]))
+        first_row = next(csv.reader([lines[0].rstrip("\r\n")]))
     except StopIteration:
         return content
 
@@ -90,7 +100,7 @@ def skip_re_type_label_row(content: str) -> str:
 
     # Type-label row: exactly one non-empty cell that matches a known label
     if len(non_empty_first) == 1 and non_empty_first[0].lower() in _RE_TYPE_LABELS:
-        return ''.join(lines[1:])
+        return "".join(lines[1:])
 
     return content
 
@@ -129,7 +139,7 @@ def validate_csv_headers(
     Raises ValueError with descriptive message listing missing headers.
     """
     if not reader_fieldnames:
-        raise ValueError(f'{import_type_label}: CSV file has no headers')
+        raise ValueError(f"{import_type_label}: CSV file has no headers")
 
     actual_lower = {h.strip().lower() for h in reader_fieldnames if h}
     missing = {h for h in required_headers if h.lower() not in actual_lower}
@@ -149,29 +159,30 @@ def normalize_solicitor_name(raw_name: str) -> str:
     """
     name = raw_name.strip()
     if not name:
-        return ''
+        return ""
 
-    if ',' in name:
+    if "," in name:
         # Already "Last, First" format
-        parts = [p.strip() for p in name.split(',', 1)]
+        parts = [p.strip() for p in name.split(",", 1)]
         last = parts[0].lower()
-        first = parts[1].lower() if len(parts) > 1 else ''
+        first = parts[1].lower() if len(parts) > 1 else ""
         if first:
-            return f'{last}, {first}'
+            return f"{last}, {first}"
         return last
     else:
         # "First Last" format -- reverse
         parts = name.split()
         if len(parts) >= 2:
-            first = ' '.join(parts[:-1])
+            first = " ".join(parts[:-1])
             last = parts[-1]
-            return f'{last.lower()}, {first.lower()}'
+            return f"{last.lower()}, {first.lower()}"
         return name.lower()
 
 
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
 
 def _build_user_name_lookup() -> dict[str, User]:
     """Build dict mapping 'last, first' -> User for auto-linking.
@@ -182,7 +193,7 @@ def _build_user_name_lookup() -> dict[str, User]:
     ambiguous: set[str] = set()
 
     for user in User.objects.filter(is_active=True):
-        key = f'{user.last_name.lower()}, {user.first_name.lower()}'
+        key = f"{user.last_name.lower()}, {user.first_name.lower()}"
         if key in ambiguous:
             continue
         if key in lookup:
@@ -231,29 +242,31 @@ def _build_header_mapping(
 # Maps lowercase alias -> canonical field name
 SOLICITOR_HEADER_ALIASES: dict[str, str] = {
     # Solicitor ID aliases
-    'solicitor_id': 'external_solicitor_id',
-    'solid': 'external_solicitor_id',
-    'sol_id': 'external_solicitor_id',
-    'cnsol_1_01_solicit_id': 'external_solicitor_id',
+    "solicitor_id": "external_solicitor_id",
+    "solid": "external_solicitor_id",
+    "sol_id": "external_solicitor_id",
+    "cnsol_1_01_solicit_id": "external_solicitor_id",
     # Solicitor name aliases
-    'solicitor_name': 'raw_name',
-    'name': 'raw_name',
-    'full_name': 'raw_name',
-    'cnsol_1_01_name': 'raw_name',
+    "solicitor_name": "raw_name",
+    "name": "raw_name",
+    "full_name": "raw_name",
+    "cnsol_1_01_name": "raw_name",
 }
 
 # Only the name field is strictly required
-SOLICITOR_REQUIRED_CANONICAL = {'raw_name'}
+SOLICITOR_REQUIRED_CANONICAL = {"raw_name"}
 
 
 # ---------------------------------------------------------------------------
 # Solicitor import orchestrator
 # ---------------------------------------------------------------------------
 
+
 def import_re_solicitors(
     file_bytes: bytes,
     filename: str,
     uploaded_by: User,
+    force: bool = False,
 ) -> ImportBatch:
     """Import RE Solicitor CSV end-to-end.
 
@@ -271,11 +284,18 @@ def import_re_solicitors(
 
     # Step 1: Check for duplicate
     existing = check_duplicate_import(file_bytes, ImportBatchType.RE_SOLICITOR)
-    if existing:
-        logger.info('Duplicate solicitor import detected for %s', filename)
+    if existing and not force:
+        logger.info("Duplicate solicitor import detected for %s", filename)
         existing.status = ImportBatchStatus.DUPLICATE
-        existing.save(update_fields=['status'])
+        existing.save(update_fields=["status"])
         return existing
+    elif existing and force:
+        logger.info(
+            "Force flag set — re-importing %s (deleting old batch %s)",
+            filename,
+            existing.id,
+        )
+        existing.delete()
 
     # Step 2: Decode
     try:
@@ -287,7 +307,7 @@ def import_re_solicitors(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={'errors': [{'row': 0, 'error': str(e)}]},
+            summary={"errors": [{"row": 0, "error": str(e)}]},
         )
         return batch
 
@@ -302,7 +322,7 @@ def import_re_solicitors(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={'errors': [{'row': 0, 'error': f'CSV parse error: {e}'}]},
+            summary={"errors": [{"row": 0, "error": f"CSV parse error: {e}"}]},
         )
         return batch
 
@@ -310,10 +330,7 @@ def import_re_solicitors(
     col_map = _build_header_mapping(fieldnames, SOLICITOR_HEADER_ALIASES)
 
     # Check that at least the name field is present
-    missing_canonical = {
-        name for name in SOLICITOR_REQUIRED_CANONICAL
-        if col_map.get(name) is None
-    }
+    missing_canonical = {name for name in SOLICITOR_REQUIRED_CANONICAL if col_map.get(name) is None}
     if missing_canonical:
         # Find which actual header aliases were expected
         expected_aliases = []
@@ -327,13 +344,15 @@ def import_re_solicitors(
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
             summary={
-                'errors': [{
-                    'row': 0,
-                    'error': (
-                        f'Missing required solicitor name header. '
-                        f'Expected one of: {", ".join(sorted(expected_aliases))}'
-                    ),
-                }],
+                "errors": [
+                    {
+                        "row": 0,
+                        "error": (
+                            f"Missing required solicitor name header. "
+                            f'Expected one of: {", ".join(sorted(expected_aliases))}'
+                        ),
+                    }
+                ],
             },
         )
         return batch
@@ -352,8 +371,8 @@ def import_re_solicitors(
     seen_ext_ids: set[str] = set()
     seen_norm_names: set[str] = set()
 
-    name_col = col_map['raw_name']
-    ext_id_col = col_map.get('external_solicitor_id')
+    name_col = col_map["raw_name"]
+    ext_id_col = col_map.get("external_solicitor_id")
 
     try:
         with transaction.atomic():
@@ -361,18 +380,20 @@ def import_re_solicitors(
                 total_rows += 1
 
                 # Extract raw name
-                raw_name = _sanitize_field(row.get(name_col) or '')
+                raw_name = _sanitize_field(row.get(name_col) or "")
                 if not raw_name:
-                    errors.append({
-                        'row': row_number,
-                        'error': 'Missing solicitor name',
-                    })
+                    errors.append(
+                        {
+                            "row": row_number,
+                            "error": "Missing solicitor name",
+                        }
+                    )
                     continue
 
                 # Extract external ID if present
-                ext_id = ''
+                ext_id = ""
                 if ext_id_col:
-                    ext_id = _sanitize_field(row.get(ext_id_col) or '')
+                    ext_id = _sanitize_field(row.get(ext_id_col) or "")
 
                 # Normalize name
                 norm_name = normalize_solicitor_name(raw_name)
@@ -418,20 +439,22 @@ def import_re_solicitors(
                 created_count += 1
 
                 if not matched_user:
-                    unlinked_solicitors.append({
-                        'name': norm_name,
-                        'external_id': ext_id,
-                    })
+                    unlinked_solicitors.append(
+                        {
+                            "name": norm_name,
+                            "external_id": ext_id,
+                        }
+                    )
 
     except Exception as e:
-        logger.error('Solicitor import failed for %s: %s', filename, e)
+        logger.error("Solicitor import failed for %s: %s", filename, e)
         batch = ImportBatch.objects.create(
             import_type=ImportBatchType.RE_SOLICITOR,
             status=ImportBatchStatus.FAILED,
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={'errors': [{'row': 0, 'error': f'Import error: {e}'}]},
+            summary={"errors": [{"row": 0, "error": f"Import error: {e}"}]},
         )
         return batch
 
@@ -448,13 +471,13 @@ def import_re_solicitors(
         skipped_count=skipped_count,
         error_count=len(errors),
         summary={
-            'errors': errors,
-            'unlinked_solicitors': unlinked_solicitors,
+            "errors": errors,
+            "unlinked_solicitors": unlinked_solicitors,
         },
     )
 
     logger.info(
-        'Solicitor import complete for %s: %d created, %d skipped, %d errors',
+        "Solicitor import complete for %s: %d created, %d skipped, %d errors",
         filename,
         created_count,
         skipped_count,
@@ -471,73 +494,74 @@ def import_re_solicitors(
 # Maps lowercase alias -> canonical field name
 CONSTITUENT_HEADER_ALIASES: dict[str, str] = {
     # Constituent ID aliases
-    'cnbio_id': 'constituent_id',
-    'consid': 'constituent_id',
-    'constituent_id': 'constituent_id',
-    'constituent id': 'constituent_id',
-    'cons_id': 'constituent_id',
-    'id': 'constituent_id',
+    "cnbio_id": "constituent_id",
+    "consid": "constituent_id",
+    "constituent_id": "constituent_id",
+    "constituent id": "constituent_id",
+    "cons_id": "constituent_id",
+    "id": "constituent_id",
     # First name aliases
-    'cnbio_first_name': 'first_name',
-    'firstname': 'first_name',
-    'first_name': 'first_name',
-    'first name': 'first_name',
-    'fname': 'first_name',
+    "cnbio_first_name": "first_name",
+    "firstname": "first_name",
+    "first_name": "first_name",
+    "first name": "first_name",
+    "fname": "first_name",
     # Last name aliases
-    'cnbio_last_name': 'last_name',
-    'lastname': 'last_name',
-    'last_name': 'last_name',
-    'last name': 'last_name',
-    'lname': 'last_name',
+    "cnbio_last_name": "last_name",
+    "lastname": "last_name",
+    "last_name": "last_name",
+    "last name": "last_name",
+    "lname": "last_name",
     # Organization name aliases
-    'cnbio_org_name': 'organization_name',
-    'orgname': 'organization_name',
-    'org_name': 'organization_name',
-    'organization': 'organization_name',
-    'organization_name': 'organization_name',
-    'organization name': 'organization_name',
-    'org name': 'organization_name',
+    "cnbio_org_name": "organization_name",
+    "orgname": "organization_name",
+    "org_name": "organization_name",
+    "organization": "organization_name",
+    "organization_name": "organization_name",
+    "organization name": "organization_name",
+    "org name": "organization_name",
     # Email aliases
-    'cnadrprf_email': 'email',
-    'email': 'email',
-    'email_address': 'email',
-    'email address': 'email',
-    'emailaddress': 'email',
+    "cnadrprf_email": "email",
+    "email": "email",
+    "email_address": "email",
+    "email address": "email",
+    "emailaddress": "email",
     # Phone aliases
-    'cnph_1_01_phone_number': 'phone',
-    'phone': 'phone',
-    'phone_number': 'phone',
-    'phone number': 'phone',
-    'phonenumber': 'phone',
+    "cnph_1_01_phone_number": "phone",
+    "phone": "phone",
+    "phone_number": "phone",
+    "phone number": "phone",
+    "phonenumber": "phone",
     # Street address aliases
-    'cnadrprf_addrline1': 'street_address',
-    'address': 'street_address',
-    'address_line_1': 'street_address',
-    'address line 1': 'street_address',
-    'street': 'street_address',
-    'street_address': 'street_address',
+    "cnadrprf_addrline1": "street_address",
+    "address": "street_address",
+    "address_line_1": "street_address",
+    "address line 1": "street_address",
+    "street": "street_address",
+    "street_address": "street_address",
     # City aliases
-    'cnadrprf_city': 'city',
-    'city': 'city',
+    "cnadrprf_city": "city",
+    "city": "city",
     # State aliases
-    'cnadrprf_state': 'state',
-    'state': 'state',
+    "cnadrprf_state": "state",
+    "state": "state",
     # Postal code aliases
-    'cnadrprf_zip': 'postal_code',
-    'zip': 'postal_code',
-    'postal_code': 'postal_code',
-    'postal code': 'postal_code',
-    'zipcode': 'postal_code',
-    'zip_code': 'postal_code',
+    "cnadrprf_zip": "postal_code",
+    "zip": "postal_code",
+    "postal_code": "postal_code",
+    "postal code": "postal_code",
+    "zipcode": "postal_code",
+    "zip_code": "postal_code",
     # Country aliases
-    'cnadrprf_contrylongdsc': 'country',
-    'country': 'country',
+    "cnadrprf_contrylongdsc": "country",
+    "country": "country",
 }
 
 
 # ---------------------------------------------------------------------------
 # Constituent import helpers
 # ---------------------------------------------------------------------------
+
 
 def merge_contact_fields(contact: Contact, new_data: dict) -> list[str]:
     """Merge new data into contact, only filling blank fields.
@@ -551,16 +575,24 @@ def merge_contact_fields(contact: Contact, new_data: dict) -> list[str]:
     """
     updated_fields: list[str] = []
     merge_fields = [
-        'first_name', 'last_name', 'email', 'phone', 'phone_secondary',
-        'street_address', 'city', 'state', 'postal_code', 'country',
-        'organization_name',
+        "first_name",
+        "last_name",
+        "email",
+        "phone",
+        "phone_secondary",
+        "street_address",
+        "city",
+        "state",
+        "postal_code",
+        "country",
+        "organization_name",
     ]
     # Fields where we should never set an empty value
-    skip_empty_fields = {'first_name', 'last_name', 'email'}
+    skip_empty_fields = {"first_name", "last_name", "email"}
 
     for field in merge_fields:
-        current_value = getattr(contact, field, '') or ''
-        new_value = new_data.get(field, '') or ''
+        current_value = getattr(contact, field, "") or ""
+        new_value = new_data.get(field, "") or ""
 
         # Skip if current value is non-blank (merge-only: never overwrite)
         if current_value:
@@ -593,9 +625,9 @@ def _match_contact(row_data: dict, owner: User, row_number: int) -> tuple[Contac
 
     Logs warnings when ID matches but email/phone differs from existing.
     """
-    ext_id = row_data.get('constituent_id', '').strip()
-    email = row_data.get('email', '').strip()
-    phone = row_data.get('phone', '').strip()
+    ext_id = row_data.get("constituent_id", "").strip()
+    email = row_data.get("email", "").strip()
+    phone = row_data.get("phone", "").strip()
 
     # Tier 1: Match by external_constituent_id (global)
     if ext_id:
@@ -604,42 +636,52 @@ def _match_contact(row_data: dict, owner: User, row_number: int) -> tuple[Contac
             # Log warnings for mismatched email/phone
             if email and contact.email and contact.email != email:
                 logger.warning(
-                    'Row %d: Constituent ID %s matched contact %s, but email '
-                    'differs (existing: %s, CSV: %s)',
-                    row_number, ext_id, contact.id, contact.email, email,
+                    "Row %d: Constituent ID %s matched contact %s, but email "
+                    "differs (existing: %s, CSV: %s)",
+                    row_number,
+                    ext_id,
+                    contact.id,
+                    contact.email,
+                    email,
                 )
             if phone and contact.phone and contact.phone != phone:
                 logger.warning(
-                    'Row %d: Constituent ID %s matched contact %s, but phone '
-                    'differs (existing: %s, CSV: %s)',
-                    row_number, ext_id, contact.id, contact.phone, phone,
+                    "Row %d: Constituent ID %s matched contact %s, but phone "
+                    "differs (existing: %s, CSV: %s)",
+                    row_number,
+                    ext_id,
+                    contact.id,
+                    contact.phone,
+                    phone,
                 )
-            return contact, 'constituent_id'
+            return contact, "constituent_id"
 
     # Tier 2: Match by email (owner-scoped)
     if email:
         contact = Contact.objects.filter(owner=owner, email=email, is_merged=False).first()
         if contact:
-            return contact, 'email'
+            return contact, "email"
 
     # Tier 3: Match by phone (owner-scoped)
     if phone:
         contact = Contact.objects.filter(owner=owner, phone=phone, is_merged=False).first()
         if contact:
-            return contact, 'phone'
+            return contact, "phone"
 
-    return None, 'none'
+    return None, "none"
 
 
 # ---------------------------------------------------------------------------
 # Constituent import orchestrator
 # ---------------------------------------------------------------------------
 
+
 def import_re_constituents(
     file_bytes: bytes,
     filename: str,
     uploaded_by: User,
     owner: User,
+    force: bool = False,
 ) -> ImportBatch:
     """Import RE Constituent CSV end-to-end.
 
@@ -656,11 +698,18 @@ def import_re_constituents(
 
     # Step 1: Check for duplicate
     existing = check_duplicate_import(file_bytes, ImportBatchType.RE_CONSTITUENT)
-    if existing:
-        logger.info('Duplicate constituent import detected for %s', filename)
+    if existing and not force:
+        logger.info("Duplicate constituent import detected for %s", filename)
         existing.status = ImportBatchStatus.DUPLICATE
-        existing.save(update_fields=['status'])
+        existing.save(update_fields=["status"])
         return existing
+    elif existing and force:
+        logger.info(
+            "Force flag set — re-importing %s (deleting old batch %s)",
+            filename,
+            existing.id,
+        )
+        existing.delete()
 
     # Step 2: Decode
     try:
@@ -672,7 +721,7 @@ def import_re_constituents(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={'errors': [{'row': 0, 'error': str(e)}]},
+            summary={"errors": [{"row": 0, "error": str(e)}]},
         )
         return batch
 
@@ -687,7 +736,7 @@ def import_re_constituents(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={'errors': [{'row': 0, 'error': f'CSV parse error: {e}'}]},
+            summary={"errors": [{"row": 0, "error": f"CSV parse error: {e}"}]},
         )
         return batch
 
@@ -696,9 +745,9 @@ def import_re_constituents(
 
     # Validate: at least one of first_name, last_name, or organization_name
     has_name_header = (
-        col_map.get('first_name') is not None
-        or col_map.get('last_name') is not None
-        or col_map.get('organization_name') is not None
+        col_map.get("first_name") is not None
+        or col_map.get("last_name") is not None
+        or col_map.get("organization_name") is not None
     )
     if not has_name_header:
         batch = ImportBatch.objects.create(
@@ -708,18 +757,20 @@ def import_re_constituents(
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
             summary={
-                'errors': [{
-                    'row': 0,
-                    'error': (
-                        'Missing required name headers. '
-                        'CSV must contain at least one of: first_name/last_name '
-                        'or organization_name (or RE equivalents).'
-                    ),
-                }],
-                'file_error': (
-                    'Missing required name headers. '
-                    'CSV must contain at least one of: first_name/last_name '
-                    'or organization_name (or RE equivalents).'
+                "errors": [
+                    {
+                        "row": 0,
+                        "error": (
+                            "Missing required name headers. "
+                            "CSV must contain at least one of: first_name/last_name "
+                            "or organization_name (or RE equivalents)."
+                        ),
+                    }
+                ],
+                "file_error": (
+                    "Missing required name headers. "
+                    "CSV must contain at least one of: first_name/last_name "
+                    "or organization_name (or RE equivalents)."
                 ),
             },
         )
@@ -744,28 +795,30 @@ def import_re_constituents(
                     row_data: dict[str, str] = {}
                     for canonical_name, actual_col in col_map.items():
                         if actual_col is not None:
-                            row_data[canonical_name] = _sanitize_field(row.get(actual_col) or '')
+                            row_data[canonical_name] = _sanitize_field(row.get(actual_col) or "")
 
                     # Minimum data validation: require (first_name + last_name) or organization_name
-                    first_name = row_data.get('first_name', '')
-                    last_name = row_data.get('last_name', '')
-                    org_name = row_data.get('organization_name', '')
+                    first_name = row_data.get("first_name", "")
+                    last_name = row_data.get("last_name", "")
+                    org_name = row_data.get("organization_name", "")
 
                     has_name = first_name and last_name
                     has_org = bool(org_name)
 
                     if not has_name and not has_org:
-                        errors.append({
-                            'row': row_number,
-                            'error': (
-                                f'Row {row_number}: Missing name or organization '
-                                '-- cannot create contact'
-                            ),
-                        })
+                        errors.append(
+                            {
+                                "row": row_number,
+                                "error": (
+                                    f"Row {row_number}: Missing name or organization "
+                                    "-- cannot create contact"
+                                ),
+                            }
+                        )
                         continue
 
                     # Extract external_constituent_id
-                    ext_id = row_data.get('constituent_id', '')
+                    ext_id = row_data.get("constituent_id", "")
 
                     # Match contact using three-tier hierarchy
                     contact, match_type = _match_contact(row_data, owner, row_number)
@@ -777,63 +830,74 @@ def import_re_constituents(
                         # If contact doesn't have external_constituent_id but CSV row does
                         if ext_id and not contact.external_constituent_id:
                             contact.external_constituent_id = ext_id
-                            updated_fields.append('external_constituent_id')
+                            updated_fields.append("external_constituent_id")
 
                         if updated_fields:
                             contact.save(update_fields=updated_fields)
                             updated_count += 1
                         else:
                             skipped_count += 1
-                            skipped_details.append({
-                                'row': row_number,
-                                'reason': 'all_fields_populated',
-                                'match_type': match_type,
-                                'contact_name': f'{contact.first_name} {contact.last_name}'.strip(),
-                                'constituent_id': ext_id,
-                            })
+                            skipped_details.append(
+                                {
+                                    "row": row_number,
+                                    "reason": "all_fields_populated",
+                                    "match_type": match_type,
+                                    "contact_name": f"{contact.first_name} {contact.last_name}".strip(),
+                                    "constituent_id": ext_id,
+                                }
+                            )
 
                         # Record warnings for ID match conflicts
-                        if match_type == 'constituent_id':
-                            csv_email = row_data.get('email', '')
-                            csv_phone = row_data.get('phone', '')
+                        if match_type == "constituent_id":
+                            csv_email = row_data.get("email", "")
+                            csv_phone = row_data.get("phone", "")
                             if csv_email and contact.email and contact.email != csv_email:
-                                warnings.append({
-                                    'row': row_number,
-                                    'warning': (
-                                        f'Constituent ID {ext_id} matched but email '
-                                        f'differs (existing: {contact.email}, '
-                                        f'CSV: {csv_email})'
-                                    ),
-                                })
+                                warnings.append(
+                                    {
+                                        "row": row_number,
+                                        "warning": (
+                                            f"Constituent ID {ext_id} matched but email "
+                                            f"differs (existing: {contact.email}, "
+                                            f"CSV: {csv_email})"
+                                        ),
+                                    }
+                                )
                             if csv_phone and contact.phone and contact.phone != csv_phone:
-                                warnings.append({
-                                    'row': row_number,
-                                    'warning': (
-                                        f'Constituent ID {ext_id} matched but phone '
-                                        f'differs (existing: {contact.phone}, '
-                                        f'CSV: {csv_phone})'
-                                    ),
-                                })
+                                warnings.append(
+                                    {
+                                        "row": row_number,
+                                        "warning": (
+                                            f"Constituent ID {ext_id} matched but phone "
+                                            f"differs (existing: {contact.phone}, "
+                                            f"CSV: {csv_phone})"
+                                        ),
+                                    }
+                                )
                     else:
                         # No match -- create new Contact
                         new_contact_data = {
-                            'owner': owner,
-                            'first_name': first_name,
-                            'last_name': last_name,
+                            "owner": owner,
+                            "first_name": first_name,
+                            "last_name": last_name,
                         }
                         if ext_id:
-                            new_contact_data['external_constituent_id'] = ext_id
+                            new_contact_data["external_constituent_id"] = ext_id
                         if org_name:
-                            new_contact_data['organization_name'] = org_name
+                            new_contact_data["organization_name"] = org_name
 
                         # Add optional fields from row_data
                         optional_fields = [
-                            'email', 'phone', 'phone_secondary',
-                            'street_address', 'city', 'state',
-                            'postal_code', 'country',
+                            "email",
+                            "phone",
+                            "phone_secondary",
+                            "street_address",
+                            "city",
+                            "state",
+                            "postal_code",
+                            "country",
                         ]
                         for field in optional_fields:
-                            value = row_data.get(field, '')
+                            value = row_data.get(field, "")
                             if value:
                                 new_contact_data[field] = value
 
@@ -841,25 +905,29 @@ def import_re_constituents(
                         created_count += 1
 
                 except (IntegrityError, ValidationError) as e:
-                    errors.append({
-                        'row': row_number,
-                        'error': f'Row {row_number}: {str(e)}',
-                    })
+                    errors.append(
+                        {
+                            "row": row_number,
+                            "error": f"Row {row_number}: {str(e)}",
+                        }
+                    )
                 except Exception as e:
-                    errors.append({
-                        'row': row_number,
-                        'error': f'Row {row_number}: Unexpected error: {str(e)}',
-                    })
+                    errors.append(
+                        {
+                            "row": row_number,
+                            "error": f"Row {row_number}: Unexpected error: {str(e)}",
+                        }
+                    )
 
     except Exception as e:
-        logger.error('Constituent import failed for %s: %s', filename, e)
+        logger.error("Constituent import failed for %s: %s", filename, e)
         batch = ImportBatch.objects.create(
             import_type=ImportBatchType.RE_CONSTITUENT,
             status=ImportBatchStatus.FAILED,
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={'errors': [{'row': 0, 'error': f'Import error: {e}'}]},
+            summary={"errors": [{"row": 0, "error": f"Import error: {e}"}]},
         )
         return batch
 
@@ -876,15 +944,14 @@ def import_re_constituents(
         skipped_count=skipped_count,
         error_count=len(errors),
         summary={
-            'errors': errors,
-            'warnings': warnings,
-            'skipped_details': skipped_details,
+            "errors": errors,
+            "warnings": warnings,
+            "skipped_details": skipped_details,
         },
     )
 
     logger.info(
-        'Constituent import complete for %s: %d created, %d updated, '
-        '%d skipped, %d errors',
+        "Constituent import complete for %s: %d created, %d updated, " "%d skipped, %d errors",
         filename,
         created_count,
         updated_count,
@@ -900,20 +967,20 @@ def import_re_constituents(
 # ---------------------------------------------------------------------------
 
 _PAYMENT_TYPE_MAP: dict[str, str] = {
-    'check': 'check',
-    'credit card': 'credit_card',
-    'eft': 'direct_deposit',
-    'direct debit': 'direct_deposit',
-    'direct deposit': 'direct_deposit',
-    'ach': 'direct_deposit',
-    'cash': 'cash',
-    'online': 'online',
+    "check": "check",
+    "credit card": "credit_card",
+    "eft": "direct_deposit",
+    "direct debit": "direct_deposit",
+    "direct deposit": "direct_deposit",
+    "ach": "direct_deposit",
+    "cash": "cash",
+    "online": "online",
 }
 
 
 def _normalize_payment_type(raw: str) -> str:
     """Normalize RE payment type string to Gift.PaymentType enum value."""
-    return _PAYMENT_TYPE_MAP.get(raw.strip().lower(), '')
+    return _PAYMENT_TYPE_MAP.get(raw.strip().lower(), "")
 
 
 def _parse_amount_to_cents(amount_str: str) -> int:
@@ -924,7 +991,7 @@ def _parse_amount_to_cents(amount_str: str) -> int:
     """
     if not amount_str:
         return 0
-    cleaned = amount_str.replace('$', '').replace(',', '').strip()
+    cleaned = amount_str.replace("$", "").replace(",", "").strip()
     if not cleaned:
         return 0
     try:
@@ -943,7 +1010,7 @@ def _parse_date(date_str: str):
     if not date_str:
         return None
     date_str = date_str.strip()
-    for fmt in ('%Y-%m-%d', '%m/%d/%Y', '%m/%d/%y'):
+    for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y"):
         try:
             return datetime.strptime(date_str, fmt).date()
         except ValueError:
@@ -991,17 +1058,19 @@ def _group_rows_by_id(
         row_data: dict[str, str] = {}
         for canonical, actual_col in col_map.items():
             if actual_col is not None:
-                row_data[canonical] = _sanitize_field(row.get(actual_col) or '')
+                row_data[canonical] = _sanitize_field(row.get(actual_col) or "")
 
-        id_value = row_data.get(id_field, '')
+        id_value = row_data.get(id_field, "")
         if not id_value:
-            errors.append({
-                'row': row_number,
-                'error': f'Row {row_number}: Missing {id_field}',
-            })
+            errors.append(
+                {
+                    "row": row_number,
+                    "error": f"Row {row_number}: Missing {id_field}",
+                }
+            )
             continue
 
-        row_data['_row_number'] = str(row_number)
+        row_data["_row_number"] = str(row_number)
         groups[id_value].append(row_data)
 
     return dict(groups), errors, total_rows
@@ -1009,9 +1078,26 @@ def _group_rows_by_id(
 
 # Prayer auto-creation helpers
 PRAYER_STOPLIST = {
-    'n/a', 'na', 'none', 'no', 'yes', '-', '--', '---', '...', 'test',
-    'x', 'xx', 'xxx', 'general', 'same', 'same as above',
-    'see above', 'ditto', 'tbd', 'unknown',
+    "n/a",
+    "na",
+    "none",
+    "no",
+    "yes",
+    "-",
+    "--",
+    "---",
+    "...",
+    "test",
+    "x",
+    "xx",
+    "xxx",
+    "general",
+    "same",
+    "same as above",
+    "see above",
+    "ditto",
+    "tbd",
+    "unknown",
 }
 
 
@@ -1061,7 +1147,7 @@ def _maybe_create_prayer_intention(
 
     # Create new PrayerIntention with clean title truncation
     if len(text) > 80:
-        truncated = text[:80].rsplit(' ', 1)
+        truncated = text[:80].rsplit(" ", 1)
         title = truncated[0] if len(truncated) > 1 and truncated[0] != text[:80] else text[:80]
     else:
         title = text
@@ -1083,71 +1169,73 @@ def _maybe_create_prayer_intention(
 
 GIFT_HEADER_ALIASES: dict[str, str] = {
     # Gift ID
-    'gift_id': 'gift_id',
-    'gf_id': 'gift_id',
-    'gift id': 'gift_id',
-    'gf_system_id': 'gift_id',
-    'gift system record id': 'gift_id',
+    "gift_id": "gift_id",
+    "gf_id": "gift_id",
+    "gift id": "gift_id",
+    "gf_system_id": "gift_id",
+    "gift system record id": "gift_id",
     # Constituent ID
-    'gf_cnbio_id': 'constituent_id',
-    'constituent_id': 'constituent_id',
-    'constituent id': 'constituent_id',
-    'cnbio_id': 'constituent_id',
-    'consid': 'constituent_id',
+    "gf_cnbio_id": "constituent_id",
+    "constituent_id": "constituent_id",
+    "constituent id": "constituent_id",
+    "cnbio_id": "constituent_id",
+    "consid": "constituent_id",
     # Amount (gift-level)
-    'gf_amount': 'amount',
-    'gift_amount': 'amount',
-    'gift amount': 'amount',
-    'amount': 'amount',
+    "gf_amount": "amount",
+    "gift_amount": "amount",
+    "gift amount": "amount",
+    "amount": "amount",
     # Date
-    'gf_date': 'gift_date',
-    'gift_date': 'gift_date',
-    'gift date': 'gift_date',
-    'date': 'gift_date',
+    "gf_date": "gift_date",
+    "gift_date": "gift_date",
+    "gift date": "gift_date",
+    "date": "gift_date",
     # Fund
-    'gf_fund': 'fund',
-    'fund': 'fund',
-    'fund_id': 'fund',
-    'fund id': 'fund',
-    'fund_description': 'fund',
-    'fund split amount': 'amount',
+    "gf_fund": "fund",
+    "fund": "fund",
+    "fund_id": "fund",
+    "fund id": "fund",
+    "fund_description": "fund",
+    "fund split amount": "amount",
     # Description
-    'gf_description': 'description',
-    'description': 'description',
-    'gift description': 'description',
+    "gf_description": "description",
+    "description": "description",
+    "gift description": "description",
     # Solicitor name
-    'solicitor_name': 'solicitor_name',
-    'solicitor name': 'solicitor_name',
-    'cnsol_1_01_name': 'solicitor_name',
-    'gf_cnsol_1_01_name': 'solicitor_name',
+    "solicitor_name": "solicitor_name",
+    "solicitor name": "solicitor_name",
+    "cnsol_1_01_name": "solicitor_name",
+    "gf_cnsol_1_01_name": "solicitor_name",
     # Credit amount (per-solicitor)
-    'credit_amount': 'credit_amount',
-    'gf_cnsol_1_01_amount': 'credit_amount',
-    'solicitor amount': 'credit_amount',
+    "credit_amount": "credit_amount",
+    "gf_cnsol_1_01_amount": "credit_amount",
+    "solicitor amount": "credit_amount",
     # Prayer description
-    'gift specific attributes prayer requests description': 'prayer_description',
-    'prayer_requests_description': 'prayer_description',
-    'prayer requests description': 'prayer_description',
-    'prayer description': 'prayer_description',
+    "gift specific attributes prayer requests description": "prayer_description",
+    "prayer_requests_description": "prayer_description",
+    "prayer requests description": "prayer_description",
+    "prayer description": "prayer_description",
     # Payment type
-    'gift payment type': 'payment_type',
-    'payment_type': 'payment_type',
-    'payment type': 'payment_type',
-    'gf_pay_method': 'payment_type',
+    "gift payment type": "payment_type",
+    "payment_type": "payment_type",
+    "payment type": "payment_type",
+    "gf_pay_method": "payment_type",
 }
 
-GIFT_REQUIRED_CANONICAL = {'gift_id', 'constituent_id', 'amount'}
+GIFT_REQUIRED_CANONICAL = {"gift_id", "constituent_id", "amount"}
 
 
 # ---------------------------------------------------------------------------
 # Gift import orchestrator
 # ---------------------------------------------------------------------------
 
+
 def import_re_gifts(
     file_bytes: bytes,
     filename: str,
     uploaded_by: User,
     owner: User,
+    force: bool = False,
 ) -> ImportBatch:
     """Import RE Gift CSV end-to-end.
 
@@ -1171,11 +1259,18 @@ def import_re_gifts(
 
     # Step 1: Check for duplicate
     existing = check_duplicate_import(file_bytes, ImportBatchType.RE_GIFT)
-    if existing:
-        logger.info('Duplicate gift import detected for %s', filename)
+    if existing and not force:
+        logger.info("Duplicate gift import detected for %s", filename)
         existing.status = ImportBatchStatus.DUPLICATE
-        existing.save(update_fields=['status'])
+        existing.save(update_fields=["status"])
         return existing
+    elif existing and force:
+        logger.info(
+            "Force flag set — re-importing %s (deleting old batch %s)",
+            filename,
+            existing.id,
+        )
+        existing.delete()
 
     # Step 2: Decode
     try:
@@ -1187,7 +1282,7 @@ def import_re_gifts(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={'errors': [{'row': 0, 'error': str(e)}]},
+            summary={"errors": [{"row": 0, "error": str(e)}]},
         )
         return batch
 
@@ -1202,17 +1297,14 @@ def import_re_gifts(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={'errors': [{'row': 0, 'error': f'CSV parse error: {e}'}]},
+            summary={"errors": [{"row": 0, "error": f"CSV parse error: {e}"}]},
         )
         return batch
 
     col_map = _build_header_mapping(fieldnames, GIFT_HEADER_ALIASES)
 
     # Check required canonical fields
-    missing_canonical = {
-        name for name in GIFT_REQUIRED_CANONICAL
-        if col_map.get(name) is None
-    }
+    missing_canonical = {name for name in GIFT_REQUIRED_CANONICAL if col_map.get(name) is None}
     if missing_canonical:
         expected_aliases = []
         for alias, canonical in GIFT_HEADER_ALIASES.items():
@@ -1225,20 +1317,24 @@ def import_re_gifts(
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
             summary={
-                'errors': [{
-                    'row': 0,
-                    'error': (
-                        f'Missing required gift headers. '
-                        f'Expected one of each: {", ".join(sorted(expected_aliases))}'
-                    ),
-                }],
+                "errors": [
+                    {
+                        "row": 0,
+                        "error": (
+                            f"Missing required gift headers. "
+                            f'Expected one of each: {", ".join(sorted(expected_aliases))}'
+                        ),
+                    }
+                ],
             },
         )
         return batch
 
     # Step 4: Group rows by gift_id
     groups, grouping_errors, total_rows = _group_rows_by_id(
-        reader, col_map, 'gift_id',
+        reader,
+        col_map,
+        "gift_id",
     )
 
     # Step 5: Build lookups
@@ -1249,6 +1345,7 @@ def import_re_gifts(
     errors: list[dict] = list(grouping_errors)
     warnings: list[dict] = []
     created_count = 0
+    updated_count = 0
     skipped_count = 0
     prayer_count = 0
     unmatched_solicitors: list[str] = []
@@ -1262,7 +1359,7 @@ def import_re_gifts(
                     first_row = rows[0]
 
                     # Look up Contact by constituent_id
-                    constituent_id = first_row.get('constituent_id', '')
+                    constituent_id = first_row.get("constituent_id", "")
                     contact = None
                     if constituent_id:
                         contact = Contact.objects.filter(
@@ -1271,64 +1368,85 @@ def import_re_gifts(
                         ).first()
 
                     if not contact:
-                        row_nums = ', '.join(r['_row_number'] for r in rows)
-                        errors.append({
-                            'row': int(first_row['_row_number']),
-                            'error': (
-                                f'Constituent ID "{constituent_id}" not found '
-                                f'-- skipping gift group {gift_id} (rows {row_nums})'
-                            ),
-                        })
-                        transaction.savepoint_rollback(sp)
-                        continue
-
-                    # Check for duplicate external_gift_id in database
-                    if Gift.objects.filter(external_gift_id=gift_id).exists():
-                        skipped_count += 1
+                        row_nums = ", ".join(r["_row_number"] for r in rows)
+                        errors.append(
+                            {
+                                "row": int(first_row["_row_number"]),
+                                "error": (
+                                    f'Constituent ID "{constituent_id}" not found '
+                                    f"-- skipping gift group {gift_id} (rows {row_nums})"
+                                ),
+                            }
+                        )
                         transaction.savepoint_rollback(sp)
                         continue
 
                     # Parse amount from first row
                     amount_cents = _parse_amount_to_cents(
-                        first_row.get('amount', ''),
+                        first_row.get("amount", ""),
                     )
                     if amount_cents == 0:
-                        errors.append({
-                            'row': int(first_row['_row_number']),
-                            'error': (
-                                f'Row {first_row["_row_number"]}: Invalid amount '
-                                f'"{first_row.get("amount", "")}" for gift {gift_id}'
-                            ),
-                        })
+                        errors.append(
+                            {
+                                "row": int(first_row["_row_number"]),
+                                "error": (
+                                    f'Row {first_row["_row_number"]}: Invalid amount '
+                                    f'"{first_row.get("amount", "")}" for gift {gift_id}'
+                                ),
+                            }
+                        )
                         transaction.savepoint_rollback(sp)
                         continue
 
                     # Parse date from first row
-                    parsed_date = _parse_date(first_row.get('gift_date', ''))
+                    parsed_date = _parse_date(first_row.get("gift_date", ""))
                     if parsed_date is None:
-                        errors.append({
-                            'row': int(first_row['_row_number']),
-                            'error': (
-                                f'Row {first_row["_row_number"]}: Invalid date '
-                                f'"{first_row.get("gift_date", "")}" for gift {gift_id}'
-                            ),
-                        })
+                        errors.append(
+                            {
+                                "row": int(first_row["_row_number"]),
+                                "error": (
+                                    f'Row {first_row["_row_number"]}: Invalid date '
+                                    f'"{first_row.get("gift_date", "")}" for gift {gift_id}'
+                                ),
+                            }
+                        )
                         transaction.savepoint_rollback(sp)
                         continue
 
                     # Match fund
-                    fund_value = first_row.get('fund', '').lower()
+                    fund_value = first_row.get("fund", "").lower()
                     matched_fund = None
                     if fund_value:
                         matched_fund = fund_lookup.get(fund_value)
                         if not matched_fund:
-                            warnings.append({
-                                'row': int(first_row['_row_number']),
-                                'warning': (
-                                    f'Fund "{first_row.get("fund", "")}" not found '
-                                    f'for gift {gift_id}'
-                                ),
-                            })
+                            warnings.append(
+                                {
+                                    "row": int(first_row["_row_number"]),
+                                    "warning": (
+                                        f'Fund "{first_row.get("fund", "")}" not found '
+                                        f"for gift {gift_id}"
+                                    ),
+                                }
+                            )
+
+                    parsed_payment_type = _normalize_payment_type(first_row.get("payment_type", ""))
+
+                    # Check for duplicate external_gift_id in database
+                    existing_gift = Gift.objects.filter(external_gift_id=gift_id).first()
+                    if existing_gift:
+                        if force:
+                            existing_gift.donor_contact = contact
+                            existing_gift.amount_cents = amount_cents
+                            existing_gift.gift_date = parsed_date
+                            existing_gift.fund = matched_fund
+                            existing_gift.description = first_row.get("description", "")
+                            existing_gift.payment_type = parsed_payment_type
+                            existing_gift.save()
+                            updated_count += 1
+                        else:
+                            skipped_count += 1
+                        transaction.savepoint_commit(sp)
+                        continue
 
                     # Create Gift
                     gift = Gift.objects.create(
@@ -1337,31 +1455,33 @@ def import_re_gifts(
                         amount_cents=amount_cents,
                         gift_date=parsed_date,
                         fund=matched_fund,
-                        description=first_row.get('description', ''),
-                        payment_type=_normalize_payment_type(first_row.get('payment_type', '')),
+                        description=first_row.get("description", ""),
+                        payment_type=parsed_payment_type,
                     )
 
                     # Create GiftCredits -- one per row with a solicitor
                     for row in rows:
-                        solicitor_name = row.get('solicitor_name', '')
+                        solicitor_name = row.get("solicitor_name", "")
                         if not solicitor_name:
                             continue
                         norm_name = normalize_solicitor_name(solicitor_name)
                         solicitor = solicitor_lookup.get(norm_name)
                         if not solicitor:
-                            errors.append({
-                                'row': int(row['_row_number']),
-                                'error': (
-                                    f'Row {row["_row_number"]}: Solicitor '
-                                    f'"{solicitor_name}" not found -- credit '
-                                    f'skipped for gift {gift_id}'
-                                ),
-                            })
+                            errors.append(
+                                {
+                                    "row": int(row["_row_number"]),
+                                    "error": (
+                                        f'Row {row["_row_number"]}: Solicitor '
+                                        f'"{solicitor_name}" not found -- credit '
+                                        f"skipped for gift {gift_id}"
+                                    ),
+                                }
+                            )
                             if norm_name not in unmatched_solicitors:
                                 unmatched_solicitors.append(norm_name)
                             continue
                         credit_amount = _parse_amount_to_cents(
-                            row.get('credit_amount', ''),
+                            row.get("credit_amount", ""),
                         )
                         if credit_amount == 0:
                             credit_amount = amount_cents
@@ -1380,20 +1500,23 @@ def import_re_gifts(
                     ).exists()
                     if not contact_owner_is_missionary:
                         for credit_row in rows:
-                            sol_name = credit_row.get('solicitor_name', '')
+                            sol_name = credit_row.get("solicitor_name", "")
                             if not sol_name:
                                 continue
                             sol = solicitor_lookup.get(normalize_solicitor_name(sol_name))
                             if sol and sol.user_id:
                                 contact.owner = sol.user
-                                contact.save(update_fields=['owner'])
+                                contact.save(update_fields=["owner"])
                                 break
 
                     # Check for prayer description
-                    prayer_text = first_row.get('prayer_description', '')
+                    prayer_text = first_row.get("prayer_description", "")
                     if prayer_text:
                         prayer = _maybe_create_prayer_intention(
-                            gift, prayer_text, contact, seen_prayers,
+                            gift,
+                            prayer_text,
+                            contact,
+                            seen_prayers,
                         )
                         if prayer:
                             prayer_count += 1
@@ -1403,24 +1526,26 @@ def import_re_gifts(
 
                 except Exception as e:
                     transaction.savepoint_rollback(sp)
-                    row_nums = ', '.join(r.get('_row_number', '?') for r in rows)
-                    errors.append({
-                        'row': int(rows[0].get('_row_number', 0)),
-                        'error': (
-                            f'Gift group {gift_id} (rows {row_nums}): '
-                            f'Unexpected error: {str(e)}'
-                        ),
-                    })
+                    row_nums = ", ".join(r.get("_row_number", "?") for r in rows)
+                    errors.append(
+                        {
+                            "row": int(rows[0].get("_row_number", 0)),
+                            "error": (
+                                f"Gift group {gift_id} (rows {row_nums}): "
+                                f"Unexpected error: {str(e)}"
+                            ),
+                        }
+                    )
 
     except Exception as e:
-        logger.error('Gift import failed for %s: %s', filename, e)
+        logger.error("Gift import failed for %s: %s", filename, e)
         batch = ImportBatch.objects.create(
             import_type=ImportBatchType.RE_GIFT,
             status=ImportBatchStatus.FAILED,
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={'errors': [{'row': 0, 'error': f'Import error: {e}'}]},
+            summary={"errors": [{"row": 0, "error": f"Import error: {e}"}]},
         )
         return batch
 
@@ -1433,20 +1558,19 @@ def import_re_gifts(
         uploaded_by=uploaded_by,
         total_rows=total_rows,
         created_count=created_count,
-        updated_count=0,
+        updated_count=updated_count,
         skipped_count=skipped_count,
         error_count=len(errors),
         summary={
-            'errors': errors,
-            'warnings': warnings,
-            'prayer_count': prayer_count,
-            'unmatched_solicitors': unmatched_solicitors,
+            "errors": errors,
+            "warnings": warnings,
+            "prayer_count": prayer_count,
+            "unmatched_solicitors": unmatched_solicitors,
         },
     )
 
     logger.info(
-        'Gift import complete for %s: %d created, %d skipped, %d errors, '
-        '%d prayers',
+        "Gift import complete for %s: %d created, %d skipped, %d errors, " "%d prayers",
         filename,
         created_count,
         skipped_count,
@@ -1463,67 +1587,72 @@ def import_re_gifts(
 
 RECURRING_GIFT_HEADER_ALIASES: dict[str, str] = {
     # Recurring Gift ID
-    'recurring_gift_id': 'gift_id',
-    'rg_id': 'gift_id',
-    'recurring gift id': 'gift_id',
-    'gift_id': 'gift_id',
-    'gift id': 'gift_id',
-    'gf_id': 'gift_id',
+    "recurring_gift_id": "gift_id",
+    "rg_id": "gift_id",
+    "recurring gift id": "gift_id",
+    "gift_id": "gift_id",
+    "gift id": "gift_id",
+    "gf_id": "gift_id",
     # Constituent ID
-    'gf_cnbio_id': 'constituent_id',
-    'constituent_id': 'constituent_id',
-    'constituent id': 'constituent_id',
-    'cnbio_id': 'constituent_id',
-    'consid': 'constituent_id',
+    "gf_cnbio_id": "constituent_id",
+    "constituent_id": "constituent_id",
+    "constituent id": "constituent_id",
+    "cnbio_id": "constituent_id",
+    "consid": "constituent_id",
     # Amount (per-installment)
-    'gf_amount': 'amount',
-    'amount': 'amount',
-    'installment_amount': 'amount',
-    'installment amount': 'amount',
-    'solicitor amount': 'amount',
+    "gf_amount": "amount",
+    "amount": "amount",
+    "installment_amount": "amount",
+    "installment amount": "amount",
+    "solicitor amount": "amount",
     # Frequency
-    'gf_installment_frequency': 'frequency',
-    'installment_frequency': 'frequency',
-    'frequency': 'frequency',
-    'installment frequency': 'frequency',
-    'gift installment frequency': 'frequency',
+    "gf_installment_frequency": "frequency",
+    "installment_frequency": "frequency",
+    "frequency": "frequency",
+    "installment frequency": "frequency",
+    "gift installment frequency": "frequency",
     # Start date
-    'gf_date': 'start_date',
-    'start_date': 'start_date',
-    'start date': 'start_date',
-    'gift date': 'start_date',
-    'date_1st_pay': 'start_date',
+    "gf_date": "start_date",
+    "start_date": "start_date",
+    "start date": "start_date",
+    "gift date": "start_date",
+    "date_1st_pay": "start_date",
     # End date
-    'gf_end_date': 'end_date',
-    'end_date': 'end_date',
-    'end date': 'end_date',
+    "gf_end_date": "end_date",
+    "end_date": "end_date",
+    "end date": "end_date",
     # Status
-    'gf_status': 'status',
-    'status': 'status',
-    'gift status': 'status',
+    "gf_status": "status",
+    "status": "status",
+    "gift status": "status",
     # Fund
-    'gf_fund': 'fund',
-    'fund': 'fund',
-    'fund_id': 'fund',
-    'fund id': 'fund',
+    "gf_fund": "fund",
+    "fund": "fund",
+    "fund_id": "fund",
+    "fund id": "fund",
     # Solicitor
-    'solicitor_name': 'solicitor_name',
-    'solicitor name': 'solicitor_name',
-    'cnsol_1_01_name': 'solicitor_name',
+    "solicitor_name": "solicitor_name",
+    "solicitor name": "solicitor_name",
+    "cnsol_1_01_name": "solicitor_name",
     # Credit amount
-    'credit_amount': 'credit_amount',
-    'gf_cnsol_1_01_amount': 'credit_amount',
+    "credit_amount": "credit_amount",
+    "gf_cnsol_1_01_amount": "credit_amount",
     # Prayer description
-    'gift specific attributes prayer requests description': 'prayer_description',
-    'prayer_requests_description': 'prayer_description',
-    'prayer requests description': 'prayer_description',
-    'prayer description': 'prayer_description',
+    "gift specific attributes prayer requests description": "prayer_description",
+    "prayer_requests_description": "prayer_description",
+    "prayer requests description": "prayer_description",
+    "prayer description": "prayer_description",
+    # Payment type
+    "gift payment type": "payment_type",
+    "payment_type": "payment_type",
+    "payment type": "payment_type",
+    "gf_pay_method": "payment_type",
     # Description
-    'description': 'description',
-    'gf_description': 'description',
+    "description": "description",
+    "gf_description": "description",
 }
 
-RECURRING_GIFT_REQUIRED_CANONICAL = {'gift_id', 'constituent_id', 'amount'}
+RECURRING_GIFT_REQUIRED_CANONICAL = {"gift_id", "constituent_id", "amount"}
 
 
 # ---------------------------------------------------------------------------
@@ -1531,32 +1660,32 @@ RECURRING_GIFT_REQUIRED_CANONICAL = {'gift_id', 'constituent_id', 'amount'}
 # ---------------------------------------------------------------------------
 
 FREQUENCY_MAP: dict[str, str] = {
-    'monthly': RecurringGiftFrequency.MONTHLY,
-    'quarterly': RecurringGiftFrequency.QUARTERLY,
-    'semi-annually': RecurringGiftFrequency.SEMI_ANNUALLY,
-    'semi-annual': RecurringGiftFrequency.SEMI_ANNUALLY,
-    'semiannually': RecurringGiftFrequency.SEMI_ANNUALLY,
-    'semi annually': RecurringGiftFrequency.SEMI_ANNUALLY,
-    'annually': RecurringGiftFrequency.ANNUALLY,
-    'annual': RecurringGiftFrequency.ANNUALLY,
-    'yearly': RecurringGiftFrequency.ANNUALLY,
-    'bimonthly': RecurringGiftFrequency.BIMONTHLY,
-    'bi-monthly': RecurringGiftFrequency.BIMONTHLY,
-    'bi monthly': RecurringGiftFrequency.BIMONTHLY,
-    'biweekly': RecurringGiftFrequency.BIWEEKLY,
-    'bi-weekly': RecurringGiftFrequency.BIWEEKLY,
-    'bi weekly': RecurringGiftFrequency.BIWEEKLY,
-    'weekly': RecurringGiftFrequency.WEEKLY,
-    'irregular': RecurringGiftFrequency.IRREGULAR,
+    "monthly": RecurringGiftFrequency.MONTHLY,
+    "quarterly": RecurringGiftFrequency.QUARTERLY,
+    "semi-annually": RecurringGiftFrequency.SEMI_ANNUALLY,
+    "semi-annual": RecurringGiftFrequency.SEMI_ANNUALLY,
+    "semiannually": RecurringGiftFrequency.SEMI_ANNUALLY,
+    "semi annually": RecurringGiftFrequency.SEMI_ANNUALLY,
+    "annually": RecurringGiftFrequency.ANNUALLY,
+    "annual": RecurringGiftFrequency.ANNUALLY,
+    "yearly": RecurringGiftFrequency.ANNUALLY,
+    "bimonthly": RecurringGiftFrequency.BIMONTHLY,
+    "bi-monthly": RecurringGiftFrequency.BIMONTHLY,
+    "bi monthly": RecurringGiftFrequency.BIMONTHLY,
+    "biweekly": RecurringGiftFrequency.BIWEEKLY,
+    "bi-weekly": RecurringGiftFrequency.BIWEEKLY,
+    "bi weekly": RecurringGiftFrequency.BIWEEKLY,
+    "weekly": RecurringGiftFrequency.WEEKLY,
+    "irregular": RecurringGiftFrequency.IRREGULAR,
 }
 
 STATUS_MAP: dict[str, str] = {
-    'active': RecurringGiftStatus.ACTIVE,
-    'held': RecurringGiftStatus.HELD,
-    'completed': RecurringGiftStatus.COMPLETED,
-    'cancelled': RecurringGiftStatus.CANCELLED,
-    'canceled': RecurringGiftStatus.CANCELLED,
-    'terminated': RecurringGiftStatus.TERMINATED,
+    "active": RecurringGiftStatus.ACTIVE,
+    "held": RecurringGiftStatus.HELD,
+    "completed": RecurringGiftStatus.COMPLETED,
+    "cancelled": RecurringGiftStatus.CANCELLED,
+    "canceled": RecurringGiftStatus.CANCELLED,
+    "terminated": RecurringGiftStatus.TERMINATED,
 }
 
 
@@ -1564,11 +1693,13 @@ STATUS_MAP: dict[str, str] = {
 # Recurring Gift import orchestrator
 # ---------------------------------------------------------------------------
 
+
 def import_re_recurring_gifts(
     file_bytes: bytes,
     filename: str,
     uploaded_by: User,
     owner: User,
+    force: bool = False,
 ) -> ImportBatch:
     """Import RE Recurring Gift CSV end-to-end.
 
@@ -1592,11 +1723,18 @@ def import_re_recurring_gifts(
 
     # Step 1: Check for duplicate
     existing = check_duplicate_import(file_bytes, ImportBatchType.RE_RECURRING_GIFT)
-    if existing:
-        logger.info('Duplicate recurring gift import detected for %s', filename)
+    if existing and not force:
+        logger.info("Duplicate recurring gift import detected for %s", filename)
         existing.status = ImportBatchStatus.DUPLICATE
-        existing.save(update_fields=['status'])
+        existing.save(update_fields=["status"])
         return existing
+    elif existing and force:
+        logger.info(
+            "Force flag set — re-importing %s (deleting old batch %s)",
+            filename,
+            existing.id,
+        )
+        existing.delete()
 
     # Step 2: Decode
     try:
@@ -1608,7 +1746,7 @@ def import_re_recurring_gifts(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={'errors': [{'row': 0, 'error': str(e)}]},
+            summary={"errors": [{"row": 0, "error": str(e)}]},
         )
         return batch
 
@@ -1623,7 +1761,7 @@ def import_re_recurring_gifts(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={'errors': [{'row': 0, 'error': f'CSV parse error: {e}'}]},
+            summary={"errors": [{"row": 0, "error": f"CSV parse error: {e}"}]},
         )
         return batch
 
@@ -1631,8 +1769,7 @@ def import_re_recurring_gifts(
 
     # Check required canonical fields
     missing_canonical = {
-        name for name in RECURRING_GIFT_REQUIRED_CANONICAL
-        if col_map.get(name) is None
+        name for name in RECURRING_GIFT_REQUIRED_CANONICAL if col_map.get(name) is None
     }
     if missing_canonical:
         expected_aliases = []
@@ -1646,20 +1783,24 @@ def import_re_recurring_gifts(
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
             summary={
-                'errors': [{
-                    'row': 0,
-                    'error': (
-                        f'Missing required recurring gift headers. '
-                        f'Expected one of each: {", ".join(sorted(expected_aliases))}'
-                    ),
-                }],
+                "errors": [
+                    {
+                        "row": 0,
+                        "error": (
+                            f"Missing required recurring gift headers. "
+                            f'Expected one of each: {", ".join(sorted(expected_aliases))}'
+                        ),
+                    }
+                ],
             },
         )
         return batch
 
     # Step 4: Group rows by gift_id
     groups, grouping_errors, total_rows = _group_rows_by_id(
-        reader, col_map, 'gift_id',
+        reader,
+        col_map,
+        "gift_id",
     )
 
     # Step 5: Build lookups
@@ -1670,6 +1811,7 @@ def import_re_recurring_gifts(
     errors: list[dict] = list(grouping_errors)
     warnings: list[dict] = []
     created_count = 0
+    updated_count = 0
     skipped_count = 0
     unmatched_solicitors: list[str] = []
     seen_prayers: dict = {}
@@ -1682,7 +1824,7 @@ def import_re_recurring_gifts(
                     first_row = rows[0]
 
                     # Look up Contact by constituent_id
-                    constituent_id = first_row.get('constituent_id', '')
+                    constituent_id = first_row.get("constituent_id", "")
                     contact = None
                     if constituent_id:
                         contact = Contact.objects.filter(
@@ -1691,119 +1833,148 @@ def import_re_recurring_gifts(
                         ).first()
 
                     if not contact:
-                        row_nums = ', '.join(r['_row_number'] for r in rows)
-                        errors.append({
-                            'row': int(first_row['_row_number']),
-                            'error': (
-                                f'Constituent ID "{constituent_id}" not found '
-                                f'-- skipping recurring gift group {gift_id} '
-                                f'(rows {row_nums})'
-                            ),
-                        })
-                        transaction.savepoint_rollback(sp)
-                        continue
-
-                    # Check for duplicate external_gift_id in database
-                    if RecurringGift.objects.filter(
-                        external_gift_id=gift_id,
-                    ).exists():
-                        skipped_count += 1
+                        row_nums = ", ".join(r["_row_number"] for r in rows)
+                        errors.append(
+                            {
+                                "row": int(first_row["_row_number"]),
+                                "error": (
+                                    f'Constituent ID "{constituent_id}" not found '
+                                    f"-- skipping recurring gift group {gift_id} "
+                                    f"(rows {row_nums})"
+                                ),
+                            }
+                        )
                         transaction.savepoint_rollback(sp)
                         continue
 
                     # Parse amount from first row
                     amount_cents = _parse_amount_to_cents(
-                        first_row.get('amount', ''),
+                        first_row.get("amount", ""),
                     )
                     if amount_cents == 0:
-                        errors.append({
-                            'row': int(first_row['_row_number']),
-                            'error': (
-                                f'Row {first_row["_row_number"]}: Invalid amount '
-                                f'"{first_row.get("amount", "")}" for recurring '
-                                f'gift {gift_id}'
-                            ),
-                        })
+                        errors.append(
+                            {
+                                "row": int(first_row["_row_number"]),
+                                "error": (
+                                    f'Row {first_row["_row_number"]}: Invalid amount '
+                                    f'"{first_row.get("amount", "")}" for recurring '
+                                    f"gift {gift_id}"
+                                ),
+                            }
+                        )
                         transaction.savepoint_rollback(sp)
                         continue
 
                     # Parse start_date from first row (required)
-                    start_date = _parse_date(first_row.get('start_date', ''))
+                    start_date = _parse_date(first_row.get("start_date", ""))
                     if start_date is None:
-                        errors.append({
-                            'row': int(first_row['_row_number']),
-                            'error': (
-                                f'Row {first_row["_row_number"]}: Invalid or '
-                                f'missing start date '
-                                f'"{first_row.get("start_date", "")}" for '
-                                f'recurring gift {gift_id}'
-                            ),
-                        })
+                        errors.append(
+                            {
+                                "row": int(first_row["_row_number"]),
+                                "error": (
+                                    f'Row {first_row["_row_number"]}: Invalid or '
+                                    f"missing start date "
+                                    f'"{first_row.get("start_date", "")}" for '
+                                    f"recurring gift {gift_id}"
+                                ),
+                            }
+                        )
                         transaction.savepoint_rollback(sp)
                         continue
 
                     # Parse end_date (optional -- None is acceptable)
-                    end_date = _parse_date(first_row.get('end_date', ''))
+                    end_date = _parse_date(first_row.get("end_date", ""))
 
                     # Map frequency
-                    raw_frequency = first_row.get('frequency', '').strip()
+                    raw_frequency = first_row.get("frequency", "").strip()
                     if raw_frequency:
                         mapped_frequency = FREQUENCY_MAP.get(
                             raw_frequency.lower(),
                         )
                         if not mapped_frequency:
-                            errors.append({
-                                'row': int(first_row['_row_number']),
-                                'error': (
-                                    f'Row {first_row["_row_number"]}: Unknown '
-                                    f'frequency "{raw_frequency}" for recurring '
-                                    f'gift {gift_id}'
-                                ),
-                            })
+                            errors.append(
+                                {
+                                    "row": int(first_row["_row_number"]),
+                                    "error": (
+                                        f'Row {first_row["_row_number"]}: Unknown '
+                                        f'frequency "{raw_frequency}" for recurring '
+                                        f"gift {gift_id}"
+                                    ),
+                                }
+                            )
                             transaction.savepoint_rollback(sp)
                             continue
                     else:
                         mapped_frequency = RecurringGiftFrequency.MONTHLY
-                        warnings.append({
-                            'row': int(first_row['_row_number']),
-                            'warning': (
-                                f'Row {first_row["_row_number"]}: Empty '
-                                f'frequency for recurring gift {gift_id} '
-                                f'-- defaulting to Monthly'
-                            ),
-                        })
+                        warnings.append(
+                            {
+                                "row": int(first_row["_row_number"]),
+                                "warning": (
+                                    f'Row {first_row["_row_number"]}: Empty '
+                                    f"frequency for recurring gift {gift_id} "
+                                    f"-- defaulting to Monthly"
+                                ),
+                            }
+                        )
 
                     # Map status
-                    raw_status = first_row.get('status', '').strip()
+                    raw_status = first_row.get("status", "").strip()
                     if raw_status:
                         mapped_status = STATUS_MAP.get(raw_status.lower())
                         if not mapped_status:
-                            errors.append({
-                                'row': int(first_row['_row_number']),
-                                'error': (
-                                    f'Row {first_row["_row_number"]}: Unknown '
-                                    f'status "{raw_status}" for recurring '
-                                    f'gift {gift_id}'
-                                ),
-                            })
+                            errors.append(
+                                {
+                                    "row": int(first_row["_row_number"]),
+                                    "error": (
+                                        f'Row {first_row["_row_number"]}: Unknown '
+                                        f'status "{raw_status}" for recurring '
+                                        f"gift {gift_id}"
+                                    ),
+                                }
+                            )
                             transaction.savepoint_rollback(sp)
                             continue
                     else:
                         mapped_status = RecurringGiftStatus.ACTIVE
 
                     # Match fund
-                    fund_value = first_row.get('fund', '').lower()
+                    fund_value = first_row.get("fund", "").lower()
                     matched_fund = None
                     if fund_value:
                         matched_fund = fund_lookup.get(fund_value)
                         if not matched_fund:
-                            warnings.append({
-                                'row': int(first_row['_row_number']),
-                                'warning': (
-                                    f'Fund "{first_row.get("fund", "")}" not '
-                                    f'found for recurring gift {gift_id}'
-                                ),
-                            })
+                            warnings.append(
+                                {
+                                    "row": int(first_row["_row_number"]),
+                                    "warning": (
+                                        f'Fund "{first_row.get("fund", "")}" not '
+                                        f"found for recurring gift {gift_id}"
+                                    ),
+                                }
+                            )
+
+                    # Check for duplicate external_gift_id in database
+                    parsed_payment_type = _normalize_payment_type(first_row.get("payment_type", ""))
+                    existing_rg = RecurringGift.objects.filter(
+                        external_gift_id=gift_id,
+                    ).first()
+                    if existing_rg:
+                        if force:
+                            existing_rg.donor_contact = contact
+                            existing_rg.amount_cents = amount_cents
+                            existing_rg.frequency = mapped_frequency
+                            existing_rg.start_date = start_date
+                            existing_rg.end_date = end_date
+                            existing_rg.status = mapped_status
+                            existing_rg.fund = matched_fund
+                            existing_rg.description = first_row.get("description", "")
+                            existing_rg.payment_type = parsed_payment_type
+                            existing_rg.save()
+                            updated_count += 1
+                        else:
+                            skipped_count += 1
+                        transaction.savepoint_commit(sp)
+                        continue
 
                     # Create RecurringGift
                     rg = RecurringGift.objects.create(
@@ -1815,30 +1986,33 @@ def import_re_recurring_gifts(
                         end_date=end_date,
                         status=mapped_status,
                         fund=matched_fund,
-                        description=first_row.get('description', ''),
+                        description=first_row.get("description", ""),
+                        payment_type=parsed_payment_type,
                     )
 
                     # Create RecurringGiftCredits -- one per row with a solicitor
                     for row in rows:
-                        solicitor_name = row.get('solicitor_name', '')
+                        solicitor_name = row.get("solicitor_name", "")
                         if not solicitor_name:
                             continue
                         norm_name = normalize_solicitor_name(solicitor_name)
                         solicitor = solicitor_lookup.get(norm_name)
                         if not solicitor:
-                            errors.append({
-                                'row': int(row['_row_number']),
-                                'error': (
-                                    f'Row {row["_row_number"]}: Solicitor '
-                                    f'"{solicitor_name}" not found -- credit '
-                                    f'skipped for recurring gift {gift_id}'
-                                ),
-                            })
+                            errors.append(
+                                {
+                                    "row": int(row["_row_number"]),
+                                    "error": (
+                                        f'Row {row["_row_number"]}: Solicitor '
+                                        f'"{solicitor_name}" not found -- credit '
+                                        f"skipped for recurring gift {gift_id}"
+                                    ),
+                                }
+                            )
                             if norm_name not in unmatched_solicitors:
                                 unmatched_solicitors.append(norm_name)
                             continue
                         credit_amount = _parse_amount_to_cents(
-                            row.get('credit_amount', ''),
+                            row.get("credit_amount", ""),
                         )
                         if credit_amount == 0:
                             credit_amount = amount_cents
@@ -1857,7 +2031,7 @@ def import_re_recurring_gifts(
                     ).exists()
                     if not contact_owner_is_missionary:
                         for row in rows:
-                            sol_name = row.get('solicitor_name', '')
+                            sol_name = row.get("solicitor_name", "")
                             if not sol_name:
                                 continue
                             sol = solicitor_lookup.get(
@@ -1865,17 +2039,45 @@ def import_re_recurring_gifts(
                             )
                             if sol and sol.user_id:
                                 contact.owner = sol.user
-                                contact.save(update_fields=['owner'])
+                                contact.save(update_fields=["owner"])
                                 break
 
+                    # Generate Gift records for each payment period
+                    from apps.gifts.recurring_utils import generate_gifts_for_recurring
+                    from apps.gifts.signals import disable_gift_signals, enable_gift_signals
+
+                    disable_gift_signals()
+                    try:
+                        gift_count = generate_gifts_for_recurring(rg)
+                        if gift_count > 0:
+                            contact.update_giving_stats()
+                    finally:
+                        enable_gift_signals()
+
                     # Extract prayer intention from recurring gift (no Gift M2M link)
-                    prayer_text = first_row.get('prayer_description', '').strip()
+                    prayer_text = first_row.get("prayer_description", "").strip()
                     if prayer_text:
                         from apps.prayers.models import PrayerIntention, PrayerIntentionStatus
+
                         PRAYER_STOPLIST = {
-                            'n/a', 'na', 'none', 'no', '-', '--', '---', 'no prayer request',
-                            'x', 'xx', 'xxx', 'general', 'same', 'same as above',
-                            'see above', 'ditto', 'tbd', 'unknown',
+                            "n/a",
+                            "na",
+                            "none",
+                            "no",
+                            "-",
+                            "--",
+                            "---",
+                            "no prayer request",
+                            "x",
+                            "xx",
+                            "xxx",
+                            "general",
+                            "same",
+                            "same as above",
+                            "see above",
+                            "ditto",
+                            "tbd",
+                            "unknown",
                         }
                         if prayer_text.lower() not in PRAYER_STOPLIST and any(
                             c.isalnum() for c in prayer_text
@@ -1891,7 +2093,7 @@ def import_re_recurring_gifts(
                                     seen_prayers[dedup_key] = existing_prayer
                                 else:
                                     title = (
-                                        prayer_text[:80].rsplit(' ', 1)[0]
+                                        prayer_text[:80].rsplit(" ", 1)[0]
                                         if len(prayer_text) > 80
                                         else prayer_text
                                     )
@@ -1908,20 +2110,22 @@ def import_re_recurring_gifts(
 
                 except Exception as e:
                     transaction.savepoint_rollback(sp)
-                    row_nums = ', '.join(
-                        r.get('_row_number', '?') for r in rows
+                    row_nums = ", ".join(r.get("_row_number", "?") for r in rows)
+                    errors.append(
+                        {
+                            "row": int(rows[0].get("_row_number", 0)),
+                            "error": (
+                                f"Recurring gift group {gift_id} (rows {row_nums}): "
+                                f"Unexpected error: {str(e)}"
+                            ),
+                        }
                     )
-                    errors.append({
-                        'row': int(rows[0].get('_row_number', 0)),
-                        'error': (
-                            f'Recurring gift group {gift_id} (rows {row_nums}): '
-                            f'Unexpected error: {str(e)}'
-                        ),
-                    })
 
     except Exception as e:
         logger.error(
-            'Recurring gift import failed for %s: %s', filename, e,
+            "Recurring gift import failed for %s: %s",
+            filename,
+            e,
         )
         batch = ImportBatch.objects.create(
             import_type=ImportBatchType.RE_RECURRING_GIFT,
@@ -1929,7 +2133,7 @@ def import_re_recurring_gifts(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={'errors': [{'row': 0, 'error': f'Import error: {e}'}]},
+            summary={"errors": [{"row": 0, "error": f"Import error: {e}"}]},
         )
         return batch
 
@@ -1942,21 +2146,21 @@ def import_re_recurring_gifts(
         uploaded_by=uploaded_by,
         total_rows=total_rows,
         created_count=created_count,
-        updated_count=0,
+        updated_count=updated_count,
         skipped_count=skipped_count,
         error_count=len(errors),
         summary={
-            'errors': errors,
-            'warnings': warnings,
-            'unmatched_solicitors': unmatched_solicitors,
+            "errors": errors,
+            "warnings": warnings,
+            "unmatched_solicitors": unmatched_solicitors,
         },
     )
 
     logger.info(
-        'Recurring gift import complete for %s: %d created, %d skipped, '
-        '%d errors',
+        "Recurring gift import complete for %s: %d created, %d updated, %d skipped, %d errors",
         filename,
         created_count,
+        updated_count,
         skipped_count,
         len(errors),
     )
