@@ -16,21 +16,21 @@ import pytest
 from apps.contacts.models import Contact, ContactStatus
 from apps.contacts.tests.factories import ContactFactory
 from apps.events.models import Event, EventType
-from apps.gifts.models import Gift
+from apps.gifts.models import Gift, RecurringGift, RecurringGiftFrequency, RecurringGiftStatus
 from apps.users.tests.factories import UserFactory
 
 
 @pytest.fixture
 def staff_user():
-    return UserFactory(email='signal-test@test.com')
+    return UserFactory(email="signal-test@test.com")
 
 
 @pytest.fixture
 def contact(staff_user):
     return ContactFactory(
         owner=staff_user,
-        first_name='Signal',
-        last_name='Test',
+        first_name="Signal",
+        last_name="Test",
         status=ContactStatus.PROSPECT,
         needs_thank_you=False,
     )
@@ -47,7 +47,7 @@ class TestGiftSignalCreate:
             gift_date=date.today(),
         )
         contact.refresh_from_db()
-        assert contact.total_given == Decimal('100.00')
+        assert contact.total_given == Decimal("100.00")
         assert contact.gift_count == 1
 
     def test_create_gift_sets_needs_thank_you(self, contact):
@@ -71,7 +71,7 @@ class TestGiftSignalCreate:
             event_type=EventType.DONATION_RECEIVED,
         ).first()
         assert event is not None
-        assert '$100' in event.message
+        assert "$100" in event.message
 
     def test_create_gift_updates_first_and_last_gift_date(self, contact):
         gift_date = date(2025, 6, 15)
@@ -106,7 +106,7 @@ class TestGiftSignalCreate:
             gift_date=date.today(),
         )
         contact.refresh_from_db()
-        assert contact.total_given == Decimal('150.00')
+        assert contact.total_given == Decimal("150.00")
         assert contact.gift_count == 2
 
 
@@ -121,13 +121,13 @@ class TestGiftSignalUpdate:
             gift_date=date.today(),
         )
         contact.refresh_from_db()
-        assert contact.total_given == Decimal('100.00')
+        assert contact.total_given == Decimal("100.00")
 
         gift.amount_cents = 20000
         gift.save()
 
         contact.refresh_from_db()
-        assert contact.total_given == Decimal('200.00')
+        assert contact.total_given == Decimal("200.00")
 
     def test_update_gift_date_recalculates_dates(self, contact):
         gift = Gift.objects.create(
@@ -161,13 +161,13 @@ class TestGiftSignalDelete:
             gift_date=date.today(),
         )
         contact.refresh_from_db()
-        assert contact.total_given == Decimal('150.00')
+        assert contact.total_given == Decimal("150.00")
         assert contact.gift_count == 2
 
         gift1.delete()
 
         contact.refresh_from_db()
-        assert contact.total_given == Decimal('50.00')
+        assert contact.total_given == Decimal("50.00")
         assert contact.gift_count == 1
 
     def test_delete_all_gifts_resets_stats(self, contact):
@@ -182,5 +182,91 @@ class TestGiftSignalDelete:
         gift.delete()
 
         contact.refresh_from_db()
-        assert contact.total_given == Decimal('0.00')
+        assert contact.total_given == Decimal("0.00")
         assert contact.gift_count == 0
+
+
+@pytest.mark.django_db
+class TestRecurringGiftSignals:
+    """Test that recurring-sourced gifts skip notifications and RecurringGift signals work."""
+
+    def test_recurring_gift_does_not_set_needs_thank_you(self, contact):
+        rg = RecurringGift.objects.create(
+            donor_contact=contact,
+            amount_cents=10000,
+            frequency=RecurringGiftFrequency.MONTHLY,
+            start_date=date.today(),
+            status=RecurringGiftStatus.ACTIVE,
+        )
+        Gift.objects.create(
+            donor_contact=contact,
+            amount_cents=10000,
+            gift_date=date.today(),
+            recurring_gift=rg,
+        )
+        contact.refresh_from_db()
+        assert contact.needs_thank_you is False
+
+    def test_recurring_gift_does_not_create_event(self, contact):
+        rg = RecurringGift.objects.create(
+            donor_contact=contact,
+            amount_cents=10000,
+            frequency=RecurringGiftFrequency.MONTHLY,
+            start_date=date.today(),
+            status=RecurringGiftStatus.ACTIVE,
+        )
+        Gift.objects.create(
+            donor_contact=contact,
+            amount_cents=10000,
+            gift_date=date.today(),
+            recurring_gift=rg,
+        )
+        events = Event.objects.filter(
+            contact=contact,
+            event_type=EventType.DONATION_RECEIVED,
+        )
+        assert events.count() == 0
+
+    def test_recurring_gift_still_updates_stats(self, contact):
+        rg = RecurringGift.objects.create(
+            donor_contact=contact,
+            amount_cents=10000,
+            frequency=RecurringGiftFrequency.MONTHLY,
+            start_date=date.today(),
+            status=RecurringGiftStatus.ACTIVE,
+        )
+        Gift.objects.create(
+            donor_contact=contact,
+            amount_cents=10000,
+            gift_date=date.today(),
+            recurring_gift=rg,
+        )
+        contact.refresh_from_db()
+        assert contact.total_given == Decimal("100.00")
+        assert contact.gift_count == 1
+
+    def test_recurring_gift_delete_removes_linked_gifts(self, contact):
+        rg = RecurringGift.objects.create(
+            donor_contact=contact,
+            amount_cents=10000,
+            frequency=RecurringGiftFrequency.MONTHLY,
+            start_date=date.today(),
+            status=RecurringGiftStatus.ACTIVE,
+        )
+        Gift.objects.create(
+            donor_contact=contact,
+            amount_cents=10000,
+            gift_date=date.today(),
+            recurring_gift=rg,
+        )
+        Gift.objects.create(
+            donor_contact=contact,
+            amount_cents=10000,
+            gift_date=date.today() - timedelta(days=30),
+            recurring_gift=rg,
+        )
+        assert Gift.objects.filter(recurring_gift=rg).count() == 2
+        rg.delete()
+        assert Gift.objects.filter(donor_contact=contact).count() == 0
+        contact.refresh_from_db()
+        assert contact.total_given == Decimal("0.00")
