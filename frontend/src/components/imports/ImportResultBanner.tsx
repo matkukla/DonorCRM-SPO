@@ -6,12 +6,14 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
-import { CheckCircle, AlertTriangle, Info, X, ChevronDown, ChevronUp } from "lucide-react"
+import { CheckCircle, AlertTriangle, Info, X, ChevronDown, ChevronUp, RefreshCw } from "lucide-react"
 import type { REImportResponse } from "@/api/imports"
 
 interface ImportResultBannerProps {
   result: REImportResponse
   onDismiss?: () => void
+  onReimport?: () => void
+  isReimporting?: boolean
 }
 
 function SkipDetailsCollapsible({ result }: { result: REImportResponse }) {
@@ -53,7 +55,7 @@ function SkipDetailsCollapsible({ result }: { result: REImportResponse }) {
   )
 }
 
-export function ImportResultBanner({ result, onDismiss }: ImportResultBannerProps) {
+export function ImportResultBanner({ result, onDismiss, onReimport, isReimporting }: ImportResultBannerProps) {
   const [errorsOpen, setErrorsOpen] = useState(false)
 
   // Duplicate state
@@ -80,6 +82,22 @@ export function ImportResultBanner({ result, onDismiss }: ImportResultBannerProp
         <p className="text-sm mt-2 text-blue-800 dark:text-blue-200">
           This file has been imported before. No changes were made.
         </p>
+        {onReimport && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-3 gap-1"
+            onClick={onReimport}
+            disabled={isReimporting}
+          >
+            {isReimporting ? (
+              <RefreshCw className="h-3 w-3 animate-spin" />
+            ) : (
+              <RefreshCw className="h-3 w-3" />
+            )}
+            Reimport &amp; Update
+          </Button>
+        )}
       </div>
     )
   }
