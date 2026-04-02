@@ -20,6 +20,10 @@ export interface Gift {
   description: string
   payment_type: string
   payment_type_display: string | null
+  recurring_gift: string | null
+  is_recurring: boolean
+  recurring_gift_frequency: string | null
+  recurring_gift_status: string | null
   created_at: string
   updated_at: string
 }

@@ -31,15 +31,15 @@ def get_what_changed(user, since=None):
     events = Event.objects.filter(user=user, is_new=True)
 
     # Get counts by type
-    event_counts = events.values('event_type').annotate(count=Count('id'))
+    event_counts = events.values("event_type").annotate(count=Count("id"))
 
     # Get recent events (limit to 10)
-    recent_events = events.order_by('-created_at')[:10]
+    recent_events = events.order_by("-created_at")[:10]
 
     return {
-        'event_counts': {e['event_type']: e['count'] for e in event_counts},
-        'recent_events': recent_events,
-        'total_new': events.count()
+        "event_counts": {e["event_type"]: e["count"] for e in event_counts},
+        "recent_events": recent_events,
+        "total_new": events.count(),
     }
 
 
@@ -81,16 +81,16 @@ def get_needs_attention(user):
     thank_you_needed = contacts.filter(needs_thank_you=True)
 
     return {
-        'late_pledges': [],
-        'late_pledge_count': 0,
-        'overdue_tasks': overdue_tasks[:5],
-        'overdue_task_count': overdue_tasks.count(),
-        'tasks_due_today': tasks_due_today[:5],
-        'tasks_due_today_count': tasks_due_today.count(),
-        'broadcast_tasks': broadcast_tasks[:5],
-        'broadcast_task_count': broadcast_tasks.count(),
-        'thank_you_needed': thank_you_needed[:5],
-        'thank_you_needed_count': thank_you_needed.count()
+        "late_pledges": [],
+        "late_pledge_count": 0,
+        "overdue_tasks": overdue_tasks[:5],
+        "overdue_task_count": overdue_tasks.count(),
+        "tasks_due_today": tasks_due_today[:5],
+        "tasks_due_today_count": tasks_due_today.count(),
+        "broadcast_tasks": broadcast_tasks[:5],
+        "broadcast_task_count": broadcast_tasks.count(),
+        "thank_you_needed": thank_you_needed[:5],
+        "thank_you_needed_count": thank_you_needed.count(),
     }
 
 
@@ -114,11 +114,15 @@ def get_late_donations(user, limit=10):
     }
 
     today = date.today()
-    active_recurring = RecurringGift.objects.filter(
-        donor_contact__owner=user,
-        status=RecurringGiftStatus.ACTIVE,
-    ).select_related('donor_contact').exclude(
-        frequency=RecurringGiftFrequency.IRREGULAR,
+    active_recurring = (
+        RecurringGift.objects.filter(
+            donor_contact__owner=user,
+            status=RecurringGiftStatus.ACTIVE,
+        )
+        .select_related("donor_contact")
+        .exclude(
+            frequency=RecurringGiftFrequency.IRREGULAR,
+        )
     )
 
     late = []
@@ -134,20 +138,22 @@ def get_late_donations(user, limit=10):
         if today - last_date > threshold:
             days_late = (today - last_date).days - interval
             monthly_eq = float(rg.monthly_equivalent)
-            late.append({
-                'id': str(rg.id),
-                'contact_id': str(contact.id),
-                'contact_name': f'{contact.first_name} {contact.last_name}'.strip(),
-                'amount': str(rg.amount_dollars),
-                'frequency': rg.frequency,
-                'monthly_equivalent': monthly_eq,
-                'last_gift_date': last_date.isoformat() if last_date else None,
-                'days_late': days_late,
-                'next_expected_date': (last_date + timedelta(days=interval)).isoformat(),
-            })
+            late.append(
+                {
+                    "id": str(rg.id),
+                    "contact_id": str(contact.id),
+                    "contact_name": f"{contact.first_name} {contact.last_name}".strip(),
+                    "amount": str(rg.amount_dollars),
+                    "frequency": rg.frequency,
+                    "monthly_equivalent": monthly_eq,
+                    "last_gift_date": last_date.isoformat() if last_date else None,
+                    "days_late": days_late,
+                    "next_expected_date": (last_date + timedelta(days=interval)).isoformat(),
+                }
+            )
 
     # Sort by days late descending, limit results
-    late.sort(key=lambda x: x['days_late'], reverse=True)
+    late.sort(key=lambda x: x["days_late"], reverse=True)
     return late[:limit]
 
 
@@ -161,7 +167,7 @@ def get_thank_you_queue(user):
     else:
         contacts = Contact.active.filter(owner_id__in=visible)
 
-    return contacts.filter(needs_thank_you=True).select_related('owner')
+    return contacts.filter(needs_thank_you=True).select_related("owner")
 
 
 def get_support_progress(user):
@@ -195,11 +201,11 @@ def get_support_progress(user):
     goal = float(user.monthly_support_goal_cents) / 100 if user.monthly_support_goal_cents else 0
 
     return {
-        'current_monthly_support': total_monthly,
-        'monthly_goal': goal,
-        'percentage': (total_monthly / goal * 100) if goal > 0 else 0,
-        'gap': max(0, goal - total_monthly),
-        'active_pledge_count': rg_count
+        "current_monthly_support": total_monthly,
+        "monthly_goal": goal,
+        "percentage": (total_monthly / goal * 100) if goal > 0 else 0,
+        "gap": max(0, goal - total_monthly),
+        "active_pledge_count": rg_count,
     }
 
 
@@ -215,7 +221,7 @@ def get_recent_gifts(user, days=30, limit=10):
     else:
         gifts = Gift.objects.filter(donor_contact__owner_id__in=visible)
 
-    return gifts.filter(gift_date__gte=start_date).select_related('donor_contact')[:limit]
+    return gifts.filter(gift_date__gte=start_date).select_related("donor_contact")[:limit]
 
 
 def get_giving_summary(user, year=None):
@@ -237,9 +243,8 @@ def get_giving_summary(user, year=None):
     recurring_gifts = RecurringGift.objects.filter(donor_contact__owner=user)
 
     # Given: sum of gifts this year (cents -> dollars)
-    total_cents = gifts.filter(
-        gift_date__gte=year_start, gift_date__lte=year_end
-    ).aggregate(total=Sum('amount_cents'))['total'] or 0
+    year_gifts = gifts.filter(gift_date__gte=year_start, gift_date__lte=year_end)
+    total_cents = year_gifts.aggregate(total=Sum("amount_cents"))["total"] or 0
     given = Decimal(total_cents) / Decimal(100)
 
     # Active recurring gifts annualized via SQL aggregation (O(1) memory)
@@ -247,11 +252,24 @@ def get_giving_summary(user, year=None):
     monthly_recurring = _monthly_equivalent_aggregate(active_recurring)
     annualized_recurring = monthly_recurring * 12
 
-    # Expecting: annualized recurring minus what's already given this year
-    expecting = max(0, float(annualized_recurring) - float(given))
+    # Expecting: annualized recurring minus recurring payments already received
+    # this year. Only subtract recurring-sourced gifts to avoid one-time gifts
+    # reducing the expected recurring amount.
+    recurring_given_cents = (
+        year_gifts.filter(
+            recurring_gift__isnull=False,
+        ).aggregate(
+            total=Sum("amount_cents")
+        )["total"]
+        or 0
+    )
+    recurring_given = Decimal(recurring_given_cents) / Decimal(100)
+    expecting = max(0, float(annualized_recurring) - float(recurring_given))
 
     # Goals
-    monthly_goal = float(user.monthly_support_goal_cents) / 100 if user.monthly_support_goal_cents else 0
+    monthly_goal = (
+        float(user.monthly_support_goal_cents) / 100 if user.monthly_support_goal_cents else 0
+    )
     annual_goal = monthly_goal * 12
 
     given_float = float(given)
@@ -269,23 +287,25 @@ def get_giving_summary(user, year=None):
             import_type__in=gift_import_types,
             uploaded_by=user,
         )
-        .order_by('-created_at')
-        .values_list('created_at', flat=True)
+        .order_by("-created_at")
+        .values_list("created_at", flat=True)
         .first()
     )
 
     return {
-        'given': given_float,
-        'expecting': expecting,
-        'total': given_float + expecting,
-        'recurring_pledges_annual': float(annualized_recurring),
-        'recurring_pledges_monthly': float(annualized_recurring / 12) if annualized_recurring else 0,
-        'annual_goal': annual_goal,
-        'monthly_goal': monthly_goal,
-        'percentage': ((given_float + expecting) / annual_goal * 100) if annual_goal > 0 else 0,
-        'year': year,
-        'active_pledge_count': active_recurring.count(),
-        'last_import_at': last_import_at.isoformat() if last_import_at else None,
+        "given": given_float,
+        "expecting": expecting,
+        "total": given_float + expecting,
+        "recurring_pledges_annual": float(annualized_recurring),
+        "recurring_pledges_monthly": float(annualized_recurring / 12)
+        if annualized_recurring
+        else 0,
+        "annual_goal": annual_goal,
+        "monthly_goal": monthly_goal,
+        "percentage": ((given_float + expecting) / annual_goal * 100) if annual_goal > 0 else 0,
+        "year": year,
+        "active_pledge_count": active_recurring.count(),
+        "last_import_at": last_import_at.isoformat() if last_import_at else None,
     }
 
 
@@ -295,7 +315,7 @@ def get_monthly_gifts(user, months=12):
     Returns last N months including current month.
     """
     today = date.today()
-    start_date = (today.replace(day=1) - relativedelta(months=months - 1))
+    start_date = today.replace(day=1) - relativedelta(months=months - 1)
 
     # Always scope to the requesting user's own contacts.
     # This chart shows the user's personal giving history vs their monthly_goal.
@@ -303,31 +323,35 @@ def get_monthly_gifts(user, months=12):
 
     monthly_data = (
         gifts.filter(gift_date__gte=start_date)
-        .annotate(month=TruncMonth('gift_date'))
-        .values('month')
-        .annotate(total=Sum('amount_cents'))
-        .order_by('month')
+        .annotate(month=TruncMonth("gift_date"))
+        .values("month")
+        .annotate(total=Sum("amount_cents"))
+        .order_by("month")
     )
 
     # Build map of month -> total (cents to dollars)
-    monthly_map = {item['month']: float(item['total']) / 100 for item in monthly_data}
+    monthly_map = {item["month"]: float(item["total"]) / 100 for item in monthly_data}
 
     # Build complete month list (fill gaps with 0)
     result = []
     for i in range(months):
         month_date = (start_date + relativedelta(months=i)).replace(day=1)
-        result.append({
-            'month': month_date.strftime('%Y-%m'),
-            'label': month_date.strftime('%b %Y'),
-            'short_label': month_date.strftime('%b'),
-            'total': monthly_map.get(month_date, 0),
-        })
+        result.append(
+            {
+                "month": month_date.strftime("%Y-%m"),
+                "label": month_date.strftime("%b %Y"),
+                "short_label": month_date.strftime("%b"),
+                "total": monthly_map.get(month_date, 0),
+            }
+        )
 
-    monthly_goal = float(user.monthly_support_goal_cents) / 100 if user.monthly_support_goal_cents else 0
+    monthly_goal = (
+        float(user.monthly_support_goal_cents) / 100 if user.monthly_support_goal_cents else 0
+    )
 
     return {
-        'months': result,
-        'monthly_goal': monthly_goal,
+        "months": result,
+        "monthly_goal": monthly_goal,
     }
 
 
@@ -336,69 +360,85 @@ def get_dashboard_summary(user):
     Get complete dashboard data in one call.
     Caches querysets to avoid duplicate database queries.
     """
-    logger.info(f'Fetching dashboard summary for user {user.email}')
+    logger.info(f"Fetching dashboard summary for user {user.email}")
 
     what_changed = get_what_changed(user)
     # Convert querysets to lists of dicts
-    what_changed['recent_events'] = list(what_changed['recent_events'].values(
-        'id', 'event_type', 'title', 'message', 'severity', 'created_at', 'is_read'
-    ))
+    what_changed["recent_events"] = list(
+        what_changed["recent_events"].values(
+            "id", "event_type", "title", "message", "severity", "created_at", "is_read"
+        )
+    )
 
     needs_attention = get_needs_attention(user)
     # late_pledges is already an empty list from get_needs_attention
-    needs_attention['overdue_tasks'] = list(needs_attention['overdue_tasks'].values(
-        'id', 'title', 'due_date', 'priority'
-    ))
-    needs_attention['tasks_due_today'] = list(needs_attention['tasks_due_today'].values(
-        'id', 'title', 'due_date', 'priority'
-    ))
-    needs_attention['broadcast_tasks'] = list(needs_attention['broadcast_tasks'].values(
-        'id', 'title', 'due_date', 'priority'
-    ))
-    needs_attention['thank_you_needed'] = list(needs_attention['thank_you_needed'].values(
-        'id', 'first_name', 'last_name', 'last_gift_amount'
-    ))
+    needs_attention["overdue_tasks"] = list(
+        needs_attention["overdue_tasks"].values("id", "title", "due_date", "priority")
+    )
+    needs_attention["tasks_due_today"] = list(
+        needs_attention["tasks_due_today"].values("id", "title", "due_date", "priority")
+    )
+    needs_attention["broadcast_tasks"] = list(
+        needs_attention["broadcast_tasks"].values("id", "title", "due_date", "priority")
+    )
+    needs_attention["thank_you_needed"] = list(
+        needs_attention["thank_you_needed"].values(
+            "id", "first_name", "last_name", "last_gift_amount"
+        )
+    )
 
     # Late donations
     late_donations = get_late_donations(user)
     late_donations_count = len(late_donations)
 
     thank_you_qs = get_thank_you_queue(user)
-    thank_you_list = list(thank_you_qs[:5].values(
-        'id', 'first_name', 'last_name', 'last_gift_amount', 'last_gift_date'
-    ))
+    thank_you_list = list(
+        thank_you_qs[:5].values(
+            "id", "first_name", "last_name", "last_gift_amount", "last_gift_date"
+        )
+    )
     thank_you_count = thank_you_qs.count()
 
-    logger.debug(f'Dashboard data fetched: {late_donations_count} late donations, {thank_you_count} thank-you needed')
+    logger.debug(
+        f"Dashboard data fetched: {late_donations_count} late donations, {thank_you_count} thank-you needed"
+    )
 
     # Pre-aggregate total of ALL recent gifts (not just the limited list)
     thirty_days_ago = date.today() - timedelta(days=30)
-    recent_total_cents = Gift.objects.filter(
-        donor_contact__owner=user,
-        gift_date__gte=thirty_days_ago,
-    ).aggregate(total=Sum('amount_cents'))['total'] or 0
+    recent_total_cents = (
+        Gift.objects.filter(
+            donor_contact__owner=user,
+            gift_date__gte=thirty_days_ago,
+        ).aggregate(
+            total=Sum("amount_cents")
+        )["total"]
+        or 0
+    )
     recent_gifts_total = float(Decimal(recent_total_cents) / Decimal(100))
 
     return {
-        'what_changed': what_changed,
-        'needs_attention': needs_attention,
-        'late_donations': late_donations,
-        'late_donations_count': late_donations_count,
-        'thank_you_queue': thank_you_list,
-        'thank_you_count': thank_you_count,
-        'support_progress': get_support_progress(user),
-        'recent_gifts_total': recent_gifts_total,
-        'recent_gifts': list(get_recent_gifts(user).annotate(
-            amount=ExpressionWrapper(
-                F('amount_cents') * Value(Decimal('0.01')),
-                output_field=DecimalField(max_digits=12, decimal_places=2),
-            ),
-            date=F('gift_date'),
-            contact_id=F('donor_contact_id'),
-            contact__first_name=F('donor_contact__first_name'),
-            contact__last_name=F('donor_contact__last_name'),
-        ).values(
-            'id', 'amount', 'date', 'contact_id',
-            'contact__first_name', 'contact__last_name'
-        )),
+        "what_changed": what_changed,
+        "needs_attention": needs_attention,
+        "late_donations": late_donations,
+        "late_donations_count": late_donations_count,
+        "thank_you_queue": thank_you_list,
+        "thank_you_count": thank_you_count,
+        "support_progress": get_support_progress(user),
+        "recent_gifts_total": recent_gifts_total,
+        "recent_gifts": list(
+            get_recent_gifts(user)
+            .annotate(
+                amount=ExpressionWrapper(
+                    F("amount_cents") * Value(Decimal("0.01")),
+                    output_field=DecimalField(max_digits=12, decimal_places=2),
+                ),
+                date=F("gift_date"),
+                contact_id=F("donor_contact_id"),
+                contact__first_name=F("donor_contact__first_name"),
+                contact__last_name=F("donor_contact__last_name"),
+            )
+            .values(
+                "id", "amount", "date", "contact_id", "contact__first_name", "contact__last_name"
+            )
+        ),
     }
