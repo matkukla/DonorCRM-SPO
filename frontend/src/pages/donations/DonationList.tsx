@@ -19,7 +19,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { FilterCombobox } from "@/components/shared/FilterCombobox"
-import { Plus, Search, Filter } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Plus, Search, Filter, Repeat } from "lucide-react"
 import type { ColumnDef } from "@tanstack/react-table"
 import type { Gift } from "@/api/gifts"
 import { giftPaymentTypeLabels } from "@/api/gifts"
@@ -110,7 +111,15 @@ export default function DonationList() {
       header: "Amount",
       meta: { serverSortKey: "amount_cents" },
       cell: ({ row }) => (
-        <span className="font-semibold">{formatCurrency(row.original.amount_dollars)}</span>
+        <div className="flex items-center gap-2">
+          <span className="font-semibold">{formatCurrency(row.original.amount_dollars)}</span>
+          {row.original.is_recurring && (
+            <Badge variant="outline" className="gap-1 text-xs font-normal">
+              <Repeat className="h-3 w-3" />
+              {row.original.recurring_gift_frequency || "Recurring"}
+            </Badge>
+          )}
+        </div>
       ),
     },
     {
@@ -173,10 +182,12 @@ export default function DonationList() {
               payment_type: "Type",
               owner: "Owner",
               donor_contact: "Donor",
+              is_recurring: "Donation Type",
             }}
             filterValueLabels={{
               ...(ownerOptions.length > 0 ? { owner: Object.fromEntries(ownerOptions.map((u) => [u.id, u.full_name])) } : {}),
               payment_type: giftPaymentTypeLabels,
+              is_recurring: { "true": "Recurring", "false": "One-time" },
             }}
             presets={giftPresets}
             onApplyPreset={(preset) => setFilters({ ...preset.getParams(), page: 1 })}
@@ -249,6 +260,29 @@ export default function DonationList() {
                       {label}
                     </DropdownMenuItem>
                   ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="secondary" size="sm" className="gap-2">
+                    <Repeat className="h-4 w-4" />
+                    {filters.is_recurring === "true"
+                      ? "Recurring"
+                      : filters.is_recurring === "false"
+                        ? "One-time"
+                        : "All Donations"}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem onClick={() => setFilters({ is_recurring: null, page: 1 })}>
+                    All Donations
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setFilters({ is_recurring: "false", page: 1 })}>
+                    One-time Only
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setFilters({ is_recurring: "true", page: 1 })}>
+                    Recurring Only
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
               {canSeeOwner && ownerOptions.length > 0 && (
