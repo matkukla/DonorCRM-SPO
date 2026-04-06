@@ -55,7 +55,7 @@ docker compose up --build  # Starts: db, redis, web (:8000), celery, celery-beat
 
 ### Backend
 - **Django 4.2 + DRF** with JWT auth (simplejwt). Settings split: `config/settings/{base,dev,test,prod}.py`
-- **All API routes** under `/api/v1/` (see `config/api_urls.py`). Admin panel at `/backstage/`
+- **All API routes** under `/api/v1/` (see `config/api_urls.py`). Admin panel at `/admin/`
 - **Apps** in `apps/`: contacts, gifts, tasks, journals, groups, events, imports, dashboard, insights, users, core, prayers
 - **Base model**: `apps/core/models.TimeStampedModel` — UUID PK, `created_at`, `updated_at`. All models inherit from this.
 - **Money is stored in cents** as `PositiveBigIntegerField`, never Decimal. Fields named `*_cents`.
