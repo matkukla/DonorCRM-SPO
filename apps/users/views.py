@@ -132,6 +132,9 @@ class AdminPasswordResetView(APIView):
         serializer = AdminPasswordResetSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save(user=user)
+        # Blacklist all outstanding refresh tokens for the target user
+        for token in OutstandingToken.objects.filter(user=user):
+            BlacklistedToken.objects.get_or_create(token=token)
         return Response({'detail': 'Password reset successfully.'})
 
 
