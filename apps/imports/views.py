@@ -84,6 +84,7 @@ class ContactImportView(APIView):
             )
         if not file.name.endswith('.csv') or file.content_type not in (
             'text/csv', 'application/csv', 'text/plain', 'application/vnd.ms-excel',
+            'application/octet-stream',
         ):
             return Response(
                 {'detail': 'File must be a CSV.'},
