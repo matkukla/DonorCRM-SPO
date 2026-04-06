@@ -267,6 +267,7 @@ class FundImportView(APIView):
             "application/csv",
             "text/plain",
             "application/vnd.ms-excel",
+            "application/octet-stream",
         ):
             return Response({"detail": "File must be a CSV."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -367,6 +368,7 @@ class EntityImportView(APIView):
             "application/csv",
             "text/plain",
             "application/vnd.ms-excel",
+            'application/octet-stream',
         ):
             return Response({"detail": "File must be a CSV."}, status=status.HTTP_400_BAD_REQUEST)
 
