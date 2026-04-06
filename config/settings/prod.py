@@ -84,7 +84,7 @@ else:
 # Strict policy for API responses (Django serves JSON, not HTML pages).
 # Admin and API docs are excluded because they use inline styles/scripts.
 CONTENT_SECURITY_POLICY = {
-    "EXCLUDE_URL_PREFIXES": ["/backstage", "/api/v1/docs", "/api/v1/redoc"],
+    "EXCLUDE_URL_PREFIXES": ["/admin", "/api/v1/docs", "/api/v1/redoc"],
     "DIRECTIVES": {
         "default-src": ["'none'"],
         "script-src": ["'self'"],
