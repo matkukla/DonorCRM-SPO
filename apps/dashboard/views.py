@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.permissions import get_visible_user_ids
-from apps.core.utils import get_safe_int_param, get_safe_year_param
+from apps.core.utils import get_safe_int_param
 from apps.users.models import User
 
 from apps.dashboard.services import (
@@ -226,13 +226,11 @@ class GivingSummaryView(APIView):
 
     @extend_schema(
         tags=['dashboard'],
-        summary='Get giving summary',
-        parameters=[OpenApiParameter(name='year', description='Calendar year (default: current)', type=int)]
+        summary='Get giving summary (fiscal year Jul 1 - Jun 30)',
     )
     def get(self, request):
         target = _resolve_target_user(request)
-        year = get_safe_year_param(request, 'year')
-        return Response(get_giving_summary(target, year=year))
+        return Response(get_giving_summary(target))
 
 
 class MonthlyGiftsView(APIView):
