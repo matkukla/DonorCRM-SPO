@@ -83,10 +83,10 @@ export function useDashboardSummary(userId?: string) {
   })
 }
 
-export function useGivingSummary(year?: number, userId?: string) {
+export function useGivingSummary(userId?: string) {
   return useQuery({
-    queryKey: ["dashboard", "giving-summary", year, userId ?? "me"],
-    queryFn: () => getGivingSummary(year, userId),
+    queryKey: ["dashboard", "giving-summary", userId ?? "me"],
+    queryFn: () => getGivingSummary(userId),
     staleTime: 5 * 60 * 1000, // 5 minutes
   })
 }
