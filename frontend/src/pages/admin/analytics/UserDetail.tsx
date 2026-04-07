@@ -206,6 +206,7 @@ export default function UserDetail() {
             ) : userMPD ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <MPDStatsInline
+                  monthlyAverage={userMPD.monthly_average}
                   currentMpdCap={userMPD.current_mpd_cap}
                   latestRollForwardBalance={userMPD.latest_roll_forward_balance}
                   monthsRemainingRf={userMPD.months_remaining_rf}

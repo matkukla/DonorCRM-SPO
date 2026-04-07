@@ -318,18 +318,23 @@ class TestGetRecentGifts:
 class TestGetGivingSummary:
     """Tests for get_giving_summary function."""
 
-    def test_given_sums_current_year_only(self):
-        """Given should only sum gifts from the requested year."""
+    def test_given_sums_current_fiscal_year_only(self):
+        """Given should only sum gifts from the current fiscal year (Jul 1 - Jun 30)."""
+        from apps.core.fiscal_year import fiscal_year_start
+
         user = UserFactory(role="missionary", monthly_support_goal_cents=100000)
         contact = ContactFactory(owner=user)
         today = date.today()
+        fy_start = fiscal_year_start(today)
 
-        # Gift this year
-        GiftFactory(donor_contact=contact, amount_cents=5000, gift_date=date(today.year, 1, 15))
-        # Gift last year — should be excluded
-        GiftFactory(donor_contact=contact, amount_cents=9999, gift_date=date(today.year - 1, 6, 1))
+        # Gift in current fiscal year
+        GiftFactory(donor_contact=contact, amount_cents=5000, gift_date=fy_start + timedelta(days=30))
+        # Gift before fiscal year start — should be excluded
+        GiftFactory(
+            donor_contact=contact, amount_cents=9999, gift_date=fy_start - timedelta(days=30)
+        )
 
-        result = get_giving_summary(user, year=today.year)
+        result = get_giving_summary(user)
 
         assert result["given"] == 50.0  # 5000 cents = $50
 
@@ -356,7 +361,7 @@ class TestGetGivingSummary:
         # $500 one-time gift (NOT linked to recurring — should not reduce expecting)
         GiftFactory(donor_contact=contact, amount_cents=50000, gift_date=date(today.year, 2, 15))
 
-        result = get_giving_summary(user, year=today.year)
+        result = get_giving_summary(user)
 
         assert result["given"] == 700.0  # $200 recurring + $500 one-time
         assert result["expecting"] == 1000.0  # 1200 - 200 (only recurring) = 1000
@@ -377,7 +382,7 @@ class TestGetGivingSummary:
             recurring_gift=rg,
         )
 
-        result = get_giving_summary(user, year=today.year)
+        result = get_giving_summary(user)
 
         assert result["expecting"] == 0
 
@@ -397,7 +402,7 @@ class TestGetGivingSummary:
             recurring_gift=rg,
         )
 
-        result = get_giving_summary(user, year=today.year)
+        result = get_giving_summary(user)
 
         # given=6000, expecting=max(0, 12000-6000)=6000, total=12000
         # percentage = 12000 / 12000 * 100 = 100
@@ -412,7 +417,7 @@ class TestGetGivingSummary:
 
         GiftFactory(donor_contact=contact_b, amount_cents=50000, gift_date=date(today.year, 1, 15))
 
-        result = get_giving_summary(user_a, year=today.year)
+        result = get_giving_summary(user_a)
 
         assert result["given"] == 0.0
 

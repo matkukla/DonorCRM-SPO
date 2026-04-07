@@ -20,6 +20,17 @@ def fiscal_year_end(today: date) -> date:
     return date(fy_start.year + 1, 6, 30)
 
 
+def months_elapsed_in_fiscal_year(today: date) -> int:
+    """
+    Return integer months from July 1 through the current month (inclusive).
+    Minimum 1 to prevent division-by-zero.
+    Example: April 7, 2026 -> FY started July 1, 2025 -> 10 months (Jul-Apr).
+    """
+    fy_start = fiscal_year_start(today)
+    elapsed = (today.year - fy_start.year) * 12 + (today.month - fy_start.month) + 1
+    return max(1, elapsed)
+
+
 def months_remaining(today: date) -> int:
     """
     Return integer months from today to June 30 of the current FY.

@@ -699,95 +699,42 @@ class MPDOverviewView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsAdmin]
 
     def get(self, request):
-        from django.db.models import OuterRef, Subquery
-
+        from apps.dashboard.services import get_mpd_computed
         from apps.users.models import User
 
-        # Subquery: get the ID of the latest snapshot per user
-        # (ordered by upload's created_at descending)
-        latest_snapshot_id = (
-            MPDSnapshot.objects.filter(user=OuterRef("pk"))
-            .select_related("upload")
-            .order_by("-upload__created_at")
-            .values("id")[:1]
-        )
-
-        # Get active users who have snapshots, annotating with latest snapshot ID
-        user_ids_with_snapshots = MPDSnapshot.objects.values_list("user_id", flat=True).distinct()
-        users = User.objects.filter(id__in=user_ids_with_snapshots, is_active=True).annotate(
-            latest_snapshot_id=Subquery(latest_snapshot_id)
-        )
-
-        # Collect the latest snapshot IDs
-        snapshot_id_map = {}
-        user_map = {}
-        for user in users:
-            if user.latest_snapshot_id:
-                snapshot_id_map[user.latest_snapshot_id] = user
-                user_map[user.id] = user
-
-        # Single query to fetch all latest snapshots
-        snapshots = MPDSnapshot.objects.filter(id__in=snapshot_id_map.keys())
+        # Get all active missionaries
+        users = User.objects.filter(
+            role='missionary', is_active=True
+        ).order_by('last_name', 'first_name')
 
         missionaries = []
-        for snapshot in snapshots:
-            user = snapshot_id_map.get(snapshot.id)
-            if user:
-                missionaries.append(
-                    {
-                        "user_id": str(user.id),
-                        "user_name": user.full_name,
-                        "monthly_average": str(snapshot.monthly_average)
-                        if snapshot.monthly_average is not None
-                        else None,
-                        "current_mpd_cap": str(snapshot.current_mpd_cap)
-                        if snapshot.current_mpd_cap is not None
-                        else None,
-                        "latest_roll_forward_balance": str(snapshot.latest_roll_forward_balance)
-                        if snapshot.latest_roll_forward_balance is not None
-                        else None,
-                        "months_remaining_rf": snapshot.months_remaining_rf,
-                    }
-                )
+        for user in users:
+            computed = get_mpd_computed(user)
+            if computed.get("has_data"):
+                entry = {
+                    "user_id": str(user.id),
+                    "user_name": user.full_name,
+                }
+                entry.update({k: v for k, v in computed.items() if k != "has_data"})
+                missionaries.append(entry)
 
         return Response({"missionaries": missionaries})
 
 
 class MPDMyDataView(APIView):
     """
-    GET: Current user's latest MPD snapshot (any authenticated user).
+    GET: Current user's computed MPD financial data (any authenticated user).
 
-    Missionaries use this to see their own financial data.
+    Computes Monthly Average, Roll Forward Balance, and Months Remaining
+    from actual Gift data in the current fiscal year.
     """
 
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        snapshot = (
-            MPDSnapshot.objects.filter(user=request.user)
-            .select_related("upload")
-            .order_by("-upload__created_at")
-            .first()
-        )
+        from apps.dashboard.services import get_mpd_computed
 
-        if not snapshot:
-            return Response({"has_data": False})
-
-        return Response(
-            {
-                "has_data": True,
-                "monthly_average": str(snapshot.monthly_average)
-                if snapshot.monthly_average is not None
-                else None,
-                "current_mpd_cap": str(snapshot.current_mpd_cap)
-                if snapshot.current_mpd_cap is not None
-                else None,
-                "latest_roll_forward_balance": str(snapshot.latest_roll_forward_balance)
-                if snapshot.latest_roll_forward_balance is not None
-                else None,
-                "months_remaining_rf": snapshot.months_remaining_rf,
-            }
-        )
+        return Response(get_mpd_computed(request.user))
 
 
 class MPDUploadHistoryView(APIView):
