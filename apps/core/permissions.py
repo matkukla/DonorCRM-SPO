@@ -190,4 +190,10 @@ class IsSupervisorWriteRestricted(permissions.BasePermission):
             journal = getattr(obj, 'journal', None)
             if journal:
                 owner = getattr(journal, 'owner', None)
-        return owner == request.user if owner else True
+        if owner is None:
+            journal_contact = getattr(obj, 'journal_contact', None)
+            if journal_contact:
+                journal = getattr(journal_contact, 'journal', None)
+                if journal:
+                    owner = getattr(journal, 'owner', None)
+        return owner == request.user if owner else False

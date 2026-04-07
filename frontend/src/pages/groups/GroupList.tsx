@@ -44,8 +44,6 @@ export default function GroupList() {
   const { isViewingAs } = useViewAs()
   const { data: groups, isLoading, error } = useGroups()
 
-  // Debug logging
-  console.log("GroupList render:", { groups, isLoading, error, groupsLength: groups?.length })
   const createMutation = useCreateGroup()
   const deleteMutation = useDeleteGroup()
 
