@@ -97,7 +97,7 @@ export interface GivingSummary {
   annual_goal: number
   monthly_goal: number
   percentage: number
-  year: number
+  fiscal_year_label: string
   active_pledge_count: number
   last_import_at: string | null
 }
@@ -152,9 +152,8 @@ export async function getNeedsAttention() {
 /**
  * Get giving summary (Given & Expecting widget)
  */
-export async function getGivingSummary(year?: number, userId?: string): Promise<GivingSummary> {
+export async function getGivingSummary(userId?: string): Promise<GivingSummary> {
   const params: Record<string, string | number> = {}
-  if (year) params.year = year
   if (userId) params.user_id = userId
   const response = await apiClient.get<GivingSummary>("/dashboard/giving-summary/", {
     params: Object.keys(params).length > 0 ? params : undefined,

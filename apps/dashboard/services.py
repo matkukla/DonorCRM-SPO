@@ -10,10 +10,11 @@ from django.db.models import Count, DecimalField, ExpressionWrapper, F, Q, Sum, 
 from django.db.models.functions import TruncMonth
 
 from apps.contacts.models import Contact
+from apps.core.fiscal_year import fiscal_year_end, fiscal_year_start, months_elapsed_in_fiscal_year
 from apps.core.gift_utils import FREQUENCY_MULTIPLIERS, _monthly_equivalent_aggregate
 from apps.core.permissions import get_visible_user_ids
 from apps.events.models import Event
-from apps.imports.models import ImportBatch, ImportBatchStatus, ImportBatchType
+from apps.imports.models import ImportBatch, ImportBatchStatus, ImportBatchType, MPDSnapshot
 from apps.gifts.models import Gift, RecurringGift, RecurringGiftFrequency, RecurringGiftStatus
 from apps.tasks.models import Task, TaskStatus
 
@@ -224,16 +225,14 @@ def get_recent_gifts(user, days=30, limit=10):
     return gifts.filter(gift_date__gte=start_date).select_related("donor_contact")[:limit]
 
 
-def get_giving_summary(user, year=None):
+def get_giving_summary(user, as_of_date=None):
     """
     Calculate giving summary for the Given & Expecting widget.
-    Default: current calendar year.
+    Uses fiscal year (July 1 - June 30).
     """
-    if year is None:
-        year = date.today().year
-
-    year_start = date(year, 1, 1)
-    year_end = date(year, 12, 31)
+    today = as_of_date or date.today()
+    year_start = fiscal_year_start(today)
+    year_end = fiscal_year_end(today)
 
     # Always scope to the requesting user's own contacts.
     # get_visible_user_ids returns None (all-access) for admin/finance/read_only,
@@ -303,7 +302,7 @@ def get_giving_summary(user, year=None):
         "annual_goal": annual_goal,
         "monthly_goal": monthly_goal,
         "percentage": ((given_float + expecting) / annual_goal * 100) if annual_goal > 0 else 0,
-        "year": year,
+        "fiscal_year_label": f"FY {year_start.year}-{year_end.year}",
         "active_pledge_count": active_recurring.count(),
         "last_import_at": last_import_at.isoformat() if last_import_at else None,
     }
@@ -441,4 +440,56 @@ def get_dashboard_summary(user):
                 "id", "amount", "date", "contact_id", "contact__first_name", "contact__last_name"
             )
         ),
+    }
+
+
+def get_mpd_computed(user):
+    """
+    Compute MPD tile values from actual Gift data for the current fiscal year.
+    - Monthly Average = total gifts in FY / months elapsed
+    - MPD Cap = from latest snapshot (fallback 3600)
+    - Roll Forward Balance = total - [(monthly_avg - mpd_cap) * months_elapsed]
+    - Months Remaining = roll_forward_balance / (monthly_avg - mpd_cap)
+    """
+    today = date.today()
+    fy_start = fiscal_year_start(today)
+    months_elapsed = months_elapsed_in_fiscal_year(today)
+
+    # Total gifts in fiscal year (cents -> dollars)
+    total_cents = (
+        Gift.objects.filter(
+            donor_contact__owner=user,
+            gift_date__gte=fy_start,
+            gift_date__lte=today,
+        ).aggregate(total=Sum("amount_cents"))["total"]
+        or 0
+    )
+    total_dollars = float(Decimal(total_cents) / Decimal(100))
+
+    if total_cents == 0:
+        return {"has_data": False}
+
+    monthly_average = total_dollars / months_elapsed
+
+    # MPD cap from latest snapshot (fallback 3600)
+    snapshot = MPDSnapshot.objects.filter(user=user).order_by("-upload__created_at").first()
+    mpd_cap = (
+        float(snapshot.current_mpd_cap) if snapshot and snapshot.current_mpd_cap else 3600.0
+    )
+
+    diff = monthly_average - mpd_cap
+    roll_forward_balance = total_dollars - (diff * months_elapsed)
+
+    if diff != 0:
+        months_remaining_val = roll_forward_balance / diff
+        months_remaining_str = str(round(months_remaining_val, 1))
+    else:
+        months_remaining_str = "infinite"
+
+    return {
+        "has_data": True,
+        "monthly_average": str(round(monthly_average, 2)),
+        "current_mpd_cap": str(round(mpd_cap, 2)),
+        "latest_roll_forward_balance": str(round(roll_forward_balance, 2)),
+        "months_remaining_rf": months_remaining_str,
     }
