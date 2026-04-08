@@ -121,13 +121,13 @@ export default function Dashboard() {
       case "monthly-gifts": return <MonthlyGiftsCard userId={effectiveUserId} />
       // Stat cards
       case "thank-you":
-        return <StatCard title="Thank You Queue" value={data?.thank_you_count || 0} icon={Users} isLoading={isLoading} description="need acknowledgment" onIconClick={() => navigate("/contacts?needs_thank_you=true")} />
+        return <StatCard title="Thank You Queue" value={data?.thank_you_count || 0} icon={Users} isLoading={isLoading} onIconClick={() => navigate("/contacts?needs_thank_you=true")} />
       case "missed-donations":
-        return <StatCard title="Missed Donations" value={data?.late_donations_count || 0} icon={AlertTriangle} isLoading={isLoading} description="past expected date" onIconClick={() => navigate("/pledges?status=active")} />
+        return <StatCard title="Missed Donations" value={data?.late_donations_count || 0} icon={AlertTriangle} isLoading={isLoading} onIconClick={() => navigate("/pledges?status=active")} />
       case "active-pledges":
         return <StatCard title="Active Pledges" value={data?.support_progress?.active_pledge_count || 0} icon={FileText} isLoading={isLoading} onIconClick={() => navigate("/pledges")} />
       case "tasks-todo":
-        return <StatCard title="Tasks To-Do" value={data?.needs_attention?.total_incomplete_task_count || 0} icon={CheckSquare} isLoading={isLoading} description="incomplete tasks" onIconClick={() => navigate("/tasks")} />
+        return <StatCard title="Incomplete Tasks" value={data?.needs_attention?.total_incomplete_task_count || 0} icon={CheckSquare} isLoading={isLoading} onIconClick={() => navigate("/tasks")} />
       // Content section
       case "needs-attention":
         return <NeedsAttention overdueTasks={data?.needs_attention?.overdue_tasks || []} overdueTaskCount={data?.needs_attention?.overdue_task_count || 0} tasksDueToday={data?.needs_attention?.tasks_due_today || []} tasksDueTodayCount={data?.needs_attention?.tasks_due_today_count || 0} broadcastTasks={data?.needs_attention?.broadcast_tasks || []} broadcastTaskCount={data?.needs_attention?.broadcast_task_count || 0} latePledges={data?.needs_attention?.late_pledges || []} latePledgeCount={data?.needs_attention?.late_pledge_count || 0} thankYouNeeded={data?.needs_attention?.thank_you_needed || []} thankYouCount={data?.needs_attention?.thank_you_needed_count || 0} isLoading={isLoading} />
