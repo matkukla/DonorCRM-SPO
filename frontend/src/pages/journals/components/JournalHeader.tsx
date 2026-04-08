@@ -62,7 +62,7 @@ export function JournalHeader({ journal, members }: JournalHeaderProps) {
     // Progress toward goal (goal_amount is a total campaign target)
     const goalAmount = parseFloat(journal.goal_amount)
     const progressPercent = goalAmount > 0
-      ? Math.min((totalPledged / goalAmount) * 100, 100)
+      ? Math.min((totalMonthly / goalAmount) * 100, 100)
       : 0
 
     return { totalPledged, totalMonthly, decisionCount, progressPercent }
@@ -146,11 +146,6 @@ export function JournalHeader({ journal, members }: JournalHeaderProps) {
           <p className="font-semibold text-lg">
             ${stats.totalPledged.toLocaleString()} pledged
           </p>
-          {stats.totalMonthly > 0 && (
-            <p className="text-xs text-muted-foreground">
-              ${stats.totalMonthly.toLocaleString()}/mo equivalent
-            </p>
-          )}
         </div>
       </div>
 
