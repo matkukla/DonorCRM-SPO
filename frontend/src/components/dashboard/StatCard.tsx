@@ -13,6 +13,7 @@ interface StatCardProps {
   }
   isLoading?: boolean
   className?: string
+  onIconClick?: () => void
 }
 
 export function StatCard({
@@ -23,13 +24,24 @@ export function StatCard({
   trend,
   isLoading,
   className,
+  onIconClick,
 }: StatCardProps) {
   return (
     <Card className={cn(className)}>
       <CardHeader className="p-4 pl-7 pb-2">
         <div className="flex items-center justify-between">
           <CardDescription>{title}</CardDescription>
-          {Icon && <Icon className="h-4 w-4 text-muted-foreground" />}
+          {Icon && onIconClick ? (
+            <button
+              onClick={onIconClick}
+              className="rounded-md p-1 hover:bg-muted transition-colors cursor-pointer"
+              aria-label={`Navigate to ${title}`}
+            >
+              <Icon className="h-4 w-4 text-muted-foreground" />
+            </button>
+          ) : Icon ? (
+            <Icon className="h-4 w-4 text-muted-foreground" />
+          ) : null}
         </div>
         <CardTitle className="text-2xl">
           {isLoading ? (

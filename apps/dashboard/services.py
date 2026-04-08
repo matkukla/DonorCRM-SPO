@@ -81,6 +81,11 @@ def get_needs_attention(user):
     # Contacts needing thank-you
     thank_you_needed = contacts.filter(needs_thank_you=True)
 
+    # Total incomplete tasks (all PENDING + IN_PROGRESS, any due date)
+    total_incomplete = tasks.filter(
+        status__in=[TaskStatus.PENDING, TaskStatus.IN_PROGRESS],
+    )
+
     return {
         "late_pledges": [],
         "late_pledge_count": 0,
@@ -92,6 +97,7 @@ def get_needs_attention(user):
         "broadcast_task_count": broadcast_tasks.count(),
         "thank_you_needed": thank_you_needed[:5],
         "thank_you_needed_count": thank_you_needed.count(),
+        "total_incomplete_task_count": total_incomplete.count(),
     }
 
 
@@ -155,7 +161,7 @@ def get_late_donations(user, limit=10):
 
     # Sort by days late descending, limit results
     late.sort(key=lambda x: x["days_late"], reverse=True)
-    return late[:limit]
+    return late if limit is None else late[:limit]
 
 
 def get_thank_you_queue(user):
@@ -386,9 +392,10 @@ def get_dashboard_summary(user):
         )
     )
 
-    # Late donations
-    late_donations = get_late_donations(user)
-    late_donations_count = len(late_donations)
+    # Late donations — fetch all for accurate count, then slice for display
+    late_donations_all = get_late_donations(user, limit=None)
+    late_donations_count = len(late_donations_all)
+    late_donations = late_donations_all[:10]
 
     thank_you_qs = get_thank_you_queue(user)
     thank_you_list = list(
