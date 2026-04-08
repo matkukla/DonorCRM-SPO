@@ -78,6 +78,7 @@ export interface DashboardSummary {
     broadcast_task_count: number
     thank_you_needed: ThankYouContact[]
     thank_you_needed_count: number
+    total_incomplete_task_count: number
   }
   late_donations: LateDonation[]
   late_donations_count: number
