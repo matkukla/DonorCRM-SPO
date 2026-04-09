@@ -119,3 +119,6 @@ test_data/entities.csv
 SYSTEM_README.md
 bug_list.csv
 bug_lists/
+
+# Planning docs
+MULTI_TENANCY_PLAN.md
