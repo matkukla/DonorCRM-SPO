@@ -319,8 +319,7 @@ class ContactJournalsView(generics.ListAPIView):
 
         # Filter by ownership using visibility helper
         visible = get_visible_user_ids(user, request=self.request)
-        if visible is not None:
-            memberships = memberships.filter(journal__owner_id__in=visible)
+        memberships = memberships.filter(journal__owner_id__in=visible)
 
         return memberships
 
@@ -341,8 +340,7 @@ class ContactPrayerIntentionsView(generics.ListAPIView):
             contact_id=contact_id
         ).select_related('contact')
         visible = get_visible_user_ids(user, request=self.request)
-        if visible is not None:
-            qs = qs.filter(contact__owner_id__in=visible)
+        qs = qs.filter(contact__owner_id__in=visible)
         return qs.order_by('-created_at')
 
     def get_serializer_class(self):
@@ -367,8 +365,7 @@ class ContactJournalEventsView(generics.ListAPIView):
             'triggered_by',
         ).order_by('-created_at')
         visible = get_visible_user_ids(user, request=self.request)
-        if visible is not None:
-            qs = qs.filter(journal_contact__journal__owner_id__in=visible)
+        qs = qs.filter(journal_contact__journal__owner_id__in=visible)
         return qs
 
     def list(self, request, *args, **kwargs):
