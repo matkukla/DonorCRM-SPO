@@ -32,16 +32,6 @@ class AdminUserFactory(UserFactory):
     is_staff = True
 
 
-class FinanceUserFactory(UserFactory):
-    """Factory for creating Finance users."""
-    role = UserRole.FINANCE
-
-
-class ReadOnlyUserFactory(UserFactory):
-    """Factory for creating Read-Only users."""
-    role = UserRole.READ_ONLY
-
-
 class SupervisorUserFactory(UserFactory):
     """Factory for creating Supervisor users."""
     role = UserRole.SUPERVISOR

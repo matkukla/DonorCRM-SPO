@@ -44,8 +44,6 @@ const roleVariants: Record<UserRole, "default" | "secondary" | "success" | "warn
   admin: "destructive",
   supervisor: "warning",
   missionary: "default",
-  finance: "info",
-  read_only: "secondary",
   coach: "secondary",
 }
 

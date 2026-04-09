@@ -21,12 +21,9 @@ class GroupListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         user = self.request.user
         visible = get_visible_user_ids(user, request=self.request)
-        if visible is None:
-            queryset = Group.objects.all()
-        else:
-            queryset = Group.objects.filter(
-                Q(owner_id__in=visible) | Q(owner__isnull=True)
-            )
+        queryset = Group.objects.filter(
+            Q(owner_id__in=visible) | Q(owner__isnull=True)
+        )
         return queryset.annotate(
             annotated_contact_count=Count('contacts')
         ).order_by('name')
@@ -49,12 +46,9 @@ class GroupDetailView(generics.RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         user = self.request.user
         visible = get_visible_user_ids(user, request=self.request)
-        if visible is None:
-            queryset = Group.objects.all()
-        else:
-            queryset = Group.objects.filter(
-                Q(owner_id__in=visible) | Q(owner__isnull=True)
-            )
+        queryset = Group.objects.filter(
+            Q(owner_id__in=visible) | Q(owner__isnull=True)
+        )
         return queryset.annotate(
             annotated_contact_count=Count('contacts')
         )
@@ -81,8 +75,6 @@ class GroupContactsView(APIView):
         user = self.request.user
         visible = get_visible_user_ids(user, request=self.request)
         try:
-            if visible is None:
-                return Group.objects.get(pk=pk)
             return Group.objects.get(
                 Q(pk=pk) & (Q(owner_id__in=visible) | Q(owner__isnull=True))
             )
@@ -98,7 +90,7 @@ class GroupContactsView(APIView):
             )
 
         from apps.contacts.serializers import ContactListSerializer
-        contacts = group.contacts.filter(is_merged=False)
+        contacts = group.contacts.filter(is_merged=False).select_related('owner')
         serializer = ContactListSerializer(contacts, many=True)
         return Response(serializer.data)
 
@@ -157,12 +149,9 @@ class GroupContactEmailsView(APIView):
         user = request.user
         visible = get_visible_user_ids(user, request=request)
         try:
-            if visible is None:
-                group = Group.objects.get(pk=pk)
-            else:
-                group = Group.objects.get(
-                    Q(pk=pk) & (Q(owner_id__in=visible) | Q(owner__isnull=True))
-                )
+            group = Group.objects.get(
+                Q(pk=pk) & (Q(owner_id__in=visible) | Q(owner__isnull=True))
+            )
         except Group.DoesNotExist:
             return Response(
                 {'detail': 'Group not found.'},

@@ -9,7 +9,6 @@ export function ExportSection() {
   const exportDonationsMutation = useExportDonations()
 
   const isAdmin = user?.role === "admin"
-  const isFinanceOrAdmin = user?.role === "admin" || user?.role === "finance"
 
   const getContactsExportScope = () => {
     if (isAdmin) {
@@ -19,7 +18,7 @@ export function ExportSection() {
   }
 
   const getDonationsExportScope = () => {
-    if (isFinanceOrAdmin) {
+    if (isAdmin) {
       return "Exports all donations in the system."
     }
     return "Exports donations for your contacts only."

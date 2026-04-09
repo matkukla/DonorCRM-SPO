@@ -8,7 +8,7 @@ from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.core.permissions import IsAdmin, IsFinanceOrAdmin, is_financial_role
+from apps.core.permissions import IsAdmin, is_financial_role
 from apps.core.utils import get_safe_int_param, get_safe_year_param
 from apps.insights.services import (
     get_dashboard_overview,
@@ -136,9 +136,9 @@ class FollowUpsView(APIView):
 class TransactionsView(APIView):
     """
     GET: Get full transaction ledger.
-    Admin/finance-only endpoint.
+    Admin-only endpoint.
     """
-    permission_classes = [permissions.IsAuthenticated, IsFinanceOrAdmin]
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
 
     @extend_schema(
         tags=['insights'],

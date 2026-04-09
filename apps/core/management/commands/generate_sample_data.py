@@ -117,21 +117,7 @@ class Command(BaseCommand):
         admin.save()
         users['admin'] = admin
 
-        # Finance user
-        finance, _ = User.objects.get_or_create(
-            email='finance@example.com',
-            defaults={
-                'first_name': 'Finance',
-                'last_name': 'Manager',
-                'role': UserRole.FINANCE,
-                'is_active': True,
-            }
-        )
-        finance.set_password('testpass123')
-        finance.save()
-        users['finance'] = finance
-
-        self.stdout.write(f'  Created/updated 3 users')
+        self.stdout.write(f'  Created/updated 2 users')
         return users
 
     def _create_groups(self, owner):
