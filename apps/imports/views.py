@@ -13,7 +13,7 @@ from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.core.permissions import IsAdmin, IsFinanceOrAdmin, IsStaffOrAbove
+from apps.core.permissions import IsAdmin, IsStaffOrAbove
 from apps.imports.generic_services import (
     VALID_MATCH_BY,
     import_generic_contacts,
@@ -140,7 +140,7 @@ class DonationImportView(APIView):
     Returns 410 Gone to direct users to the new import endpoint.
     """
 
-    permission_classes = [permissions.IsAuthenticated, IsFinanceOrAdmin]
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
 
     def post(self, request):
         return Response(
@@ -225,7 +225,7 @@ class DonationTemplateView(APIView):
     Superseded by RE Gift import. Returns 410 Gone.
     """
 
-    permission_classes = [permissions.IsAuthenticated, IsFinanceOrAdmin]
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
 
     def get(self, request):
         return Response(

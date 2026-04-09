@@ -20,10 +20,10 @@ import type { ContactStatus, ContactCreate, DuplicateMatch } from "@/api/contact
 
 const statusLabels: Record<ContactStatus, string> = {
   prospect: "Potential Donor",
+  asked: "Asked",
   donor: "Donor",
   lapsed: "Lapsed",
-  major_donor: "Major Donor",
-  deceased: "Deceased",
+  declined: "Declined",
 }
 
 export default function ContactForm() {

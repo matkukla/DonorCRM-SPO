@@ -3,22 +3,18 @@ Custom permission classes for role-based access control.
 
 Access Control Matrix:
   admin       - Full CRUD on own resources by default; cross-user access via View As only
-  finance     - Read access to all resources; write access to own data only
   missionary  - Full CRUD on own resources only
-  read_only   - Read access to own resources only (safe HTTP methods)
   supervisor  - Full CRUD on own resources only; cross-user access via View As only
   coach       - Read/write own data + read coached users' data (no financial data)
 
-Owner scoping in views uses two patterns:
-  - Multi-role check: role in ['finance', 'read_only'] -> see all
-  - Single-role check: role == 'admin' -> see all (admin-only endpoints)
-Write operations are gated by IsStaffOrAbove (excludes read_only and coach).
+Owner scoping in views uses get_visible_user_ids() as the central choke point.
+Write operations are gated by IsStaffOrAbove (excludes coach from writes).
 """
 from rest_framework import permissions
 
 
 def get_visible_user_ids(user, request=None):
-    """Return set of user IDs whose data this user can see, or None for 'all'.
+    """Return set of user IDs whose data this user can see.
 
     When request.view_as_user is set (View As mode), always returns
     {view_as_user.id} regardless of viewer role. This is the data scoping
@@ -30,9 +26,6 @@ def get_visible_user_ids(user, request=None):
     Roles that see own + coached users (return {user.id} ∪ coached_user_ids):
       - coach
 
-    Roles that see all users' data (return None sentinel):
-      - finance, read_only
-
     Note: Admin and supervisor cross-user access activates only via View As
     session (Phase 52+). Admin analytics endpoints (get_dashboard_overview,
     get_stalled_contacts, etc.) do NOT call this function and are unaffected.
@@ -43,8 +36,6 @@ def get_visible_user_ids(user, request=None):
         if view_as_user is not None:
             return {view_as_user.id}
 
-    if user.role in ['finance', 'read_only']:
-        return None
     if user.role == 'coach':
         ids = set(
             user.coached_users
@@ -58,7 +49,7 @@ def get_visible_user_ids(user, request=None):
 
 def is_financial_role(user):
     """Returns True if user can see financial data. Coach is excluded."""
-    return user.role in ['admin', 'finance', 'read_only', 'supervisor', 'missionary']
+    return user.role in ['admin', 'supervisor', 'missionary']
 
 
 class IsAdmin(permissions.BasePermission):
@@ -72,31 +63,20 @@ class IsAdmin(permissions.BasePermission):
         )
 
 
-class IsFinanceOrAdmin(permissions.BasePermission):
-    """
-    Permission class that allows Finance or Admin users.
-    """
-    def has_permission(self, request, view):
-        return (
-            request.user.is_authenticated and
-            request.user.role in ['admin', 'finance']
-        )
-
-
 class IsStaffOrAbove(permissions.BasePermission):
     """
-    Permission class that allows Missionary, Finance, Supervisor, or Admin users.
-    Excludes read-only and coach users from write operations.
+    Permission class that allows Missionary, Supervisor, or Admin users.
+    Excludes coach users from write operations.
     """
     def has_permission(self, request, view):
         if not request.user.is_authenticated:
             return False
 
-        # Read-only and coach users can only perform safe methods
-        if request.user.role in ['read_only', 'coach']:
+        # Coach users can only perform safe methods
+        if request.user.role == 'coach':
             return request.method in permissions.SAFE_METHODS
 
-        return request.user.role in ['admin', 'finance', 'missionary', 'supervisor']
+        return request.user.role in ['admin', 'missionary', 'supervisor']
 
 
 class IsOwnerOrAdmin(permissions.BasePermission):
@@ -124,8 +104,7 @@ class IsContactOwnerOrReadAccess(permissions.BasePermission):
     Permission for contact-related objects.
     - Owner has full access
     - Admin has full access
-    - Finance has read-only access
-    - Read-only has read-only access
+    - Supervisor/coach with visibility can read
     """
     def has_object_permission(self, request, view, obj):
         if not request.user.is_authenticated:
@@ -147,10 +126,6 @@ class IsContactOwnerOrReadAccess(permissions.BasePermission):
         # Owner has full access to their contacts
         if contact and contact.owner == user:
             return True
-
-        # Finance and read-only can only read
-        if user.role in ['finance', 'read_only']:
-            return request.method in permissions.SAFE_METHODS
 
         return False
 

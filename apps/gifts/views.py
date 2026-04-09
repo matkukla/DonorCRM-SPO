@@ -7,7 +7,7 @@ from rest_framework.filters import OrderingFilter, SearchFilter
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 
-from apps.core.permissions import IsSupervisorWriteRestricted, get_visible_user_ids
+from apps.core.permissions import IsStaffOrAbove, IsSupervisorWriteRestricted, get_visible_user_ids
 from apps.gifts.filters import GiftFilterSet, RecurringGiftFilterSet
 from apps.gifts.models import Gift, RecurringGift
 from apps.gifts.serializers import (
@@ -29,7 +29,7 @@ class GiftListCreateView(generics.ListCreateAPIView):
     POST: Create a new gift
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsStaffOrAbove]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = GiftFilterSet
     search_fields = ["donor_contact__first_name", "donor_contact__last_name", "description"]
@@ -47,8 +47,7 @@ class GiftListCreateView(generics.ListCreateAPIView):
             "recurring_gift",
         ).all()
         visible = get_visible_user_ids(user, request=self.request)
-        if visible is not None:
-            qs = qs.filter(donor_contact__owner_id__in=visible)
+        qs = qs.filter(donor_contact__owner_id__in=visible)
         return qs.order_by("-gift_date")
 
     def get_serializer_class(self):
@@ -87,8 +86,7 @@ class GiftDetailView(generics.RetrieveUpdateDestroyAPIView):
             .all()
         )
         visible = get_visible_user_ids(user, request=self.request)
-        if visible is not None:
-            qs = qs.filter(donor_contact__owner_id__in=visible)
+        qs = qs.filter(donor_contact__owner_id__in=visible)
         return qs
 
     def get_serializer_class(self):
@@ -107,7 +105,7 @@ class RecurringGiftListCreateView(generics.ListCreateAPIView):
     POST: Create a new recurring gift
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsStaffOrAbove]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = RecurringGiftFilterSet
     search_fields = ["donor_contact__first_name", "donor_contact__last_name", "description"]
@@ -122,8 +120,7 @@ class RecurringGiftListCreateView(generics.ListCreateAPIView):
             "donor_contact", "donor_contact__owner", "fund"
         ).all()
         visible = get_visible_user_ids(user, request=self.request)
-        if visible is not None:
-            qs = qs.filter(donor_contact__owner_id__in=visible)
+        qs = qs.filter(donor_contact__owner_id__in=visible)
         return qs.order_by("-start_date")
 
     def get_serializer_class(self):
@@ -156,6 +153,5 @@ class RecurringGiftDetailView(generics.RetrieveUpdateDestroyAPIView):
             "donor_contact", "donor_contact__owner", "fund"
         ).all()
         visible = get_visible_user_ids(user, request=self.request)
-        if visible is not None:
-            qs = qs.filter(donor_contact__owner_id__in=visible)
+        qs = qs.filter(donor_contact__owner_id__in=visible)
         return qs

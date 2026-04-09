@@ -34,7 +34,7 @@ interface NavItem {
   label: string
   href: string
   icon: React.ReactNode
-  requiredRole?: "admin" | "missionary" | "finance" | "read_only" | "supervisor" | "coach"
+  requiredRole?: "admin" | "missionary" | "supervisor" | "coach"
   visibleRoles?: string[]
   end?: boolean
 }
@@ -136,7 +136,7 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
       return item.visibleRoles.includes(user.role)
     }
     if (!item.requiredRole) return true
-    const roleHierarchy: Record<string, number> = { admin: 5, supervisor: 4, coach: 3, finance: 3, missionary: 2, read_only: 1 }
+    const roleHierarchy: Record<string, number> = { admin: 4, supervisor: 3, coach: 2, missionary: 1 }
     return roleHierarchy[user.role] >= roleHierarchy[item.requiredRole]
   }
 
