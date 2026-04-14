@@ -154,6 +154,8 @@ class ContactGiftsView(generics.ListAPIView):
         visible = get_visible_user_ids(user, request=self.request)
         return Gift.objects.filter(
             donor_contact_id=contact_id, donor_contact__owner_id__in=visible
+        ).select_related(
+            'donor_contact', 'donor_contact__owner', 'fund', 'recurring_gift'
         ).order_by('-gift_date')
 
     def get_serializer_class(self):
@@ -177,6 +179,8 @@ class ContactRecurringGiftsView(generics.ListAPIView):
         visible = get_visible_user_ids(user, request=self.request)
         return RecurringGift.objects.filter(
             donor_contact_id=contact_id, donor_contact__owner_id__in=visible
+        ).select_related(
+            'donor_contact', 'donor_contact__owner', 'fund'
         ).order_by('-start_date')
 
     def get_serializer_class(self):
@@ -203,7 +207,7 @@ class ContactTasksView(generics.ListAPIView):
         visible = get_visible_user_ids(user, request=self.request)
         queryset = queryset.filter(owner_id__in=visible)
 
-        return queryset.order_by('due_date')
+        return queryset.select_related('contact', 'owner').order_by('due_date')
 
     def get_serializer_class(self):
         from apps.tasks.serializers import TaskSerializer

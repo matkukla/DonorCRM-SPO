@@ -13,7 +13,7 @@ from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.core.permissions import IsAdmin, IsStaffOrAbove
+from apps.core.permissions import IsAdmin, IsStaffOrAbove, get_visible_user_ids
 from apps.imports.generic_services import (
     VALID_MATCH_BY,
     import_generic_contacts,
@@ -162,10 +162,8 @@ class ContactExportView(APIView):
         from apps.contacts.models import Contact
 
         user = request.user
-        if user.role == "admin":
-            queryset = Contact.objects.filter(is_merged=False)
-        else:
-            queryset = Contact.objects.filter(owner=user, is_merged=False)
+        visible = get_visible_user_ids(user, request=request)
+        queryset = Contact.objects.filter(owner_id__in=visible, is_merged=False)
 
         csv_content = export_contacts_csv(queryset)
 
@@ -185,7 +183,7 @@ class DonationExportView(APIView):
         from apps.gifts.models import Gift
 
         user = request.user
-        if user.role in ["admin", "finance"]:
+        if user.role == "admin":
             queryset = Gift.objects.all()
         else:
             queryset = Gift.objects.filter(donor_contact__owner=user)

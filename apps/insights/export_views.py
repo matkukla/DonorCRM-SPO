@@ -11,7 +11,7 @@ from rest_framework.views import APIView
 from django.http import StreamingHttpResponse
 
 from apps.core.permissions import IsAdmin
-from apps.core.utils import get_safe_int_param
+from apps.core.utils import get_safe_int_param, validate_date_params
 from apps.imports.services import sanitize_csv_value
 from apps.insights.services import get_stalled_contacts, get_team_activity
 
@@ -41,18 +41,13 @@ class StalledContactsCSVView(APIView):
     )
     def get(self, request):
         # Parse query parameters
+        dates, err = validate_date_params(request)
+        if err:
+            return err
         date_from = request.query_params.get('date_from')
         date_to = request.query_params.get('date_to')
         sort_by = request.query_params.get('sort_by', 'days_stalled')
         sort_dir = request.query_params.get('sort_dir', 'desc')
-
-        # Validate date format if provided
-        for param_name, param_val in [('date_from', date_from), ('date_to', date_to)]:
-            if param_val:
-                try:
-                    datetime.strptime(param_val, '%Y-%m-%d')
-                except ValueError:
-                    return Response({'detail': f'Invalid {param_name} format. Use YYYY-MM-DD.'}, status=400)
 
         # Validate sort parameters
         if sort_by not in ('days_stalled', 'full_name', 'owner_name', 'last_activity_date'):
@@ -129,17 +124,12 @@ class TeamActivityCSVView(APIView):
     )
     def get(self, request):
         # Parse query parameters
+        dates, err = validate_date_params(request)
+        if err:
+            return err
         date_from = request.query_params.get('date_from')
         date_to = request.query_params.get('date_to')
         limit = get_safe_int_param(request, 'limit', default=10000, min_val=1, max_val=100000)
-
-        # Validate date format if provided
-        for param_name, param_val in [('date_from', date_from), ('date_to', date_to)]:
-            if param_val:
-                try:
-                    datetime.strptime(param_val, '%Y-%m-%d')
-                except ValueError:
-                    return Response({'detail': f'Invalid {param_name} format. Use YYYY-MM-DD.'}, status=400)
 
         # Get team activity with high limit for export
         data = get_team_activity(limit=limit, date_from=date_from, date_to=date_to)

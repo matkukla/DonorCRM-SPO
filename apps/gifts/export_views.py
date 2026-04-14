@@ -38,10 +38,7 @@ class GiftExportCSVView(APIView):
 
         # Same owner-scoping as GiftListCreateView
         visible = get_visible_user_ids(user, request=request)
-        if visible is None:
-            queryset = Gift.objects.all()
-        else:
-            queryset = Gift.objects.filter(donor_contact__owner_id__in=visible)
+        queryset = Gift.objects.filter(donor_contact__owner_id__in=visible)
 
         # Admin/supervisor owner filter
         owner_id = request.query_params.get("owner")
@@ -104,10 +101,7 @@ class RecurringGiftExportCSVView(APIView):
 
         # Same owner-scoping as RecurringGiftListCreateView
         visible = get_visible_user_ids(user, request=request)
-        if visible is None:
-            queryset = RecurringGift.objects.all()
-        else:
-            queryset = RecurringGift.objects.filter(donor_contact__owner_id__in=visible)
+        queryset = RecurringGift.objects.filter(donor_contact__owner_id__in=visible)
 
         # Admin/supervisor owner filter
         owner_id = request.query_params.get("owner")
