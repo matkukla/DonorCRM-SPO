@@ -11,7 +11,7 @@ from django.db.models.functions import TruncMonth
 
 from apps.contacts.models import Contact
 from apps.core.fiscal_year import fiscal_year_end, fiscal_year_start, months_elapsed_in_fiscal_year
-from apps.core.gift_utils import FREQUENCY_MULTIPLIERS, _monthly_equivalent_aggregate
+from apps.core.gift_utils import _monthly_equivalent_aggregate
 from apps.core.permissions import get_visible_user_ids
 from apps.events.models import Event
 from apps.imports.models import ImportBatch, ImportBatchStatus, ImportBatchType, MPDSnapshot

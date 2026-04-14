@@ -69,17 +69,6 @@ class JournalCreateSerializer(serializers.ModelSerializer):
         return journal
 
 
-class StageEventSummarySerializer(serializers.Serializer):
-    """
-    Summary of events for a single stage cell in the grid.
-    """
-    has_events = serializers.BooleanField()
-    event_count = serializers.IntegerField()
-    last_event_date = serializers.DateTimeField(allow_null=True)
-    last_event_type = serializers.CharField(allow_null=True)
-    last_event_notes = serializers.CharField(allow_null=True)
-
-
 class JournalContactSerializer(serializers.ModelSerializer):
     """
     Serializer for journal contact membership with ownership validation.

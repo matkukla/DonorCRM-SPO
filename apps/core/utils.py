@@ -33,23 +33,3 @@ def get_safe_year_param(request, key='year', default=None):
     return max(2000, min(value, 2100))
 
 
-def parse_date_params(request, *param_names):
-    """Parse and validate YYYY-MM-DD date query parameters.
-
-    Returns a dict mapping each param name to a datetime.date or None.
-    Raises ValueError with a message suitable for a 400 response if
-    any provided value is not in YYYY-MM-DD format.
-    """
-    from datetime import datetime
-
-    result = {}
-    for name in param_names:
-        raw = request.query_params.get(name)
-        if raw:
-            try:
-                result[name] = datetime.strptime(raw, '%Y-%m-%d').date()
-            except ValueError:
-                raise ValueError(f'Invalid {name} format. Use YYYY-MM-DD.')
-        else:
-            result[name] = None
-    return result

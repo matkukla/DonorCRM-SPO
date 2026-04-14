@@ -24,9 +24,3 @@ class EventSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
-class EventSummarySerializer(serializers.Serializer):
-    """
-    Serializer for event summary/counts.
-    """
-    unread_count = serializers.IntegerField()
-    new_count = serializers.IntegerField()

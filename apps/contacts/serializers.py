@@ -127,22 +127,6 @@ class ContactCreateSerializer(serializers.ModelSerializer):
         return contact
 
 
-class ContactImportSerializer(serializers.Serializer):
-    """
-    Serializer for CSV import validation.
-    """
-    first_name = serializers.CharField(max_length=150)
-    last_name = serializers.CharField(max_length=150)
-    email = serializers.EmailField(required=False, allow_blank=True)
-    phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
-    street_address = serializers.CharField(max_length=255, required=False, allow_blank=True)
-    city = serializers.CharField(max_length=100, required=False, allow_blank=True)
-    state = serializers.CharField(max_length=50, required=False, allow_blank=True)
-    postal_code = serializers.CharField(max_length=20, required=False, allow_blank=True)
-    country = serializers.CharField(max_length=100, required=False, default='USA')
-    notes = serializers.CharField(required=False, allow_blank=True)
-
-
 class DuplicateCheckSerializer(serializers.Serializer):
     """Input for pre-creation duplicate check."""
     first_name = serializers.CharField(max_length=150, required=False, allow_blank=True, default='')

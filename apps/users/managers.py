@@ -45,15 +45,3 @@ class UserManager(BaseUserManager):
         Allow authentication by email (case-insensitive).
         """
         return self.get(email__iexact=email)
-
-    def active(self):
-        """Return only active users."""
-        return self.filter(is_active=True)
-
-    def staff_users(self):
-        """Return active missionary users."""
-        return self.active().filter(role='missionary')
-
-    def admins(self):
-        """Return active admin users."""
-        return self.active().filter(role='admin')

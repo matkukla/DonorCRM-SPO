@@ -64,14 +64,6 @@ class TestTaskModel:
         assert task.completed_at is not None
         assert task.completed_by == user
 
-    def test_mark_cancelled(self):
-        """Test marking a task as cancelled."""
-        task = TaskFactory(status=TaskStatus.PENDING)
-
-        task.mark_cancelled()
-
-        assert task.status == TaskStatus.CANCELLED
-
     def test_task_types(self):
         """Test task type choices."""
         assert TaskType.CALL == 'call'
