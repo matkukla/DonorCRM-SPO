@@ -707,13 +707,24 @@ class MPDOverviewView(APIView):
             role='missionary', is_active=True
         ).order_by('last_name', 'first_name')
 
+        # Prefetch latest snapshot per user for monthly_average
+        from apps.imports.models import MPDSnapshot as MPDSnapshotModel
+        snapshot_map = {}
+        for snap in MPDSnapshotModel.objects.filter(
+            user__in=users
+        ).select_related('upload').order_by('user_id', '-upload__created_at'):
+            if snap.user_id not in snapshot_map:
+                snapshot_map[snap.user_id] = snap
+
         missionaries = []
         for user in users:
             computed = get_mpd_computed(user)
-            if computed.get("has_data"):
+            snapshot = snapshot_map.get(user.id)
+            if computed.get("has_data") or (snapshot and snapshot.monthly_average is not None):
                 entry = {
                     "user_id": str(user.id),
                     "user_name": user.full_name,
+                    "monthly_average": str(snapshot.monthly_average) if snapshot and snapshot.monthly_average else None,
                 }
                 entry.update({k: v for k, v in computed.items() if k != "has_data"})
                 missionaries.append(entry)
@@ -734,7 +745,13 @@ class MPDMyDataView(APIView):
     def get(self, request):
         from apps.dashboard.services import get_mpd_computed
 
-        return Response(get_mpd_computed(request.user))
+        data = get_mpd_computed(request.user)
+
+        # Include snapshot's monthly_average if available
+        snapshot = MPDSnapshot.objects.filter(user=request.user).order_by("-upload__created_at").first()
+        data['monthly_average'] = str(snapshot.monthly_average) if snapshot and snapshot.monthly_average else None
+
+        return Response(data)
 
 
 class MPDUploadHistoryView(APIView):

@@ -271,7 +271,7 @@ def export_gifts_csv(queryset) -> str:
             'contact_first_name': sanitize_csv_value(gift.donor_contact.first_name),
             'contact_last_name': sanitize_csv_value(gift.donor_contact.last_name),
             'contact_email': sanitize_csv_value(gift.donor_contact.email),
-            'amount': str(gift.amount_dollars),
+            'amount': f"{gift.amount_dollars:.2f}",
             'gift_date': str(gift.gift_date),
             'external_gift_id': sanitize_csv_value(gift.external_gift_id),
             'description': sanitize_csv_value(gift.description),
