@@ -391,8 +391,3 @@ class NextStep(TimeStampedModel):
         status = "Done" if self.completed else "Pending"
         return f'{self.title} ({status})'
 
-    def mark_complete(self):
-        """Mark this step as completed."""
-        self.completed = True
-        self.completed_at = timezone.now()
-        self.save(update_fields=['completed', 'completed_at', 'updated_at'])

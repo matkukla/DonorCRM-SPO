@@ -14,7 +14,7 @@ from apps.tasks.broadcast_services import (
     update_broadcast,
 )
 from apps.tasks.models import BroadcastTask, Task, TaskStatus
-from apps.tasks.tests.factories import BroadcastTaskFactory, TaskFactory
+from apps.tasks.tests.factories import TaskFactory
 from apps.users.tests.factories import UserFactory
 
 

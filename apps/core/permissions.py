@@ -130,20 +130,6 @@ class IsContactOwnerOrReadAccess(permissions.BasePermission):
         return False
 
 
-class ReadOnlyOrAdmin(permissions.BasePermission):
-    """
-    Read-only access for most users, full access for Admin.
-    """
-    def has_permission(self, request, view):
-        if not request.user.is_authenticated:
-            return False
-
-        if request.user.role == 'admin':
-            return True
-
-        return request.method in permissions.SAFE_METHODS
-
-
 class IsSupervisorWriteRestricted(permissions.BasePermission):
     """
     Supervisor can read all visible data but only write to own data.
