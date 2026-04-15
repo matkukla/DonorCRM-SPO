@@ -1,7 +1,7 @@
 """
 Tests for MPD API views: MPDMyDataView and MPDOverviewView.
 
-Covers monthly_average field in both endpoints (MPD-01, MPD-02).
+Covers monthly_average_snapshot field in both endpoints (MPD-01, MPD-02).
 """
 import pytest
 from decimal import Decimal
@@ -58,7 +58,7 @@ class TestMPDMyDataView:
     """Tests for MPDMyDataView GET /api/v1/imports/mpd/me/."""
 
     def test_mpd_my_data_includes_monthly_average(self, api_client, missionary_user, mpd_upload):
-        """Monthly average is returned as a decimal string when set."""
+        """Snapshot monthly average is returned under monthly_average_snapshot key."""
         MPDSnapshot.objects.create(
             user=missionary_user,
             upload=mpd_upload,
@@ -70,10 +70,10 @@ class TestMPDMyDataView:
         response = api_client.get(url)
 
         assert response.status_code == status.HTTP_200_OK
-        assert response.data['monthly_average'] == '1234.56'
+        assert response.data['monthly_average_snapshot'] == '1234.56'
 
     def test_mpd_my_data_monthly_average_null(self, api_client, missionary_user, mpd_upload):
-        """Monthly average is returned as null when not set."""
+        """Snapshot monthly average is returned as null when not set."""
         MPDSnapshot.objects.create(
             user=missionary_user,
             upload=mpd_upload,
@@ -85,7 +85,7 @@ class TestMPDMyDataView:
         response = api_client.get(url)
 
         assert response.status_code == status.HTTP_200_OK
-        assert response.data['monthly_average'] is None
+        assert response.data['monthly_average_snapshot'] is None
 
 
 @pytest.mark.django_db
@@ -93,7 +93,7 @@ class TestMPDOverviewView:
     """Tests for MPDOverviewView GET /api/v1/imports/mpd/overview/."""
 
     def test_mpd_overview_includes_monthly_average(self, api_client, missionary_user, admin_user, mpd_upload):
-        """Monthly average is returned in each missionary entry."""
+        """Snapshot monthly average is returned under monthly_average_snapshot key."""
         MPDSnapshot.objects.create(
             user=missionary_user,
             upload=mpd_upload,
@@ -107,7 +107,7 @@ class TestMPDOverviewView:
         assert response.status_code == status.HTTP_200_OK
         missionaries = response.data['missionaries']
         assert len(missionaries) == 1
-        assert missionaries[0]['monthly_average'] == '5678.00'
+        assert missionaries[0]['monthly_average_snapshot'] == '5678.00'
 
     def test_mpd_overview_admin_only(self, api_client, missionary_user):
         """Non-admin users receive 403 Forbidden."""
