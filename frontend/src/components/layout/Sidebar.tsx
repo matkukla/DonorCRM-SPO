@@ -29,12 +29,14 @@ import { useAuth } from "@/providers/AuthProvider"
 import { useViewAs } from "@/providers/ViewAsProvider"
 import spoLogo from "@/assets/spo_logo.png"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import type { UserRole } from "@/api/users"
+import { roleHierarchy } from "@/api/users"
 
 interface NavItem {
   label: string
   href: string
   icon: React.ReactNode
-  requiredRole?: "admin" | "missionary" | "supervisor" | "coach"
+  requiredRole?: UserRole
   visibleRoles?: string[]
   end?: boolean
 }
@@ -136,7 +138,6 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
       return item.visibleRoles.includes(user.role)
     }
     if (!item.requiredRole) return true
-    const roleHierarchy: Record<string, number> = { admin: 4, supervisor: 3, coach: 2, missionary: 1 }
     return roleHierarchy[user.role] >= roleHierarchy[item.requiredRole]
   }
 

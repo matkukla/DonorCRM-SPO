@@ -192,7 +192,7 @@ class DashboardOverviewView(APIView):
         responses={200: DashboardOverviewSerializer}
     )
     def get(self, request):
-        dates, err = validate_date_params(request)
+        _, err = validate_date_params(request)
         if err:
             return err
         date_from = request.query_params.get('date_from')
@@ -238,7 +238,7 @@ class StalledContactsView(APIView):
             sort_dir = 'desc'
 
         # Validate date parameters
-        dates, err = validate_date_params(request)
+        _, err = validate_date_params(request)
         if err:
             return err
         date_from = request.query_params.get('date_from')
@@ -287,7 +287,7 @@ class ConversionFunnelView(APIView):
     )
     def get(self, request):
         # Validate date parameters
-        dates, err = validate_date_params(request)
+        _, err = validate_date_params(request)
         if err:
             return err
         date_from = request.query_params.get('date_from')
@@ -319,7 +319,7 @@ class TeamActivityView(APIView):
         limit = get_safe_int_param(request, 'limit', default=50, min_val=1, max_val=200)
 
         # Validate date parameters
-        dates, err = validate_date_params(request)
+        _, err = validate_date_params(request)
         if err:
             return err
         date_from = request.query_params.get('date_from')
@@ -352,7 +352,7 @@ class TeamTrendsView(APIView):
         weeks = get_safe_int_param(request, 'weeks', default=12, min_val=1, max_val=52)
 
         # Validate date parameters
-        dates, err = validate_date_params(request)
+        _, err = validate_date_params(request)
         if err:
             return err
         date_from = request.query_params.get('date_from')

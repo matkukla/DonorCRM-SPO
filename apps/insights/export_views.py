@@ -41,7 +41,7 @@ class StalledContactsCSVView(APIView):
     )
     def get(self, request):
         # Parse query parameters
-        dates, err = validate_date_params(request)
+        _, err = validate_date_params(request)
         if err:
             return err
         date_from = request.query_params.get('date_from')
@@ -124,7 +124,7 @@ class TeamActivityCSVView(APIView):
     )
     def get(self, request):
         # Parse query parameters
-        dates, err = validate_date_params(request)
+        _, err = validate_date_params(request)
         if err:
             return err
         date_from = request.query_params.get('date_from')
