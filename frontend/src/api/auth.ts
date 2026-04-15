@@ -15,7 +15,7 @@ export interface User {
   email: string
   first_name: string
   last_name: string
-  role: "admin" | "missionary" | "finance" | "read_only" | "supervisor" | "coach"
+  role: "admin" | "missionary" | "supervisor" | "coach"
   is_active: boolean
   monthly_support_goal_cents: number
   dashboard_layout: { tile_order?: string[] } | null

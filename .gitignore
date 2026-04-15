@@ -122,3 +122,7 @@ bug_lists/
 
 # Planning docs
 MULTI_TENANCY_PLAN.md
+
+# Internal docs
+docs/postgresql-complexity-analysis.md
+docs/api-auth-authorization-analysis.md

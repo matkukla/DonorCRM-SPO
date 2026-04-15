@@ -16,8 +16,6 @@ class UserRole(models.TextChoices):
     """
     MISSIONARY = 'missionary', 'Missionary'
     ADMIN = 'admin', 'Admin'
-    FINANCE = 'finance', 'Finance'
-    READ_ONLY = 'read_only', 'Read Only'
     SUPERVISOR = 'supervisor', 'Supervisor'
     COACH = 'coach', 'Coach'
 
@@ -29,8 +27,6 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
     Roles:
     - Missionary: Manages their own donors, pledges, and tasks
     - Admin: Full system access, user management, data imports
-    - Finance: Import donations, view giving across organization
-    - Read-Only: View-only access
     - Supervisor: View/manage supervised missionaries' data
     - Coach: View/manage coached users' data (financial data excluded)
     """
@@ -150,63 +146,6 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
         """Return the user's full name."""
         return f'{self.first_name} {self.last_name}'.strip()
 
-    @property
-    def is_admin(self):
-        """Check if user has admin role."""
-        return self.role == UserRole.ADMIN
-
-    @property
-    def is_finance(self):
-        """Check if user has finance role."""
-        return self.role == UserRole.FINANCE
-
-    @property
-    def is_missionary(self):
-        """Check if user has missionary role."""
-        return self.role == UserRole.MISSIONARY
-
-    @property
-    def is_read_only(self):
-        """Check if user has read-only role."""
-        return self.role == UserRole.READ_ONLY
-
-    @property
-    def is_supervisor(self):
-        """Check if user has supervisor role."""
-        return self.role == UserRole.SUPERVISOR
-
-    @property
-    def is_coach(self):
-        """Check if user has coach role."""
-        return self.role == UserRole.COACH
-
-    @property
-    def monthly_support_goal_dollars(self):
-        """Return monthly support goal as Decimal dollars."""
-        from decimal import Decimal
-        return Decimal(self.monthly_support_goal_cents) / Decimal(100)
-
-    def can_manage_contact(self, contact):
-        """Check if user can manage a given contact."""
-        if self.is_admin:
-            return True
-        return contact.owner == self
-
-    def can_view_contact(self, contact):
-        """Check if user can view a given contact."""
-        if self.role in [UserRole.ADMIN, UserRole.FINANCE, UserRole.READ_ONLY]:
-            return True
-        if self.role == UserRole.SUPERVISOR:
-            visible = self.supervised_users.filter(is_active=True).values_list('id', flat=True)
-            if contact.owner_id == self.id or contact.owner_id in visible:
-                return True
-            return False
-        if self.role == UserRole.COACH:
-            visible = self.coached_users.filter(is_active=True).values_list('id', flat=True)
-            if contact.owner_id == self.id or contact.owner_id in visible:
-                return True
-            return False
-        return contact.owner == self
 
 
 class GoalJournalSelection(TimeStampedModel):

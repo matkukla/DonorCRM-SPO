@@ -11,6 +11,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
 import { AppLayout } from "@/components/layout/AppLayout"
 import { ErrorFallback } from "@/components/ErrorFallback"
 import { Toaster } from "@/components/ui/sonner"
+import type { UserRole } from "@/api/users"
 
 // Eagerly loaded pages (lightweight, frequently visited)
 import Login from "@/pages/Login"
@@ -77,7 +78,7 @@ function PageLoadingFallback() {
  * Wrap a page with protected route and app layout.
  * Suspense boundary is inside the layout so sidebar stays visible during chunk loading.
  */
-function ProtectedPage({ children, requiredRole }: { children: React.ReactNode; requiredRole?: "admin" | "missionary" | "finance" | "read_only" | "supervisor" | "coach" }) {
+function ProtectedPage({ children, requiredRole }: { children: React.ReactNode; requiredRole?: UserRole }) {
   return (
     <ProtectedRoute requiredRole={requiredRole}>
       <AppLayout>

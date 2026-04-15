@@ -51,7 +51,7 @@ def _resolve_target_user(request):
         # (get_visible_user_ids), which governs list views, not dashboard selection.
         if user.role not in ['admin', 'supervisor']:
             visible = get_visible_user_ids(user, request=request)
-            if visible is not None and target_uuid not in visible:
+            if target_uuid not in visible:
                 raise PermissionDenied(
                     'You do not have permission to view this user\'s dashboard.'
                 )
@@ -262,7 +262,7 @@ class UserDashboardLayoutView(APIView):
             raise NotFound('User not found.')
         if request.user.role not in ['admin', 'supervisor']:
             visible = get_visible_user_ids(request.user, request=request)
-            if visible is not None and pk not in visible:
+            if pk not in visible:
                 raise PermissionDenied('You do not have permission to view this user\'s dashboard.')
         target = User.objects.filter(id=pk, is_active=True).first()
         if not target:

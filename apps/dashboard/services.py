@@ -11,7 +11,7 @@ from django.db.models.functions import TruncMonth
 
 from apps.contacts.models import Contact
 from apps.core.fiscal_year import fiscal_year_end, fiscal_year_start, months_elapsed_in_fiscal_year
-from apps.core.gift_utils import FREQUENCY_MULTIPLIERS, _monthly_equivalent_aggregate
+from apps.core.gift_utils import _monthly_equivalent_aggregate
 from apps.core.permissions import get_visible_user_ids
 from apps.events.models import Event
 from apps.imports.models import ImportBatch, ImportBatchStatus, ImportBatchType, MPDSnapshot
@@ -19,6 +19,9 @@ from apps.gifts.models import Gift, RecurringGift, RecurringGiftFrequency, Recur
 from apps.tasks.models import Task, TaskStatus
 
 logger = logging.getLogger(__name__)
+
+# Default monthly MPD cap in dollars when no snapshot exists for a user.
+DEFAULT_MPD_CAP = 3600.0
 
 
 def get_what_changed(user, since=None):
@@ -49,12 +52,8 @@ def get_needs_attention(user):
     Get items requiring user action.
     """
     visible = get_visible_user_ids(user)
-    if visible is None:
-        contacts = Contact.active.all()
-        tasks = Task.objects.all()
-    else:
-        contacts = Contact.active.filter(owner_id__in=visible)
-        tasks = Task.objects.filter(owner_id__in=visible)
+    contacts = Contact.active.filter(owner_id__in=visible)
+    tasks = Task.objects.filter(owner_id__in=visible)
 
     today = date.today()
 
@@ -169,10 +168,7 @@ def get_thank_you_queue(user):
     Get contacts needing thank-you acknowledgment.
     """
     visible = get_visible_user_ids(user)
-    if visible is None:
-        contacts = Contact.active.all()
-    else:
-        contacts = Contact.active.filter(owner_id__in=visible)
+    contacts = Contact.active.filter(owner_id__in=visible)
 
     return contacts.filter(needs_thank_you=True).select_related("owner")
 
@@ -186,15 +182,11 @@ def get_support_progress(user):
     Scoping: always filters by donor_contact__owner=user so the tile
     reflects this user's personal fundraising progress only.
 
-    Admin/finance/read_only roles return None from get_visible_user_ids
-    (all-access sentinel for other views), but the Monthly Support Goal
-    tile must still scope to the requesting user's own contacts. Without
-    this fix, admin would see all missionaries' recurring gifts summed
-    against their personal monthly_goal — inflating current_monthly_support.
+    The Monthly Support Goal tile must scope to the requesting user's own
+    contacts. Other views use get_visible_user_ids for data scoping, but
+    this tile is personal — it compares against the user's own monthly_goal.
     """
     # Always scope support progress to the requesting user's own contacts.
-    # get_visible_user_ids returns None (all-access) for admin/finance/read_only,
-    # but that sentinel is not appropriate here — this tile is personal.
     recurring_gifts = RecurringGift.objects.filter(donor_contact__owner=user)
 
     # Get active recurring gifts
@@ -223,10 +215,7 @@ def get_recent_gifts(user, days=30, limit=10):
     start_date = date.today() - timedelta(days=days)
 
     visible = get_visible_user_ids(user)
-    if visible is None:
-        gifts = Gift.objects.all()
-    else:
-        gifts = Gift.objects.filter(donor_contact__owner_id__in=visible)
+    gifts = Gift.objects.filter(donor_contact__owner_id__in=visible)
 
     return gifts.filter(gift_date__gte=start_date).select_related("donor_contact")[:limit]
 
@@ -241,8 +230,7 @@ def get_giving_summary(user, as_of_date=None):
     year_end = fiscal_year_end(today)
 
     # Always scope to the requesting user's own contacts.
-    # get_visible_user_ids returns None (all-access) for admin/finance/read_only,
-    # but the Given & Expecting widget is personal — it compares against the
+    # The Given & Expecting widget is personal — it compares against the
     # user's own monthly_goal, so must only count their own contacts' gifts.
     gifts = Gift.objects.filter(donor_contact__owner=user)
     recurring_gifts = RecurringGift.objects.filter(donor_contact__owner=user)
@@ -454,7 +442,7 @@ def get_mpd_computed(user):
     """
     Compute MPD tile values from actual Gift data for the current fiscal year.
     - Monthly Average = total gifts in FY / months elapsed
-    - MPD Cap = from latest snapshot (fallback 3600)
+    - MPD Cap = from latest snapshot (fallback DEFAULT_MPD_CAP)
     - Roll Forward Balance = total - [(monthly_avg - mpd_cap) * months_elapsed]
     - Months Remaining = roll_forward_balance / (monthly_avg - mpd_cap)
     """
@@ -478,10 +466,10 @@ def get_mpd_computed(user):
 
     monthly_average = total_dollars / months_elapsed
 
-    # MPD cap from latest snapshot (fallback 3600)
+    # MPD cap from latest snapshot
     snapshot = MPDSnapshot.objects.filter(user=user).order_by("-upload__created_at").first()
     mpd_cap = (
-        float(snapshot.current_mpd_cap) if snapshot and snapshot.current_mpd_cap else 3600.0
+        float(snapshot.current_mpd_cap) if snapshot and snapshot.current_mpd_cap else DEFAULT_MPD_CAP
     )
 
     diff = monthly_average - mpd_cap

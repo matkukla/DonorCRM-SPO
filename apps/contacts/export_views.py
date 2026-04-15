@@ -32,10 +32,7 @@ class ContactExportCSVView(APIView):
 
         # Same owner-scoping as ContactListCreateView
         visible = get_visible_user_ids(user, request=request)
-        if visible is None:
-            queryset = Contact.objects.filter(is_merged=False)
-        else:
-            queryset = Contact.objects.filter(owner_id__in=visible, is_merged=False)
+        queryset = Contact.objects.filter(owner_id__in=visible, is_merged=False)
 
         # Admin/supervisor/coach owner filter (intentionally NOT in FilterSet - security)
         owner_id = request.query_params.get('owner')

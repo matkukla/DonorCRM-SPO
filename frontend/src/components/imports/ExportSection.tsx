@@ -1,29 +1,10 @@
 import { Download } from "lucide-react"
 import { ExportCard } from "./ExportCard"
-import { useAuth } from "@/providers/AuthProvider"
 import { useExportContacts, useExportDonations } from "@/hooks/useImports"
 
 export function ExportSection() {
-  const { user } = useAuth()
   const exportContactsMutation = useExportContacts()
   const exportDonationsMutation = useExportDonations()
-
-  const isAdmin = user?.role === "admin"
-  const isFinanceOrAdmin = user?.role === "admin" || user?.role === "finance"
-
-  const getContactsExportScope = () => {
-    if (isAdmin) {
-      return "Exports all contacts in the system."
-    }
-    return "Exports your contacts only."
-  }
-
-  const getDonationsExportScope = () => {
-    if (isFinanceOrAdmin) {
-      return "Exports all donations in the system."
-    }
-    return "Exports donations for your contacts only."
-  }
 
   const handleExportContacts = async () => {
     return exportContactsMutation.mutateAsync()
@@ -46,7 +27,7 @@ export function ExportSection() {
         <ExportCard
           title="Export Contacts"
           description="Download all contacts as a CSV file"
-          scopeDescription={getContactsExportScope()}
+          scopeDescription="Exports your contacts only."
           onExport={handleExportContacts}
           isExporting={exportContactsMutation.isPending}
         />
@@ -54,7 +35,7 @@ export function ExportSection() {
         <ExportCard
           title="Export Donations"
           description="Download donations as a CSV file"
-          scopeDescription={getDonationsExportScope()}
+          scopeDescription="Exports donations for your contacts only."
           onExport={handleExportDonations}
           isExporting={exportDonationsMutation.isPending}
           showDateFilter

@@ -187,7 +187,7 @@ class TestPermissionBoundaries:
         assert contact_id not in contact_ids
 
     def test_admin_sees_all_contacts(self, authenticated_client, admin_client):
-        """Test admins can see all contacts regardless of owner."""
+        """Test admins see only their own contacts by default (cross-user via View As)."""
         client, user = authenticated_client
         admin_cli, admin = admin_client
 
@@ -199,38 +199,9 @@ class TestPermissionBoundaries:
         })
         contact_id = response.data['id']
 
-        # Admin can see it
+        # Admin cannot see other user's contact without View As
         response = admin_cli.get(f'/api/v1/contacts/{contact_id}/')
-        assert response.status_code == status.HTTP_200_OK
-
-        # Admin can list all contacts
-        response = admin_cli.get('/api/v1/contacts/')
-        assert response.status_code == status.HTTP_200_OK
-        contact_ids = [c['id'] for c in response.data['results']]
-        assert contact_id in contact_ids
-
-    def test_finance_can_read_but_not_modify_contacts(self, authenticated_client, finance_client):
-        """Test finance users can read contacts but not modify them."""
-        client, user = authenticated_client
-        finance_cli, finance_user = finance_client
-
-        # Create contact as staff
-        response = client.post('/api/v1/contacts/', {
-            'first_name': 'Finance',
-            'last_name': 'Readonly',
-            'email': 'finance@example.com'
-        })
-        contact_id = response.data['id']
-
-        # Finance can read
-        response = finance_cli.get(f'/api/v1/contacts/{contact_id}/')
-        assert response.status_code == status.HTTP_200_OK
-
-        # Finance cannot update
-        response = finance_cli.patch(f'/api/v1/contacts/{contact_id}/', {
-            'first_name': 'Updated'
-        })
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
 @pytest.mark.django_db

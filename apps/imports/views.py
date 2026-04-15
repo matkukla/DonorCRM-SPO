@@ -13,7 +13,7 @@ from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.core.permissions import IsAdmin, IsFinanceOrAdmin, IsStaffOrAbove
+from apps.core.permissions import IsAdmin, IsStaffOrAbove, get_visible_user_ids
 from apps.imports.generic_services import (
     VALID_MATCH_BY,
     import_generic_contacts,
@@ -140,7 +140,7 @@ class DonationImportView(APIView):
     Returns 410 Gone to direct users to the new import endpoint.
     """
 
-    permission_classes = [permissions.IsAuthenticated, IsFinanceOrAdmin]
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
 
     def post(self, request):
         return Response(
@@ -162,10 +162,8 @@ class ContactExportView(APIView):
         from apps.contacts.models import Contact
 
         user = request.user
-        if user.role == "admin":
-            queryset = Contact.objects.filter(is_merged=False)
-        else:
-            queryset = Contact.objects.filter(owner=user, is_merged=False)
+        visible = get_visible_user_ids(user, request=request)
+        queryset = Contact.objects.filter(owner_id__in=visible, is_merged=False)
 
         csv_content = export_contacts_csv(queryset)
 
@@ -185,10 +183,8 @@ class DonationExportView(APIView):
         from apps.gifts.models import Gift
 
         user = request.user
-        if user.role in ["admin", "finance"]:
-            queryset = Gift.objects.all()
-        else:
-            queryset = Gift.objects.filter(donor_contact__owner=user)
+        visible = get_visible_user_ids(user, request=request)
+        queryset = Gift.objects.filter(donor_contact__owner_id__in=visible)
 
         # Date range filter
         start_date = request.query_params.get("start_date")
@@ -225,7 +221,7 @@ class DonationTemplateView(APIView):
     Superseded by RE Gift import. Returns 410 Gone.
     """
 
-    permission_classes = [permissions.IsAuthenticated, IsFinanceOrAdmin]
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
 
     def get(self, request):
         return Response(
@@ -707,13 +703,24 @@ class MPDOverviewView(APIView):
             role='missionary', is_active=True
         ).order_by('last_name', 'first_name')
 
+        # Prefetch latest snapshot per user for monthly_average
+        from apps.imports.models import MPDSnapshot as MPDSnapshotModel
+        snapshot_map = {}
+        for snap in MPDSnapshotModel.objects.filter(
+            user__in=users
+        ).select_related('upload').order_by('user_id', '-upload__created_at'):
+            if snap.user_id not in snapshot_map:
+                snapshot_map[snap.user_id] = snap
+
         missionaries = []
         for user in users:
             computed = get_mpd_computed(user)
-            if computed.get("has_data"):
+            snapshot = snapshot_map.get(user.id)
+            if computed.get("has_data") or (snapshot and snapshot.monthly_average is not None):
                 entry = {
                     "user_id": str(user.id),
                     "user_name": user.full_name,
+                    "monthly_average_snapshot": str(snapshot.monthly_average) if snapshot and snapshot.monthly_average else None,
                 }
                 entry.update({k: v for k, v in computed.items() if k != "has_data"})
                 missionaries.append(entry)
@@ -734,7 +741,14 @@ class MPDMyDataView(APIView):
     def get(self, request):
         from apps.dashboard.services import get_mpd_computed
 
-        return Response(get_mpd_computed(request.user))
+        data = get_mpd_computed(request.user)
+
+        # Include snapshot's monthly_average under a distinct key so it
+        # doesn't overwrite the computed monthly_average from gift data.
+        snapshot = MPDSnapshot.objects.filter(user=request.user).order_by("-upload__created_at").first()
+        data['monthly_average_snapshot'] = str(snapshot.monthly_average) if snapshot and snapshot.monthly_average else None
+
+        return Response(data)
 
 
 class MPDUploadHistoryView(APIView):

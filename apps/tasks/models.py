@@ -209,7 +209,3 @@ class Task(TimeStampedModel):
         self.completed_by = user
         self.save(update_fields=['status', 'completed_at', 'completed_by'])
 
-    def mark_cancelled(self):
-        """Mark task as cancelled."""
-        self.status = TaskStatus.CANCELLED
-        self.save(update_fields=['status'])

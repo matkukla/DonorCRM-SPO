@@ -32,18 +32,18 @@ const PAGE_SIZE = 20
 
 const statusLabels: Record<ContactStatus, string> = {
   prospect: "Potential Donor",
+  asked: "Asked",
   donor: "Donor",
   lapsed: "Lapsed",
-  major_donor: "Major Donor",
-  deceased: "Deceased",
+  declined: "Declined",
 }
 
 const statusVariants: Record<ContactStatus, "default" | "secondary" | "success" | "warning" | "info"> = {
   prospect: "secondary",
+  asked: "info",
   donor: "success",
   lapsed: "warning",
-  major_donor: "info",
-  deceased: "secondary",
+  declined: "secondary",
 }
 
 function formatCurrency(amount: string | number): string {
@@ -60,7 +60,6 @@ export default function ContactList() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { isViewingAs } = useViewAs()
-  const isAdmin = user?.role === "admin"
   const canSeeOwner = user?.role === "admin" || user?.role === "supervisor" || user?.role === "coach"
 
   const {

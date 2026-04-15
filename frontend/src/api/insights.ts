@@ -163,7 +163,7 @@ export async function getFollowUps(limit = 50): Promise<FollowUpsResponse> {
 }
 
 /**
- * Get transactions ledger (admin/finance only)
+ * Get transactions ledger (admin only)
  */
 export async function getTransactions(params?: {
   limit?: number

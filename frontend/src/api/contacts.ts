@@ -1,6 +1,6 @@
 import { apiClient } from "./client"
 
-export type ContactStatus = "prospect" | "donor" | "lapsed" | "major_donor" | "deceased"
+export type ContactStatus = "prospect" | "asked" | "donor" | "lapsed" | "declined"
 
 export interface ContactListItem {
   id: string

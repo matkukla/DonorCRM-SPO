@@ -10,7 +10,7 @@ from rest_framework.test import APIClient
 
 from apps.tasks.broadcast_services import create_broadcast
 from apps.tasks.models import BroadcastTask, Task, TaskStatus
-from apps.tasks.tests.factories import BroadcastTaskFactory, TaskFactory
+from apps.tasks.tests.factories import TaskFactory
 from apps.users.tests.factories import UserFactory
 
 

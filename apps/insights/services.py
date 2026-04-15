@@ -44,24 +44,18 @@ def _parse_date_range(date_from=None, date_to=None):
 def _scope_gifts(user, request=None):
     """Return gift queryset scoped by user role."""
     visible = get_visible_user_ids(user, request=request)
-    if visible is None:
-        return Gift.objects.all()
     return Gift.objects.filter(donor_contact__owner_id__in=visible)
 
 
 def _scope_recurring_gifts(user, request=None):
     """Return recurring gift queryset scoped by user role."""
     visible = get_visible_user_ids(user, request=request)
-    if visible is None:
-        return RecurringGift.objects.all()
     return RecurringGift.objects.filter(donor_contact__owner_id__in=visible)
 
 
 def _scope_tasks(user, request=None):
     """Return task queryset scoped by user role."""
     visible = get_visible_user_ids(user, request=request)
-    if visible is None:
-        return Task.objects.all()
     return Task.objects.filter(owner_id__in=visible)
 
 
@@ -243,7 +237,7 @@ def get_follow_ups(user, limit=50, request=None):
 def get_transactions(user, limit=100, offset=0, contact_id=None, date_from=None, date_to=None):
     """
     Get full transaction ledger (gifts).
-    Admin/finance-only endpoint.
+    Admin-only endpoint.
     """
     gifts = Gift.objects.all().select_related('donor_contact')
 
