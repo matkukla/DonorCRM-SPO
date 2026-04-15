@@ -720,7 +720,7 @@ class MPDOverviewView(APIView):
                 entry = {
                     "user_id": str(user.id),
                     "user_name": user.full_name,
-                    "monthly_average": str(snapshot.monthly_average) if snapshot and snapshot.monthly_average else None,
+                    "monthly_average_snapshot": str(snapshot.monthly_average) if snapshot and snapshot.monthly_average else None,
                 }
                 entry.update({k: v for k, v in computed.items() if k != "has_data"})
                 missionaries.append(entry)
@@ -743,9 +743,10 @@ class MPDMyDataView(APIView):
 
         data = get_mpd_computed(request.user)
 
-        # Include snapshot's monthly_average if available
+        # Include snapshot's monthly_average under a distinct key so it
+        # doesn't overwrite the computed monthly_average from gift data.
         snapshot = MPDSnapshot.objects.filter(user=request.user).order_by("-upload__created_at").first()
-        data['monthly_average'] = str(snapshot.monthly_average) if snapshot and snapshot.monthly_average else None
+        data['monthly_average_snapshot'] = str(snapshot.monthly_average) if snapshot and snapshot.monthly_average else None
 
         return Response(data)
 

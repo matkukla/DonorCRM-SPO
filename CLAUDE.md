@@ -73,16 +73,16 @@ docker compose up --build  # Starts: db, redis, web (:8000), celery, celery-beat
 - **Filter pattern**: `useFilterParams` hook (wraps nuqs `useQueryStates`) + `FilterBar` component. Pass clean `Record<string, string>` as query keys (no `undefined` values — they cause key collisions via JSON serialization).
 
 ### User Roles
-Six roles: `admin`, `missionary`, `supervisor`, `coach`, `finance`, `read_only`. Key permission classes in `apps/core/permissions.py`:
+Four roles: `admin`, `missionary`, `supervisor`, `coach`. Key permission classes in `apps/core/permissions.py`:
 - `IsAdmin` — admin only
-- `IsStaffOrAbove` — excludes read_only and coach from writes
+- `IsStaffOrAbove` — excludes coach from writes
 - `IsOwnerOrAdmin` — object-level owner check
 - `get_visible_user_ids()` — determines whose data a user can see
 
 ### Test Setup
 - pytest with `DJANGO_SETTINGS_MODULE=config.settings.test` (SQLite in-memory, disabled migrations, MD5 hasher)
 - Coverage: 80% minimum, scoped to `apps/`, excludes migrations/tests/admin
-- Fixtures in `conftest.py`: `api_client`, `authenticated_client` (missionary), `admin_client`, `finance_client`, `user_factory`
+- Fixtures in `conftest.py`: `api_client`, `authenticated_client` (missionary), `admin_client`, `user_factory`
 - User factories in `apps/users/tests/factories.py`
 
 ## Key Gotchas
