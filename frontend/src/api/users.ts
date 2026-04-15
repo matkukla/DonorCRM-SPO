@@ -53,6 +53,14 @@ export const userRoleLabels: Record<UserRole, string> = {
   coach: "Coach",
 }
 
+// Numeric levels for role-based access checks (higher = more access)
+export const roleHierarchy: Record<UserRole, number> = {
+  admin: 4,
+  supervisor: 3,
+  coach: 2,
+  missionary: 1,
+}
+
 export interface MissionaryAssignment {
   id: string
   email: string

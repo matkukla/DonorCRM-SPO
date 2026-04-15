@@ -183,10 +183,8 @@ class DonationExportView(APIView):
         from apps.gifts.models import Gift
 
         user = request.user
-        if user.role == "admin":
-            queryset = Gift.objects.all()
-        else:
-            queryset = Gift.objects.filter(donor_contact__owner=user)
+        visible = get_visible_user_ids(user, request=request)
+        queryset = Gift.objects.filter(donor_contact__owner_id__in=visible)
 
         # Date range filter
         start_date = request.query_params.get("start_date")
