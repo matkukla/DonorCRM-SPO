@@ -119,3 +119,5 @@ test_data/funds.csv
 test_data/entities.csv
 SYSTEM_README.md
 bug_list.csv
+MULTI_TENANCY_PLAN.md
+docs/
