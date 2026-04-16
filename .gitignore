@@ -103,6 +103,9 @@ e2e/node_modules/
 e2e/test-results/
 e2e/playwright-report/
 e2e/.playwright/
+frontend/e2e/.auth/
+frontend/test-results/
+frontend/playwright-report/
 
 # Local test data
 test_data/
