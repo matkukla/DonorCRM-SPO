@@ -42,7 +42,6 @@ export default function DonationList() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { isViewingAs } = useViewAs()
-  const isAdmin = user?.role === "admin"
   const canSeeOwner = user?.role === "admin" || user?.role === "supervisor" || user?.role === "coach"
 
   const {

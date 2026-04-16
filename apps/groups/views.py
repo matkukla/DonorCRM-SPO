@@ -120,7 +120,10 @@ class GroupContactsView(APIView):
 
         from apps.contacts.models import Contact
         visible = get_visible_user_ids(request.user, request=request)
-        contacts = Contact.objects.filter(id__in=contact_ids, owner_id__in=visible)
+        if visible is None:
+            contacts = Contact.objects.filter(id__in=contact_ids)
+        else:
+            contacts = Contact.objects.filter(id__in=contact_ids, owner_id__in=visible)
         group.contacts.add(*contacts)
 
         return Response({'detail': f'Added {contacts.count()} contacts to group.'})

@@ -5,8 +5,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { useGroups } from "@/hooks/useGroups"
-import { useAddContactsToGroup } from "@/hooks/useGroups"
+import { useGroups, useAddContactsToGroup } from "@/hooks/useGroups"
 import { toast } from "sonner"
 
 interface AddToGroupDialogProps {

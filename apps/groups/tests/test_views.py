@@ -204,6 +204,25 @@ class TestGroupContactsView:
         assert response.status_code == status.HTTP_200_OK
         assert contact not in group.contacts.all()
 
+    def test_add_contact_to_group_finance_user(self):
+        """Finance role (visible=None) must not crash when adding contacts."""
+        finance_user = UserFactory(role='finance')
+        missionary = UserFactory(role='missionary')
+        group = GroupFactory(owner=finance_user)
+        contact = ContactFactory(owner=missionary)
+
+        client = APIClient()
+        client.force_authenticate(user=finance_user)
+
+        response = client.post(
+            f'/api/v1/groups/{group.id}/contacts/',
+            {'contact_ids': [str(contact.id)]},
+            format='json'
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert contact in group.contacts.all()
+
     def test_remove_contact_from_group(self):
         """Test removing a contact from a group via DELETE."""
         user = UserFactory(role='missionary')

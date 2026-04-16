@@ -16,7 +16,7 @@ import { GivingSummaryCard } from "@/components/dashboard/GivingSummaryCard"
 import { MonthlyGiftsCard } from "@/components/dashboard/MonthlyGiftsCard"
 import { SortableDashboardTile } from "@/components/dashboard/SortableDashboardTile"
 import { LogEventDialog } from "@/pages/journals/components/LogEventDialog"
-import { useMPDMyData, useMPDOverview } from "@/hooks/useMPD"
+import { useMPDMyData } from "@/hooks/useMPD"
 import { MPDStatsInline } from "@/components/mpd/MPDStatsInline"
 import { MPDOverviewTable } from "@/components/mpd/MPDOverviewTable"
 import { Users, DollarSign, FileText, CheckSquare, RotateCcw, ChevronDown, Check } from "lucide-react"
@@ -65,7 +65,6 @@ export default function Dashboard() {
 
   const { data, isLoading, error } = useDashboardSummary(effectiveUserId)
   const { data: mpdData, isLoading: mpdLoading } = useMPDMyData()
-  const { data: mpdOverviewData, isLoading: mpdOverviewLoading } = useMPDOverview({ enabled: user?.role === "admin" })
   const [quickLogContactId, setQuickLogContactId] = useState<string | null>(null)
 
   const [viewingPickerOpen, setViewingPickerOpen] = useState(false)

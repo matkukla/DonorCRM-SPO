@@ -73,7 +73,7 @@ export interface StageCellProps {
  * re-render cascade when other cells change.
  */
 export const StageCell = React.memo<StageCellProps>(
-  ({ contactId, journalContactId, stage, eventSummary, onCellClick }) => {
+  ({ journalContactId, stage, eventSummary }) => {
     const { mutate: createEvent, isPending: isCreating } = useCreateStageEvent()
     const { mutate: deleteEvents, isPending: isDeleting } = useDeleteStageEventsByStage()
     const { isViewingAs } = useViewAs()
