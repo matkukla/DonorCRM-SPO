@@ -226,3 +226,50 @@ class UserDrilldownViewTest(TestCase):
         response = self.client.get(self.url, {'user_id': fake_uuid})
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertIn('detail', response.data)
+
+    def test_conversion_rate_uses_journal_contacts_denominator(self):
+        """Verify conversion rate uses contacts-in-journals, not all contacts."""
+        self.client.force_authenticate(user=self.admin)
+
+        # Create a new missionary with 4 contacts but only 2 in a journal
+        missionary2 = User.objects.create_user(
+            email='missionary2@test.com',
+            password='testpass123',
+            role='missionary',
+            first_name='Test',
+            last_name='Missionary',
+        )
+        contacts = [
+            Contact.objects.create(
+                owner=missionary2,
+                first_name=f'Contact{i}',
+                last_name='Test',
+                email=f'c{i}@test.com',
+                status='active',
+            )
+            for i in range(4)
+        ]
+
+        journal = Journal.objects.create(
+            owner=missionary2,
+            name='Test Journal',
+            goal_amount=Decimal('10000.00'),
+            is_archived=False,
+        )
+        # Only 2 contacts in the journal
+        jc1 = JournalContact.objects.create(journal=journal, contact=contacts[0])
+        JournalContact.objects.create(journal=journal, contact=contacts[1])
+
+        # 1 decision (for contacts[0])
+        Decision.objects.create(
+            journal_contact=jc1,
+            amount=Decimal('100.00'),
+            cadence='monthly',
+            status='active',
+        )
+
+        response = self.client.get(self.url, {'user_id': str(missionary2.id)})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Denominator should be 2 (contacts in journals), not 4 (total contacts)
+        # So conversion rate = 1/2 * 100 = 50.0, not 1/4 * 100 = 25.0
+        self.assertEqual(response.data['stats']['conversion_rate'], 50.0)

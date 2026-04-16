@@ -30,7 +30,7 @@ function computeAlerts(
       id: "stalled-contacts-high",
       message: `${overview.stalled_contacts} contacts stalled >14 days across team`,
       severity: "high",
-      actionLink: "/admin/analytics/stalled-contacts",
+      actionLink: "/admin/analytics/stalled",
     })
   }
 

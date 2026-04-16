@@ -155,6 +155,73 @@ class TestStalledContactsDateFiltering:
 
 
 @pytest.mark.django_db
+class TestDashboardOverviewConversionRateDateFiltering:
+    """Tests verifying conversion rate respects date range filters."""
+
+    def test_date_range_filters_conversion_rate(self, admin_client):
+        """Create decisions in two date ranges, verify conversion rate changes with date filter."""
+        client, admin_user = admin_client
+        staff = UserFactory(role='missionary')
+
+        # Create journal with 2 contacts
+        journal = Journal.objects.create(
+            name='Test Journal',
+            owner=staff,
+            goal_amount=Decimal('10000.00'),
+        )
+        contact1 = ContactFactory(owner=staff)
+        contact2 = ContactFactory(owner=staff)
+        jc1 = JournalContact.objects.create(journal=journal, contact=contact1)
+        jc2 = JournalContact.objects.create(journal=journal, contact=contact2)
+
+        # Decision for contact1 created 30 days ago
+        old_date = timezone.now() - timedelta(days=30)
+        d1 = Decision.objects.create(
+            journal_contact=jc1,
+            amount=Decimal('100.00'),
+            cadence='monthly',
+            status='active',
+        )
+        d1.created_at = old_date
+        d1.save()
+        jc1.created_at = old_date
+        jc1.save()
+
+        # Decision for contact2 created 5 days ago
+        new_date = timezone.now() - timedelta(days=5)
+        d2 = Decision.objects.create(
+            journal_contact=jc2,
+            amount=Decimal('50.00'),
+            cadence='monthly',
+            status='active',
+        )
+        d2.created_at = new_date
+        d2.save()
+        jc2.created_at = new_date
+        jc2.save()
+
+        # Without date filter: 2 contacts with decisions / 2 contacts in journals = 100%
+        response = client.get('/api/v1/insights/admin/dashboard-overview/')
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['conversion_rate'] == 100.0
+
+        # With date_from=10 days ago: only jc2/d2 in range → 1/1 = 100%
+        date_from = (timezone.now() - timedelta(days=10)).date().isoformat()
+        response = client.get(f'/api/v1/insights/admin/dashboard-overview/?date_from={date_from}')
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['conversion_rate'] == 100.0
+
+        # With date range covering only the old period: only jc1/d1 → 1/1 = 100%
+        old_from = (timezone.now() - timedelta(days=35)).date().isoformat()
+        old_to = (timezone.now() - timedelta(days=15)).date().isoformat()
+        response = client.get(
+            f'/api/v1/insights/admin/dashboard-overview/?date_from={old_from}&date_to={old_to}'
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['conversion_rate'] == 100.0
+
+
+@pytest.mark.django_db
 class TestTeamActivityDateFiltering:
     """Tests for date filtering on /api/v1/insights/admin/team-activity/"""
 

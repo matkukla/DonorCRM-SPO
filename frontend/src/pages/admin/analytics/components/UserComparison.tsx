@@ -129,7 +129,7 @@ export function UserComparison() {
                 const formatValue = (val: number) => {
                   if (metric.formatValue) return metric.formatValue(val)
                   if (metric.isCurrency) {
-                    return (val / 100).toLocaleString('en-US', {
+                    return val.toLocaleString('en-US', {
                       style: 'currency',
                       currency: 'USD',
                     })

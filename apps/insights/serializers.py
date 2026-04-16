@@ -80,6 +80,7 @@ class UserPerformanceResponseSerializer(serializers.Serializer):
 class ConversionFunnelResponseSerializer(serializers.Serializer):
     funnel = FunnelStageSerializer(many=True)
     total_contacts_in_pipeline = serializers.IntegerField()
+    no_activity_count = serializers.IntegerField(default=0)
 
 
 class TeamActivityResponseSerializer(serializers.Serializer):

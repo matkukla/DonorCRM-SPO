@@ -252,6 +252,7 @@ export interface FunnelStage {
 export interface ConversionFunnelResponse {
   funnel: FunnelStage[]
   total_contacts_in_pipeline: number
+  no_activity_count?: number
 }
 
 export interface TeamActivityItem {

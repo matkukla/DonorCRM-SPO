@@ -144,7 +144,7 @@ export function TimePeriodComparison({ dateParams }: TimePeriodComparisonProps) 
                 <p className="text-xs font-medium text-muted-foreground">{metric.label}</p>
                 <p className="text-2xl font-bold">
                   {metric.isCurrency
-                    ? (metric.current / 100).toLocaleString('en-US', {
+                    ? metric.current.toLocaleString('en-US', {
                         style: 'currency',
                         currency: 'USD',
                         minimumFractionDigits: 0,
@@ -156,7 +156,7 @@ export function TimePeriodComparison({ dateParams }: TimePeriodComparisonProps) 
                 <div className="flex items-center gap-1 text-xs">
                   <span className="text-muted-foreground">
                     vs {metric.isCurrency
-                      ? (metric.previous / 100).toLocaleString('en-US', {
+                      ? metric.previous.toLocaleString('en-US', {
                           style: 'currency',
                           currency: 'USD',
                           minimumFractionDigits: 0,

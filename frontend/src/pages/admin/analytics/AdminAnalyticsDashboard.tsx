@@ -208,7 +208,7 @@ export default function AdminAnalyticsDashboard() {
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Total Amount</p>
                     <p className="text-2xl font-bold">
-                      {(data.donations_12m.total_amount / 100).toLocaleString('en-US', {
+                      {data.donations_12m.total_amount.toLocaleString('en-US', {
                         style: 'currency',
                         currency: 'USD'
                       })}
