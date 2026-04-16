@@ -14,22 +14,6 @@ import { useCreateStageEvent, useDeleteStageEventsByStage } from "@/hooks/useJou
 import { useViewAs } from "@/providers/ViewAsProvider"
 
 /**
- * Get the highest pipeline stage that has events.
- * Used to determine current stage for transition warnings.
- */
-export function getHighestStageWithEvents(
-  stageEvents: Record<PipelineStage, StageEventSummary>
-): PipelineStage | null {
-  const stages: PipelineStage[] = ['next_steps', 'thank', 'decision', 'close', 'meet', 'contact']
-  for (const stage of stages) {
-    if (stageEvents[stage]?.has_events) {
-      return stage
-    }
-  }
-  return null
-}
-
-/**
  * Default event type for each stage when auto-creating via checkbox click.
  * These are sensible defaults that create meaningful event records.
  */

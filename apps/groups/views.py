@@ -77,7 +77,6 @@ class GroupContactsView(APIView):
     POST: Add contacts to group
     DELETE: Remove contacts from group
     """
-    permission_classes = [permissions.IsAuthenticated]
 
     def get_permissions(self):
         # IsStaffOrAbove blocks coaches on GET; only enforce it for write operations.
