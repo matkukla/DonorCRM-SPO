@@ -43,6 +43,7 @@ export const AddContactsToGroupDialog = React.memo(function AddContactsToGroupDi
   )
 
   const addMutation = useAddContactsToGroup()
+  const [pendingIds, setPendingIds] = React.useState<Set<string>>(new Set())
 
   React.useEffect(() => {
     if (!open) {
@@ -54,6 +55,7 @@ export const AddContactsToGroupDialog = React.memo(function AddContactsToGroupDi
   const contacts = contactsData?.results ?? []
 
   const handleAdd = (contactId: string, contactName: string) => {
+    setPendingIds((prev) => new Set(prev).add(contactId))
     addMutation.mutate(
       { groupId, contactIds: [contactId] },
       {
@@ -62,6 +64,13 @@ export const AddContactsToGroupDialog = React.memo(function AddContactsToGroupDi
         },
         onError: () => {
           toast.error("Failed to add contact")
+        },
+        onSettled: () => {
+          setPendingIds((prev) => {
+            const next = new Set(prev)
+            next.delete(contactId)
+            return next
+          })
         },
       }
     )
@@ -120,7 +129,7 @@ export const AddContactsToGroupDialog = React.memo(function AddContactsToGroupDi
                         size="sm"
                         className="ml-3 flex-shrink-0"
                         onClick={() => handleAdd(contact.id, contact.full_name)}
-                        disabled={addMutation.isPending}
+                        disabled={pendingIds.has(contact.id)}
                       >
                         Add
                       </Button>

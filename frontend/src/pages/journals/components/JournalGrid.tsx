@@ -45,7 +45,6 @@ export function JournalGrid({
   journalId,
   isLoading = false,
 }: JournalGridProps) {
-
   // Empty state
   if (!isLoading && members.length === 0) {
     return (

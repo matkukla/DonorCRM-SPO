@@ -139,7 +139,7 @@ export function DataTable<TData, TValue>({
           checked={selectedRows?.has(rowId) ?? false}
           onChange={() => toggleRow(rowId)}
           className="rounded border-border"
-          aria-label="Select row"
+          aria-label={`Select row ${rowId}`}
         />
       )
     },

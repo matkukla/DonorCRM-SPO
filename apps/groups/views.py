@@ -6,6 +6,8 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.contacts.models import Contact
+from apps.contacts.serializers import ContactListSerializer
 from apps.core.permissions import IsOwnerOrAdmin, IsStaffOrAbove, IsSupervisorWriteRestricted, get_visible_user_ids
 from apps.groups.models import Group
 from apps.groups.serializers import GroupCreateSerializer, GroupSerializer
@@ -75,7 +77,13 @@ class GroupContactsView(APIView):
     POST: Add contacts to group
     DELETE: Remove contacts from group
     """
-    permission_classes = [permissions.IsAuthenticated, IsStaffOrAbove, IsOwnerOrAdmin, IsSupervisorWriteRestricted]
+    permission_classes = [permissions.IsAuthenticated, IsOwnerOrAdmin, IsSupervisorWriteRestricted]
+
+    def get_permissions(self):
+        # IsStaffOrAbove blocks coaches on GET; only enforce it for write operations.
+        if self.request.method not in permissions.SAFE_METHODS:
+            return [permissions.IsAuthenticated(), IsStaffOrAbove(), IsOwnerOrAdmin(), IsSupervisorWriteRestricted()]
+        return [permissions.IsAuthenticated(), IsOwnerOrAdmin(), IsSupervisorWriteRestricted()]
 
     def get_group(self, pk):
         user = self.request.user
@@ -100,7 +108,6 @@ class GroupContactsView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        from apps.contacts.serializers import ContactListSerializer
         contacts = group.contacts.all()
         serializer = ContactListSerializer(contacts, many=True)
         return Response(serializer.data)
@@ -127,7 +134,6 @@ class GroupContactsView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        from apps.contacts.models import Contact
         visible = get_visible_user_ids(request.user, request=request)
         if visible is None:
             contacts = Contact.objects.filter(id__in=contact_ids)
@@ -166,7 +172,6 @@ class GroupContactsView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        from apps.contacts.models import Contact
         visible = get_visible_user_ids(request.user, request=request)
         if visible is None:
             contacts = Contact.objects.filter(id__in=contact_ids)

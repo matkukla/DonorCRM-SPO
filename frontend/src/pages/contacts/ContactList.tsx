@@ -79,11 +79,9 @@ export default function ContactList() {
   }, [filters.search])
 
   // Clear selection whenever filters change (excluding page navigation)
-  const { page: _page, ...nonPageFilters } = filters
   useEffect(() => {
     setSelectedContacts(new Set())
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(nonPageFilters)])
+  }, [filters.search, filters.status, filters.needs_thank_you, filters.last_gift_after, filters.last_gift_before, filters.group, filters.ordering, filters.owner])
 
   const queryParams = { ...toQueryParams(), page_size: String(PAGE_SIZE) }
   const { data, isLoading } = useContacts(queryParams)
