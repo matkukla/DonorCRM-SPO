@@ -4,7 +4,7 @@ Tests for generic CSV import (contacts and donations).
 Covers:
 - Contact import: create, update by email/name, SHA256 dedup, row errors
 - Donation import: Gift creation, missing contact errors, stat recalculation
-- API views: endpoints, response shape, staff access, read-only denied
+- API views: endpoints, response shape, staff access, coach denied
 """
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
@@ -287,12 +287,12 @@ class GenericImportAPITests(TestCase):
             last_name='User',
             role=UserRole.ADMIN,
         )
-        self.read_only_user = User.objects.create_user(
-            email='readonly@test.com',
+        self.coach_user = User.objects.create_user(
+            email='coach@test.com',
             password='testpass123',
-            first_name='ReadOnly',
+            first_name='Coach',
             last_name='User',
-            role=UserRole.READ_ONLY,
+            role=UserRole.COACH,
         )
         self.client = APIClient()
 
@@ -388,9 +388,9 @@ class GenericImportAPITests(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-    def test_generic_import_read_only_denied(self):
-        """Read-only user cannot access generic import endpoints -> 403."""
-        self.client.force_authenticate(user=self.read_only_user)
+    def test_generic_import_coach_denied(self):
+        """Coach user cannot access generic import endpoints -> 403."""
+        self.client.force_authenticate(user=self.coach_user)
 
         csv_content = (
             'first_name,last_name,email\n'

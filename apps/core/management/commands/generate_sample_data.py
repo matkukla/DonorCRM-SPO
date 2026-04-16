@@ -62,10 +62,9 @@ class Command(BaseCommand):
         self.stdout.write('Login credentials:')
         self.stdout.write(f'  Staff: staff@example.com / testpass123')
         self.stdout.write(f'  Admin: admin@example.com / testpass123')
-        self.stdout.write(f'  Finance: finance@example.com / testpass123')
         self.stdout.write('')
         self.stdout.write(f'Created:')
-        self.stdout.write(f'  - 3 users (staff, admin, finance)')
+        self.stdout.write(f'  - 2 users (staff, admin)')
         self.stdout.write(f'  - {len(groups)} groups')
         self.stdout.write(f'  - {len(contacts)} contacts')
         self.stdout.write(f'  - {Gift.objects.count()} gifts')
@@ -117,21 +116,7 @@ class Command(BaseCommand):
         admin.save()
         users['admin'] = admin
 
-        # Finance user
-        finance, _ = User.objects.get_or_create(
-            email='finance@example.com',
-            defaults={
-                'first_name': 'Finance',
-                'last_name': 'Manager',
-                'role': UserRole.FINANCE,
-                'is_active': True,
-            }
-        )
-        finance.set_password('testpass123')
-        finance.save()
-        users['finance'] = finance
-
-        self.stdout.write(f'  Created/updated 3 users')
+        self.stdout.write(f'  Created/updated 2 users')
         return users
 
     def _create_groups(self, owner):

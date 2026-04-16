@@ -45,8 +45,6 @@ class TestUserModel:
         supervisor = UserFactory(role=UserRole.SUPERVISOR)
         coach = UserFactory(role=UserRole.COACH)
         admin = UserFactory(role=UserRole.ADMIN)
-        finance = UserFactory(role=UserRole.FINANCE)
-        readonly = UserFactory(role=UserRole.READ_ONLY)
 
         assert missionary.is_missionary is True
         assert missionary.is_admin is False
@@ -54,8 +52,6 @@ class TestUserModel:
         assert supervisor.is_supervisor is True
         assert coach.is_coach is True
         assert admin.is_admin is True
-        assert finance.is_finance is True
-        assert readonly.is_read_only is True
 
     def test_user_str(self):
         """Test string representation."""

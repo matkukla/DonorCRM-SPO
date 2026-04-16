@@ -71,7 +71,7 @@ function PageLoadingFallback() {
  * Wrap a page with protected route and app layout.
  * Suspense boundary is inside the layout so sidebar stays visible during chunk loading.
  */
-function ProtectedPage({ children, requiredRole }: { children: React.ReactNode; requiredRole?: "admin" | "missionary" | "finance" | "read_only" | "supervisor" | "coach" }) {
+function ProtectedPage({ children, requiredRole }: { children: React.ReactNode; requiredRole?: "admin" | "missionary" | "supervisor" | "coach" }) {
   return (
     <ProtectedRoute requiredRole={requiredRole}>
       <AppLayout>

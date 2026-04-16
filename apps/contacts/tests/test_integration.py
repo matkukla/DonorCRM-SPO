@@ -209,28 +209,27 @@ class TestPermissionBoundaries:
         contact_ids = [c['id'] for c in response.data['results']]
         assert contact_id in contact_ids
 
-    def test_finance_can_read_but_not_modify_contacts(self, authenticated_client, finance_client):
-        """Test finance users can read contacts but not modify them."""
+    def test_coach_cannot_modify_others_contacts(self, authenticated_client):
+        """Test coach users cannot modify contacts they don't own."""
+        from apps.users.tests.factories import CoachUserFactory
         client, user = authenticated_client
-        finance_cli, finance_user = finance_client
 
-        # Create contact as staff
+        # Create contact as missionary
         response = client.post('/api/v1/contacts/', {
-            'first_name': 'Finance',
-            'last_name': 'Readonly',
-            'email': 'finance@example.com'
+            'first_name': 'Someone',
+            'last_name': 'Else',
+            'email': 'someone@example.com'
         })
         contact_id = response.data['id']
 
-        # Finance can read
-        response = finance_cli.get(f'/api/v1/contacts/{contact_id}/')
-        assert response.status_code == status.HTTP_200_OK
-
-        # Finance cannot update
-        response = finance_cli.patch(f'/api/v1/contacts/{contact_id}/', {
+        # Coach cannot update another user's contact
+        coach = CoachUserFactory()
+        coach_client = APIClient()
+        coach_client.force_authenticate(user=coach)
+        response = coach_client.patch(f'/api/v1/contacts/{contact_id}/', {
             'first_name': 'Updated'
         })
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code in (status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND)
 
 
 @pytest.mark.django_db

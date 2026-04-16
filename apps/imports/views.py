@@ -12,7 +12,7 @@ from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.core.permissions import IsAdmin, IsFinanceOrAdmin, IsStaffOrAbove
+from apps.core.permissions import IsAdmin, IsStaffOrAbove
 from apps.imports.models import Fund, ImportBatchStatus, MPDSnapshot, MPDUpload
 from apps.imports.mpd_services import process_mpd_upload
 from apps.imports.generic_services import (
@@ -149,7 +149,7 @@ class DonationImportView(APIView):
     Superseded by RE Gift import (REGiftImportView).
     Returns 410 Gone to direct users to the new import endpoint.
     """
-    permission_classes = [permissions.IsAuthenticated, IsFinanceOrAdmin]
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
 
     def post(self, request):
         return Response(
@@ -190,7 +190,7 @@ class DonationExportView(APIView):
         from apps.gifts.models import Gift
 
         user = request.user
-        if user.role in ['admin', 'finance']:
+        if user.role == 'admin':
             queryset = Gift.objects.all()
         else:
             queryset = Gift.objects.filter(donor_contact__owner=user)
@@ -228,7 +228,7 @@ class DonationTemplateView(APIView):
     GET: Legacy donation template endpoint.
     Superseded by RE Gift import. Returns 410 Gone.
     """
-    permission_classes = [permissions.IsAuthenticated, IsFinanceOrAdmin]
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
 
     def get(self, request):
         return Response(

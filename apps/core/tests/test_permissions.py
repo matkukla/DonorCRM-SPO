@@ -4,22 +4,18 @@ Test scaffold for get_visible_user_ids() — Phase 51 Wave 0.
 These tests specify the TARGET behavior after Phase 51 is fully implemented.
 
 RED/GREEN state per test (before Plan 02 changes the implementation):
-  - test_admin_sees_only_own_data     RED   — current function returns None, test asserts {admin.id}
-  - test_supervisor_sees_only_own_data RED  — current function returns {own+supervised}, test asserts {sup.id}
-  - test_finance_sees_all             GREEN — unchanged behavior (None)
-  - test_read_only_sees_all           GREEN — unchanged behavior (None)
-  - test_coach_sees_own_and_coached   GREEN — unchanged behavior ({own+coached})
+  - test_admin_sees_only_own_data      RED   — current function returns None, test asserts {admin.id}
+  - test_supervisor_sees_only_own_data RED   — current function returns {own+supervised}, test asserts {sup.id}
+  - test_coach_sees_own_and_coached    GREEN — unchanged behavior ({own+coached})
   - test_missionary_sees_only_own_data GREEN — unchanged behavior ({own})
 
-After Plan 02 all 6 tests must pass.
+After Plan 02 all 4 tests must pass.
 """
 import pytest
 
 from apps.users.tests.factories import (
     AdminUserFactory,
     CoachUserFactory,
-    FinanceUserFactory,
-    ReadOnlyUserFactory,
     SupervisorUserFactory,
     UserFactory,
 )
@@ -53,28 +49,6 @@ def test_supervisor_sees_only_own_data():
     result = get_visible_user_ids(sup)
     assert result == {sup.id}  # only own data — NOT the missionary's id
     assert result is not None
-
-
-# --- FINANCE ---
-
-@pytest.mark.django_db
-def test_finance_sees_all():
-    """Finance role is unchanged: returns None (all-access sentinel)."""
-    from apps.core.permissions import get_visible_user_ids
-    finance = FinanceUserFactory()
-    result = get_visible_user_ids(finance)
-    assert result is None
-
-
-# --- READ ONLY ---
-
-@pytest.mark.django_db
-def test_read_only_sees_all():
-    """Read-only role is unchanged: returns None (all-access sentinel)."""
-    from apps.core.permissions import get_visible_user_ids
-    ro = ReadOnlyUserFactory()
-    result = get_visible_user_ids(ro)
-    assert result is None
 
 
 # --- COACH ---

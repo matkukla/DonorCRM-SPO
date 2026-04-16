@@ -16,8 +16,6 @@ class UserRole(models.TextChoices):
     """
     MISSIONARY = 'missionary', 'Missionary'
     ADMIN = 'admin', 'Admin'
-    FINANCE = 'finance', 'Finance'
-    READ_ONLY = 'read_only', 'Read Only'
     SUPERVISOR = 'supervisor', 'Supervisor'
     COACH = 'coach', 'Coach'
 
@@ -29,8 +27,6 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
     Roles:
     - Missionary: Manages their own donors, pledges, and tasks
     - Admin: Full system access, user management, data imports
-    - Finance: Import donations, view giving across organization
-    - Read-Only: View-only access
     - Supervisor: View/manage supervised missionaries' data
     - Coach: View/manage coached users' data (financial data excluded)
     """
@@ -156,19 +152,9 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
         return self.role == UserRole.ADMIN
 
     @property
-    def is_finance(self):
-        """Check if user has finance role."""
-        return self.role == UserRole.FINANCE
-
-    @property
     def is_missionary(self):
         """Check if user has missionary role."""
         return self.role == UserRole.MISSIONARY
-
-    @property
-    def is_read_only(self):
-        """Check if user has read-only role."""
-        return self.role == UserRole.READ_ONLY
 
     @property
     def is_supervisor(self):
@@ -194,7 +180,7 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
 
     def can_view_contact(self, contact):
         """Check if user can view a given contact."""
-        if self.role in [UserRole.ADMIN, UserRole.FINANCE, UserRole.READ_ONLY]:
+        if self.role == UserRole.ADMIN:
             return True
         if self.role == UserRole.SUPERVISOR:
             visible = self.supervised_users.filter(is_active=True).values_list('id', flat=True)

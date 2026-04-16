@@ -44,11 +44,13 @@ export const AddContactsToGroupDialog = React.memo(function AddContactsToGroupDi
 
   const addMutation = useAddContactsToGroup()
   const [pendingIds, setPendingIds] = React.useState<Set<string>>(new Set())
+  const [locallyAdded, setLocallyAdded] = React.useState<Set<string>>(new Set())
 
   React.useEffect(() => {
     if (!open) {
       setSearchTerm("")
       setDebouncedSearch("")
+      setLocallyAdded(new Set())
     }
   }, [open])
 
@@ -60,6 +62,7 @@ export const AddContactsToGroupDialog = React.memo(function AddContactsToGroupDi
       { groupId, contactIds: [contactId] },
       {
         onSuccess: () => {
+          setLocallyAdded((prev) => new Set(prev).add(contactId))
           toast.success(`Added ${contactName} to "${groupName}"`)
         },
         onError: () => {
@@ -108,7 +111,7 @@ export const AddContactsToGroupDialog = React.memo(function AddContactsToGroupDi
               </div>
             ) : (
               contacts.map((contact) => {
-                const alreadyInGroup = existingContactIds.includes(contact.id)
+                const alreadyInGroup = existingContactIds.includes(contact.id) || locallyAdded.has(contact.id)
                 return (
                   <div
                     key={contact.id}

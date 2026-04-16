@@ -90,7 +90,7 @@ class GiftCreateSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if request:
             user = request.user
-            if user.role in ['admin', 'finance']:
+            if user.role == 'admin':
                 return value
             if value.owner != user:
                 raise serializers.ValidationError(
@@ -156,7 +156,7 @@ class RecurringGiftCreateSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if request:
             user = request.user
-            if user.role in ['admin', 'finance']:
+            if user.role == 'admin':
                 return value
             if value.owner != user:
                 raise serializers.ValidationError(

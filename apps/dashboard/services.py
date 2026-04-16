@@ -163,14 +163,14 @@ def get_support_progress(user):
     Scoping: always filters by donor_contact__owner=user so the tile
     reflects this user's personal fundraising progress only.
 
-    Admin/finance/read_only roles return None from get_visible_user_ids
-    (all-access sentinel for other views), but the Monthly Support Goal
-    tile must still scope to the requesting user's own contacts. Without
-    this fix, admin would see all missionaries' recurring gifts summed
-    against their personal monthly_goal — inflating current_monthly_support.
+    Admin roles return None from get_visible_user_ids (all-access sentinel
+    for other views), but the Monthly Support Goal tile must still scope to
+    the requesting user's own contacts. Without this fix, admin would see all
+    missionaries' recurring gifts summed against their personal monthly_goal —
+    inflating current_monthly_support.
     """
     # Always scope support progress to the requesting user's own contacts.
-    # get_visible_user_ids returns None (all-access) for admin/finance/read_only,
+    # get_visible_user_ids returns None (all-access) for admin,
     # but that sentinel is not appropriate here — this tile is personal.
     recurring_gifts = RecurringGift.objects.filter(donor_contact__owner=user)
 
@@ -220,7 +220,7 @@ def get_giving_summary(user, year=None):
     year_end = date(year, 12, 31)
 
     # Always scope to the requesting user's own contacts.
-    # get_visible_user_ids returns None (all-access) for admin/finance/read_only,
+    # get_visible_user_ids returns None (all-access) for admin,
     # but the Given & Expecting widget is personal — it compares against the
     # user's own monthly_goal, so must only count their own contacts' gifts.
     gifts = Gift.objects.filter(donor_contact__owner=user)

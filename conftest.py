@@ -37,15 +37,6 @@ def admin_client(user_factory):
 
 
 @pytest.fixture
-def finance_client(user_factory):
-    """Return an API client authenticated as a finance user."""
-    client = APIClient()
-    user = user_factory(role='finance')
-    client.force_authenticate(user=user)
-    return client, user
-
-
-@pytest.fixture
 def admin_user(user_factory):
     """Return an admin user instance."""
     return user_factory(role='admin')

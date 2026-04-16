@@ -261,18 +261,20 @@ class TestAdminEndpointPermissions:
         '/api/v1/insights/admin/team-activity/',
     ]
 
-    def test_finance_user_cannot_access(self, finance_client):
-        client, user = finance_client
-        for endpoint in self.ADMIN_ENDPOINTS:
-            response = client.get(endpoint)
-            assert response.status_code == status.HTTP_403_FORBIDDEN, \
-                f"Finance user should get 403 from {endpoint}"
-
-    def test_read_only_user_cannot_access(self):
-        user = UserFactory(role='read_only')
+    def test_coach_cannot_access(self):
+        user = UserFactory(role='coach')
         client = APIClient()
         client.force_authenticate(user=user)
         for endpoint in self.ADMIN_ENDPOINTS:
             response = client.get(endpoint)
             assert response.status_code == status.HTTP_403_FORBIDDEN, \
-                f"Read-only user should get 403 from {endpoint}"
+                f"Coach user should get 403 from {endpoint}"
+
+    def test_missionary_cannot_access(self):
+        user = UserFactory(role='missionary')
+        client = APIClient()
+        client.force_authenticate(user=user)
+        for endpoint in self.ADMIN_ENDPOINTS:
+            response = client.get(endpoint)
+            assert response.status_code == status.HTTP_403_FORBIDDEN, \
+                f"Missionary user should get 403 from {endpoint}"

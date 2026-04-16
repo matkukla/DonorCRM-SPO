@@ -26,13 +26,10 @@ class EventListView(generics.ListAPIView):
     def get_queryset(self):
         user = self.request.user
 
-        # finance/read_only roles (visible is None) can see all events when ?all is passed
         visible = get_visible_user_ids(user, request=self.request)
-        if visible is None and self.request.query_params.get('all'):
+        if visible is None:
             return Event.objects.all()
-        if visible is not None:
-            return Event.objects.filter(user_id__in=visible).select_related('contact')
-        return Event.objects.filter(user=user).select_related('contact')
+        return Event.objects.filter(user_id__in=visible).select_related('contact')
 
 
 class EventDetailView(generics.RetrieveAPIView):

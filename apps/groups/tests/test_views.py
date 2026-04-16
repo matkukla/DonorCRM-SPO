@@ -204,25 +204,6 @@ class TestGroupContactsView:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert contact not in group.contacts.all()
 
-    def test_add_contact_to_group_finance_user(self):
-        """Finance role (visible=None) must not crash when adding contacts."""
-        finance_user = UserFactory(role='finance')
-        missionary = UserFactory(role='missionary')
-        group = GroupFactory(owner=finance_user)
-        contact = ContactFactory(owner=missionary)
-
-        client = APIClient()
-        client.force_authenticate(user=finance_user)
-
-        response = client.post(
-            f'/api/v1/groups/{group.id}/contacts/',
-            {'contact_ids': [str(contact.id)]},
-            format='json'
-        )
-
-        assert response.status_code == status.HTTP_200_OK
-        assert contact in group.contacts.all()
-
     def test_remove_contact_from_group(self):
         """Test removing a contact from a group via DELETE."""
         user = UserFactory(role='missionary')
@@ -280,14 +261,14 @@ class TestGroupContactsView:
         assert response.status_code == status.HTTP_200_OK
         assert contact in group.contacts.all()
 
-    def test_read_only_user_cannot_add_contacts_to_group(self):
-        """read_only role must be blocked from write operations on group contacts."""
-        read_only = UserFactory(role='read_only')
-        group = GroupFactory(owner=read_only)
-        contact = ContactFactory(owner=read_only)
+    def test_coach_cannot_write_contacts_to_group(self):
+        """Coach role must be blocked from write operations on group contacts."""
+        coach = UserFactory(role='coach')
+        group = GroupFactory(owner=coach)
+        contact = ContactFactory(owner=coach)
 
         client = APIClient()
-        client.force_authenticate(user=read_only)
+        client.force_authenticate(user=coach)
 
         response = client.post(
             f'/api/v1/groups/{group.id}/contacts/',

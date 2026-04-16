@@ -237,7 +237,7 @@ def get_follow_ups(user, limit=50, request=None):
 def get_transactions(user, limit=100, offset=0, contact_id=None, date_from=None, date_to=None):
     """
     Get full transaction ledger (gifts).
-    Admin/finance-only endpoint.
+    Admin-only endpoint.
     """
     gifts = Gift.objects.all().select_related('donor_contact')
 
