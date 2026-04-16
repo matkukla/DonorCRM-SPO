@@ -103,6 +103,9 @@ class IsOwnerOrAdmin(permissions.BasePermission):
     """
     Object-level permission to only allow owners of an object or admins.
     Assumes the model instance has an `owner` field.
+
+    Shared objects (owner=None) are accessible to any authenticated user —
+    ownership is not enforced when there is no designated owner.
     """
     def has_object_permission(self, request, view, obj):
         if not request.user.is_authenticated:
@@ -114,6 +117,9 @@ class IsOwnerOrAdmin(permissions.BasePermission):
 
         # Check for 'owner' field on object
         if hasattr(obj, 'owner'):
+            # Shared objects (owner=None) are accessible to all authenticated users
+            if obj.owner is None:
+                return True
             return obj.owner == request.user
 
         return False

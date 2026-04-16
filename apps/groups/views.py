@@ -6,7 +6,7 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.core.permissions import IsOwnerOrAdmin, IsSupervisorWriteRestricted, get_visible_user_ids
+from apps.core.permissions import IsOwnerOrAdmin, IsStaffOrAbove, IsSupervisorWriteRestricted, get_visible_user_ids
 from apps.groups.models import Group
 from apps.groups.serializers import GroupCreateSerializer, GroupSerializer
 
@@ -75,19 +75,22 @@ class GroupContactsView(APIView):
     POST: Add contacts to group
     DELETE: Remove contacts from group
     """
-    permission_classes = [permissions.IsAuthenticated, IsOwnerOrAdmin, IsSupervisorWriteRestricted]
+    permission_classes = [permissions.IsAuthenticated, IsStaffOrAbove, IsOwnerOrAdmin, IsSupervisorWriteRestricted]
 
     def get_group(self, pk):
         user = self.request.user
         visible = get_visible_user_ids(user, request=self.request)
         try:
             if visible is None:
-                return Group.objects.get(pk=pk)
-            return Group.objects.get(
-                Q(pk=pk) & (Q(owner_id__in=visible) | Q(owner__isnull=True))
-            )
+                group = Group.objects.get(pk=pk)
+            else:
+                group = Group.objects.get(
+                    Q(pk=pk) & (Q(owner_id__in=visible) | Q(owner__isnull=True))
+                )
         except Group.DoesNotExist:
             return None
+        self.check_object_permissions(self.request, group)
+        return group
 
     def get(self, request, pk):
         group = self.get_group(pk)

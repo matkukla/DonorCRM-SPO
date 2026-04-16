@@ -7,7 +7,7 @@ from rest_framework.test import APIClient
 
 from apps.contacts.tests.factories import ContactFactory
 from apps.groups.models import Group
-from apps.groups.tests.factories import GroupFactory
+from apps.groups.tests.factories import GroupFactory, SharedGroupFactory
 from apps.users.tests.factories import UserFactory
 
 
@@ -241,4 +241,59 @@ class TestGroupContactsView:
         )
 
         assert response.status_code == status.HTTP_200_OK
+        assert contact not in group.contacts.all()
+
+    def test_missionary_cannot_add_contacts_to_another_users_group(self):
+        """Missionary gets 404 for a group they can't see (security: don't reveal existence)."""
+        owner = UserFactory(role='missionary')
+        other = UserFactory(role='missionary')
+        group = GroupFactory(owner=owner)
+        contact = ContactFactory(owner=other)
+
+        client = APIClient()
+        client.force_authenticate(user=other)
+
+        response = client.post(
+            f'/api/v1/groups/{group.id}/contacts/',
+            {'contact_ids': [str(contact.id)]},
+            format='json'
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert contact not in group.contacts.all()
+
+    def test_missionary_can_add_contacts_to_shared_group(self):
+        """Missionary should be allowed to mutate a shared group (owner=None)."""
+        user = UserFactory(role='missionary')
+        group = SharedGroupFactory()
+        contact = ContactFactory(owner=user)
+
+        client = APIClient()
+        client.force_authenticate(user=user)
+
+        response = client.post(
+            f'/api/v1/groups/{group.id}/contacts/',
+            {'contact_ids': [str(contact.id)]},
+            format='json'
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert contact in group.contacts.all()
+
+    def test_read_only_user_cannot_add_contacts_to_group(self):
+        """read_only role must be blocked from write operations on group contacts."""
+        read_only = UserFactory(role='read_only')
+        group = GroupFactory(owner=read_only)
+        contact = ContactFactory(owner=read_only)
+
+        client = APIClient()
+        client.force_authenticate(user=read_only)
+
+        response = client.post(
+            f'/api/v1/groups/{group.id}/contacts/',
+            {'contact_ids': [str(contact.id)]},
+            format='json'
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
         assert contact not in group.contacts.all()
