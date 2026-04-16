@@ -20,7 +20,7 @@ function formatCurrency(amount: number): string {
 }
 
 export function GivingSummaryCard({ userId }: { userId?: string }) {
-  const { data, isLoading } = useGivingSummary(undefined, userId)
+  const { data, isLoading } = useGivingSummary(userId)
 
   if (isLoading) {
     return (
@@ -72,7 +72,7 @@ export function GivingSummaryCard({ userId }: { userId?: string }) {
       <CardHeader className="p-4 pl-7">
         <CardTitle>Given and Expecting</CardTitle>
         <CardDescription>
-          Annual Goal {formatCurrency(data.annual_goal)} ({formatCurrency(data.monthly_goal)} monthly)
+          {data.fiscal_year_label} Goal {formatCurrency(data.annual_goal)} ({formatCurrency(data.monthly_goal)} monthly)
         </CardDescription>
       </CardHeader>
       <CardContent className="px-4 pl-7 pt-0 pb-4">

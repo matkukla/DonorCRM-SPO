@@ -69,17 +69,6 @@ class JournalCreateSerializer(serializers.ModelSerializer):
         return journal
 
 
-class StageEventSummarySerializer(serializers.Serializer):
-    """
-    Summary of events for a single stage cell in the grid.
-    """
-    has_events = serializers.BooleanField()
-    event_count = serializers.IntegerField()
-    last_event_date = serializers.DateTimeField(allow_null=True)
-    last_event_type = serializers.CharField(allow_null=True)
-    last_event_notes = serializers.CharField(allow_null=True)
-
-
 class JournalContactSerializer(serializers.ModelSerializer):
     """
     Serializer for journal contact membership with ownership validation.
@@ -140,6 +129,14 @@ class JournalContactSerializer(serializers.ModelSerializer):
                     'last_event_type': None,
                     'last_event_notes': None,
                 }
+
+            # Enrich scheduled stage summary with scheduled_date from metadata
+            if stage == 'scheduled' and stage_events:
+                last_metadata = stage_events[0].metadata or {}
+                summaries[stage]['scheduled_date'] = last_metadata.get('scheduled_date')
+            elif stage == 'scheduled':
+                summaries[stage]['scheduled_date'] = None
+
         return summaries
 
     def get_decision(self, obj):
@@ -216,6 +213,15 @@ class JournalStageEventSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "Either journal_contact or contact_id is required."
             )
+
+        # Validate scheduled stage requires scheduled_date in metadata
+        if attrs.get('stage') == 'scheduled':
+            metadata = attrs.get('metadata') or {}
+            if not metadata.get('scheduled_date'):
+                raise serializers.ValidationError({
+                    'metadata': 'scheduled_date is required when stage is scheduled.'
+                })
+
         return attrs
 
     def create(self, validated_data):

@@ -8,18 +8,7 @@ A donor relationship management system for missionaries. Includes contact manage
 
 Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems, and leadership can proactively support their teams through cross-missionary analytics.
 
-## Current Milestone: v2.3 Goal Tracking & View As
-
-**Goal:** Give missionaries a dedicated Goal page to track fundraising progress, and give supervisors/admins a View As mode to see any missionary's data in read-only.
-
-**Target features:**
-- Goal page with fiscal-year progress calculation, journal selection, pacing targets, and progress bars
-- Supervisor/admin View As mode with persistent banner, read-only enforcement, and `X-View-As-User-Id` backend middleware
-- Default data scoping — admins/supervisors see only their own data unless in View As mode
-- Fiscal year configuration (July 1 start) as shared utility
-- MPD dashboard enhancements: Monthly Average tile + Admin MPD Overview section
-
-## Current State (after v2.2)
+## Current State (after v2.3 + Duplicate Contact Checking)
 
 - **Backend:** Django 4.2.28 + DRF, ~26,000 LOC Python (excluding migrations), 9 apps (contacts, gifts, prayers, tasks, journals, insights, users, imports, core)
 - **Frontend:** React 19 + TypeScript + Vite, ~26,000 LOC TypeScript
@@ -29,15 +18,16 @@ Missionaries can manage donor relationships efficiently, with accurate data impo
 - **Import systems:** Raiser's Edge CSV (4 types), Generic CSV (contacts, donations), Smartsheet MPD (Excel/CSV), SPO import pipeline (missionaries, gifts, prayers)
 - **Security:** Rate-limited auth (20/min demo mode), CSP headers (django-csp), authenticated API docs, security-scanned dependencies
 - **Roles:** missionary, supervisor (M2M scoped visibility), coach (M2M, contacts+journals only), admin — get_visible_user_ids() centralized helper
-- **Total milestones shipped:** 7 (v1.0, v1.1, v1.2, v1.3, v2.0, v2.1, v2.2)
-- **Total plans executed:** 141 across 47 phases
+- **Duplicate Contacts:** pg_trgm fuzzy name matching, batch scan, side-by-side merge view, creation-time warning, dismissed pair tracking, merge audit trail
+- **Total milestones shipped:** 9 (v1.0, v1.1, v1.2, v1.3, v2.0, v2.1, v2.2, v2.3, + Duplicate Contact Checking)
+- **Total plans executed:** 178 across 57 phases
 
 ### What's New in v2.2
 
 - UI polish: centered dialogs system-wide, "Potential Donor" rename, gift list Type column, analytics Review Queue and heatmap removed
 - Dashboard: bar/line chart toggle, cross-section drag-and-drop, tightened tile gaps, stale text removed
 - Journal report rebuilt: 4 metric cards, goal progress bar, Contacts by Stage and Decision Status charts, conditional alerts
-- Journal grid: single-click stage checkbox auto-creates event; Decision column between Close and Thank
+- Journal grid: single-click stage checkbox auto-creates event; Decision column between Close and Thank; Scheduled pipeline stage between Contact and Meet with calendar icon, date/time metadata, and analytics
 - Begin Prayer: dedicated "Begin Prayer" button launching expanded Focus Mode with intention selection dialog
 - Mission Supervisor role with scoped visibility → upgraded to M2M (multiple supervisors and coaches per missionary)
 - Roles Redesign: staff→missionary, mission_supervisor→supervisor, Coach role with financial data block
@@ -248,4 +238,4 @@ Missionaries can manage donor relationships efficiently, with accurate data impo
 | staff_users() in managers.py uses stale role='staff' (v2.2 tech debt) | Method appears unused in production; accepted as low-priority tech debt | ⚠️ Revisit |
 
 ---
-*Last updated: 2026-03-12 after v2.3 milestone started*
+*Last updated: 2026-03-21 after Phase 55 complete*

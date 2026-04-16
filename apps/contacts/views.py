@@ -10,13 +10,18 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.contacts.filters import ContactFilterSet
-from apps.contacts.models import Contact, ContactStatus
+from apps.contacts.models import Contact, ContactStatus, DismissedDuplicate
 from apps.contacts.serializers import (
     ContactCreateSerializer,
     ContactDetailSerializer,
     ContactListSerializer,
     ContactJournalMembershipSerializer,
+    DuplicateCheckSerializer,
+    DuplicateMatchSerializer,
+    MergeRequestSerializer,
+    DismissRequestSerializer,
 )
+from apps.contacts.services import find_duplicates_for_contact, merge_contacts
 from apps.core.pagination import StandardPagination
 from apps.core.permissions import (
     IsContactOwnerOrReadAccess,
@@ -62,10 +67,10 @@ class ContactListCreateView(generics.ListCreateAPIView):
         user = self.request.user
 
         visible = get_visible_user_ids(user, request=self.request)
-        if visible is None:
-            queryset = Contact.objects.all()
-        else:
-            queryset = Contact.objects.filter(owner_id__in=visible)
+        queryset = Contact.objects.filter(owner_id__in=visible)
+
+        # Exclude merged contacts from the list
+        queryset = queryset.filter(is_merged=False)
 
         # Optional owner filter for admin/supervisor (intentionally NOT in FilterSet - security)
         owner_id = self.request.query_params.get('owner')
@@ -97,13 +102,12 @@ class ContactDetailView(generics.RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         user = self.request.user
         visible = get_visible_user_ids(user, request=self.request)
-        if visible is None:
-            return Contact.objects.all()
-        return Contact.objects.filter(owner_id__in=visible)
+        queryset = Contact.objects.filter(owner_id__in=visible)
+        return queryset.filter(is_merged=False).select_related(
+            'owner'
+        ).prefetch_related('recurring_gifts', 'groups')
 
     def get_serializer_class(self):
-        if self.request.method in ['PATCH', 'PUT']:
-            return ContactDetailSerializer
         return ContactDetailSerializer
 
 
@@ -123,10 +127,7 @@ class ContactThankView(APIView):
         user = request.user
         try:
             visible = get_visible_user_ids(user, request=request)
-            if visible is None:
-                contact = Contact.objects.get(pk=pk)
-            else:
-                contact = Contact.objects.get(pk=pk, owner_id__in=visible)
+            contact = Contact.objects.get(pk=pk, owner_id__in=visible, is_merged=False)
         except Contact.DoesNotExist:
             return Response(
                 {'detail': 'Contact not found.'},
@@ -151,10 +152,10 @@ class ContactGiftsView(generics.ListAPIView):
         contact_id = self.kwargs.get('pk')
         user = self.request.user
         visible = get_visible_user_ids(user, request=self.request)
-        if visible is None:
-            return Gift.objects.filter(donor_contact_id=contact_id).order_by('-gift_date')
         return Gift.objects.filter(
             donor_contact_id=contact_id, donor_contact__owner_id__in=visible
+        ).select_related(
+            'donor_contact', 'donor_contact__owner', 'fund', 'recurring_gift'
         ).order_by('-gift_date')
 
     def get_serializer_class(self):
@@ -176,10 +177,10 @@ class ContactRecurringGiftsView(generics.ListAPIView):
         contact_id = self.kwargs.get('pk')
         user = self.request.user
         visible = get_visible_user_ids(user, request=self.request)
-        if visible is None:
-            return RecurringGift.objects.filter(donor_contact_id=contact_id).order_by('-start_date')
         return RecurringGift.objects.filter(
             donor_contact_id=contact_id, donor_contact__owner_id__in=visible
+        ).select_related(
+            'donor_contact', 'donor_contact__owner', 'fund'
         ).order_by('-start_date')
 
     def get_serializer_class(self):
@@ -204,10 +205,9 @@ class ContactTasksView(generics.ListAPIView):
         queryset = Task.objects.filter(contact_id=contact_id)
 
         visible = get_visible_user_ids(user, request=self.request)
-        if visible is not None:
-            queryset = queryset.filter(owner_id__in=visible)
+        queryset = queryset.filter(owner_id__in=visible)
 
-        return queryset.order_by('due_date')
+        return queryset.select_related('contact', 'owner').order_by('due_date')
 
     def get_serializer_class(self):
         from apps.tasks.serializers import TaskSerializer
@@ -224,10 +224,7 @@ class ContactEmailsView(APIView):
     def get(self, request):
         user = request.user
         visible = get_visible_user_ids(user, request=request)
-        if visible is None:
-            queryset = Contact.objects.all()
-        else:
-            queryset = Contact.objects.filter(owner_id__in=visible)
+        queryset = Contact.objects.filter(owner_id__in=visible, is_merged=False)
 
         # Apply owner filter (same logic as ContactListCreateView)
         owner_id = request.query_params.get('owner')
@@ -275,10 +272,9 @@ class ContactSearchView(generics.ListAPIView):
         query = self.request.query_params.get('q', '')
 
         visible = get_visible_user_ids(user, request=self.request)
-        if visible is None:
-            queryset = Contact.objects.all()
-        else:
-            queryset = Contact.objects.filter(owner_id__in=visible)
+        queryset = Contact.objects.filter(owner_id__in=visible)
+
+        queryset = queryset.filter(is_merged=False)
 
         if query:
             queryset = queryset.filter(
@@ -327,8 +323,7 @@ class ContactJournalsView(generics.ListAPIView):
 
         # Filter by ownership using visibility helper
         visible = get_visible_user_ids(user, request=self.request)
-        if visible is not None:
-            memberships = memberships.filter(journal__owner_id__in=visible)
+        memberships = memberships.filter(journal__owner_id__in=visible)
 
         return memberships
 
@@ -349,8 +344,7 @@ class ContactPrayerIntentionsView(generics.ListAPIView):
             contact_id=contact_id
         ).select_related('contact')
         visible = get_visible_user_ids(user, request=self.request)
-        if visible is not None:
-            qs = qs.filter(contact__owner_id__in=visible)
+        qs = qs.filter(contact__owner_id__in=visible)
         return qs.order_by('-created_at')
 
     def get_serializer_class(self):
@@ -375,8 +369,7 @@ class ContactJournalEventsView(generics.ListAPIView):
             'triggered_by',
         ).order_by('-created_at')
         visible = get_visible_user_ids(user, request=self.request)
-        if visible is not None:
-            qs = qs.filter(journal_contact__journal__owner_id__in=visible)
+        qs = qs.filter(journal_contact__journal__owner_id__in=visible)
         return qs
 
     def list(self, request, *args, **kwargs):
@@ -399,3 +392,80 @@ class ContactJournalEventsView(generics.ListAPIView):
         if page is not None:
             return self.get_paginated_response(data)
         return Response(data)
+
+
+class DuplicateCheckView(APIView):
+    """POST: Check for duplicates before creating a contact."""
+    permission_classes = [permissions.IsAuthenticated, IsStaffOrAbove]
+
+    @extend_schema(tags=['contacts'], summary='Check for duplicate contacts')
+    def post(self, request):
+        ser = DuplicateCheckSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        duplicates = find_duplicates_for_contact(
+            contact_data=ser.validated_data,
+            owner_id=request.user.id,
+        )
+        out = DuplicateMatchSerializer(duplicates, many=True)
+        return Response(out.data)
+
+
+class MergeContactsView(APIView):
+    """POST: Merge two contacts."""
+    permission_classes = [permissions.IsAuthenticated, IsStaffOrAbove]
+
+    @extend_schema(tags=['contacts'], summary='Merge two contacts')
+    def post(self, request):
+        ser = MergeRequestSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        # Verify both contacts are visible to the requesting user
+        visible = get_visible_user_ids(request.user, request=request)
+        try:
+            survivor_contact = Contact.objects.get(pk=ser.validated_data['survivor_id'], owner_id__in=visible)
+            loser_contact = Contact.objects.get(pk=ser.validated_data['loser_id'], owner_id__in=visible)
+        except Contact.DoesNotExist:
+            return Response({'detail': 'Contact not found.'}, status=status.HTTP_404_NOT_FOUND)
+        if survivor_contact.owner_id != loser_contact.owner_id:
+            return Response({'detail': 'Contacts must belong to the same owner.'}, status=status.HTTP_400_BAD_REQUEST)
+        # Only the contact owner or an admin can perform merges
+        if request.user.role != 'admin' and survivor_contact.owner_id != request.user.id:
+            return Response({'detail': 'You do not have permission to merge these contacts.'}, status=status.HTTP_403_FORBIDDEN)
+        try:
+            survivor = merge_contacts(
+                survivor_id=ser.validated_data['survivor_id'],
+                loser_id=ser.validated_data['loser_id'],
+                merged_by=request.user,
+            )
+        except (Contact.DoesNotExist, ValueError) as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(ContactDetailSerializer(survivor).data)
+
+
+class DismissDuplicateView(APIView):
+    """POST: Dismiss a duplicate pair so it won't be flagged again."""
+    permission_classes = [permissions.IsAuthenticated, IsStaffOrAbove]
+
+    @extend_schema(tags=['contacts'], summary='Dismiss duplicate pair')
+    def post(self, request):
+        ser = DismissRequestSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        # Verify both contacts exist and are visible to the user
+        visible = get_visible_user_ids(request.user, request=request)
+        try:
+            contact_a = Contact.objects.get(pk=ser.validated_data['contact_a_id'], owner_id__in=visible)
+            contact_b = Contact.objects.get(pk=ser.validated_data['contact_b_id'], owner_id__in=visible)
+        except Contact.DoesNotExist:
+            return Response({'detail': 'Contact not found.'}, status=status.HTTP_404_NOT_FOUND)
+        # Only the contact owner or an admin can dismiss duplicates
+        if request.user.role != 'admin' and contact_a.owner_id != request.user.id:
+            return Response({'detail': 'You do not have permission to dismiss these duplicates.'}, status=status.HTTP_403_FORBIDDEN)
+        a_id = ser.validated_data['contact_a_id']
+        b_id = ser.validated_data['contact_b_id']
+        if str(a_id) > str(b_id):
+            a_id, b_id = b_id, a_id
+        DismissedDuplicate.objects.get_or_create(
+            contact_a_id=a_id,
+            contact_b_id=b_id,
+            defaults={'dismissed_by': request.user},
+        )
+        return Response({'detail': 'Pair dismissed.'}, status=status.HTTP_201_CREATED)

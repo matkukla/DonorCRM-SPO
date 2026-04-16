@@ -5,16 +5,23 @@ import { getDashboardSummary, getGivingSummary, getMonthlyGifts, getUserDashboar
 
 export const DEFAULT_TILE_ORDER = [
   "giving-summary", "monthly-gifts",
-  "thank-you", "recent-donations-stat", "active-pledges", "needs-attention-stat",
+  "thank-you", "missed-donations", "active-pledges", "tasks-todo",
   "needs-attention", "support-progress", "recent-donations", "late-donations",
   "mpd-financial-overview", "mpd-overview-table",
 ]
 
 const VALID_TILES = new Set(DEFAULT_TILE_ORDER)
 
+// Map old tile IDs to new ones for users with saved custom orders
+const TILE_ID_MIGRATIONS: Record<string, string> = {
+  "recent-donations-stat": "missed-donations",
+  "needs-attention-stat": "tasks-todo",
+}
+
 function normalizeTileOrder(saved: string[] | undefined): string[] {
   if (!saved || saved.length === 0) return [...DEFAULT_TILE_ORDER]
-  const filtered = saved.filter((id) => VALID_TILES.has(id))
+  const migrated = saved.map((id) => TILE_ID_MIGRATIONS[id] || id)
+  const filtered = [...new Set(migrated)].filter((id) => VALID_TILES.has(id))
   const missing = DEFAULT_TILE_ORDER.filter((id) => !filtered.includes(id))
   return [...filtered, ...missing]
 }
@@ -83,10 +90,10 @@ export function useDashboardSummary(userId?: string) {
   })
 }
 
-export function useGivingSummary(year?: number, userId?: string) {
+export function useGivingSummary(userId?: string) {
   return useQuery({
-    queryKey: ["dashboard", "giving-summary", year, userId ?? "me"],
-    queryFn: () => getGivingSummary(year, userId),
+    queryKey: ["dashboard", "giving-summary", userId ?? "me"],
+    queryFn: () => getGivingSummary(userId),
     staleTime: 5 * 60 * 1000, // 5 minutes
   })
 }

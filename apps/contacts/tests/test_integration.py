@@ -188,7 +188,7 @@ class TestPermissionBoundaries:
         assert contact_id not in contact_ids
 
     def test_admin_sees_own_contacts_only(self, authenticated_client, admin_client):
-        """Test admins see only their own contacts (cross-user access via View As only)."""
+        """Test admins see only their own contacts by default (cross-user via View As)."""
         client, user = authenticated_client
         admin_cli, admin = admin_client
 

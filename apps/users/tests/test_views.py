@@ -111,6 +111,61 @@ class TestPasswordChange:
 
 
 @pytest.mark.django_db
+class TestAdminPasswordReset:
+    """Tests for admin-initiated password reset endpoint."""
+
+    def test_admin_can_reset_user_password(self, admin_client, user_factory):
+        """Admin can reset another user's password without knowing old password."""
+        client, admin = admin_client
+        target_user = user_factory(role='missionary')
+
+        response = client.post(f'/api/v1/users/{target_user.id}/password/', {
+            'new_password': 'newSecurePass123!',
+            'new_password_confirm': 'newSecurePass123!',
+        })
+
+        assert response.status_code == status.HTTP_200_OK
+        target_user.refresh_from_db()
+        assert target_user.check_password('newSecurePass123!')
+
+    def test_non_admin_cannot_reset_password(self, authenticated_client, user_factory):
+        """Non-admin users cannot reset another user's password."""
+        client, missionary = authenticated_client
+        target_user = user_factory(role='missionary')
+
+        response = client.post(f'/api/v1/users/{target_user.id}/password/', {
+            'new_password': 'newSecurePass123!',
+            'new_password_confirm': 'newSecurePass123!',
+        })
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_passwords_must_match(self, admin_client, user_factory):
+        """Password confirmation must match."""
+        client, admin = admin_client
+        target_user = user_factory(role='missionary')
+
+        response = client.post(f'/api/v1/users/{target_user.id}/password/', {
+            'new_password': 'newSecurePass123!',
+            'new_password_confirm': 'differentPassword123!',
+        })
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_weak_password_rejected(self, admin_client, user_factory):
+        """Django password validators reject weak passwords."""
+        client, admin = admin_client
+        target_user = user_factory(role='missionary')
+
+        response = client.post(f'/api/v1/users/{target_user.id}/password/', {
+            'new_password': '123',
+            'new_password_confirm': '123',
+        })
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+@pytest.mark.django_db
 class TestAuthEndpoints:
     """Tests for authentication endpoints."""
 

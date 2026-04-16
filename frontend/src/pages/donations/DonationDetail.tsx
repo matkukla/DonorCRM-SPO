@@ -18,7 +18,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Edit, Trash2, User, Calendar, FileText, Hash, DollarSign, CreditCard } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
+import { Edit, Trash2, User, Calendar, FileText, Hash, DollarSign, CreditCard, Repeat } from "lucide-react"
 import { formatLocalDate } from "@/lib/utils"
 
 function formatCurrency(amount: string | number): string {
@@ -145,6 +147,39 @@ export function DonationDetailPanel({ open, giftId, onClose }: DonationDetailPan
                 )}
               </div>
             </div>
+
+            {/* Recurring Payment Info */}
+            {gift.is_recurring && (
+              <div className="space-y-4">
+                <Separator />
+                <div className="flex items-center gap-2">
+                  <Repeat className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="text-sm font-semibold">Recurring Payment</h3>
+                  <Badge variant="outline" className="text-xs">
+                    {gift.recurring_gift_frequency || "Recurring"}
+                  </Badge>
+                  {gift.recurring_gift_status && (
+                    <Badge
+                      variant={gift.recurring_gift_status === "Active" ? "default" : "secondary"}
+                      className="text-xs"
+                    >
+                      {gift.recurring_gift_status}
+                    </Badge>
+                  )}
+                </div>
+                {gift.recurring_gift && (
+                  <p className="text-sm text-muted-foreground">
+                    Generated from recurring pledge.{" "}
+                    <Link
+                      to={`/pledges/${gift.recurring_gift}`}
+                      className="text-primary hover:underline"
+                    >
+                      View pledge details
+                    </Link>
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Solicitor Credits -- only shown when credits exist */}
             {gift.credits && gift.credits.length > 0 && (

@@ -303,6 +303,7 @@ def import_generic_contacts(
                             owner=owner,
                             first_name__iexact=first_name,
                             last_name__iexact=last_name,
+                            is_merged=False,
                         )
                         if matches.count() > 1:
                             multiple_matches = True
@@ -323,6 +324,7 @@ def import_generic_contacts(
                         contact = Contact.objects.filter(
                             owner=owner,
                             email__iexact=email,
+                            is_merged=False,
                         ).first()
 
                     elif match_by == 'external_id':
@@ -339,6 +341,7 @@ def import_generic_contacts(
                         contact = Contact.objects.filter(
                             owner=owner,
                             external_id=external_id,
+                            is_merged=False,
                         ).first()
 
                     if multiple_matches:
@@ -626,6 +629,7 @@ def import_generic_donations(
                             owner=owner,
                             first_name__iexact=first_name,
                             last_name__iexact=last_name,
+                            is_merged=False,
                         ).first()
                         if not contact:
                             errors.append({
@@ -652,6 +656,7 @@ def import_generic_donations(
                         contact = Contact.objects.filter(
                             owner=owner,
                             email__iexact=email,
+                            is_merged=False,
                         ).first()
                         if not contact:
                             errors.append({
@@ -678,6 +683,7 @@ def import_generic_donations(
                         contact = Contact.objects.filter(
                             owner=owner,
                             external_id=ext_id,
+                            is_merged=False,
                         ).first()
                         if not contact:
                             errors.append({

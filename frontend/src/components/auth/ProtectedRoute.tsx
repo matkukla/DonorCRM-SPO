@@ -3,10 +3,12 @@ import { Navigate, useLocation } from "react-router-dom"
 import { useAuth } from "@/providers/AuthProvider"
 import { toast } from "sonner"
 import type { ReactNode } from "react"
+import type { UserRole } from "@/api/users"
+import { roleHierarchy } from "@/api/users"
 
 interface ProtectedRouteProps {
   children: ReactNode
-  requiredRole?: "admin" | "missionary" | "supervisor" | "coach"
+  requiredRole?: UserRole
 }
 
 /**
@@ -20,7 +22,6 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
 
   useEffect(() => {
     if (requiredRole && user) {
-      const roleHierarchy: Record<string, number> = { admin: 5, supervisor: 4, coach: 3, missionary: 2 }
       const userLevel = roleHierarchy[user.role]
       const requiredLevel = roleHierarchy[requiredRole]
       if (userLevel < requiredLevel && !toastShown.current) {
@@ -46,7 +47,6 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
 
   // Redirect to home if insufficient role
   if (requiredRole && user) {
-    const roleHierarchy: Record<string, number> = { admin: 5, supervisor: 4, coach: 3, missionary: 2 }
     const userLevel = roleHierarchy[user.role]
     const requiredLevel = roleHierarchy[requiredRole]
 

@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.3
-milestone_name: Goal Tracking & View As
-status: executing
-stopped_at: Completed 53-03-PLAN.md
-last_updated: "2026-03-17T07:27:08.157Z"
-last_activity: 2026-03-18 - Completed quick task 260318-gc8: check test_data mapping
+milestone: v1.0
+milestone_name: milestone
+status: v1.0 milestone complete
+stopped_at: Completed 01-05-PLAN.md
+last_updated: "2026-03-28T19:02:38.412Z"
+last_activity: 2026-03-28
 progress:
-  total_phases: 7
-  completed_phases: 4
-  total_plans: 22
-  completed_plans: 20
-  percent: 8
+  total_phases: 2
+  completed_phases: 2
+  total_plans: 8
+  completed_plans: 8
 ---
 
 # Project State
@@ -21,20 +20,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-12)
 
 **Core value:** Missionaries can manage donor relationships efficiently, with accurate data imported from their organization's systems, and leadership can proactively support their teams through cross-missionary analytics.
-**Current focus:** Phase 48 — MPD Dashboard Enhancements (ready to plan)
+**Current focus:** Phase 56 — task-broadcasting
 
 ## Current Position
 
-Phase: 48 of 53 (MPD Dashboard Enhancements)
-Plan: 02 of 2 (next to execute)
-Status: Executing — Plan 01 complete, Plan 02 pending
-Last activity: 2026-03-18 - Completed quick task 260318-gc8: check test_data mapping
-
-Progress: [█░░░░░░░░░] 8% — 0/6 phases, 1/2 plans (phase 48)
+Phase: 01
+Plan: Not started
 
 ## Performance Metrics
 
 **Velocity:**
+
 - Total plans completed: 141 (across v1.0–v2.2)
 - Total phases: 47 complete
 - Total milestones: 7 shipped
@@ -69,6 +65,16 @@ Progress: [█░░░░░░░░░] 8% — 0/6 phases, 1/2 plans (phase 4
 | Phase 53 P01 | 3min | 2 tasks | 6 files |
 | Phase 53-view-as-frontend P02 | 8min | 2 tasks | 3 files |
 | Phase 53 P03 | 10min | 2 tasks | 14 files |
+| Phase 55 P01 | 4min | 1 tasks | 5 files |
+| Phase 55 P02 | 3min | 2 tasks | 3 files |
+| Phase 55 P03 | 3min | 2 tasks | 3 files |
+| Phase 56 P01 | 3min | 2 tasks | 4 files |
+| Phase 56 P03 | 2min | 2 tasks | 3 files |
+| Phase 56 P02 | 6min | 2 tasks | 7 files |
+| Phase 56 P05 | 5min | 2 tasks | 5 files |
+| Phase 56 P04 | 5min | 2 tasks | 3 files |
+| Phase 01-dup P06 | 6min | 2 tasks | 10 files |
+| Phase 01 P05 | 4min | 1 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -77,9 +83,11 @@ Progress: [█░░░░░░░░░] 8% — 0/6 phases, 1/2 plans (phase 4
 All decisions logged in PROJECT.md Key Decisions table.
 
 Recent decisions relevant to v2.3 (Phase 48):
+
 - [48-01]: monthly_average positioned after user_name and before current_mpd_cap in MPDOverviewView — matches intended table column order
 
 Recent decisions relevant to v2.3:
+
 - [quick-15]: get_support_progress() scoped to donor_contact__owner=user for all roles — Monthly Support Goal is personal
 - [Phase 47]: get_visible_user_ids() returns None sentinel for all-access roles — this sentinel will need to change under SCOPE-01 (admins default to own data)
 - [Phase 46]: supervised_users field name kept in CurrentUserSerializer — frontend uses it for supervisor and coach
@@ -124,10 +132,32 @@ Recent decisions relevant to v2.3:
 - [Phase 53-02]: effectiveMpdData = mpdData directly — X-View-As-User-Id header scopes MPD server-side, no client-side missionary lookup needed
 - [Phase 53]: [53-03]: StageCell and EventTimelineDrawer use useViewAs() directly inside the component rather than via props — avoids prop drilling through JournalGrid intermediary
 - [Phase 53]: [53-03]: ContactDetail/DonationDetail isReadOnly extended as isViewingAs || existingCondition — existing !isReadOnly guards cover all mutations automatically
+- [Phase 55]: SCHEDULED inserted between CONTACT and MEET, making 7-stage pipeline; migration is choices-only AlterField; goal services already exclude meeting_scheduled via inclusive allowlist
+- [Phase 55]: OPTIONAL_STAGES array pattern for skippable stages in checkStageTransition -- extensible for future optional stages
+- [Phase 55]: LogEventDialog state managed inside StageCell (not prop-drilled) to keep component self-contained
+- [Phase 55]: Scheduled date parsed with T00:00:00 suffix in EventTimelineDrawer to prevent UTC date display bug
+- [Phase 55]: Scheduled stage teal color hsl(200 60% 50%) in ReportCharts -- visually distinct from existing chart CSS variables
+- [Phase 56]: PermissionError raised instead of assert for role checks in resolve_recipients
+- [Phase 56]: cancel_broadcast deletes incomplete copies rather than marking cancelled, per CONTEXT.md requirement
+- [Phase 56]: Broadcast mutations invalidate broadcasts, tasks, and dashboard query keys for cross-component cache consistency
+- [Phase 56]: [56-02]: _broadcast_queryset_for_user shared helper for DRY role-based filtering and annotation across broadcast views
+- [Phase 56]: [56-02]: Broadcast URL patterns placed before <uuid:pk> in urls.py to prevent UUID capture of literal path segments
+- [Phase 56]: [56-02]: Missionary edit/delete restriction in TaskDetailView.update/destroy checks broadcast_id + owner_id + role rather than custom permission class
+- [Phase 56]: [56-05]: BroadcastProgress inline helper for fraction + mini bar; supervisor TeamPage section uses simple Table with page_size:10; BroadcastDetail uses local useState for copies pagination
+- [Phase 56]: Button-style toggle for broadcast target selection (no RadioGroup UI component); Mark Complete separated from canModify guard for missionaries
+- [Phase 01-06]: DuplicateWarningDialog-focused tests chosen over full ContactForm render tests for reliability
+- [Phase 01-06]: Pre-save duplicate check only fires for new contacts, not edits; graceful degradation on API failure
+- [Phase 01]: Used accessible clickable button cells with role=radio instead of nested RadioGroup for merge field rows
+- [Phase 01]: Added external_id and external_constituent_id to ContactDetailSerializer and MERGEABLE_FIELDS for merge comparison
+
+### Roadmap Evolution
+
+- Phase 55 added: Add Scheduled pipeline stage to journal system
+- Phase 56 added: Task Broadcasting — broadcast tasks to targeted user groups with completion tracking (GitHub #32)
 
 ### Pending Todos
 
-17 pending todo(s). See `.planning/todos/pending/`.
+21 pending todo(s). See `.planning/todos/pending/`.
 
 ### Blockers/Concerns
 
@@ -138,9 +168,13 @@ Recent decisions relevant to v2.3:
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260318-gc8 | check all the files in the test_data folder and make sure all the data in them will get mapped to the application correctly | 2026-03-18 | 53a8b34 | [260318-gc8-check-all-the-files-in-the-test-data-fol](./quick/260318-gc8-check-all-the-files-in-the-test-data-fol/) |
+| 260321-e71 | Add MPD Resources sidebar section with Links and Pacing Calculator pages | 2026-03-21 | c12ee1d | [260321-e71-add-mpd-resources-sidebar-section-with-l](./quick/260321-e71-add-mpd-resources-sidebar-section-with-l/) |
+| 260323-cnr | Add Decisions progress bar to Goal page + inline journal goal editing | 2026-03-23 | 909e73d | [260323-cnr-add-decisions-progress-bar-to-goal-page-](./quick/260323-cnr-add-decisions-progress-bar-to-goal-page-/) |
+| 260323-d59 | Implement audit_import_health management command (GH-24) | 2026-03-23 | 3b62559 | [260323-d59-implement-audit-import-health-management](./quick/260323-d59-implement-audit-import-health-management/) |
 
 ## Session Continuity
 
-Last session: 2026-03-17T07:27:08.138Z
-Stopped at: Completed 53-03-PLAN.md
+Last session: 2026-03-27T22:16:19.498Z
+Last activity: 2026-03-28
+Stopped at: Completed 01-05-PLAN.md
 Resume: Plan Phase 49 with `/gsd:plan-phase 49`

@@ -31,12 +31,9 @@ class TaskListCreateView(generics.ListCreateAPIView):
         user = self.request.user
 
         visible = get_visible_user_ids(user, request=self.request)
-        if visible is None:
-            queryset = Task.objects.all()
-        else:
-            queryset = Task.objects.filter(owner_id__in=visible)
+        queryset = Task.objects.filter(owner_id__in=visible)
 
-        return queryset.select_related('owner', 'contact')
+        return queryset.select_related('owner', 'contact', 'broadcast__sender')
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -56,9 +53,35 @@ class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         user = self.request.user
         visible = get_visible_user_ids(user, request=self.request)
-        if visible is None:
-            return Task.objects.all()
-        return Task.objects.filter(owner_id__in=visible)
+        return Task.objects.filter(owner_id__in=visible).select_related(
+            'owner', 'contact', 'broadcast__sender'
+        )
+
+    def update(self, request, *args, **kwargs):
+        task = self.get_object()
+        if (
+            task.broadcast_id
+            and str(task.owner_id) == str(request.user.id)
+            and request.user.role == 'missionary'
+        ):
+            return Response(
+                {'detail': 'Broadcast tasks cannot be edited by recipients.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        task = self.get_object()
+        if (
+            task.broadcast_id
+            and str(task.owner_id) == str(request.user.id)
+            and request.user.role == 'missionary'
+        ):
+            return Response(
+                {'detail': 'Broadcast tasks cannot be deleted by recipients.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().destroy(request, *args, **kwargs)
 
 
 class TaskCompleteView(APIView):
@@ -71,10 +94,7 @@ class TaskCompleteView(APIView):
         user = request.user
         try:
             visible = get_visible_user_ids(user, request=request)
-            if visible is None:
-                task = Task.objects.get(pk=pk)
-            else:
-                task = Task.objects.get(pk=pk, owner_id__in=visible)
+            task = Task.objects.get(pk=pk, owner_id__in=visible)
         except Task.DoesNotExist:
             return Response(
                 {'detail': 'Task not found.'},
@@ -105,11 +125,10 @@ class OverdueTasksView(generics.ListAPIView):
         base_query = Task.objects.filter(
             status__in=[TaskStatus.PENDING, TaskStatus.IN_PROGRESS],
             due_date__lt=today
-        )
+        ).select_related('contact', 'owner')
 
         visible = get_visible_user_ids(user, request=self.request)
-        if visible is not None:
-            base_query = base_query.filter(owner_id__in=visible)
+        base_query = base_query.filter(owner_id__in=visible)
         return base_query
 
 
@@ -130,9 +149,8 @@ class UpcomingTasksView(generics.ListAPIView):
             status__in=[TaskStatus.PENDING, TaskStatus.IN_PROGRESS],
             due_date__gte=today,
             due_date__lte=end_date
-        )
+        ).select_related('contact', 'owner')
 
         visible = get_visible_user_ids(user, request=self.request)
-        if visible is not None:
-            base_query = base_query.filter(owner_id__in=visible)
+        base_query = base_query.filter(owner_id__in=visible)
         return base_query

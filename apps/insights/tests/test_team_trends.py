@@ -152,10 +152,10 @@ class TestTeamTrendsView:
         staff = UserFactory(role='missionary')
         contact = ContactFactory(owner=staff)
 
-        # Create gifts in current week
+        # Create gifts in current week (use same day to avoid week-boundary issues)
         today = timezone.now().date()
         GiftFactory(donor_contact=contact, gift_date=today, amount_cents=10000)
-        GiftFactory(donor_contact=contact, gift_date=today - timedelta(days=2), amount_cents=5000)
+        GiftFactory(donor_contact=contact, gift_date=today, amount_cents=5000)
 
         response = client.get('/api/v1/insights/admin/team-trends/')
         assert response.status_code == status.HTTP_200_OK

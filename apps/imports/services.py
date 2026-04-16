@@ -139,7 +139,7 @@ def parse_contacts_csv(file_content: str, user) -> Tuple[List[dict], List[dict]]
                 row_errors.append(f'Invalid email format: "{email}"')
             elif email in seen_emails:
                 row_errors.append(f'Duplicate email in file: {email}')
-            elif Contact.objects.filter(owner=user, email=email).exists():
+            elif Contact.objects.filter(owner=user, email=email, is_merged=False).exists():
                 row_errors.append(f'Contact with email "{email}" already exists in your account')
             else:
                 seen_emails.add(email)
@@ -271,7 +271,7 @@ def export_gifts_csv(queryset) -> str:
             'contact_first_name': sanitize_csv_value(gift.donor_contact.first_name),
             'contact_last_name': sanitize_csv_value(gift.donor_contact.last_name),
             'contact_email': sanitize_csv_value(gift.donor_contact.email),
-            'amount': str(gift.amount_dollars),
+            'amount': f"{gift.amount_dollars:.2f}",
             'gift_date': str(gift.gift_date),
             'external_gift_id': sanitize_csv_value(gift.external_gift_id),
             'description': sanitize_csv_value(gift.description),

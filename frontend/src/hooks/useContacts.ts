@@ -12,8 +12,11 @@ import {
   getContactTasks,
   getContactJournals,
   getContactJournalEvents,
+  checkDuplicates,
+  mergeContacts,
+  dismissDuplicate,
 } from "@/api/contacts"
-import type { ContactCreate, ContactUpdate } from "@/api/contacts"
+import type { ContactCreate, ContactUpdate, MergeRequest, DismissRequest } from "@/api/contacts"
 
 export function useContacts(
   params: Record<string, string> = {},
@@ -134,5 +137,39 @@ export function useContactJournalEvents(contactId: string) {
     },
     initialPageParam: 1,
     enabled: !!contactId,
+  })
+}
+
+/** Hook for checking duplicates before creation */
+export function useCheckDuplicates() {
+  return useMutation({
+    mutationFn: (data: { first_name?: string; last_name?: string; email?: string; phone?: string }) =>
+      checkDuplicates(data),
+  })
+}
+
+/** Hook for merging contacts */
+export function useMergeContacts() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (data: MergeRequest) => mergeContacts(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["contacts"] })
+      queryClient.invalidateQueries({ queryKey: ["duplicates"] })
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] })
+    },
+  })
+}
+
+/** Hook for dismissing a duplicate pair */
+export function useDismissDuplicate() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (data: DismissRequest) => dismissDuplicate(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["duplicates"] })
+    },
   })
 }

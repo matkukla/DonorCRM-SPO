@@ -69,10 +69,7 @@ class JournalListCreateView(generics.ListCreateAPIView):
         user = self.request.user
 
         visible = get_visible_user_ids(user, request=self.request)
-        if visible is None:
-            queryset = Journal.objects.all()
-        else:
-            queryset = Journal.objects.filter(owner_id__in=visible)
+        queryset = Journal.objects.filter(owner_id__in=visible)
 
         # Filter by archive status:
         # - is_archived=true  → show only archived
@@ -123,8 +120,6 @@ class JournalDetailView(generics.RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         user = self.request.user
         visible = get_visible_user_ids(user, request=self.request)
-        if visible is None:
-            return Journal.objects.all().select_related('owner')
         return Journal.objects.filter(owner_id__in=visible).select_related('owner')
 
     def get_serializer_class(self):
@@ -162,12 +157,9 @@ class JournalStageEventListCreateView(generics.ListCreateAPIView):
         user = self.request.user
 
         visible = get_visible_user_ids(user, request=self.request)
-        if visible is None:
-            queryset = JournalStageEvent.objects.all()
-        else:
-            queryset = JournalStageEvent.objects.filter(
-                journal_contact__journal__owner_id__in=visible
-            )
+        queryset = JournalStageEvent.objects.filter(
+            journal_contact__journal__owner_id__in=visible
+        )
 
         # Filter by journal_contact_id if provided
         journal_contact_id = self.request.query_params.get('journal_contact_id')
@@ -254,8 +246,7 @@ class JournalContactListCreateView(generics.ListCreateAPIView):
 
         # Scope by visible users
         visible = get_visible_user_ids(user, request=self.request)
-        if visible is not None:
-            queryset = queryset.filter(journal__owner_id__in=visible)
+        queryset = queryset.filter(journal__owner_id__in=visible)
 
         # Always exclude archived journals
         queryset = queryset.filter(journal__is_archived=False)
@@ -337,8 +328,7 @@ class DecisionListCreateView(generics.ListCreateAPIView):
 
         # Scope by visible users
         visible = get_visible_user_ids(user, request=self.request)
-        if visible is not None:
-            queryset = queryset.filter(journal_contact__journal__owner_id__in=visible)
+        queryset = queryset.filter(journal_contact__journal__owner_id__in=visible)
 
         # Filter by journal_contact_id if provided
         journal_contact_id = self.request.query_params.get('journal_contact_id')
@@ -390,8 +380,7 @@ class DecisionDetailView(generics.RetrieveUpdateAPIView):
 
         # Scope by visible users
         visible = get_visible_user_ids(user, request=self.request)
-        if visible is not None:
-            queryset = queryset.filter(journal_contact__journal__owner_id__in=visible)
+        queryset = queryset.filter(journal_contact__journal__owner_id__in=visible)
 
         return queryset
 
@@ -417,8 +406,7 @@ class DecisionHistoryListView(generics.ListAPIView):
 
         # Scope by visible users
         visible = get_visible_user_ids(user, request=self.request)
-        if visible is not None:
-            queryset = queryset.filter(decision__journal_contact__journal__owner_id__in=visible)
+        queryset = queryset.filter(decision__journal_contact__journal__owner_id__in=visible)
 
         # Filter by decision_id if provided
         decision_id = self.request.query_params.get('decision_id')
@@ -446,10 +434,7 @@ class NextStepListCreateView(generics.ListCreateAPIView):
         user = self.request.user
 
         visible = get_visible_user_ids(user, request=self.request)
-        if visible is None:
-            qs = NextStep.objects.all()
-        else:
-            qs = NextStep.objects.filter(journal_contact__journal__owner_id__in=visible)
+        qs = NextStep.objects.filter(journal_contact__journal__owner_id__in=visible)
 
         # Filter by journal_contact
         journal_contact_id = self.request.query_params.get('journal_contact')
@@ -478,10 +463,7 @@ class NextStepDetailView(generics.RetrieveUpdateDestroyAPIView):
         user = self.request.user
 
         visible = get_visible_user_ids(user, request=self.request)
-        if visible is None:
-            qs = NextStep.objects.all()
-        else:
-            qs = NextStep.objects.filter(journal_contact__journal__owner_id__in=visible)
+        qs = NextStep.objects.filter(journal_contact__journal__owner_id__in=visible)
 
         return qs.select_related('journal_contact__journal', 'journal_contact__contact')
 
@@ -499,7 +481,7 @@ class JournalAnalyticsViewSet(viewsets.ViewSet):
     def decision_trends(self, request):
         """Decision counts over time (bar chart data)."""
         visible = self._get_visible(request)
-        qs = Decision.objects.all() if visible is None else Decision.objects.filter(
+        qs = Decision.objects.filter(
             journal_contact__journal__owner_id__in=visible
         )
         trends = qs.annotate(
@@ -517,7 +499,7 @@ class JournalAnalyticsViewSet(viewsets.ViewSet):
     def stage_activity(self, request):
         """Event counts by stage over time (multi-line chart data)."""
         visible = self._get_visible(request)
-        qs = JournalStageEvent.objects.all() if visible is None else JournalStageEvent.objects.filter(
+        qs = JournalStageEvent.objects.filter(
             journal_contact__journal__owner_id__in=visible
         )
         activity = qs.annotate(
@@ -528,7 +510,7 @@ class JournalAnalyticsViewSet(viewsets.ViewSet):
 
         # Pivot data so each month has all stage counts
         by_month = defaultdict(lambda: {
-            'contact': 0, 'meet': 0, 'close': 0,
+            'contact': 0, 'scheduled': 0, 'meet': 0, 'close': 0,
             'decision': 0, 'thank': 0, 'next_steps': 0
         })
 
@@ -550,7 +532,7 @@ class JournalAnalyticsViewSet(viewsets.ViewSet):
         ).order_by('-created_at').values('stage')[:1]
 
         visible = self._get_visible(request)
-        jc_qs = JournalContact.objects.all() if visible is None else JournalContact.objects.filter(
+        jc_qs = JournalContact.objects.filter(
             journal__owner_id__in=visible
         )
         breakdown = jc_qs.annotate(
@@ -570,7 +552,7 @@ class JournalAnalyticsViewSet(viewsets.ViewSet):
         from django.db.models import F
 
         visible = self._get_visible(request)
-        ns_qs = NextStep.objects.all() if visible is None else NextStep.objects.filter(
+        ns_qs = NextStep.objects.filter(
             journal_contact__journal__owner_id__in=visible
         )
         steps = ns_qs.filter(
@@ -609,7 +591,7 @@ class JournalAnalyticsViewSet(viewsets.ViewSet):
 
         # Permission check: owner, admin, or supervisor with visibility
         visible = self._get_visible(request)
-        if visible is not None and journal.owner_id not in visible:
+        if journal.owner_id not in visible:
             return Response(
                 {'detail': 'You do not have permission to view this journal.'},
                 status=status.HTTP_403_FORBIDDEN,

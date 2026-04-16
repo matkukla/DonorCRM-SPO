@@ -8,7 +8,7 @@ from rest_framework.views import APIView
 from django.db import transaction
 
 from apps.journals.models import Journal
-from apps.users.goal_services import get_goal_progress
+from apps.users.goal_services import get_decisions_progress, get_goal_progress
 from apps.users.models import GoalJournalSelection
 
 
@@ -22,7 +22,9 @@ class GoalView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        data = get_goal_progress(request.user)
+        user = getattr(request, 'view_as_user', None) or request.user
+        data = get_goal_progress(user)
+        data.update(get_decisions_progress(user))
         return Response(data)
 
     def patch(self, request):
@@ -75,4 +77,6 @@ class GoalView(APIView):
                     for j in valid_journals
                 ])
 
-        return Response(get_goal_progress(user))
+        data = get_goal_progress(user)
+        data.update(get_decisions_progress(user))
+        return Response(data)

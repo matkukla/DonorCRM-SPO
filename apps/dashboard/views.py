@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.permissions import get_visible_user_ids
-from apps.core.utils import get_safe_int_param, get_safe_year_param
+from apps.core.utils import get_safe_int_param
 from apps.users.models import User
 
 from apps.dashboard.services import (
@@ -42,12 +42,16 @@ def _resolve_target_user(request):
     target_user_id = request.query_params.get('user_id')
 
     if target_user_id and str(target_user_id) != str(user.id):
+        try:
+            target_uuid = uuid.UUID(target_user_id)
+        except ValueError:
+            raise NotFound('User not found.')
         # Admin and supervisor may explicitly select any active user via the
         # dashboard dropdown. This is distinct from default data scoping
         # (get_visible_user_ids), which governs list views, not dashboard selection.
         if user.role not in ['admin', 'supervisor']:
             visible = get_visible_user_ids(user, request=request)
-            if visible is not None and uuid.UUID(target_user_id) not in visible:
+            if target_uuid not in visible:
                 raise PermissionDenied(
                     'You do not have permission to view this user\'s dashboard.'
                 )
@@ -122,6 +126,7 @@ class NeedsAttentionView(APIView):
         # late_pledges is already an empty list (no serialization needed)
         data['overdue_tasks'] = TaskSerializer(data['overdue_tasks'], many=True).data
         data['tasks_due_today'] = TaskSerializer(data['tasks_due_today'], many=True).data
+        data['broadcast_tasks'] = TaskSerializer(data['broadcast_tasks'], many=True).data
         data['thank_you_needed'] = ContactListSerializer(data['thank_you_needed'], many=True).data
 
         return Response(data)
@@ -221,13 +226,11 @@ class GivingSummaryView(APIView):
 
     @extend_schema(
         tags=['dashboard'],
-        summary='Get giving summary',
-        parameters=[OpenApiParameter(name='year', description='Calendar year (default: current)', type=int)]
+        summary='Get giving summary (fiscal year Jul 1 - Jun 30)',
     )
     def get(self, request):
         target = _resolve_target_user(request)
-        year = get_safe_year_param(request, 'year')
-        return Response(get_giving_summary(target, year=year))
+        return Response(get_giving_summary(target))
 
 
 class MonthlyGiftsView(APIView):
@@ -253,9 +256,13 @@ class UserDashboardLayoutView(APIView):
 
     @extend_schema(tags=['dashboard'], summary='Get user dashboard layout')
     def get(self, request, pk):
+        try:
+            pk = uuid.UUID(pk) if not isinstance(pk, uuid.UUID) else pk
+        except ValueError:
+            raise NotFound('User not found.')
         if request.user.role not in ['admin', 'supervisor']:
             visible = get_visible_user_ids(request.user, request=request)
-            if visible is not None and pk not in visible:
+            if pk not in visible:
                 raise PermissionDenied('You do not have permission to view this user\'s dashboard.')
         target = User.objects.filter(id=pk, is_active=True).first()
         if not target:

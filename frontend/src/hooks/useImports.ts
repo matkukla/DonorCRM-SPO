@@ -87,7 +87,8 @@ export function useREImport(importType: REImportType) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (file: File) => importRE(importType, file),
+    mutationFn: ({ file, force = false }: { file: File; force?: boolean }) =>
+      importRE(importType, file, force),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['importBatches'] })
       // Invalidate related data queries

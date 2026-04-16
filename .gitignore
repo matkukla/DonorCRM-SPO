@@ -93,7 +93,6 @@ credentials.json
 
 # Claude Code local config and skills
 .claude/
-.planning/
 
 # Manual Playwright test scripts (use e2e/ with env-var credentials instead)
 frontend/test_ui*.cjs
@@ -129,5 +128,10 @@ test_data/funds.csv
 test_data/entities.csv
 SYSTEM_README.md
 bug_list.csv
+bug_lists/
+
+# Planning docs
 MULTI_TENANCY_PLAN.md
+
+# Internal docs
 docs/

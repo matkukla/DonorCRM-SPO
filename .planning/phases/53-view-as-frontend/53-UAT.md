@@ -3,7 +3,7 @@ status: complete
 phase: 53-view-as-frontend
 source: 53-01-SUMMARY.md, 53-02-SUMMARY.md, 53-03-SUMMARY.md
 started: 2026-03-17T15:30:00Z
-updated: 2026-03-17T15:45:00Z
+updated: 2026-03-24T00:00:00Z
 ---
 
 ## Current Test
@@ -46,32 +46,20 @@ result: pass
 
 ### 9. Logout Clears View As Session
 expected: Logging out while in View As mode clears the session — after logging back in, the dashboard shows your own data with no amber banner visible.
-result: issue
-reported: "fail. The amber banner is still there when I log out and log back in again"
-severity: major
+result: pass
 
 ## Summary
 
 total: 9
-passed: 8
-issues: 1
+passed: 9
+issues: 0
 pending: 0
 skipped: 0
 
 ## Gaps
 
 - truth: "Logging out while in View As mode clears the session — after logging back in, the dashboard shows your own data with no amber banner visible"
-  status: failed
-  reason: "User reported: fail. The amber banner is still there when I log out and log back in again"
+  status: resolved
+  reason: "Fixed — AuthProvider.logout() now dispatches viewas:clear CustomEvent; ViewAsProvider listens and resets state"
   severity: major
   test: 9
-  root_cause: "AuthProvider.logout() removed sessionStorage keys but never reset ViewAsProvider's in-memory React state (viewAsUserId/viewAsUserName). On re-login the provider re-initialized from sessionStorage (empty), but the state was never nulled during the session, so the banner persisted until a full page reload."
-  artifacts:
-    - path: "frontend/src/providers/AuthProvider.tsx"
-      issue: "logout() did not signal ViewAsProvider to clear its state"
-    - path: "frontend/src/providers/ViewAsProvider.tsx"
-      issue: "No mechanism to reset state from outside the provider tree"
-  missing:
-    - "window.dispatchEvent(new CustomEvent('viewas:clear')) in logout()"
-    - "useEffect listener in ViewAsProvider that resets state on viewas:clear event"
-  debug_session: ""

@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { useUsers, useCreateUser, useUpdateUser, useDeactivateUser } from "@/hooks/useUsers"
+import { useUsers, useCreateUser, useUpdateUser, useDeactivateUser, useAdminResetPassword } from "@/hooks/useUsers"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
 import { Button } from "@/components/ui/button"
@@ -32,7 +32,9 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { Separator } from "@/components/ui/separator"
 import { Plus, MoreHorizontal, UserX, Edit, ChevronDown, Check, ChevronsUpDown, X } from "lucide-react"
+import { toast } from "sonner"
 import { NavLink } from "react-router-dom"
 import { cn, formatLocalDate } from "@/lib/utils"
 import type { User, UserRole, UserUpdate } from "@/api/users"
@@ -55,6 +57,7 @@ export default function AdminUsers() {
   const createMutation = useCreateUser()
   const updateMutation = useUpdateUser()
   const deactivateMutation = useDeactivateUser()
+  const resetPasswordMutation = useAdminResetPassword()
 
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<User | null>(null)
@@ -77,6 +80,11 @@ export default function AdminUsers() {
   const [editCoachedUserIds, setEditCoachedUserIds] = useState<string[]>([])
   const [missionaryPickerOpen, setMissionaryPickerOpen] = useState(false)
   const [coacheeMissionaryPickerOpen, setCoacheeMissionaryPickerOpen] = useState(false)
+
+  // Reset password state (inside edit dialog)
+  const [editResetPassword, setEditResetPassword] = useState("")
+  const [editResetPasswordConfirm, setEditResetPasswordConfirm] = useState("")
+  const [resetPasswordError, setResetPasswordError] = useState("")
 
   const resetCreateForm = () => {
     setNewEmail("")
@@ -143,11 +151,28 @@ export default function AdminUsers() {
     setEditCoachedUserIds(coached)
     setMissionaryPickerOpen(false)
     setCoacheeMissionaryPickerOpen(false)
+    setEditResetPassword("")
+    setEditResetPasswordConfirm("")
+    setResetPasswordError("")
   }
 
   const handleUpdate = async () => {
     if (!editingUser) return
     setEditError("")
+    setResetPasswordError("")
+
+    // Validate password fields if either is filled
+    const hasPassword = editResetPassword || editResetPasswordConfirm
+    if (hasPassword) {
+      if (editResetPassword !== editResetPasswordConfirm) {
+        setResetPasswordError("Passwords do not match.")
+        return
+      }
+      if (editResetPassword.length < 8) {
+        setResetPasswordError("Password must be at least 8 characters.")
+        return
+      }
+    }
 
     try {
       const data: UserUpdate = {
@@ -167,6 +192,23 @@ export default function AdminUsers() {
         id: editingUser.id,
         data,
       })
+
+      // Reset password if fields were filled
+      if (hasPassword) {
+        try {
+          await resetPasswordMutation.mutateAsync({
+            userId: editingUser.id,
+            data: { new_password: editResetPassword, new_password_confirm: editResetPasswordConfirm },
+          })
+          toast.success(`Password reset for ${editingUser.full_name}.`)
+        } catch (err: unknown) {
+          const error = err as { response?: { data?: { new_password?: string[] } } }
+          const passwordError = error.response?.data?.new_password?.[0]
+          setResetPasswordError(passwordError || "Failed to reset password.")
+          return
+        }
+      }
+
       setEditingUser(null)
     } catch {
       setEditError("Failed to update user.")
@@ -185,6 +227,7 @@ export default function AdminUsers() {
       data: { is_active: true },
     })
   }
+
 
   if (isLoading) {
     return (
@@ -664,6 +707,36 @@ export default function AdminUsers() {
                     </div>
                   )
                 })()}
+                <Separator />
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground text-xs uppercase tracking-wide">Reset Password</Label>
+                  <p className="text-xs text-muted-foreground">Leave blank to keep current password.</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="editResetPassword">New Password</Label>
+                      <Input
+                        id="editResetPassword"
+                        type="password"
+                        value={editResetPassword}
+                        onChange={(e) => setEditResetPassword(e.target.value)}
+                        placeholder="Minimum 8 characters"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="editResetPasswordConfirm">Confirm Password</Label>
+                      <Input
+                        id="editResetPasswordConfirm"
+                        type="password"
+                        value={editResetPasswordConfirm}
+                        onChange={(e) => setEditResetPasswordConfirm(e.target.value)}
+                        placeholder="Confirm password"
+                      />
+                    </div>
+                  </div>
+                  {resetPasswordError && (
+                    <p className="text-sm text-destructive">{resetPasswordError}</p>
+                  )}
+                </div>
                 {editError && (
                   <p className="text-sm text-destructive">{editError}</p>
                 )}
@@ -672,8 +745,8 @@ export default function AdminUsers() {
                 <Button variant="secondary" onClick={() => setEditingUser(null)}>
                   Cancel
                 </Button>
-                <Button onClick={handleUpdate} disabled={updateMutation.isPending}>
-                  {updateMutation.isPending ? "Saving..." : "Save Changes"}
+                <Button onClick={handleUpdate} disabled={updateMutation.isPending || resetPasswordMutation.isPending}>
+                  {updateMutation.isPending || resetPasswordMutation.isPending ? "Saving..." : "Save Changes"}
                 </Button>
               </DialogFooter>
             </DialogContent>

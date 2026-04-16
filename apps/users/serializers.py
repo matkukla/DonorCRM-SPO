@@ -1,7 +1,6 @@
 """
 Serializers for User model and authentication.
 """
-from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
@@ -156,6 +155,33 @@ class PasswordChangeSerializer(serializers.Serializer):
 
     def save(self):
         user = self.context['request'].user
+        user.set_password(self.validated_data['new_password'])
+        user.save()
+        return user
+
+
+class AdminPasswordResetSerializer(serializers.Serializer):
+    """
+    Serializer for admin-initiated password reset (no old password required).
+    """
+    new_password = serializers.CharField(
+        required=True,
+        validators=[validate_password],
+        style={'input_type': 'password'}
+    )
+    new_password_confirm = serializers.CharField(
+        required=True,
+        style={'input_type': 'password'}
+    )
+
+    def validate(self, attrs):
+        if attrs['new_password'] != attrs['new_password_confirm']:
+            raise serializers.ValidationError({
+                'new_password_confirm': 'Passwords do not match.'
+            })
+        return attrs
+
+    def save(self, user):
         user.set_password(self.validated_data['new_password'])
         user.save()
         return user

@@ -112,6 +112,7 @@ export const giftFilterParsers = {
   min_amount: parseAsString,
   max_amount: parseAsString,
   owner: parseAsString,
+  is_recurring: parseAsString,
   ordering: parseAsString,
 }
 

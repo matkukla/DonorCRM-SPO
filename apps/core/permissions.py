@@ -7,15 +7,14 @@ Access Control Matrix:
   supervisor  - Full CRUD on own resources only; cross-user access via View As only
   coach       - Read/write own data + read coached users' data (no financial data)
 
-Owner scoping in views uses two patterns:
-  - Single-role check: role == 'admin' -> see all (admin-only endpoints)
-Write operations are gated by IsStaffOrAbove (excludes coach).
+Owner scoping in views uses get_visible_user_ids() as the central choke point.
+Write operations are gated by IsStaffOrAbove (excludes coach from writes).
 """
 from rest_framework import permissions
 
 
 def get_visible_user_ids(user, request=None):
-    """Return set of user IDs whose data this user can see, or None for 'all'.
+    """Return set of user IDs whose data this user can see.
 
     When request.view_as_user is set (View As mode), always returns
     {view_as_user.id} regardless of viewer role. This is the data scoping
@@ -111,6 +110,7 @@ class IsContactOwnerOrReadAccess(permissions.BasePermission):
     Permission for contact-related objects.
     - Owner has full access
     - Admin has full access
+    - Supervisor/coach with visibility can read
     """
     def has_object_permission(self, request, view, obj):
         if not request.user.is_authenticated:
@@ -157,4 +157,10 @@ class IsSupervisorWriteRestricted(permissions.BasePermission):
             journal = getattr(obj, 'journal', None)
             if journal:
                 owner = getattr(journal, 'owner', None)
-        return owner == request.user if owner else True
+        if owner is None:
+            journal_contact = getattr(obj, 'journal_contact', None)
+            if journal_contact:
+                journal = getattr(journal_contact, 'journal', None)
+                if journal:
+                    owner = getattr(journal, 'owner', None)
+        return owner == request.user if owner else False

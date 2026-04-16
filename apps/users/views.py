@@ -5,10 +5,12 @@ from django.db.models import Count, Q
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 
 from apps.core.permissions import IsAdmin
 from apps.users.models import User
 from apps.users.serializers import (
+    AdminPasswordResetSerializer,
     CurrentUserSerializer,
     PasswordChangeSerializer,
     UserAdminUpdateSerializer,
@@ -106,16 +108,40 @@ class PasswordChangeView(APIView):
         )
         serializer.is_valid(raise_exception=True)
         serializer.save()
+        # Blacklist all outstanding refresh tokens for this user
+        for token in OutstandingToken.objects.filter(user=request.user):
+            BlacklistedToken.objects.get_or_create(token=token)
         return Response({'detail': 'Password changed successfully.'})
+
+
+class AdminPasswordResetView(APIView):
+    """
+    POST: Admin resets another user's password (no old password required).
+    """
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    def post(self, request, pk):
+        try:
+            user = User.objects.get(pk=pk)
+        except User.DoesNotExist:
+            return Response(
+                {'detail': 'User not found.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = AdminPasswordResetSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(user=user)
+        return Response({'detail': 'Password reset successfully.'})
 
 
 class ViewableUsersView(APIView):
     """
     GET /api/users/viewable/
-    Returns list of missionaries the authenticated user can impersonate via View As.
+    Returns list of users the authenticated user can impersonate via View As.
 
-    - Admin: all active missionaries
-    - Supervisor: only missionaries in their supervised_users M2M (filtered to role='missionary', is_active=True)
+    - Admin: all active missionaries and supervisors
+    - Supervisor: only missionaries in their supervised_users M2M
     - All other roles: 403 Forbidden
     """
     permission_classes = [permissions.IsAuthenticated]
@@ -125,9 +151,9 @@ class ViewableUsersView(APIView):
 
         if user.role == 'admin':
             qs = User.objects.filter(
-                role='missionary',
+                role__in=['missionary', 'supervisor'],
                 is_active=True
-            ).order_by('last_name', 'first_name')
+            ).exclude(id=user.id).order_by('last_name', 'first_name')
         elif user.role == 'supervisor':
             qs = user.supervised_users.filter(
                 role='missionary',

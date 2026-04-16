@@ -1,7 +1,7 @@
 """
 Views for Insights/Reports data.
 """
-from datetime import datetime
+
 
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import permissions, status
@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.permissions import IsAdmin, is_financial_role
-from apps.core.utils import get_safe_int_param, get_safe_year_param
+from apps.core.utils import get_safe_int_param, get_safe_year_param, validate_date_params
 from apps.insights.services import (
     get_dashboard_overview,
     get_donations_by_month,
@@ -156,13 +156,10 @@ class TransactionsView(APIView):
         offset = get_safe_int_param(request, 'offset', default=0, min_val=0, max_val=100000)
         contact_id = request.query_params.get('contact_id')
 
-        date_from = request.query_params.get('date_from')
-        date_to = request.query_params.get('date_to')
-
-        if date_from:
-            date_from = datetime.strptime(date_from, '%Y-%m-%d').date()
-        if date_to:
-            date_to = datetime.strptime(date_to, '%Y-%m-%d').date()
+        dates, err = validate_date_params(request)
+        if err:
+            return err
+        date_from, date_to = dates['date_from'], dates['date_to']
 
         return Response(get_transactions(
             request.user,
@@ -195,16 +192,11 @@ class DashboardOverviewView(APIView):
         responses={200: DashboardOverviewSerializer}
     )
     def get(self, request):
+        _, err = validate_date_params(request)
+        if err:
+            return err
         date_from = request.query_params.get('date_from')
         date_to = request.query_params.get('date_to')
-
-        # Validate date format if provided
-        for param_name, param_val in [('date_from', date_from), ('date_to', date_to)]:
-            if param_val:
-                try:
-                    datetime.strptime(param_val, '%Y-%m-%d')
-                except ValueError:
-                    return Response({'detail': f'Invalid {param_name} format. Use YYYY-MM-DD.'}, status=400)
 
         data = get_dashboard_overview(date_from=date_from, date_to=date_to)
         serializer = DashboardOverviewSerializer(data)
@@ -245,16 +237,12 @@ class StalledContactsView(APIView):
         if sort_dir not in ('asc', 'desc'):
             sort_dir = 'desc'
 
-        # Parse and validate date parameters
+        # Validate date parameters
+        _, err = validate_date_params(request)
+        if err:
+            return err
         date_from = request.query_params.get('date_from')
         date_to = request.query_params.get('date_to')
-
-        for param_name, param_val in [('date_from', date_from), ('date_to', date_to)]:
-            if param_val:
-                try:
-                    datetime.strptime(param_val, '%Y-%m-%d')
-                except ValueError:
-                    return Response({'detail': f'Invalid {param_name} format. Use YYYY-MM-DD.'}, status=400)
 
         data = get_stalled_contacts(limit=limit, offset=offset, sort_by=sort_by, sort_dir=sort_dir, date_from=date_from, date_to=date_to)
         serializer = StalledContactsResponseSerializer(data)
@@ -298,16 +286,12 @@ class ConversionFunnelView(APIView):
         responses={200: ConversionFunnelResponseSerializer}
     )
     def get(self, request):
-        # Parse and validate date parameters
+        # Validate date parameters
+        _, err = validate_date_params(request)
+        if err:
+            return err
         date_from = request.query_params.get('date_from')
         date_to = request.query_params.get('date_to')
-
-        for param_name, param_val in [('date_from', date_from), ('date_to', date_to)]:
-            if param_val:
-                try:
-                    datetime.strptime(param_val, '%Y-%m-%d')
-                except ValueError:
-                    return Response({'detail': f'Invalid {param_name} format. Use YYYY-MM-DD.'}, status=400)
 
         data = get_conversion_funnel(date_from=date_from, date_to=date_to)
         serializer = ConversionFunnelResponseSerializer(data)
@@ -334,16 +318,12 @@ class TeamActivityView(APIView):
     def get(self, request):
         limit = get_safe_int_param(request, 'limit', default=50, min_val=1, max_val=200)
 
-        # Parse and validate date parameters
+        # Validate date parameters
+        _, err = validate_date_params(request)
+        if err:
+            return err
         date_from = request.query_params.get('date_from')
         date_to = request.query_params.get('date_to')
-
-        for param_name, param_val in [('date_from', date_from), ('date_to', date_to)]:
-            if param_val:
-                try:
-                    datetime.strptime(param_val, '%Y-%m-%d')
-                except ValueError:
-                    return Response({'detail': f'Invalid {param_name} format. Use YYYY-MM-DD.'}, status=400)
 
         data = get_team_activity(limit=limit, date_from=date_from, date_to=date_to)
         serializer = TeamActivityResponseSerializer(data)
@@ -371,16 +351,12 @@ class TeamTrendsView(APIView):
     def get(self, request):
         weeks = get_safe_int_param(request, 'weeks', default=12, min_val=1, max_val=52)
 
-        # Parse and validate date parameters
+        # Validate date parameters
+        _, err = validate_date_params(request)
+        if err:
+            return err
         date_from = request.query_params.get('date_from')
         date_to = request.query_params.get('date_to')
-
-        for param_name, param_val in [('date_from', date_from), ('date_to', date_to)]:
-            if param_val:
-                try:
-                    datetime.strptime(param_val, '%Y-%m-%d')
-                except ValueError:
-                    return Response({'detail': f'Invalid {param_name} format. Use YYYY-MM-DD.'}, status=400)
 
         data = get_team_trends(weeks=weeks, date_from=date_from, date_to=date_to)
         serializer = TeamTrendsResponseSerializer(data)

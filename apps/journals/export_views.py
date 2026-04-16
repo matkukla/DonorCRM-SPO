@@ -32,10 +32,7 @@ class JournalExportCSVView(APIView):
 
         # Same owner-scoping as JournalListCreateView
         visible = get_visible_user_ids(user, request=request)
-        if visible is None:
-            queryset = Journal.objects.all()
-        else:
-            queryset = Journal.objects.filter(owner_id__in=visible)
+        queryset = Journal.objects.filter(owner_id__in=visible)
 
         # Exclude archived by default unless is_archived filter present
         if 'is_archived' not in request.query_params:

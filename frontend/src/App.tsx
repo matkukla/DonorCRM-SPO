@@ -11,6 +11,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
 import { AppLayout } from "@/components/layout/AppLayout"
 import { ErrorFallback } from "@/components/ErrorFallback"
 import { Toaster } from "@/components/ui/sonner"
+import type { UserRole } from "@/api/users"
 
 // Eagerly loaded pages (lightweight, frequently visited)
 import Login from "@/pages/Login"
@@ -42,6 +43,8 @@ const ImportExport = React.lazy(() => import("@/pages/imports/ImportExport"))
 const AdminAnalyticsDashboard = React.lazy(() => import("@/pages/admin/analytics/AdminAnalyticsDashboard"))
 const PrayerList = React.lazy(() => import("@/pages/prayer/PrayerList"))
 const AdminAssignments = React.lazy(() => import("@/pages/admin/AdminAssignments"))
+const BroadcastList = React.lazy(() => import("@/pages/admin/BroadcastList"))
+const BroadcastDetail = React.lazy(() => import("@/pages/admin/BroadcastDetail"))
 const TeamPage = React.lazy(() => import("@/pages/team/TeamPage"))
 const MissionaryProfilePage = React.lazy(() => import("@/pages/team/MissionaryProfilePage"))
 
@@ -55,6 +58,10 @@ const MonthlyCommitments = React.lazy(() => import("@/pages/insights/MonthlyComm
 const LateDonations = React.lazy(() => import("@/pages/insights/LateDonations"))
 const FollowUps = React.lazy(() => import("@/pages/insights/FollowUps"))
 const Transactions = React.lazy(() => import("@/pages/insights/Transactions"))
+
+// Lazy-loaded MPD Resources pages
+const LinksPage = React.lazy(() => import("@/pages/mpd-resources/LinksPage"))
+const PacingCalculatorPage = React.lazy(() => import("@/pages/mpd-resources/PacingCalculatorPage"))
 
 /**
  * Loading fallback shown inside the app layout while lazy chunks load.
@@ -71,7 +78,7 @@ function PageLoadingFallback() {
  * Wrap a page with protected route and app layout.
  * Suspense boundary is inside the layout so sidebar stays visible during chunk loading.
  */
-function ProtectedPage({ children, requiredRole }: { children: React.ReactNode; requiredRole?: "admin" | "missionary" | "supervisor" | "coach" }) {
+function ProtectedPage({ children, requiredRole }: { children: React.ReactNode; requiredRole?: UserRole }) {
   return (
     <ProtectedRoute requiredRole={requiredRole}>
       <AppLayout>
@@ -136,9 +143,15 @@ function App() {
                   <Route path="/insights/review-queue" element={<Navigate to="/admin/analytics/dashboard" replace />} />
                   <Route path="/insights/transactions" element={<ProtectedPage requiredRole="admin"><Transactions /></ProtectedPage>} />
 
+                  {/* MPD Resources routes */}
+                  <Route path="/mpd-resources/links" element={<ProtectedPage><LinksPage /></ProtectedPage>} />
+                  <Route path="/mpd-resources/pacing" element={<ProtectedPage><PacingCalculatorPage /></ProtectedPage>} />
+
                   <Route path="/settings" element={<ProtectedPage><Settings /></ProtectedPage>} />
                   <Route path="/admin" element={<ProtectedPage requiredRole="admin"><AdminUsers /></ProtectedPage>} />
                   <Route path="/admin/assignments" element={<ProtectedPage requiredRole="admin"><AdminAssignments /></ProtectedPage>} />
+                  <Route path="/broadcasts" element={<ProtectedPage requiredRole="admin"><BroadcastList /></ProtectedPage>} />
+                  <Route path="/broadcasts/:id" element={<ProtectedPage requiredRole="admin"><BroadcastDetail /></ProtectedPage>} />
                   <Route path="/admin/analytics" element={<Navigate to="/admin/analytics/dashboard" replace />} />
                   <Route path="/admin/analytics/dashboard" element={<ProtectedPage requiredRole="admin"><AdminAnalyticsDashboard /></ProtectedPage>} />
                   <Route path="/admin/analytics/stalled" element={<ProtectedPage requiredRole="admin"><StalledContacts /></ProtectedPage>} />

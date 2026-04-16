@@ -161,11 +161,12 @@ class Command(BaseCommand):
 
         # --- Legacy tables (donations, pledges) not in Django models ---
         # These FK to contacts and funds; must be cleared before those tables.
+        allowed_tables = ('donations', 'pledges')
+        existing_tables = connection.introspection.table_names()
         with connection.cursor() as cursor:
-            for table in ('donations', 'pledges'):
-                cursor.execute(f"SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = '{table}')")
-                if cursor.fetchone()[0]:
-                    cursor.execute(f"DELETE FROM {table}")
+            for table in allowed_tables:
+                if table in existing_tables:
+                    cursor.execute("DELETE FROM %s" % connection.ops.quote_name(table))
                     self.stdout.write(f'  Deleted legacy {table}: {cursor.rowcount}')
 
         # --- Contact (PROTECT from User — must delete before user) ---

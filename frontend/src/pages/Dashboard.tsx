@@ -19,7 +19,8 @@ import { LogEventDialog } from "@/pages/journals/components/LogEventDialog"
 import { useMPDMyData } from "@/hooks/useMPD"
 import { MPDStatsInline } from "@/components/mpd/MPDStatsInline"
 import { MPDOverviewTable } from "@/components/mpd/MPDOverviewTable"
-import { Users, DollarSign, FileText, CheckSquare, RotateCcw, ChevronDown, Check } from "lucide-react"
+import { useNavigate } from "react-router-dom"
+import { Users, AlertTriangle, FileText, CheckSquare, RotateCcw, ChevronDown, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -29,22 +30,13 @@ import { DndContext, DragOverlay, closestCenter, MouseSensor, TouchSensor, useSe
 import type { DragStartEvent, DragEndEvent } from "@dnd-kit/core"
 import { SortableContext, arrayMove, rectSortingStrategy } from "@dnd-kit/sortable"
 
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount)
-}
-
 const TILE_SIZES: Record<string, number> = {
   "giving-summary": 2,
   "monthly-gifts": 2,
   "thank-you": 1,
-  "recent-donations-stat": 1,
+  "missed-donations": 1,
   "active-pledges": 1,
-  "needs-attention-stat": 1,
+  "tasks-todo": 1,
   "needs-attention": 2,
   "support-progress": 2,
   "recent-donations": 2,
@@ -94,8 +86,7 @@ export default function Dashboard() {
     }
   }, [data, isLoading, isViewingAs])
 
-  // Use backend-aggregated total (includes ALL gifts, not just first 10)
-  const totalDonationsThisMonth = data?.recent_gifts_total || 0
+  const navigate = useNavigate()
 
   // Name comes directly from context (stored when setViewAsUser was called)
   const selectedUserName = viewAsUserName
@@ -129,16 +120,16 @@ export default function Dashboard() {
       case "monthly-gifts": return <MonthlyGiftsCard userId={effectiveUserId} />
       // Stat cards
       case "thank-you":
-        return <StatCard title="Thank You Queue" value={data?.thank_you_count || 0} icon={Users} isLoading={isLoading} description="need acknowledgment" />
-      case "recent-donations-stat":
-        return <StatCard title="Recent Donations" value={formatCurrency(totalDonationsThisMonth)} icon={DollarSign} isLoading={isLoading} description="last 30 days" />
+        return <StatCard title="Thank You Queue" value={data?.thank_you_count || 0} icon={Users} isLoading={isLoading} onIconClick={() => navigate("/contacts?needs_thank_you=true")} />
+      case "missed-donations":
+        return <StatCard title="Missed Donations" value={data?.late_donations_count || 0} icon={AlertTriangle} isLoading={isLoading} onIconClick={() => navigate("/pledges?status=active")} />
       case "active-pledges":
-        return <StatCard title="Active Pledges" value={data?.support_progress?.active_pledge_count || 0} icon={FileText} isLoading={isLoading} />
-      case "needs-attention-stat":
-        return <StatCard title="Items Needing Attention" value={(data?.needs_attention?.overdue_task_count || 0) + (data?.needs_attention?.tasks_due_today_count || 0) + (data?.needs_attention?.thank_you_needed_count || 0)} icon={CheckSquare} isLoading={isLoading} />
+        return <StatCard title="Active Pledges" value={data?.support_progress?.active_pledge_count || 0} icon={FileText} isLoading={isLoading} onIconClick={() => navigate("/pledges")} />
+      case "tasks-todo":
+        return <StatCard title="Incomplete Tasks" value={data?.needs_attention?.total_incomplete_task_count || 0} icon={CheckSquare} isLoading={isLoading} onIconClick={() => navigate("/tasks")} />
       // Content section
       case "needs-attention":
-        return <NeedsAttention overdueTasks={data?.needs_attention?.overdue_tasks || []} overdueTaskCount={data?.needs_attention?.overdue_task_count || 0} latePledges={data?.needs_attention?.late_pledges || []} latePledgeCount={data?.needs_attention?.late_pledge_count || 0} thankYouNeeded={data?.needs_attention?.thank_you_needed || []} thankYouCount={data?.needs_attention?.thank_you_needed_count || 0} isLoading={isLoading} />
+        return <NeedsAttention overdueTasks={data?.needs_attention?.overdue_tasks || []} overdueTaskCount={data?.needs_attention?.overdue_task_count || 0} tasksDueToday={data?.needs_attention?.tasks_due_today || []} tasksDueTodayCount={data?.needs_attention?.tasks_due_today_count || 0} broadcastTasks={data?.needs_attention?.broadcast_tasks || []} broadcastTaskCount={data?.needs_attention?.broadcast_task_count || 0} latePledges={data?.needs_attention?.late_pledges || []} latePledgeCount={data?.needs_attention?.late_pledge_count || 0} thankYouNeeded={data?.needs_attention?.thank_you_needed || []} thankYouCount={data?.needs_attention?.thank_you_needed_count || 0} isLoading={isLoading} />
       case "support-progress":
         return <SupportProgress data={data?.support_progress || null} isLoading={isLoading} />
       case "recent-donations":

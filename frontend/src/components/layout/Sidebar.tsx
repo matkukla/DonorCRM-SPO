@@ -21,18 +21,24 @@ import {
   ListTodo,
   Receipt,
   Target,
+  ExternalLink,
+  Calculator,
+  Megaphone,
 } from "lucide-react"
 import { useAuth } from "@/providers/AuthProvider"
 import { useViewAs } from "@/providers/ViewAsProvider"
 import spoLogo from "@/assets/spo_logo.png"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import type { UserRole } from "@/api/users"
+import { roleHierarchy } from "@/api/users"
 
 interface NavItem {
   label: string
   href: string
   icon: React.ReactNode
-  requiredRole?: "admin" | "missionary" | "supervisor" | "coach"
+  requiredRole?: UserRole
   visibleRoles?: string[]
+  end?: boolean
 }
 
 const navItems: NavItem[] = [
@@ -56,10 +62,16 @@ const insightsItems: NavItem[] = [
   { label: "Transactions", href: "/insights/transactions", icon: <Receipt className="h-4 w-4" />, requiredRole: "admin" },
 ]
 
+const mpdResourcesItems: NavItem[] = [
+  { label: "Links", href: "/mpd-resources/links", icon: <ExternalLink className="h-4 w-4" /> },
+  { label: "Pacing Calculator", href: "/mpd-resources/pacing", icon: <Calculator className="h-4 w-4" /> },
+]
+
 const bottomNavItems: NavItem[] = [
   { label: "Import/Export", href: "/import-export", icon: <FileUp className="h-5 w-5" /> },
   { label: "Settings", href: "/settings", icon: <Settings className="h-5 w-5" /> },
   { label: "Admin", href: "/admin", icon: <ShieldCheck className="h-5 w-5" />, requiredRole: "admin" },
+  { label: "Broadcasts", href: "/broadcasts", icon: <Megaphone className="h-5 w-5" />, requiredRole: "admin" },
 ]
 
 interface SidebarProps {
@@ -68,8 +80,9 @@ interface SidebarProps {
 }
 
 const INSIGHTS_OPEN_KEY = "insights-nav-open"
+const MPD_RESOURCES_OPEN_KEY = "mpd-resources-nav-open"
 
-const VIEW_AS_HIDDEN_HREFS = new Set(["/import-export", "/admin"])
+const VIEW_AS_HIDDEN_HREFS = new Set(["/import-export", "/admin", "/broadcasts"])
 
 export function Sidebar({ className, onNavClick }: SidebarProps) {
   const { user } = useAuth()
@@ -97,6 +110,27 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
     }
   }, [isInsightsActive, isInsightsOpen])
 
+  // Check if any MPD Resources route is active
+  const isMpdResourcesActive = location.pathname.startsWith("/mpd-resources")
+
+  // Persist open state in localStorage
+  const [isMpdResourcesOpen, setIsMpdResourcesOpen] = React.useState(() => {
+    const stored = localStorage.getItem(MPD_RESOURCES_OPEN_KEY)
+    return stored !== null ? stored === "true" : isMpdResourcesActive
+  })
+
+  // Update localStorage when state changes
+  React.useEffect(() => {
+    localStorage.setItem(MPD_RESOURCES_OPEN_KEY, String(isMpdResourcesOpen))
+  }, [isMpdResourcesOpen])
+
+  // Auto-expand when navigating to MPD Resources route
+  React.useEffect(() => {
+    if (isMpdResourcesActive && !isMpdResourcesOpen) {
+      setIsMpdResourcesOpen(true)
+    }
+  }, [isMpdResourcesActive, isMpdResourcesOpen])
+
   const canAccess = (item: NavItem) => {
     if (!user) return false
     // visibleRoles takes priority: exact role match required
@@ -104,7 +138,6 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
       return item.visibleRoles.includes(user.role)
     }
     if (!item.requiredRole) return true
-    const roleHierarchy: Record<string, number> = { admin: 5, supervisor: 4, coach: 3, missionary: 2 }
     return roleHierarchy[user.role] >= roleHierarchy[item.requiredRole]
   }
 
@@ -187,6 +220,51 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
               </CollapsibleContent>
             </Collapsible>
           </li>
+
+          {/* MPD Resources Dropdown */}
+          <li>
+            <Collapsible open={isMpdResourcesOpen} onOpenChange={setIsMpdResourcesOpen}>
+              <CollapsibleTrigger
+                className={cn(
+                  "flex items-center justify-between w-full gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                  isMpdResourcesActive
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                <span className="flex items-center gap-3">
+                  <BookOpen className="h-5 w-5" />
+                  MPD Resources
+                </span>
+                <ChevronDown
+                  className={cn(
+                    "h-4 w-4 transition-transform duration-200",
+                    isMpdResourcesOpen && "rotate-180"
+                  )}
+                />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-1 ml-4 space-y-1">
+                {mpdResourcesItems.map((item) => (
+                  <NavLink
+                    key={item.href}
+                    to={item.href}
+                    onClick={onNavClick}
+                    className={({ isActive }) =>
+                      cn(
+                        "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
+                        isActive
+                          ? "bg-primary/10 text-primary font-medium"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      )
+                    }
+                  >
+                    {item.icon}
+                    {item.label}
+                  </NavLink>
+                ))}
+              </CollapsibleContent>
+            </Collapsible>
+          </li>
         </ul>
       </nav>
 
@@ -201,6 +279,7 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
               <NavLink
                 to={item.href}
                 onClick={onNavClick}
+                end={item.end}
                 className={({ isActive }) =>
                   cn(
                     "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",

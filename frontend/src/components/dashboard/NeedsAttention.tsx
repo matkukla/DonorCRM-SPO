@@ -1,12 +1,16 @@
 import { Link } from "react-router-dom"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { AlertTriangle, CheckSquare, Heart } from "lucide-react"
+import { AlertTriangle, CheckSquare, Clock, Heart, Megaphone } from "lucide-react"
 import type { OverdueTask, LatePledge, ThankYouContact } from "@/api/dashboard"
 
 interface NeedsAttentionProps {
   overdueTasks: OverdueTask[]
   overdueTaskCount: number
+  tasksDueToday: OverdueTask[]
+  tasksDueTodayCount: number
+  broadcastTasks: OverdueTask[]
+  broadcastTaskCount: number
   latePledges: LatePledge[]
   latePledgeCount: number
   thankYouNeeded: ThankYouContact[]
@@ -27,11 +31,15 @@ function formatCurrency(amount: string | number): string {
 export function NeedsAttention({
   overdueTasks,
   overdueTaskCount,
+  tasksDueToday,
+  tasksDueTodayCount,
+  broadcastTasks,
+  broadcastTaskCount,
   thankYouNeeded,
   thankYouCount,
   isLoading,
 }: NeedsAttentionProps) {
-  const hasItems = overdueTaskCount > 0 || thankYouCount > 0
+  const hasItems = overdueTaskCount > 0 || tasksDueTodayCount > 0 || broadcastTaskCount > 0 || thankYouCount > 0
 
   return (
     <Card>
@@ -73,6 +81,54 @@ export function NeedsAttention({
                 </div>
                 <ul className="space-y-1 text-sm text-red-800 dark:text-red-300">
                   {overdueTasks.slice(0, 3).map((task) => (
+                    <li key={task.id} className="truncate">
+                      {task.title}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Tasks Due Today */}
+            {tasksDueTodayCount > 0 && (
+              <div className="p-4 bg-amber-50 dark:bg-amber-950/50 border border-amber-100 dark:border-amber-900/50 rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                    <span className="text-sm font-medium text-amber-900 dark:text-amber-200">
+                      {tasksDueTodayCount} Task{tasksDueTodayCount !== 1 ? "s" : ""} Due Today
+                    </span>
+                  </div>
+                  <Button variant="link" size="sm" asChild className="text-amber-600 dark:text-amber-400 p-0 h-auto">
+                    <Link to="/tasks">View all</Link>
+                  </Button>
+                </div>
+                <ul className="space-y-1 text-sm text-amber-800 dark:text-amber-300">
+                  {tasksDueToday.slice(0, 3).map((task) => (
+                    <li key={task.id} className="truncate">
+                      {task.title}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Broadcast Tasks */}
+            {broadcastTaskCount > 0 && (
+              <div className="p-4 bg-purple-50 dark:bg-purple-950/50 border border-purple-100 dark:border-purple-900/50 rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Megaphone className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                    <span className="text-sm font-medium text-purple-900 dark:text-purple-200">
+                      {broadcastTaskCount} Broadcast Task{broadcastTaskCount !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                  <Button variant="link" size="sm" asChild className="text-purple-600 dark:text-purple-400 p-0 h-auto">
+                    <Link to="/tasks">View all</Link>
+                  </Button>
+                </div>
+                <ul className="space-y-1 text-sm text-purple-800 dark:text-purple-300">
+                  {broadcastTasks.slice(0, 3).map((task) => (
                     <li key={task.id} className="truncate">
                       {task.title}
                     </li>

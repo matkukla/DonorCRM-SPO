@@ -41,13 +41,13 @@ export function MPDOverviewTable() {
         ),
         cell: (info) => info.getValue(),
       }),
-      columnHelper.accessor("monthly_average", {
+      columnHelper.accessor("monthly_average_snapshot", {
         header: ({ column }) => (
           <button
             className="flex items-center gap-2 hover:text-foreground cursor-pointer"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           >
-            Monthly Average
+            Monthly Average (Snapshot)
             <ArrowUpDown className="h-4 w-4" />
           </button>
         ),

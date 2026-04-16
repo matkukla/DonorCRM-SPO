@@ -53,6 +53,14 @@ export const userRoleLabels: Record<UserRole, string> = {
   coach: "Coach",
 }
 
+// Numeric levels for role-based access checks (higher = more access)
+export const roleHierarchy: Record<UserRole, number> = {
+  admin: 4,
+  supervisor: 3,
+  coach: 2,
+  missionary: 1,
+}
+
 export interface MissionaryAssignment {
   id: string
   email: string
@@ -107,6 +115,14 @@ export async function getAssignments(): Promise<AssignmentsData> {
 
 export async function updateAssignments(assignments: AssignmentUpdate[]): Promise<{ updated: number; errors: unknown[] }> {
   const response = await apiClient.patch('/users/admin/assignments/', { assignments })
+  return response.data
+}
+
+export async function adminResetPassword(
+  userId: string,
+  data: { new_password: string; new_password_confirm: string }
+): Promise<{ detail: string }> {
+  const response = await apiClient.post(`/users/${userId}/password/`, data)
   return response.data
 }
 

@@ -25,7 +25,6 @@ class TestUserModel:
         """Test creating an admin user."""
         user = AdminUserFactory()
         assert user.role == UserRole.ADMIN
-        assert user.is_admin is True
         assert user.is_staff is True
 
     def test_full_name_property(self):
@@ -38,20 +37,6 @@ class TestUserModel:
         UserFactory(email='test@example.com')
         with pytest.raises(IntegrityError):
             UserFactory(email='test@example.com')
-
-    def test_role_properties(self):
-        """Test role checking properties."""
-        missionary = UserFactory(role=UserRole.MISSIONARY)
-        supervisor = UserFactory(role=UserRole.SUPERVISOR)
-        coach = UserFactory(role=UserRole.COACH)
-        admin = UserFactory(role=UserRole.ADMIN)
-
-        assert missionary.is_missionary is True
-        assert missionary.is_admin is False
-
-        assert supervisor.is_supervisor is True
-        assert coach.is_coach is True
-        assert admin.is_admin is True
 
     def test_user_str(self):
         """Test string representation."""

@@ -178,9 +178,14 @@ const RE_IMPORT_ENDPOINTS: Record<REImportType, string> = {
   recurring_gift: '/imports/re/recurring-gifts/',
 }
 
-export async function importRE(importType: REImportType, file: File): Promise<REImportResponse> {
+export async function importRE(
+  importType: REImportType,
+  file: File,
+  force = false,
+): Promise<REImportResponse> {
   const formData = new FormData()
   formData.append('file', file)
+  if (force) formData.append('force', 'true')
   const response = await apiClient.post(RE_IMPORT_ENDPOINTS[importType], formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })

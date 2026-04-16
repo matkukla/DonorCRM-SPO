@@ -17,14 +17,13 @@ from rest_framework.test import APIClient
 # --- ROLE ACCESS ---
 
 @pytest.mark.django_db
-def test_admin_sees_all_missionaries():
-    """Admin GET /api/users/viewable/ returns all active missionaries."""
+def test_admin_sees_missionaries_and_supervisors():
+    """Admin GET /api/users/viewable/ returns all active missionaries and supervisors."""
     from apps.users.tests.factories import AdminUserFactory, UserFactory, SupervisorUserFactory
 
     admin = AdminUserFactory()
     missionary1 = UserFactory()
     missionary2 = UserFactory()
-    # Non-missionary active user — should NOT appear
     supervisor = SupervisorUserFactory()
 
     client = APIClient()
@@ -35,8 +34,10 @@ def test_admin_sees_all_missionaries():
     ids = [item['id'] for item in response.data]
     assert str(missionary1.id) in ids
     assert str(missionary2.id) in ids
-    # Supervisor should not appear (not a missionary)
-    assert str(supervisor.id) not in ids
+    # Supervisor should appear (admin can view supervisors)
+    assert str(supervisor.id) in ids
+    # Admin should not appear in their own list
+    assert str(admin.id) not in ids
 
 
 @pytest.mark.django_db
@@ -104,14 +105,12 @@ def test_inactive_missionaries_excluded():
 
 
 @pytest.mark.django_db
-def test_non_missionary_roles_excluded():
-    """Admin GET /api/users/viewable/ excludes non-missionary roles even if active."""
+def test_admin_roles_excluded():
+    """Admin GET /api/users/viewable/ excludes other admins but includes supervisors."""
     from apps.users.tests.factories import AdminUserFactory, SupervisorUserFactory, UserFactory
 
     admin = AdminUserFactory()
-    # Create missionaries
     missionary = UserFactory()
-    # Create non-missionary active users
     other_admin = AdminUserFactory()
     supervisor = SupervisorUserFactory()
 
@@ -122,9 +121,11 @@ def test_non_missionary_roles_excluded():
     assert response.status_code == 200
     ids = [item['id'] for item in response.data]
     assert str(missionary.id) in ids
-    # Non-missionary roles should not appear
+    assert str(supervisor.id) in ids
+    # Other admins should not appear
     assert str(other_admin.id) not in ids
-    assert str(supervisor.id) not in ids
+    # Self should not appear
+    assert str(admin.id) not in ids
 
 
 # --- RESPONSE SHAPE ---

@@ -1,6 +1,7 @@
 """
 Views for Event management.
 """
+from django.db import models
 from django.db.models import Count
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, generics, permissions, status
@@ -27,8 +28,6 @@ class EventListView(generics.ListAPIView):
         user = self.request.user
 
         visible = get_visible_user_ids(user, request=self.request)
-        if visible is None:
-            return Event.objects.all()
         return Event.objects.filter(user_id__in=visible).select_related('contact')
 
 
@@ -42,8 +41,6 @@ class EventDetailView(generics.RetrieveAPIView):
     def get_queryset(self):
         user = self.request.user
         visible = get_visible_user_ids(user, request=self.request)
-        if visible is None:
-            return Event.objects.all()
         return Event.objects.filter(user_id__in=visible)
 
 
@@ -98,7 +95,3 @@ class UnreadEventCountView(APIView):
             'unread_count': counts['unread_count'] or 0,
             'new_count': counts['new_count'] or 0
         })
-
-
-# Import for the aggregate query
-from django.db import models

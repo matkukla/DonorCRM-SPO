@@ -21,8 +21,7 @@ def _owner_scoped_queryset(user, request=None):
     """Return PrayerIntention queryset scoped by ownership."""
     qs = PrayerIntention.objects.select_related('contact', 'contact__owner').all()
     visible = get_visible_user_ids(user, request=request)
-    if visible is not None:
-        qs = qs.filter(contact__owner_id__in=visible)
+    qs = qs.filter(contact__owner_id__in=visible)
     return qs
 
 
