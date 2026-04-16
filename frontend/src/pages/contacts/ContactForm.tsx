@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { ArrowLeft, ChevronDown } from "lucide-react"
+import { GroupPicker } from "@/components/shared/GroupPicker"
 import type { ContactStatus, ContactCreate } from "@/api/contacts"
 
 const statusLabels: Record<ContactStatus, string> = {
@@ -47,6 +48,7 @@ export default function ContactForm() {
     country: "USA",
     status: "prospect",
     notes: "",
+    group_ids: [],
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -67,6 +69,7 @@ export default function ContactForm() {
         country: existingContact.country || "USA",
         status: existingContact.status,
         notes: existingContact.notes || "",
+        group_ids: existingContact.groups.map((g) => g.id),
       })
     }
   }, [existingContact])
@@ -339,6 +342,20 @@ export default function ContactForm() {
                     rows={4}
                     className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     placeholder="Add any notes about this contact..."
+                  />
+                </CardContent>
+              </Card>
+
+              {/* Groups */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Groups</CardTitle>
+                  <CardDescription>Assign this contact to one or more groups</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <GroupPicker
+                    value={formData.group_ids ?? []}
+                    onChange={(ids) => setFormData((prev) => ({ ...prev, group_ids: ids }))}
                   />
                 </CardContent>
               </Card>

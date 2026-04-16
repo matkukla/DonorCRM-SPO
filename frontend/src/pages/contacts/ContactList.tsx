@@ -21,9 +21,10 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { FilterCombobox } from "@/components/shared/FilterCombobox"
 import { formatLocalDate } from "@/lib/utils"
-import { Plus, Search, Filter, MoreHorizontal, Heart, Mail, Phone, BookOpen, Copy } from "lucide-react"
+import { Plus, Search, Filter, MoreHorizontal, Heart, Mail, Phone, BookOpen, Copy, Users } from "lucide-react"
 import { toast } from "sonner"
 import { LogEventDialog } from "@/pages/journals/components/LogEventDialog"
+import { AddToGroupDialog } from "@/components/shared/AddToGroupDialog"
 import { getContactEmails } from "@/api/contacts"
 import type { ColumnDef } from "@tanstack/react-table"
 import type { ContactListItem, ContactStatus } from "@/api/contacts"
@@ -60,7 +61,6 @@ export default function ContactList() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { isViewingAs } = useViewAs()
-  const isAdmin = user?.role === "admin"
   const canSeeOwner = user?.role === "admin" || user?.role === "supervisor" || user?.role === "coach"
 
   const {
@@ -96,6 +96,8 @@ export default function ContactList() {
       : []
   const [logEventContactId, setLogEventContactId] = useState<string | null>(null)
   const [isCopyingEmails, setIsCopyingEmails] = useState(false)
+  const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set())
+  const [addToGroupOpen, setAddToGroupOpen] = useState(false)
 
   const handleCopyEmails = async () => {
     setIsCopyingEmails(true)
@@ -121,6 +123,7 @@ export default function ContactList() {
 
   const handlePageChange = (newPage: number) => {
     setFilters({ page: newPage + 1 })
+    setSelectedContacts(new Set())
   }
 
   const handleRowClick = (contact: ContactListItem) => {
@@ -361,6 +364,30 @@ export default function ContactList() {
             </div>
           </FilterBar>
 
+          {/* Bulk action bar */}
+          {selectedContacts.size > 0 && (
+            <div className="flex items-center gap-3 px-4 py-2.5 bg-muted rounded-lg border">
+              <span className="text-sm font-medium">
+                {selectedContacts.size} contact{selectedContacts.size === 1 ? "" : "s"} selected
+              </span>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setAddToGroupOpen(true)}
+              >
+                <Users className="h-4 w-4 mr-2" />
+                Add to Group
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setSelectedContacts(new Set())}
+              >
+                Clear
+              </Button>
+            </div>
+          )}
+
           {/* Data Table */}
           <DataTable
             columns={columns}
@@ -374,6 +401,10 @@ export default function ContactList() {
             onRowClick={handleRowClick}
             ordering={filters.ordering}
             onOrderingChange={handleOrderingChange}
+            enableSelection
+            selectedRows={selectedContacts}
+            onSelectionChange={setSelectedContacts}
+            getRowId={(row) => row.id}
             aria-label="Contacts"
           />
         </div>
@@ -382,6 +413,13 @@ export default function ContactList() {
           open={!!logEventContactId}
           onOpenChange={(open) => !open && setLogEventContactId(null)}
           contactId={logEventContactId || undefined}
+        />
+
+        <AddToGroupDialog
+          open={addToGroupOpen}
+          onOpenChange={setAddToGroupOpen}
+          contactIds={Array.from(selectedContacts)}
+          onSuccess={() => setSelectedContacts(new Set())}
         />
       </Container>
     </Section>

@@ -28,9 +28,11 @@ import {
   Lock,
   Globe,
   UserMinus,
+  UserPlus,
 } from "lucide-react"
 import { toast } from "sonner"
 import { getGroupContactEmails } from "@/api/groups"
+import { AddContactsToGroupDialog } from "@/components/shared/AddContactsToGroupDialog"
 
 function formatDateTime(dateStr: string | null): string {
   if (!dateStr) return "—"
@@ -59,6 +61,7 @@ export default function GroupDetail() {
 
   const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set())
   const [isCopyingEmails, setIsCopyingEmails] = useState(false)
+  const [addContactsOpen, setAddContactsOpen] = useState(false)
 
   const handleCopyEmails = async () => {
     setIsCopyingEmails(true)
@@ -230,6 +233,14 @@ export default function GroupDetail() {
                   <Button
                     variant="secondary"
                     size="sm"
+                    onClick={() => setAddContactsOpen(true)}
+                  >
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Add Contacts
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     onClick={handleCopyEmails}
                     disabled={isCopyingEmails}
                   >
@@ -318,6 +329,14 @@ export default function GroupDetail() {
             </CardContent>
           </Card>
         </div>
+
+        <AddContactsToGroupDialog
+          open={addContactsOpen}
+          onOpenChange={setAddContactsOpen}
+          groupId={id}
+          groupName={group.name}
+          existingContactIds={(contacts ?? []).map((c) => c.id)}
+        />
       </Container>
     </Section>
   )
