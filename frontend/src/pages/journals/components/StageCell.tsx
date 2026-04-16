@@ -46,18 +46,12 @@ function getDefaultEventType(stage: PipelineStage): StageEventType {
 }
 
 export interface StageCellProps {
-  /** Contact ID for click handler */
-  contactId: string
   /** JournalContact ID (through-table), needed for creating stage events */
   journalContactId: string
   /** Stage this cell represents */
   stage: PipelineStage
   /** Summary of events for this stage */
   eventSummary: StageEventSummary
-  /** Click handler to open timeline drawer */
-  onCellClick: (contactId: string, stage: PipelineStage) => void
-  /** Current highest stage for this contact */
-  currentStage?: PipelineStage | null
 }
 
 /**
@@ -66,7 +60,7 @@ export interface StageCellProps {
  * JRNL-08 behavior:
  * - Unchecked stage (no events): Click immediately creates a stage event
  *   with a default event type. No dialog, no confirmation.
- * - Checked stage (has events): Click opens the EventTimelineDrawer for details.
+ * - Checked stage (has events): Click deletes all events for this stage (toggle off).
  * - Independent toggles: checking any stage does NOT auto-check others.
  *
  * Performance: Wrapped in React.memo with custom comparison to prevent
@@ -167,11 +161,8 @@ export const StageCell = React.memo<StageCellProps>(
   (prevProps, nextProps) => {
     return (
       prevProps.eventSummary === nextProps.eventSummary &&
-      prevProps.contactId === nextProps.contactId &&
       prevProps.journalContactId === nextProps.journalContactId &&
-      prevProps.stage === nextProps.stage &&
-      prevProps.onCellClick === nextProps.onCellClick &&
-      prevProps.currentStage === nextProps.currentStage
+      prevProps.stage === nextProps.stage
     )
   }
 )

@@ -49,19 +49,19 @@ export default function GroupDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
 
-  // Guard: Don't render until id is available from route params
-  if (!id) {
-    return null
-  }
-
-  const { data: group, isLoading: isLoadingGroup, error } = useGroup(id)
-  const { data: contacts, isLoading: isLoadingContacts } = useGroupContacts(id)
+  const { data: group, isLoading: isLoadingGroup, error } = useGroup(id ?? "")
+  const { data: contacts, isLoading: isLoadingContacts } = useGroupContacts(id ?? "")
   const deleteMutation = useDeleteGroup()
   const removeContactsMutation = useRemoveContactsFromGroup()
 
   const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set())
   const [isCopyingEmails, setIsCopyingEmails] = useState(false)
   const [addContactsOpen, setAddContactsOpen] = useState(false)
+
+  // Guard: id must come from route params
+  if (!id) {
+    return null
+  }
 
   const handleCopyEmails = async () => {
     setIsCopyingEmails(true)
@@ -275,7 +275,7 @@ export default function GroupDetail() {
                       <TableHead className="w-12">
                         <input
                           type="checkbox"
-                          checked={selectedContacts.size === contacts.length}
+                          checked={contacts.length > 0 && selectedContacts.size === contacts.length}
                           onChange={toggleAllContacts}
                           className="rounded border-border"
                         />

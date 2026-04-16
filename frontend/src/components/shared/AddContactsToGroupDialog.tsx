@@ -38,7 +38,8 @@ export const AddContactsToGroupDialog = React.memo(function AddContactsToGroupDi
   }, [searchTerm])
 
   const { data: contactsData, isLoading } = useContacts(
-    debouncedSearch ? { search: debouncedSearch } : {}
+    { search: debouncedSearch },
+    { enabled: !!debouncedSearch }
   )
 
   const addMutation = useAddContactsToGroup()

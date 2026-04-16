@@ -1,8 +1,11 @@
 import { test, expect, type Page } from "@playwright/test"
 
 const BASE_URL = process.env.BASE_URL || "http://localhost:5173"
-const EMAIL = process.env.E2E_EMAIL || "john.smith@spo.org"
-const PASSWORD = process.env.E2E_PASSWORD || "***REMOVED***"
+const EMAIL = process.env.E2E_EMAIL
+const PASSWORD = process.env.E2E_PASSWORD
+
+if (!EMAIL) throw new Error("E2E_EMAIL env var is required")
+if (!PASSWORD) throw new Error("E2E_PASSWORD env var is required")
 
 async function login(page: Page) {
   await page.goto(`${BASE_URL}/login`)

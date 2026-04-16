@@ -4,26 +4,8 @@ import { ArrowLeft, UserPlus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useJournal, useJournalMembers } from "@/hooks/useJournals"
-import { JournalGrid, EventTimelineDrawer, JournalHeader, JournalReport, AddContactsDialog } from "./components"
+import { JournalGrid, JournalHeader, JournalReport, AddContactsDialog } from "./components"
 import { useViewAs } from "@/providers/ViewAsProvider"
-import type { PipelineStage } from "@/types/journals"
-
-/**
- * State for the timeline drawer.
- */
-interface DrawerState {
-  isOpen: boolean
-  journalContactId: string | null
-  stage: PipelineStage | null
-  contactName: string
-}
-
-const initialDrawerState: DrawerState = {
-  isOpen: false,
-  journalContactId: null,
-  stage: null,
-  contactName: "",
-}
 
 /**
  * Journal detail page showing the pipeline grid.
@@ -44,33 +26,8 @@ export default function JournalDetail() {
     isError: membersError,
   } = useJournalMembers(id ?? "")
 
-  // Drawer state
-  const [drawer, setDrawer] = React.useState<DrawerState>(initialDrawerState)
-
   // Add contacts dialog state
   const [showAddContacts, setShowAddContacts] = React.useState(false)
-
-  // Handle stage cell click - open drawer
-  const handleStageCellClick = React.useCallback(
-    (contactId: string, stage: PipelineStage) => {
-      // Find member to get contact name and journal_contact ID
-      const member = membersData?.results.find((m) => m.contact === contactId)
-      if (member) {
-        setDrawer({
-          isOpen: true,
-          journalContactId: member.id, // This is the JournalContact ID
-          stage,
-          contactName: member.contact_name,
-        })
-      }
-    },
-    [membersData]
-  )
-
-  // Close drawer
-  const handleCloseDrawer = React.useCallback(() => {
-    setDrawer(initialDrawerState)
-  }, [])
 
   // Loading state
   if (journalLoading || membersLoading) {
@@ -136,7 +93,6 @@ export default function JournalDetail() {
             <JournalGrid
               members={members}
               journalId={id ?? ""}
-              onStageCellClick={handleStageCellClick}
               isLoading={membersLoading}
             />
           </div>
@@ -153,15 +109,6 @@ export default function JournalDetail() {
           <JournalReport journalId={id ?? ""} goalAmount={journal.goal_amount} />
         </TabsContent>
       </Tabs>
-
-      {/* Timeline drawer */}
-      <EventTimelineDrawer
-        journalContactId={drawer.journalContactId}
-        stage={drawer.stage}
-        contactName={drawer.contactName}
-        isOpen={drawer.isOpen}
-        onClose={handleCloseDrawer}
-      />
 
       {/* Add Contacts Dialog */}
       <AddContactsDialog

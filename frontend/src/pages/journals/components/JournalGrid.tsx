@@ -1,4 +1,3 @@
-import * as React from "react"
 import {
   Table,
   TableBody,
@@ -7,7 +6,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { StageCell, getHighestStageWithEvents } from "./StageCell"
+import { StageCell } from "./StageCell"
 import { ContactNameCell } from "./ContactNameCell"
 import { DecisionCell } from "./DecisionCell"
 import { NextStepsCell } from "./NextStepsCell"
@@ -27,8 +26,6 @@ export interface JournalGridProps {
   members: JournalMember[]
   /** Journal ID for decision hooks */
   journalId: string
-  /** Callback when a stage cell is clicked (opens timeline drawer) */
-  onStageCellClick: (contactId: string, stage: PipelineStage) => void
   /** Loading state */
   isLoading?: boolean
 }
@@ -46,16 +43,8 @@ export interface JournalGridProps {
 export function JournalGrid({
   members,
   journalId,
-  onStageCellClick,
   isLoading = false,
 }: JournalGridProps) {
-  // Memoize click handler to prevent StageCell re-renders
-  const handleCellClick = React.useCallback(
-    (contactId: string, stage: PipelineStage) => {
-      onStageCellClick(contactId, stage)
-    },
-    [onStageCellClick]
-  )
 
   // Empty state
   if (!isLoading && members.length === 0) {
@@ -114,7 +103,6 @@ export function JournalGrid({
         </TableHeader>
         <TableBody>
           {members.map((member) => {
-            const currentStage = getHighestStageWithEvents(member.stage_events)
             return (
               <TableRow key={member.id}>
                 {/* Contact name cell: sticky left only */}
@@ -132,12 +120,9 @@ export function JournalGrid({
                     <TableCell key={stage} className="p-2 min-w-[100px] w-[100px]">
                       <div className="flex items-center justify-center">
                         <StageCell
-                          contactId={member.contact}
                           journalContactId={member.id}
                           stage={stage}
                           eventSummary={eventSummary}
-                          currentStage={currentStage}
-                          onCellClick={handleCellClick}
                         />
                       </div>
                     </TableCell>
@@ -159,12 +144,9 @@ export function JournalGrid({
                     <TableCell key={stage} className="p-2 min-w-[100px] w-[100px]">
                       <div className="flex items-center justify-center">
                         <StageCell
-                          contactId={member.contact}
                           journalContactId={member.id}
                           stage={stage}
                           eventSummary={eventSummary}
-                          currentStage={currentStage}
-                          onCellClick={handleCellClick}
                         />
                       </div>
                     </TableCell>

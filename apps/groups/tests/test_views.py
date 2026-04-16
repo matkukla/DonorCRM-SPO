@@ -180,8 +180,8 @@ class TestGroupContactsView:
             format='json'
         )
 
-        # Contact is silently excluded because it's not visible to admin without View As
-        assert response.status_code == status.HTTP_200_OK
+        # Request fails with 400 because the contact is not visible to admin without View As
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert contact not in group.contacts.all()
 
     def test_add_contact_to_group_missionary_cannot_add_others(self):
@@ -200,8 +200,8 @@ class TestGroupContactsView:
             format='json'
         )
 
-        # The request succeeds but the contact is silently excluded (not visible)
-        assert response.status_code == status.HTTP_200_OK
+        # The request fails with 400 because no visible contacts were found
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert contact not in group.contacts.all()
 
     def test_add_contact_to_group_finance_user(self):
