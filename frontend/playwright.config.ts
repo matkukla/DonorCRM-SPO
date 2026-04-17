@@ -37,7 +37,7 @@ export default defineConfig({
         storageState: MISSIONARY_STORAGE,
       },
       dependencies: ["setup"],
-      testIgnore: /auth\.setup\.ts/,
+      testIgnore: [/auth\.setup\.ts/, /\.admin\.spec\.ts/],
     },
 
     // Tests that run as an authenticated admin (opt-in via filename)
