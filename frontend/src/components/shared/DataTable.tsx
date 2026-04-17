@@ -23,6 +23,8 @@ declare module "@tanstack/react-table" {
   }
 }
 
+const SELECT_COLUMN_ID = "__select__"
+
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
@@ -120,7 +122,7 @@ export function DataTable<TData, TValue>({
   }
 
   const selectionColumn: ColumnDef<TData, unknown> = {
-    id: "__select__",
+    id: SELECT_COLUMN_ID,
     header: () => (
       <input
         type="checkbox"
@@ -227,7 +229,7 @@ export function DataTable<TData, TValue>({
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
                       key={cell.id}
-                      onClick={cell.column.id === "__select__" ? (e) => e.stopPropagation() : undefined}
+                      onClick={cell.column.id === SELECT_COLUMN_ID ? (e) => e.stopPropagation() : undefined}
                     >
                       {flexRender(
                         cell.column.columnDef.cell,

@@ -1,5 +1,8 @@
 import { test, expect } from "@playwright/test"
 
+const MISSIONARY_EMAIL = process.env.E2E_MISSIONARY_EMAIL ?? "joe.man@spo.org"
+const MISSIONARY_PASSWORD = process.env.E2E_MISSIONARY_PASSWORD ?? "Test1234"
+
 // Login tests run WITHOUT stored auth — they test the login page itself.
 test.use({ storageState: { cookies: [], origins: [] } })
 
@@ -10,8 +13,8 @@ test.describe("Login", () => {
     await expect(page.getByText("Welcome back")).toBeVisible()
     await expect(page.getByText("Sign in to your DonorCRM account")).toBeVisible()
 
-    await page.getByLabel("Email").fill("joe.man@spo.org")
-    await page.getByLabel("Password").fill("Test1234")
+    await page.getByLabel("Email").fill(MISSIONARY_EMAIL)
+    await page.getByLabel("Password").fill(MISSIONARY_PASSWORD)
     await page.getByRole("button", { name: "Sign in" }).click()
 
     // Should redirect to dashboard
@@ -37,8 +40,8 @@ test.describe("Login", () => {
   test("sign in button shows loading state while submitting", async ({ page }) => {
     await page.goto("/login")
 
-    await page.getByLabel("Email").fill("joe.man@spo.org")
-    await page.getByLabel("Password").fill("Test1234")
+    await page.getByLabel("Email").fill(MISSIONARY_EMAIL)
+    await page.getByLabel("Password").fill(MISSIONARY_PASSWORD)
 
     const submitButton = page.getByRole("button", { name: "Sign in" })
     await submitButton.click()

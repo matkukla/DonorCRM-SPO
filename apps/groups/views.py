@@ -73,10 +73,12 @@ class GroupContactsView(APIView):
     """
 
     def get_permissions(self):
-        # IsStaffOrAbove blocks coaches on GET; only enforce it for write operations.
+        # IsStaffOrAbove blocks coaches on writes. Object-level scoping is
+        # enforced inside get_group() since APIView doesn't auto-run
+        # has_object_permission; IsOwnerOrAdmin would be a no-op here.
         if self.request.method not in permissions.SAFE_METHODS:
-            return [permissions.IsAuthenticated(), IsStaffOrAbove(), IsOwnerOrAdmin(), IsSupervisorWriteRestricted()]
-        return [permissions.IsAuthenticated(), IsOwnerOrAdmin(), IsSupervisorWriteRestricted()]
+            return [permissions.IsAuthenticated(), IsStaffOrAbove()]
+        return [permissions.IsAuthenticated()]
 
     def get_group(self, pk):
         user = self.request.user
@@ -123,7 +125,6 @@ class GroupContactsView(APIView):
             )
 
         contacts = Contact.objects.filter(id__in=contact_ids, owner=request.user, is_merged=False)
-        group.contacts.add(*contacts)
 
         added_count = contacts.count()
         if added_count == 0:

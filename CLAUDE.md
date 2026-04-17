@@ -92,4 +92,6 @@ Four roles: `admin`, `missionary`, `supervisor`, `coach`. Key permission classes
 - isort sections: FUTURE > STDLIB > DJANGO > DRF > THIRDPARTY > FIRSTPARTY > LOCALFOLDER (custom `known_django`, `known_drf`, `known_first_party` in pyproject.toml)
 - Black line length: 100
 
-### The #1 Rule of E2E Tests A test MUST fail when the feature it tests is broken. No exceptions. If a real user would see something broken, the test must fail. No "fixing the app inside the test". A passing test that hides a broken feature is worse than no test at all.
+### The #1 Rule of E2E Tests
+
+A test MUST fail when the feature it tests is broken. No exceptions. If a real user would see something broken, the test must fail. No "fixing the app inside the test". A passing test that hides a broken feature is worse than no test at all.

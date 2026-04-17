@@ -68,22 +68,37 @@ class ContactDetailSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at'
         ]
 
+    def _visible_groups(self, group_ids):
+        """Restrict group_ids to groups the requesting user can write to.
+
+        Scope to owned groups plus shared (owner=None) groups. Respects
+        View As by threading the request through get_visible_user_ids().
+        """
+        from apps.core.permissions import get_visible_user_ids
+        from apps.groups.models import Group
+        from django.db.models import Q
+
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return Group.objects.none()
+
+        visible = get_visible_user_ids(request.user, request=request)
+        return Group.objects.filter(id__in=group_ids).filter(
+            Q(owner_id__in=visible) | Q(owner__isnull=True)
+        )
+
     def create(self, validated_data):
         group_ids = validated_data.pop('group_ids', [])
         contact = super().create(validated_data)
         if group_ids:
-            from apps.groups.models import Group
-            groups = Group.objects.filter(id__in=group_ids)
-            contact.groups.set(groups)
+            contact.groups.set(self._visible_groups(group_ids))
         return contact
 
     def update(self, instance, validated_data):
         group_ids = validated_data.pop('group_ids', None)
         contact = super().update(instance, validated_data)
         if group_ids is not None:
-            from apps.groups.models import Group
-            groups = Group.objects.filter(id__in=group_ids)
-            contact.groups.set(groups)
+            contact.groups.set(self._visible_groups(group_ids))
         return contact
 
 
@@ -120,9 +135,16 @@ class ContactCreateSerializer(serializers.ModelSerializer):
         contact = Contact.objects.create(**validated_data)
 
         if group_ids:
+            from apps.core.permissions import get_visible_user_ids
             from apps.groups.models import Group
-            groups = Group.objects.filter(id__in=group_ids)
-            contact.groups.set(groups)
+            from django.db.models import Q
+
+            if request and request.user.is_authenticated:
+                visible = get_visible_user_ids(request.user, request=request)
+                groups = Group.objects.filter(id__in=group_ids).filter(
+                    Q(owner_id__in=visible) | Q(owner__isnull=True)
+                )
+                contact.groups.set(groups)
 
         return contact
 

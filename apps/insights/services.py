@@ -466,8 +466,14 @@ def get_stalled_contacts(limit=50, offset=0, sort_by='days_stalled', sort_dir='d
 
 def get_user_performance():
     """
-    Per-missionary performance metrics aggregated at database level.
+    Per-user performance metrics aggregated at database level.
     Target: <10 queries.
+
+    SECURITY: This function returns cross-tenant data (all missionary, admin,
+    and supervisor users). All current callers MUST be admin-gated. Do not
+    expose to missionary/coach-facing endpoints without first parameterizing
+    on request/user and scoping via get_visible_user_ids(). See PR #46 review
+    (HIGH-3).
     """
     # Subquery for gift totals per user (cents)
     gift_totals = Gift.objects.filter(

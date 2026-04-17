@@ -136,5 +136,5 @@ bug_lists/
 # Planning docs
 MULTI_TENANCY_PLAN.md
 
-# Internal docs
-docs/
+# Internal docs (keep docs/ tracked for future public docs; ignore only internal subdir)
+docs/internal/

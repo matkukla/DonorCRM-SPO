@@ -39,7 +39,7 @@ export const AddContactsToGroupDialog = React.memo(function AddContactsToGroupDi
 
   const { data: contactsData, isLoading } = useContacts(
     { search: debouncedSearch },
-    { enabled: !!debouncedSearch }
+    { enabled: open }
   )
 
   const addMutation = useAddContactsToGroup()
@@ -107,7 +107,7 @@ export const AddContactsToGroupDialog = React.memo(function AddContactsToGroupDi
               </div>
             ) : contacts.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                {debouncedSearch ? "No contacts found" : "Start typing to search"}
+                {debouncedSearch ? "No contacts found" : "No contacts yet"}
               </div>
             ) : (
               contacts.map((contact) => {
