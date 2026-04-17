@@ -144,6 +144,7 @@ class JournalContact(TimeStampedModel):
         unique_together = [['journal', 'contact']]
         indexes = [
             models.Index(fields=['journal', 'contact']),
+            models.Index(fields=['contact', 'created_at']),
         ]
 
     def __str__(self):

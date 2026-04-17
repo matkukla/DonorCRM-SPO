@@ -3,7 +3,7 @@ import { NavLink, useSearchParams } from "react-router-dom"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { useAdminDashboardOverview } from "@/hooks/useInsights"
+import { useAdminDashboardOverview, useAdminUserPerformance } from "@/hooks/useInsights"
 import { cn } from "@/lib/utils"
 import type { DateRange } from "@/lib/date-presets"
 import { dateRangeToParams } from "@/lib/date-presets"
@@ -69,6 +69,7 @@ export default function AdminAnalyticsDashboard() {
   const dateParams = dateRangeToParams(dateRange)
 
   const { data, isLoading, error } = useAdminDashboardOverview(dateParams)
+  const { data: usersData, isLoading: usersLoading } = useAdminUserPerformance()
 
   const [funnelDrilldown, setFunnelDrilldown] = useState<{
     open: boolean
@@ -267,7 +268,12 @@ export default function AdminAnalyticsDashboard() {
             </div>
             <div className="lg:col-span-1">
               <Suspense fallback={<SectionSkeleton className="h-80" />}>
-                <AlertsPanel overview={data} isOverviewLoading={isLoading} />
+                <AlertsPanel
+                  overview={data}
+                  isOverviewLoading={isLoading}
+                  users={usersData?.users}
+                  isUsersLoading={usersLoading}
+                />
               </Suspense>
             </div>
           </div>
@@ -278,7 +284,7 @@ export default function AdminAnalyticsDashboard() {
               <TimePeriodComparison dateParams={dateParams} currentOverview={data} />
             </Suspense>
             <Suspense fallback={<SectionSkeleton className="h-64" />}>
-              <UserComparison />
+              <UserComparison users={usersData?.users} isUsersLoading={usersLoading} />
             </Suspense>
           </div>
 

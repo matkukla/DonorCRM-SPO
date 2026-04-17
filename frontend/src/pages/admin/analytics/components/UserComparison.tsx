@@ -8,12 +8,30 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useAdminUserPerformance } from "@/hooks/useInsights"
+import type { UserPerformanceItem } from "@/api/insights"
 
-export function UserComparison() {
+interface UserComparisonProps {
+  users?: UserPerformanceItem[]
+  isUsersLoading?: boolean
+}
+
+export function UserComparison({ users, isUsersLoading }: UserComparisonProps = {}) {
   const [user1Id, setUser1Id] = useState<string>("")
   const [user2Id, setUser2Id] = useState<string>("")
 
-  const { data, isLoading } = useAdminUserPerformance()
+  // Only fetch if parent didn't pass `users`. When `users` is undefined on
+  // first render (parent query not yet resolved), shouldFetchUsers=true and
+  // this hook fires — but AdminAnalyticsDashboard already called
+  // useAdminUserPerformance, so React Query deduplicates to the same cache
+  // key and no extra HTTP request is made. Once the parent query resolves,
+  // shouldFetchUsers flips to false and this hook becomes a no-op.
+  const shouldFetchUsers = users === undefined
+  const { data: fetchedData, isLoading: fetchedLoading } = useAdminUserPerformance({
+    enabled: shouldFetchUsers,
+  })
+
+  const data = shouldFetchUsers ? fetchedData : { users: users ?? [] }
+  const isLoading = shouldFetchUsers ? fetchedLoading : (isUsersLoading ?? false)
 
   const user1 = useMemo(() => {
     if (!user1Id || !data?.users) return null
