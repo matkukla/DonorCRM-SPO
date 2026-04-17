@@ -50,22 +50,16 @@ export function JournalHeader({ journal, members }: JournalHeaderProps) {
       0
     )
 
-    // Sum monthly equivalent for recurring view
-    const totalMonthly = decisions.reduce(
-      (sum, d) => sum + parseFloat(d.monthly_equivalent),
-      0
-    )
-
     // Count of decisions made
     const decisionCount = decisions.length
 
     // Progress toward goal (goal_amount is a total campaign target)
     const goalAmount = parseFloat(journal.goal_amount)
     const progressPercent = goalAmount > 0
-      ? Math.min((totalMonthly / goalAmount) * 100, 100)
+      ? Math.min((totalPledged / goalAmount) * 100, 100)
       : 0
 
-    return { totalPledged, totalMonthly, decisionCount, progressPercent }
+    return { totalPledged, decisionCount, progressPercent }
   }, [members, journal.goal_amount])
 
   function handleStartEdit() {
