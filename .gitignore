@@ -138,3 +138,10 @@ MULTI_TENANCY_PLAN.md
 
 # Internal docs (keep docs/ tracked for future public docs; ignore only internal subdir)
 docs/internal/
+
+# Playwright / E2E artifacts
+e2e/node_modules/
+e2e/test-results/
+frontend/e2e/.auth/
+frontend/playwright-report/
+frontend/test-results/
