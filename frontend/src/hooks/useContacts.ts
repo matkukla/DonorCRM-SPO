@@ -18,10 +18,14 @@ import {
 } from "@/api/contacts"
 import type { ContactCreate, ContactUpdate, MergeRequest, DismissRequest } from "@/api/contacts"
 
-export function useContacts(params: Record<string, string> = {}) {
+export function useContacts(
+  params: Record<string, string> = {},
+  options: { enabled?: boolean } = {}
+) {
   return useQuery({
     queryKey: ["contacts", params],
     queryFn: () => getContacts(params),
+    ...options,
   })
 }
 

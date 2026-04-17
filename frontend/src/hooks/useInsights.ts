@@ -83,11 +83,15 @@ export function useTransactions(params?: {
 
 // Admin Analytics Hooks
 
-export function useAdminDashboardOverview(params?: DashboardOverviewParams) {
+export function useAdminDashboardOverview(
+  params?: DashboardOverviewParams,
+  options?: { enabled?: boolean },
+) {
   return useQuery({
     queryKey: ["insights", "admin", "dashboard", params],
     queryFn: () => getAdminDashboardOverview(params),
     staleTime: STALE_TIME,
+    enabled: options?.enabled ?? true,
   })
 }
 

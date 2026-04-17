@@ -315,8 +315,16 @@ def get_dashboard_overview(date_from=None, date_to=None):
     stalled_count = stalled_qs.count()
 
     # Conversion rate: contacts with a Decision / total contacts in journals
-    contacts_in_journals = JournalContact.objects.values('contact').distinct().count()
-    contacts_with_decision = Decision.objects.values('journal_contact__contact').distinct().count()
+    jc_qs = JournalContact.objects.all()
+    decision_qs = Decision.objects.all()
+    if dt_from:
+        jc_qs = jc_qs.filter(created_at__gte=dt_from)
+        decision_qs = decision_qs.filter(created_at__gte=dt_from)
+    if dt_to:
+        jc_qs = jc_qs.filter(created_at__lt=dt_to)
+        decision_qs = decision_qs.filter(created_at__lt=dt_to)
+    contacts_in_journals = jc_qs.values('contact').distinct().count()
+    contacts_with_decision = decision_qs.values('journal_contact__contact').distinct().count()
     conversion_rate = round(
         (contacts_with_decision / contacts_in_journals * 100) if contacts_in_journals > 0 else 0,
         1
@@ -458,8 +466,14 @@ def get_stalled_contacts(limit=50, offset=0, sort_by='days_stalled', sort_dir='d
 
 def get_user_performance():
     """
-    Per-missionary performance metrics aggregated at database level.
+    Per-user performance metrics aggregated at database level.
     Target: <10 queries.
+
+    SECURITY: This function returns cross-tenant data (all missionary, admin,
+    and supervisor users). All current callers MUST be admin-gated. Do not
+    expose to missionary/coach-facing endpoints without first parameterizing
+    on request/user and scoping via get_visible_user_ids(). See PR #46 review
+    (HIGH-3).
     """
     # Subquery for gift totals per user (cents)
     gift_totals = Gift.objects.filter(
@@ -489,7 +503,7 @@ def get_user_performance():
     ).values('journal_contact__contact').distinct()
 
     users = User.objects.filter(
-        role__in=['missionary', 'admin']
+        role__in=['missionary', 'admin', 'supervisor']
     ).annotate(
         total_contacts=Count('contacts', distinct=True),
         active_journals=Count(
@@ -513,12 +527,16 @@ def get_user_performance():
             'journals__journal_contacts__decisions__journal_contact__contact',
             distinct=True
         ),
+        contacts_in_journals=Count(
+            'journals__journal_contacts__contact',
+            distinct=True
+        ),
     ).order_by('-total_contacts')
 
     result = []
     for user in users:
         conversion_rate = round(
-            (user._contacts_with_decisions / user.total_contacts * 100) if user.total_contacts > 0 else 0,
+            (user._contacts_with_decisions / user.contacts_in_journals * 100) if user.contacts_in_journals > 0 else 0,
             1
         )
 
@@ -568,12 +586,15 @@ def get_conversion_funnel(date_from=None, date_to=None):
         count=Count('id')
     ).order_by('current_stage')
 
-    total = sum(item['count'] for item in breakdown)
+    stage_counts = {item['current_stage']: item['count'] for item in breakdown}
+
+    # Separate null-stage contacts from the pipeline total
+    null_count = stage_counts.pop(None, 0)
+    total = sum(stage_counts.values())
 
     # Build ordered result using PipelineStage order
     stage_order = [s.value for s in PipelineStage]
     stage_labels = {s.value: s.label for s in PipelineStage}
-    stage_counts = {item['current_stage']: item['count'] for item in breakdown}
 
     funnel = []
     for stage_value in stage_order:
@@ -585,19 +606,10 @@ def get_conversion_funnel(date_from=None, date_to=None):
             'percentage': round((count / total * 100) if total > 0 else 0, 1),
         })
 
-    # Include contacts with no stage events (null current_stage)
-    null_count = stage_counts.get(None, 0)
-    if null_count > 0:
-        funnel.append({
-            'stage': None,
-            'label': 'No Activity',
-            'count': null_count,
-            'percentage': round((null_count / total * 100) if total > 0 else 0, 1),
-        })
-
     return {
         'funnel': funnel,
         'total_contacts_in_pipeline': total,
+        'no_activity_count': null_count,
     }
 
 
@@ -953,12 +965,15 @@ def get_user_drilldown(user_id):
     active_journals = Journal.objects.filter(owner_id=user_id, is_archived=False).count()
     decisions_logged = Decision.objects.filter(journal_contact__journal__owner_id=user_id).count()
 
-    # Conversion rate: contacts with decisions / total contacts * 100
+    # Conversion rate: contacts with decisions / contacts in journals * 100
+    contacts_in_journals = JournalContact.objects.filter(
+        journal__owner_id=user_id
+    ).values('contact').distinct().count()
     contacts_with_decision = Decision.objects.filter(
         journal_contact__journal__owner_id=user_id
     ).values('journal_contact__contact').distinct().count()
     conversion_rate = round(
-        (contacts_with_decision / total_contacts * 100) if total_contacts > 0 else 0,
+        (contacts_with_decision / contacts_in_journals * 100) if contacts_in_journals > 0 else 0,
         1
     )
 

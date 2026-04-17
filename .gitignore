@@ -94,6 +94,19 @@ credentials.json
 # Claude Code local config and skills
 .claude/
 
+# Manual Playwright test scripts (use e2e/ with env-var credentials instead)
+frontend/test_ui*.cjs
+frontend/test_ui*.js
+
+# E2E test artifacts
+e2e/node_modules/
+e2e/test-results/
+e2e/playwright-report/
+e2e/.playwright/
+frontend/e2e/.auth/
+frontend/test-results/
+frontend/playwright-report/
+
 # Local test data
 test_data/
 prompts/
@@ -123,6 +136,5 @@ bug_lists/
 # Planning docs
 MULTI_TENANCY_PLAN.md
 
-# Internal docs
-docs/postgresql-complexity-analysis.md
-docs/api-auth-authorization-analysis.md
+# Internal docs (keep docs/ tracked for future public docs; ignore only internal subdir)
+docs/internal/

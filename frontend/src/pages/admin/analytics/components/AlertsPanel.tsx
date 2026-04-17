@@ -4,8 +4,13 @@ import { AlertTriangle } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { useAdminDashboardOverview, useAdminUserPerformance } from "@/hooks/useInsights"
+import { useAdminUserPerformance } from "@/hooks/useInsights"
 import type { DashboardOverviewResponse, UserPerformanceItem } from "@/api/insights"
+
+interface AlertsPanelProps {
+  overview?: DashboardOverviewResponse
+  isOverviewLoading?: boolean
+}
 
 interface CoachingAlert {
   id: string
@@ -30,7 +35,7 @@ function computeAlerts(
       id: "stalled-contacts-high",
       message: `${overview.stalled_contacts} contacts stalled >14 days across team`,
       severity: "high",
-      actionLink: "/admin/analytics/stalled-contacts",
+      actionLink: "/admin/analytics/stalled",
     })
   }
 
@@ -85,8 +90,7 @@ const severityStyles = {
   low: "bg-blue-50 dark:bg-blue-950/50 border-blue-100 dark:border-blue-900/50 text-blue-900 dark:text-blue-200",
 }
 
-export function AlertsPanel() {
-  const { data: overview, isLoading: overviewLoading } = useAdminDashboardOverview()
+export function AlertsPanel({ overview, isOverviewLoading = false }: AlertsPanelProps) {
   const { data: usersData, isLoading: usersLoading } = useAdminUserPerformance()
 
   const alerts = useMemo(
@@ -94,7 +98,7 @@ export function AlertsPanel() {
     [overview, usersData]
   )
 
-  const isLoading = overviewLoading || usersLoading
+  const isLoading = isOverviewLoading || usersLoading
 
   return (
     <Card>

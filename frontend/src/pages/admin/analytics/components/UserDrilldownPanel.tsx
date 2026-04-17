@@ -108,7 +108,7 @@ export function UserDrilldownPanel({ open, userId, onClose }: UserDrilldownPanel
                   </CardHeader>
                   <CardContent>
                     <div className="text-xl font-bold">
-                      {(data.stats.total_donations / 100).toLocaleString('en-US', {
+                      {data.stats.total_donations.toLocaleString('en-US', {
                         style: 'currency',
                         currency: 'USD',
                       })}

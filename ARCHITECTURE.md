@@ -154,24 +154,23 @@ Five roles with a clear hierarchy:
 **Permission classes** (`apps/core/permissions.py`):
 
 - `IsAdmin` — Only admin users
-- `IsFinanceOrAdmin` — Finance or admin
-- `IsStaffOrAbove` — Staff, finance, admin, mission_supervisor (excludes read_only from writes)
+- `IsStaffOrAbove` — Missionary, supervisor, or admin (excludes coach from writes)
 - `IsOwnerOrAdmin` — Object owner or admin (object-level)
 - `IsSupervisorWriteRestricted` — Supervisors can read visible data but only write their own
-- `ReadOnlyOrAdmin` — Safe methods for all; writes for admin only
 
 **Visibility helper** — the core of data scoping:
 
 ```python
-def get_visible_user_ids(user):
+def get_visible_user_ids(user, request=None):
     """Return set of user IDs whose data this user can see, or None for 'all'."""
-    if user.role in ['admin', 'finance', 'read_only']:
-        return None  # sentinel for "all users"
-    if user.role == 'mission_supervisor':
-        ids = set(user.supervised_users.filter(is_active=True).values_list('id', flat=True))
+    # View As override: scope to the target user regardless of viewer role.
+    if request and getattr(request, 'view_as_user', None):
+        return {request.view_as_user.id}
+    if user.role == 'coach':
+        ids = set(user.coached_users.filter(is_active=True).values_list('id', flat=True))
         ids.add(user.id)
         return ids
-    return {user.id}  # staff sees only own data
+    return {user.id}  # admin/supervisor/missionary see own data; cross-user via View As
 ```
 
 Every list view calls this to scope its queryset before applying any filters.

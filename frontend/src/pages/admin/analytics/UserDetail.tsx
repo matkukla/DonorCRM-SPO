@@ -174,7 +174,7 @@ export default function UserDetail() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {(user.total_donations / 100).toLocaleString('en-US', {
+                  {user.total_donations.toLocaleString('en-US', {
                     style: 'currency',
                     currency: 'USD'
                   })}

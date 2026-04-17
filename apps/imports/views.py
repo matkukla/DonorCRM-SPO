@@ -695,13 +695,14 @@ class MPDOverviewView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsAdmin]
 
     def get(self, request):
-        from apps.dashboard.services import get_mpd_computed
+        from apps.dashboard.services import get_mpd_computed_batch
         from apps.users.models import User
 
         # Get all active missionaries
-        users = User.objects.filter(
-            role='missionary', is_active=True
-        ).order_by('last_name', 'first_name')
+        users = list(
+            User.objects.filter(role='missionary', is_active=True)
+            .order_by('last_name', 'first_name')
+        )
 
         # Prefetch latest snapshot per user for monthly_average
         from apps.imports.models import MPDSnapshot as MPDSnapshotModel
@@ -712,9 +713,12 @@ class MPDOverviewView(APIView):
             if snap.user_id not in snapshot_map:
                 snapshot_map[snap.user_id] = snap
 
+        # Single batched aggregation: avoids N+1 on Gift.aggregate per user.
+        computed_map = get_mpd_computed_batch(users, snapshot_map=snapshot_map)
+
         missionaries = []
         for user in users:
-            computed = get_mpd_computed(user)
+            computed = computed_map.get(user.id, {"has_data": False})
             snapshot = snapshot_map.get(user.id)
             if computed.get("has_data") or (snapshot and snapshot.monthly_average is not None):
                 entry = {

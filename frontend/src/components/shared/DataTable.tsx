@@ -23,6 +23,8 @@ declare module "@tanstack/react-table" {
   }
 }
 
+const SELECT_COLUMN_ID = "__select__"
+
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
@@ -38,6 +40,11 @@ interface DataTableProps<TData, TValue> {
   // Server-side sorting
   ordering?: string | null
   onOrderingChange?: (ordering: string | null) => void
+  // Row selection
+  enableSelection?: boolean
+  selectedRows?: Set<string>
+  onSelectionChange?: (selected: Set<string>) => void
+  getRowId?: (row: TData) => string
   // Accessibility
   "aria-label"?: string
 }
@@ -65,33 +72,92 @@ export function DataTable<TData, TValue>({
   onRowClick,
   ordering,
   onOrderingChange,
+  enableSelection,
+  selectedRows,
+  onSelectionChange,
+  getRowId,
   "aria-label": ariaLabel,
 }: DataTableProps<TData, TValue>) {
-  const table = useReactTable({
-    data,
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-    manualPagination: true,
-    pageCount,
-  })
-
   const currentSort = parseOrdering(ordering)
 
   const handleSort = (serverSortKey: string) => {
     if (!onOrderingChange) return
     if (currentSort?.field === serverSortKey) {
       if (currentSort.direction === "asc") {
-        // asc -> desc
         onOrderingChange(`-${serverSortKey}`)
       } else {
-        // desc -> clear
         onOrderingChange(null)
       }
     } else {
-      // new field -> asc
       onOrderingChange(serverSortKey)
     }
   }
+
+  const allRowIds = enableSelection && getRowId ? data.map(getRowId) : []
+  const allSelected = allRowIds.length > 0 && allRowIds.every((id) => selectedRows?.has(id))
+  const someSelected = !allSelected && allRowIds.some((id) => selectedRows?.has(id))
+
+  const toggleAll = () => {
+    if (!onSelectionChange) return
+    if (allSelected) {
+      const next = new Set(selectedRows)
+      allRowIds.forEach((id) => next.delete(id))
+      onSelectionChange(next)
+    } else {
+      const next = new Set(selectedRows)
+      allRowIds.forEach((id) => next.add(id))
+      onSelectionChange(next)
+    }
+  }
+
+  const toggleRow = (id: string) => {
+    if (!onSelectionChange || !selectedRows) return
+    const next = new Set(selectedRows)
+    if (next.has(id)) {
+      next.delete(id)
+    } else {
+      next.add(id)
+    }
+    onSelectionChange(next)
+  }
+
+  const selectionColumn: ColumnDef<TData, unknown> = {
+    id: SELECT_COLUMN_ID,
+    header: () => (
+      <input
+        type="checkbox"
+        checked={allSelected}
+        ref={(el) => { if (el) el.indeterminate = someSelected }}
+        onChange={toggleAll}
+        className="rounded border-border"
+        aria-label="Select all rows"
+      />
+    ),
+    cell: ({ row }) => {
+      const rowId = getRowId ? getRowId(row.original) : ""
+      return (
+        <input
+          type="checkbox"
+          checked={selectedRows?.has(rowId) ?? false}
+          onChange={() => toggleRow(rowId)}
+          className="rounded border-border"
+          aria-label={`Select row ${rowId}`}
+        />
+      )
+    },
+  }
+
+  const effectiveColumns: ColumnDef<TData, unknown>[] = enableSelection
+    ? [selectionColumn, ...(columns as ColumnDef<TData, unknown>[])]
+    : (columns as ColumnDef<TData, unknown>[])
+
+  const table = useReactTable({
+    data,
+    columns: effectiveColumns,
+    getCoreRowModel: getCoreRowModel(),
+    manualPagination: true,
+    pageCount,
+  })
 
   const startItem = pageIndex * pageSize + 1
   const endItem = Math.min((pageIndex + 1) * pageSize, totalCount || 0)
@@ -143,10 +209,9 @@ export function DataTable<TData, TValue>({
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              // Loading skeleton
               [...Array(5)].map((_, i) => (
                 <TableRow key={i}>
-                  {columns.map((_, j) => (
+                  {effectiveColumns.map((_, j) => (
                     <TableCell key={j}>
                       <div className="h-4 w-full bg-muted rounded animate-pulse" />
                     </TableCell>
@@ -162,7 +227,10 @@ export function DataTable<TData, TValue>({
                   className={onRowClick ? "cursor-pointer" : undefined}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell
+                      key={cell.id}
+                      onClick={cell.column.id === SELECT_COLUMN_ID ? (e) => e.stopPropagation() : undefined}
+                    >
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()
@@ -174,7 +242,7 @@ export function DataTable<TData, TValue>({
             ) : (
               <TableRow>
                 <TableCell
-                  colSpan={columns.length}
+                  colSpan={effectiveColumns.length}
                   className="h-24 text-center text-muted-foreground"
                 >
                   No results found.

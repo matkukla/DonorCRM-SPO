@@ -142,7 +142,7 @@ class TransactionsView(APIView):
 
     @extend_schema(
         tags=['insights'],
-        summary='Get transactions ledger (admin/finance only)',
+        summary='Get transactions ledger (admin only)',
         parameters=[
             OpenApiParameter(name='limit', description='Max results (default: 100)', type=int),
             OpenApiParameter(name='offset', description='Offset for pagination (default: 0)', type=int),

@@ -28,9 +28,11 @@ import {
   Lock,
   Globe,
   UserMinus,
+  UserPlus,
 } from "lucide-react"
 import { toast } from "sonner"
 import { getGroupContactEmails } from "@/api/groups"
+import { AddContactsToGroupDialog } from "@/components/shared/AddContactsToGroupDialog"
 
 function formatDateTime(dateStr: string | null): string {
   if (!dateStr) return "—"
@@ -47,18 +49,19 @@ export default function GroupDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
 
-  // Guard: Don't render until id is available from route params
-  if (!id) {
-    return null
-  }
-
-  const { data: group, isLoading: isLoadingGroup, error } = useGroup(id)
-  const { data: contacts, isLoading: isLoadingContacts } = useGroupContacts(id)
+  const { data: group, isLoading: isLoadingGroup, error } = useGroup(id ?? "")
+  const { data: contacts, isLoading: isLoadingContacts } = useGroupContacts(id ?? "")
   const deleteMutation = useDeleteGroup()
   const removeContactsMutation = useRemoveContactsFromGroup()
 
   const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set())
   const [isCopyingEmails, setIsCopyingEmails] = useState(false)
+  const [addContactsOpen, setAddContactsOpen] = useState(false)
+
+  // Guard: id must come from route params
+  if (!id) {
+    return null
+  }
 
   const handleCopyEmails = async () => {
     setIsCopyingEmails(true)
@@ -230,6 +233,14 @@ export default function GroupDetail() {
                   <Button
                     variant="secondary"
                     size="sm"
+                    onClick={() => setAddContactsOpen(true)}
+                  >
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Add Contacts
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     onClick={handleCopyEmails}
                     disabled={isCopyingEmails}
                   >
@@ -264,7 +275,7 @@ export default function GroupDetail() {
                       <TableHead className="w-12">
                         <input
                           type="checkbox"
-                          checked={selectedContacts.size === contacts.length}
+                          checked={contacts.length > 0 && selectedContacts.size === contacts.length}
                           onChange={toggleAllContacts}
                           className="rounded border-border"
                         />
@@ -318,6 +329,14 @@ export default function GroupDetail() {
             </CardContent>
           </Card>
         </div>
+
+        <AddContactsToGroupDialog
+          open={addContactsOpen}
+          onOpenChange={setAddContactsOpen}
+          groupId={id}
+          groupName={group.name}
+          existingContactIds={(contacts ?? []).map((c) => c.id)}
+        />
       </Container>
     </Section>
   )

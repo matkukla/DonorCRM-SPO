@@ -6,7 +6,9 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.core.permissions import IsOwnerOrAdmin, IsSupervisorWriteRestricted, get_visible_user_ids
+from apps.contacts.models import Contact
+from apps.contacts.serializers import ContactListSerializer
+from apps.core.permissions import IsOwnerOrAdmin, IsStaffOrAbove, IsSupervisorWriteRestricted, get_visible_user_ids
 from apps.groups.models import Group
 from apps.groups.serializers import GroupCreateSerializer, GroupSerializer
 
@@ -69,7 +71,14 @@ class GroupContactsView(APIView):
     POST: Add contacts to group
     DELETE: Remove contacts from group
     """
-    permission_classes = [permissions.IsAuthenticated]
+
+    def get_permissions(self):
+        # IsStaffOrAbove blocks coaches on writes. Object-level scoping is
+        # enforced inside get_group() since APIView doesn't auto-run
+        # has_object_permission; IsOwnerOrAdmin would be a no-op here.
+        if self.request.method not in permissions.SAFE_METHODS:
+            return [permissions.IsAuthenticated(), IsStaffOrAbove()]
+        return [permissions.IsAuthenticated()]
 
     def get_group(self, pk):
         user = self.request.user
@@ -89,7 +98,6 @@ class GroupContactsView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        from apps.contacts.serializers import ContactListSerializer
         contacts = group.contacts.filter(is_merged=False).select_related('owner')
         serializer = ContactListSerializer(contacts, many=True)
         return Response(serializer.data)
@@ -103,6 +111,12 @@ class GroupContactsView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+        if group.is_system:
+            return Response(
+                {'detail': 'Cannot modify membership of system groups.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         contact_ids = request.data.get('contact_ids', [])
         if not contact_ids:
             return Response(
@@ -110,11 +124,17 @@ class GroupContactsView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        from apps.contacts.models import Contact
         contacts = Contact.objects.filter(id__in=contact_ids, owner=request.user, is_merged=False)
-        group.contacts.add(*contacts)
 
-        return Response({'detail': f'Added {contacts.count()} contacts to group.'})
+        added_count = contacts.count()
+        if added_count == 0:
+            return Response(
+                {'detail': 'None of the requested contacts were visible to you.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        group.contacts.add(*contacts)
+        return Response({'detail': f'Added {added_count} contacts to group.'})
 
     def delete(self, request, pk):
         """Remove contacts from group."""
@@ -125,6 +145,12 @@ class GroupContactsView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+        if group.is_system:
+            return Response(
+                {'detail': 'Cannot modify membership of system groups.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         contact_ids = request.data.get('contact_ids', [])
         if not contact_ids:
             return Response(
@@ -132,8 +158,11 @@ class GroupContactsView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        from apps.contacts.models import Contact
-        contacts = Contact.objects.filter(id__in=contact_ids)
+        visible = get_visible_user_ids(request.user, request=request)
+        if visible is None:
+            contacts = Contact.objects.filter(id__in=contact_ids)
+        else:
+            contacts = Contact.objects.filter(id__in=contact_ids, owner_id__in=visible)
         group.contacts.remove(*contacts)
 
         return Response({'detail': f'Removed contacts from group.'})

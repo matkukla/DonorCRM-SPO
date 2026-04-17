@@ -4,7 +4,7 @@ Tests for generic CSV import (contacts and donations).
 Covers:
 - Contact import: create, update by email/name, SHA256 dedup, row errors
 - Donation import: Gift creation, missing contact errors, stat recalculation
-- API views: endpoints, response shape, staff access, read-only denied
+- API views: endpoints, response shape, staff access, coach denied
 """
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase

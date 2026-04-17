@@ -1,5 +1,5 @@
 export { JournalGrid } from "./JournalGrid"
-export { StageCell, getHighestStageWithEvents } from "./StageCell"
+export { StageCell } from "./StageCell"
 export { ContactNameCell } from "./ContactNameCell"
 export { EventTimelineDrawer } from "./EventTimelineDrawer"
 export { JournalHeader } from "./JournalHeader"

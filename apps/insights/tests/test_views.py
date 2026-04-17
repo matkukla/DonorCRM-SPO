@@ -261,7 +261,16 @@ class TestAdminEndpointPermissions:
         '/api/v1/insights/admin/team-activity/',
     ]
 
-    def test_missionary_user_cannot_access(self):
+    def test_coach_cannot_access(self):
+        user = UserFactory(role='coach')
+        client = APIClient()
+        client.force_authenticate(user=user)
+        for endpoint in self.ADMIN_ENDPOINTS:
+            response = client.get(endpoint)
+            assert response.status_code == status.HTTP_403_FORBIDDEN, \
+                f"Coach user should get 403 from {endpoint}"
+
+    def test_missionary_cannot_access(self):
         user = UserFactory(role='missionary')
         client = APIClient()
         client.force_authenticate(user=user)
@@ -269,3 +278,149 @@ class TestAdminEndpointPermissions:
             response = client.get(endpoint)
             assert response.status_code == status.HTTP_403_FORBIDDEN, \
                 f"Missionary user should get 403 from {endpoint}"
+
+
+@pytest.mark.django_db
+class TestDashboardOverviewDonationAmounts:
+    """Tests verifying donation amounts are returned in dollars (not cents)."""
+
+    def test_donation_amount_is_dollars(self, admin_client):
+        """Verify donations_12m.total_amount is in dollars, not cents."""
+        client, admin_user = admin_client
+        staff = UserFactory(role='missionary')
+        contact = ContactFactory(owner=staff)
+
+        # Create gift of $250.00 (25000 cents)
+        from datetime import date, timedelta
+        GiftFactory(
+            donor_contact=contact,
+            amount_cents=25000,
+            gift_date=date.today() - timedelta(days=5),
+        )
+
+        response = client.get('/api/v1/insights/admin/dashboard-overview/')
+        assert response.status_code == status.HTTP_200_OK
+        # Backend should return 250.0 (dollars), not 25000 (cents)
+        assert response.data['donations_12m']['total_amount'] == 250.0
+        assert response.data['donations_12m']['total_count'] == 1
+
+
+@pytest.mark.django_db
+class TestUserPerformanceBugFixes:
+    """Tests for bug fixes in user performance endpoint."""
+
+    def test_supervisor_users_included(self, admin_client):
+        """Verify supervisor role users appear in user performance results."""
+        client, admin_user = admin_client
+        supervisor = UserFactory(role='supervisor')
+        ContactFactory.create_batch(2, owner=supervisor)
+
+        response = client.get('/api/v1/insights/admin/user-performance/')
+        assert response.status_code == status.HTTP_200_OK
+        user_emails = [u['email'] for u in response.data['users']]
+        assert supervisor.email in user_emails
+
+    def test_conversion_rate_uses_journal_contacts_denominator(self, admin_client):
+        """Verify conversion rate denominator is contacts-in-journals, not all contacts."""
+        client, admin_user = admin_client
+        staff = UserFactory(role='missionary')
+
+        # Create 5 contacts, but only 2 in journals
+        contacts = ContactFactory.create_batch(5, owner=staff)
+        journal = Journal.objects.create(
+            name='Test Journal',
+            owner=staff,
+            goal_amount=Decimal('10000.00'),
+        )
+        jc1 = JournalContact.objects.create(journal=journal, contact=contacts[0])
+        JournalContact.objects.create(journal=journal, contact=contacts[1])
+
+        # Add decision for 1 of the 2 journal contacts
+        Decision.objects.create(
+            journal_contact=jc1,
+            amount=Decimal('100.00'),
+            cadence='monthly',
+            status='active',
+        )
+
+        response = client.get('/api/v1/insights/admin/user-performance/')
+        assert response.status_code == status.HTTP_200_OK
+        staff_data = next(u for u in response.data['users'] if u['email'] == staff.email)
+
+        # Conversion rate should be 1/2 = 50.0%, not 1/5 = 20.0%
+        assert staff_data['conversion_rate'] == 50.0
+
+    def test_donation_total_is_dollars(self, admin_client):
+        """Verify total_donations in user performance is in dollars."""
+        client, admin_user = admin_client
+        staff = UserFactory(role='missionary')
+        contact = ContactFactory(owner=staff)
+
+        from datetime import date, timedelta
+        GiftFactory(
+            donor_contact=contact,
+            amount_cents=50000,  # $500.00
+            gift_date=date.today() - timedelta(days=5),
+        )
+
+        response = client.get('/api/v1/insights/admin/user-performance/')
+        assert response.status_code == status.HTTP_200_OK
+        staff_data = next(u for u in response.data['users'] if u['email'] == staff.email)
+        assert staff_data['total_donations'] == 500.0
+
+
+@pytest.mark.django_db
+class TestConversionFunnelBugFixes:
+    """Tests for bug fixes in conversion funnel endpoint."""
+
+    def test_no_activity_contacts_excluded_from_total(self, admin_client):
+        """Verify contacts with no stage events don't inflate total_contacts_in_pipeline."""
+        client, admin_user = admin_client
+        staff = UserFactory(role='missionary')
+        contact1 = ContactFactory(owner=staff)
+        contact2 = ContactFactory(owner=staff)
+
+        journal = Journal.objects.create(
+            name='Test Journal',
+            owner=staff,
+            goal_amount=Decimal('10000.00'),
+        )
+        jc1 = JournalContact.objects.create(journal=journal, contact=contact1)
+        jc2 = JournalContact.objects.create(journal=journal, contact=contact2)
+
+        # Only jc1 gets a stage event; jc2 has no activity
+        from apps.journals.models import JournalStageEvent, PipelineStage
+        JournalStageEvent.objects.create(
+            journal_contact=jc1,
+            stage=PipelineStage.CONTACT,
+        )
+
+        response = client.get('/api/v1/insights/admin/conversion-funnel/')
+        assert response.status_code == status.HTTP_200_OK
+        # total should be 1 (only jc1 with a stage event), not 2
+        assert response.data['total_contacts_in_pipeline'] == 1
+        # no_activity_count should be 1 (jc2)
+        assert response.data['no_activity_count'] == 1
+
+    def test_funnel_percentages_sum_to_100(self, admin_client):
+        """Verify funnel stage percentages sum to approximately 100%."""
+        client, admin_user = admin_client
+        staff = UserFactory(role='missionary')
+
+        journal = Journal.objects.create(
+            name='Test Journal',
+            owner=staff,
+            goal_amount=Decimal('10000.00'),
+        )
+        from apps.journals.models import JournalStageEvent, PipelineStage
+
+        # Create 3 contacts in different stages
+        for stage in [PipelineStage.CONTACT, PipelineStage.MEET, PipelineStage.CLOSE]:
+            contact = ContactFactory(owner=staff)
+            jc = JournalContact.objects.create(journal=journal, contact=contact)
+            JournalStageEvent.objects.create(journal_contact=jc, stage=stage)
+
+        response = client.get('/api/v1/insights/admin/conversion-funnel/')
+        assert response.status_code == status.HTTP_200_OK
+        total_pct = sum(f['percentage'] for f in response.data['funnel'])
+        assert abs(total_pct - 100.0) < 1.0  # Allow for rounding

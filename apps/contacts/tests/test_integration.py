@@ -6,6 +6,7 @@ from decimal import Decimal
 import pytest
 from django.utils import timezone
 from rest_framework import status
+from rest_framework.test import APIClient
 
 from apps.contacts.models import Contact, ContactStatus
 
@@ -186,22 +187,63 @@ class TestPermissionBoundaries:
         contact_ids = [c['id'] for c in response.data['results']]
         assert contact_id not in contact_ids
 
-    def test_admin_sees_all_contacts(self, authenticated_client, admin_client):
+    def test_admin_sees_own_contacts_only(self, authenticated_client, admin_client):
         """Test admins see only their own contacts by default (cross-user via View As)."""
         client, user = authenticated_client
         admin_cli, admin = admin_client
 
         # Regular user creates a contact
         response = client.post('/api/v1/contacts/', {
+            'first_name': 'Other',
+            'last_name': 'UserContact',
+            'email': 'other@example.com'
+        })
+        other_contact_id = response.data['id']
+
+        # Admin creates their own contact
+        response = admin_cli.post('/api/v1/contacts/', {
             'first_name': 'Admin',
-            'last_name': 'Visible',
-            'email': 'visible@example.com'
+            'last_name': 'OwnContact',
+            'email': 'admin-own@example.com'
+        })
+        admin_contact_id = response.data['id']
+
+        # Admin cannot see other user's contact
+        response = admin_cli.get(f'/api/v1/contacts/{other_contact_id}/')
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+        # Admin can see their own contact
+        response = admin_cli.get(f'/api/v1/contacts/{admin_contact_id}/')
+        assert response.status_code == status.HTTP_200_OK
+
+        # Admin list only includes their own contacts
+        response = admin_cli.get('/api/v1/contacts/')
+        assert response.status_code == status.HTTP_200_OK
+        contact_ids = [c['id'] for c in response.data['results']]
+        assert admin_contact_id in contact_ids
+        assert other_contact_id not in contact_ids
+
+    def test_coach_cannot_modify_others_contacts(self, authenticated_client):
+        """Test coach users cannot modify contacts they don't own."""
+        from apps.users.tests.factories import CoachUserFactory
+        client, user = authenticated_client
+
+        # Create contact as missionary
+        response = client.post('/api/v1/contacts/', {
+            'first_name': 'Someone',
+            'last_name': 'Else',
+            'email': 'someone@example.com'
         })
         contact_id = response.data['id']
 
-        # Admin cannot see other user's contact without View As
-        response = admin_cli.get(f'/api/v1/contacts/{contact_id}/')
-        assert response.status_code == status.HTTP_404_NOT_FOUND
+        # Coach cannot update another user's contact
+        coach = CoachUserFactory()
+        coach_client = APIClient()
+        coach_client.force_authenticate(user=coach)
+        response = coach_client.patch(f'/api/v1/contacts/{contact_id}/', {
+            'first_name': 'Updated'
+        })
+        assert response.status_code in (status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND)
 
 
 @pytest.mark.django_db

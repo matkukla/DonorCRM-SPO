@@ -3,8 +3,7 @@ Tests for Gift and RecurringGift view permission scoping.
 
 Verifies that:
 - Staff users can only see their own gifts (not other users' gifts)
-- Admin users can see all gifts
-- Coach users cannot see gifts
+- Admin users see only their own gifts (cross-user access via View As only)
 - Same patterns apply to RecurringGift views
 """
 from datetime import date, timedelta
@@ -38,6 +37,11 @@ def admin_user():
 
 
 @pytest.fixture
+def admin_contact(admin_user):
+    return ContactFactory(owner=admin_user, first_name="Admin", last_name="Donor")
+
+
+@pytest.fixture
 def user1_contact(staff_user1):
     return ContactFactory(owner=staff_user1, first_name="Alice", last_name="Donor")
 
@@ -45,6 +49,15 @@ def user1_contact(staff_user1):
 @pytest.fixture
 def user2_contact(staff_user2):
     return ContactFactory(owner=staff_user2, first_name="Bob", last_name="Donor")
+
+
+@pytest.fixture
+def admin_gift(admin_contact):
+    return Gift.objects.create(
+        donor_contact=admin_contact,
+        amount_cents=30000,
+        gift_date=date.today(),
+    )
 
 
 @pytest.fixture
@@ -62,6 +75,17 @@ def user2_gift(user2_contact):
         donor_contact=user2_contact,
         amount_cents=20000,
         gift_date=date.today(),
+    )
+
+
+@pytest.fixture
+def admin_recurring(admin_contact):
+    return RecurringGift.objects.create(
+        donor_contact=admin_contact,
+        amount_cents=15000,
+        frequency=RecurringGiftFrequency.MONTHLY,
+        status=RecurringGiftStatus.ACTIVE,
+        start_date=date.today() - timedelta(days=15),
     )
 
 
@@ -125,20 +149,24 @@ class TestGiftPermissionScoping:
         response = client.get(f"/api/v1/gifts/{user2_gift.id}/")
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_admin_sees_only_own_gifts_by_default(
-        self,
-        admin_user,
-        user1_gift,
-        user2_gift,
+    def test_admin_sees_own_gifts_only(
+        self, admin_user, admin_gift, user1_gift, user2_gift,
     ):
         """Admin sees only own data by default; cross-user access is via View As."""
         client = _client_for(admin_user)
         response = client.get("/api/v1/gifts/")
         assert response.status_code == status.HTTP_200_OK
         gift_ids = [g["id"] for g in response.data["results"]]
-        # Admin has no contacts of their own, so should see neither
+        assert str(admin_gift.id) in gift_ids
         assert str(user1_gift.id) not in gift_ids
         assert str(user2_gift.id) not in gift_ids
+
+    def test_admin_cannot_access_other_users_gift_detail(
+        self, admin_user, user2_gift,
+    ):
+        client = _client_for(admin_user)
+        response = client.get(f"/api/v1/gifts/{user2_gift.id}/")
+        assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_unauthenticated_cannot_access_gifts(self, user1_gift):
         client = APIClient()
@@ -178,19 +206,24 @@ class TestRecurringGiftPermissionScoping:
         response = client.get(f"/api/v1/gifts/recurring/{user2_recurring.id}/")
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_admin_sees_only_own_recurring_gifts_by_default(
-        self,
-        admin_user,
-        user1_recurring,
-        user2_recurring,
+    def test_admin_sees_own_recurring_gifts_only(
+        self, admin_user, admin_recurring, user1_recurring, user2_recurring,
     ):
         """Admin sees only own data by default; cross-user access is via View As."""
         client = _client_for(admin_user)
         response = client.get("/api/v1/gifts/recurring/")
         assert response.status_code == status.HTTP_200_OK
         rg_ids = [r["id"] for r in response.data["results"]]
+        assert str(admin_recurring.id) in rg_ids
         assert str(user1_recurring.id) not in rg_ids
         assert str(user2_recurring.id) not in rg_ids
+
+    def test_admin_cannot_access_other_users_recurring_gift_detail(
+        self, admin_user, user2_recurring,
+    ):
+        client = _client_for(admin_user)
+        response = client.get(f"/api/v1/gifts/recurring/{user2_recurring.id}/")
+        assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_unauthenticated_cannot_access_recurring_gifts(self, user1_recurring):
         client = APIClient()
