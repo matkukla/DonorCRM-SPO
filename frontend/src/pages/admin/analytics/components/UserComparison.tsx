@@ -8,12 +8,25 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useAdminUserPerformance } from "@/hooks/useInsights"
+import type { UserPerformanceItem } from "@/api/insights"
 
-export function UserComparison() {
+interface UserComparisonProps {
+  users?: UserPerformanceItem[]
+  isUsersLoading?: boolean
+}
+
+export function UserComparison({ users, isUsersLoading }: UserComparisonProps = {}) {
   const [user1Id, setUser1Id] = useState<string>("")
   const [user2Id, setUser2Id] = useState<string>("")
 
-  const { data, isLoading } = useAdminUserPerformance()
+  // Only fetch if parent didn't pass `users`. Preserves standalone reusability.
+  const shouldFetchUsers = users === undefined
+  const { data: fetchedData, isLoading: fetchedLoading } = useAdminUserPerformance({
+    enabled: shouldFetchUsers,
+  })
+
+  const data = shouldFetchUsers ? fetchedData : { users: users ?? [] }
+  const isLoading = shouldFetchUsers ? fetchedLoading : (isUsersLoading ?? false)
 
   const user1 = useMemo(() => {
     if (!user1Id || !data?.users) return null

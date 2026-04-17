@@ -26,6 +26,10 @@ import {
 } from "@/api/insights"
 
 const STALE_TIME = 5 * 60 * 1000 // 5 minutes
+// Keep admin analytics query data in cache long enough to survive drilldown
+// panel open/close without refetching. Default gcTime is 5 min — too short
+// when a user closes a drawer and reopens it later in the same session.
+const ADMIN_GC_TIME = 30 * 60 * 1000 // 30 minutes
 
 export function useDonationsByMonth(year?: number) {
   return useQuery({
@@ -91,6 +95,7 @@ export function useAdminDashboardOverview(
     queryKey: ["insights", "admin", "dashboard", params],
     queryFn: () => getAdminDashboardOverview(params),
     staleTime: STALE_TIME,
+    gcTime: ADMIN_GC_TIME,
     enabled: options?.enabled ?? true,
   })
 }
@@ -100,14 +105,17 @@ export function useAdminStalledContacts(params?: StalledContactsParams) {
     queryKey: ["insights", "admin", "stalled-contacts", params],
     queryFn: () => getAdminStalledContacts(params),
     staleTime: STALE_TIME,
+    gcTime: ADMIN_GC_TIME,
   })
 }
 
-export function useAdminUserPerformance() {
+export function useAdminUserPerformance(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ["insights", "admin", "user-performance"],
     queryFn: getAdminUserPerformance,
     staleTime: STALE_TIME,
+    gcTime: ADMIN_GC_TIME,
+    enabled: options?.enabled ?? true,
   })
 }
 
@@ -116,6 +124,7 @@ export function useAdminConversionFunnel(params?: ConversionFunnelParams) {
     queryKey: ["insights", "admin", "conversion-funnel", params],
     queryFn: () => getAdminConversionFunnel(params),
     staleTime: STALE_TIME,
+    gcTime: ADMIN_GC_TIME,
   })
 }
 
@@ -124,6 +133,7 @@ export function useAdminTeamActivity(params?: TeamActivityParams) {
     queryKey: ["insights", "admin", "team-activity", params],
     queryFn: () => getAdminTeamActivity(params),
     staleTime: STALE_TIME,
+    gcTime: ADMIN_GC_TIME,
   })
 }
 
@@ -132,6 +142,7 @@ export function useAdminTeamTrends(params?: TeamTrendsParams) {
     queryKey: ["insights", "admin", "team-trends", params],
     queryFn: () => getAdminTeamTrends(params),
     staleTime: STALE_TIME,
+    gcTime: ADMIN_GC_TIME,
   })
 }
 
@@ -140,6 +151,7 @@ export function useAdminUserTrends(userId: string, weeks = 12) {
     queryKey: ["insights", "admin", "user-trends", userId, weeks],
     queryFn: () => getAdminUserTrends({ user_id: userId, weeks }),
     staleTime: STALE_TIME,
+    gcTime: ADMIN_GC_TIME,
     enabled: !!userId,
   })
 }
@@ -149,6 +161,7 @@ export function useAdminUserJournals(userId: string) {
     queryKey: ["insights", "admin", "user-journals", userId],
     queryFn: () => getAdminUserJournals({ user_id: userId }),
     staleTime: STALE_TIME,
+    gcTime: ADMIN_GC_TIME,
     enabled: !!userId,
   })
 }
@@ -158,6 +171,7 @@ export function useAdminStageContacts(stage: string | null) {
     queryKey: ["insights", "admin", "stage-contacts", stage],
     queryFn: () => getAdminStageContacts({ stage: stage! }),
     staleTime: STALE_TIME,
+    gcTime: ADMIN_GC_TIME,
     enabled: !!stage,
   })
 }
@@ -167,6 +181,7 @@ export function useAdminUserDrilldown(userId: string | null) {
     queryKey: ["insights", "admin", "user-drilldown", userId],
     queryFn: () => getAdminUserDrilldown({ user_id: userId! }),
     staleTime: STALE_TIME,
+    gcTime: ADMIN_GC_TIME,
     enabled: !!userId,
   })
 }

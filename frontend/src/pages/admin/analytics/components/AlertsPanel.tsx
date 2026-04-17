@@ -10,6 +10,8 @@ import type { DashboardOverviewResponse, UserPerformanceItem } from "@/api/insig
 interface AlertsPanelProps {
   overview?: DashboardOverviewResponse
   isOverviewLoading?: boolean
+  users?: UserPerformanceItem[]
+  isUsersLoading?: boolean
 }
 
 interface CoachingAlert {
@@ -90,15 +92,27 @@ const severityStyles = {
   low: "bg-blue-50 dark:bg-blue-950/50 border-blue-100 dark:border-blue-900/50 text-blue-900 dark:text-blue-200",
 }
 
-export function AlertsPanel({ overview, isOverviewLoading = false }: AlertsPanelProps) {
-  const { data: usersData, isLoading: usersLoading } = useAdminUserPerformance()
+export function AlertsPanel({
+  overview,
+  isOverviewLoading = false,
+  users,
+  isUsersLoading,
+}: AlertsPanelProps) {
+  // Only fetch if parent didn't pass `users`. Preserves standalone reusability.
+  const shouldFetchUsers = users === undefined
+  const { data: fetchedUsersData, isLoading: fetchedUsersLoading } = useAdminUserPerformance({
+    enabled: shouldFetchUsers,
+  })
+
+  const effectiveUsers = users ?? fetchedUsersData?.users
+  const effectiveUsersLoading = shouldFetchUsers ? fetchedUsersLoading : (isUsersLoading ?? false)
 
   const alerts = useMemo(
-    () => computeAlerts(overview, usersData?.users),
-    [overview, usersData]
+    () => computeAlerts(overview, effectiveUsers),
+    [overview, effectiveUsers]
   )
 
-  const isLoading = isOverviewLoading || usersLoading
+  const isLoading = isOverviewLoading || effectiveUsersLoading
 
   return (
     <Card>

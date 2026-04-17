@@ -16,6 +16,8 @@ export default defineConfig({
         manualChunks: {
           'recharts': ['recharts'],
           'dnd-kit': ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities'],
+          'react-table': ['@tanstack/react-table'],
+          'react-query': ['@tanstack/react-query'],
         },
       },
     },

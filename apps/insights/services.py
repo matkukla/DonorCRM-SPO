@@ -464,6 +464,114 @@ def get_stalled_contacts(limit=50, offset=0, sort_by='days_stalled', sort_dir='d
     }
 
 
+def _annotate_user_performance(queryset):
+    """
+    Attach performance-metric annotations to a User queryset via scalar Subqueries.
+
+    Why Subqueries instead of joined Count(..., distinct=True):
+    Counting distinct contacts-with-decisions via
+    `journals__journal_contacts__decisions__journal_contact__contact` walks
+    a 4-hop LEFT JOIN that cross-multiplies as users * journals * journal_contacts
+    * decisions. On tenants with ~30 users and ~50 journals, this dominates the
+    query plan. Scalar subqueries keep complexity at O(users) + O(decisions).
+    """
+    # Per-user gift total (cents)
+    gift_totals = Gift.objects.filter(
+        donor_contact__owner=OuterRef('pk')
+    ).values('donor_contact__owner').annotate(
+        total=Sum('amount_cents')
+    ).values('total')
+
+    # Per-user gift count
+    gift_counts = Gift.objects.filter(
+        donor_contact__owner=OuterRef('pk')
+    ).values('donor_contact__owner').annotate(
+        count=Count('id')
+    ).values('count')
+
+    # Per-user decision count
+    decision_counts = Decision.objects.filter(
+        journal_contact__journal__owner=OuterRef('pk')
+    ).values('journal_contact__journal__owner').annotate(
+        count=Count('id')
+    ).values('count')
+
+    # Per-user distinct-contact count among JournalContacts
+    contacts_in_journals_counts = JournalContact.objects.filter(
+        journal__owner=OuterRef('pk')
+    ).values('journal__owner').annotate(
+        count=Count('contact', distinct=True)
+    ).values('count')
+
+    # Per-user distinct-contact count among Decisions
+    contacts_with_decisions_counts = Decision.objects.filter(
+        journal_contact__journal__owner=OuterRef('pk')
+    ).values('journal_contact__journal__owner').annotate(
+        count=Count('journal_contact__contact', distinct=True)
+    ).values('count')
+
+    # Per-user active-journal count (is_archived=False)
+    active_journal_counts = Journal.objects.filter(
+        owner=OuterRef('pk'),
+        is_archived=False,
+    ).values('owner').annotate(
+        count=Count('id')
+    ).values('count')
+
+    # Per-user contact count
+    contact_counts = Contact.active.filter(
+        owner=OuterRef('pk')
+    ).values('owner').annotate(
+        count=Count('id')
+    ).values('count')
+
+    return queryset.annotate(
+        total_contacts=Coalesce(
+            Subquery(contact_counts, output_field=IntegerField()), 0
+        ),
+        active_journals=Coalesce(
+            Subquery(active_journal_counts, output_field=IntegerField()), 0
+        ),
+        total_gift_amount_cents=Coalesce(
+            Subquery(gift_totals, output_field=IntegerField()), 0
+        ),
+        gift_count=Coalesce(
+            Subquery(gift_counts, output_field=IntegerField()), 0
+        ),
+        decisions_logged=Coalesce(
+            Subquery(decision_counts, output_field=IntegerField()), 0
+        ),
+        _contacts_with_decisions=Coalesce(
+            Subquery(contacts_with_decisions_counts, output_field=IntegerField()), 0
+        ),
+        contacts_in_journals=Coalesce(
+            Subquery(contacts_in_journals_counts, output_field=IntegerField()), 0
+        ),
+    )
+
+
+def _serialize_user_performance(user):
+    """Turn an annotated user row (from _annotate_user_performance) into the API shape."""
+    conversion_rate = round(
+        (user._contacts_with_decisions / user.contacts_in_journals * 100)
+        if user.contacts_in_journals > 0
+        else 0,
+        1,
+    )
+    return {
+        'id': str(user.id),
+        'email': user.email,
+        'name': f'{user.first_name} {user.last_name}'.strip(),
+        'role': user.role,
+        'total_contacts': user.total_contacts,
+        'active_journals': user.active_journals,
+        'decisions_logged': user.decisions_logged,
+        'conversion_rate': conversion_rate,
+        'total_donations': float(user.total_gift_amount_cents or 0) / 100,
+        'donation_count': user.gift_count,
+    }
+
+
 def get_user_performance():
     """
     Per-user performance metrics aggregated at database level.
@@ -475,85 +583,11 @@ def get_user_performance():
     on request/user and scoping via get_visible_user_ids(). See PR #46 review
     (HIGH-3).
     """
-    # Subquery for gift totals per user (cents)
-    gift_totals = Gift.objects.filter(
-        donor_contact__owner=OuterRef('pk')
-    ).values('donor_contact__owner').annotate(
-        total=Sum('amount_cents')
-    ).values('total')
-
-    # Subquery for gift counts per user
-    gift_counts = Gift.objects.filter(
-        donor_contact__owner=OuterRef('pk')
-    ).values('donor_contact__owner').annotate(
-        count=Count('id')
-    ).values('count')
-
-    # Subquery for decision counts per user
-    decision_counts = Decision.objects.filter(
-        journal_contact__journal__owner=OuterRef('pk')
-    ).values('journal_contact__journal__owner').annotate(
-        count=Count('id')
-    ).values('count')
-
-    # Subquery for count of distinct contacts with decisions per user
-    # Count the number of distinct contact IDs that have decisions for this user's journals
-    contacts_with_decisions_subquery = Decision.objects.filter(
-        journal_contact__journal__owner=OuterRef('pk')
-    ).values('journal_contact__contact').distinct()
-
-    users = User.objects.filter(
-        role__in=['missionary', 'admin', 'supervisor']
-    ).annotate(
-        total_contacts=Count('contacts', distinct=True),
-        active_journals=Count(
-            'journals',
-            filter=Q(journals__is_archived=False),
-            distinct=True
-        ),
-        total_gift_amount_cents=Coalesce(
-            Subquery(gift_totals, output_field=IntegerField()),
-            0
-        ),
-        gift_count=Coalesce(
-            Subquery(gift_counts, output_field=IntegerField()),
-            0
-        ),
-        decisions_logged=Coalesce(
-            Subquery(decision_counts, output_field=IntegerField()),
-            0
-        ),
-        _contacts_with_decisions=Count(
-            'journals__journal_contacts__decisions__journal_contact__contact',
-            distinct=True
-        ),
-        contacts_in_journals=Count(
-            'journals__journal_contacts__contact',
-            distinct=True
-        ),
+    users = _annotate_user_performance(
+        User.objects.filter(role__in=['missionary', 'admin', 'supervisor'])
     ).order_by('-total_contacts')
 
-    result = []
-    for user in users:
-        conversion_rate = round(
-            (user._contacts_with_decisions / user.contacts_in_journals * 100) if user.contacts_in_journals > 0 else 0,
-            1
-        )
-
-        result.append({
-            'id': str(user.id),
-            'email': user.email,
-            'name': f'{user.first_name} {user.last_name}'.strip(),
-            'role': user.role,
-            'total_contacts': user.total_contacts,
-            'active_journals': user.active_journals,
-            'decisions_logged': user.decisions_logged,
-            'conversion_rate': conversion_rate,
-            'total_donations': float(user.total_gift_amount_cents or 0) / 100,
-            'donation_count': user.gift_count,
-        })
-
-    return {'users': result}
+    return {'users': [_serialize_user_performance(u) for u in users]}
 
 
 def get_conversion_funnel(date_from=None, date_to=None):
@@ -954,36 +988,17 @@ def get_user_drilldown(user_id):
     Returns:
         Dictionary with 'user', 'stats', and 'journals' or error dict if user not found
     """
-    # Fetch user object
-    try:
-        user = User.objects.get(id=user_id)
-    except User.DoesNotExist:
+    # Fetch user with performance annotations via shared helper.
+    # Reuses the Subquery-based annotation pipeline from get_user_performance
+    # to keep metric definitions (conversion rate, decisions_logged, etc.) in
+    # lockstep between the dashboard table and the drilldown panel.
+    user = _annotate_user_performance(
+        User.objects.filter(id=user_id)
+    ).first()
+    if user is None:
         return {'detail': 'User not found'}
 
-    # Per-user stats (reusing patterns from get_user_performance)
-    total_contacts = Contact.active.filter(owner_id=user_id).count()
-    active_journals = Journal.objects.filter(owner_id=user_id, is_archived=False).count()
-    decisions_logged = Decision.objects.filter(journal_contact__journal__owner_id=user_id).count()
-
-    # Conversion rate: contacts with decisions / contacts in journals * 100
-    contacts_in_journals = JournalContact.objects.filter(
-        journal__owner_id=user_id
-    ).values('contact').distinct().count()
-    contacts_with_decision = Decision.objects.filter(
-        journal_contact__journal__owner_id=user_id
-    ).values('journal_contact__contact').distinct().count()
-    conversion_rate = round(
-        (contacts_with_decision / contacts_in_journals * 100) if contacts_in_journals > 0 else 0,
-        1
-    )
-
-    # Gift stats
-    gift_stats = Gift.objects.filter(
-        donor_contact__owner_id=user_id
-    ).aggregate(
-        total_amount_cents=Sum('amount_cents'),
-        gift_count=Count('id')
-    )
+    performance = _serialize_user_performance(user)
 
     # Stalled contact count for this user (last journal activity >14 days ago)
     cutoff_date = timezone.now() - timedelta(days=14)
@@ -1016,18 +1031,18 @@ def get_user_drilldown(user_id):
 
     return {
         'user': {
-            'id': str(user.id),
-            'name': f'{user.first_name} {user.last_name}'.strip(),
-            'email': user.email,
-            'role': user.role,
+            'id': performance['id'],
+            'name': performance['name'],
+            'email': performance['email'],
+            'role': performance['role'],
         },
         'stats': {
-            'total_contacts': total_contacts,
-            'active_journals': active_journals,
-            'decisions_logged': decisions_logged,
-            'conversion_rate': conversion_rate,
-            'total_donations': float((gift_stats['total_amount_cents'] or 0)) / 100,
-            'donation_count': gift_stats['gift_count'] or 0,
+            'total_contacts': performance['total_contacts'],
+            'active_journals': performance['active_journals'],
+            'decisions_logged': performance['decisions_logged'],
+            'conversion_rate': performance['conversion_rate'],
+            'total_donations': performance['total_donations'],
+            'donation_count': performance['donation_count'],
             'stalled_contacts': stalled_count,
         },
         'journals': [
