@@ -208,6 +208,8 @@ class JournalStageEvent(TimeStampedModel):
         indexes = [
             models.Index(fields=['journal_contact', 'stage', 'created_at']),
             models.Index(fields=['journal_contact', 'created_at']),
+            # Supports admin analytics weekly-trend scans (TruncWeek on created_at).
+            models.Index(fields=['created_at']),
         ]
 
     def __str__(self):
@@ -274,6 +276,10 @@ class Decision(TimeStampedModel):
                 fields=['journal_contact'],
                 name='unique_decision_per_journal_contact'
             )
+        ]
+        indexes = [
+            # Supports admin analytics weekly-trend scans (TruncWeek on created_at).
+            models.Index(fields=['created_at']),
         ]
 
     def __str__(self):

@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { lazy, Suspense, useState } from "react"
 import { NavLink, useSearchParams } from "react-router-dom"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
@@ -9,15 +9,40 @@ import type { DateRange } from "@/lib/date-presets"
 import { dateRangeToParams } from "@/lib/date-presets"
 import { DateRangePicker } from "@/components/ui/date-range-picker"
 import { parseISO, isValid, format } from "date-fns"
-import { TeamActivityTable } from "./components/TeamActivityTable"
-import { AlertsPanel } from "./components/AlertsPanel"
-import { TrendCharts } from "./components/TrendCharts"
-import { ConversionFunnelChart } from "./components/ConversionFunnelChart"
-import { FunnelDrilldownPanel } from "./components/FunnelDrilldownPanel"
-import { UserDrilldownPanel } from "./components/UserDrilldownPanel"
-import { TimePeriodComparison } from "./components/TimePeriodComparison"
-import { UserComparison } from "./components/UserComparison"
-import { MPDOverviewTable } from "@/components/mpd/MPDOverviewTable"
+
+// Lazy-load below-the-fold components so the summary cards paint first
+// and heavy chart/table bundles (recharts, @tanstack/react-table) load after.
+const TeamActivityTable = lazy(() =>
+  import("./components/TeamActivityTable").then((m) => ({ default: m.TeamActivityTable })),
+)
+const AlertsPanel = lazy(() =>
+  import("./components/AlertsPanel").then((m) => ({ default: m.AlertsPanel })),
+)
+const TrendCharts = lazy(() =>
+  import("./components/TrendCharts").then((m) => ({ default: m.TrendCharts })),
+)
+const ConversionFunnelChart = lazy(() =>
+  import("./components/ConversionFunnelChart").then((m) => ({ default: m.ConversionFunnelChart })),
+)
+const FunnelDrilldownPanel = lazy(() =>
+  import("./components/FunnelDrilldownPanel").then((m) => ({ default: m.FunnelDrilldownPanel })),
+)
+const UserDrilldownPanel = lazy(() =>
+  import("./components/UserDrilldownPanel").then((m) => ({ default: m.UserDrilldownPanel })),
+)
+const TimePeriodComparison = lazy(() =>
+  import("./components/TimePeriodComparison").then((m) => ({ default: m.TimePeriodComparison })),
+)
+const UserComparison = lazy(() =>
+  import("./components/UserComparison").then((m) => ({ default: m.UserComparison })),
+)
+const MPDOverviewTable = lazy(() =>
+  import("@/components/mpd/MPDOverviewTable").then((m) => ({ default: m.MPDOverviewTable })),
+)
+
+function SectionSkeleton({ className = "h-64" }: { className?: string }) {
+  return <div className={cn("bg-muted rounded-lg animate-pulse", className)} />
+}
 
 export default function AdminAnalyticsDashboard() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -225,41 +250,59 @@ export default function AdminAnalyticsDashboard() {
 
           {/* Charts Row: Trend Charts + Conversion Funnel */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <TrendCharts dateParams={dateParams} />
-            <ConversionFunnelChart dateParams={dateParams} onStageClick={handleStageClick} />
+            <Suspense fallback={<SectionSkeleton className="h-80" />}>
+              <TrendCharts dateParams={dateParams} />
+            </Suspense>
+            <Suspense fallback={<SectionSkeleton className="h-80" />}>
+              <ConversionFunnelChart dateParams={dateParams} onStageClick={handleStageClick} />
+            </Suspense>
           </div>
 
           {/* Activity and Alerts Row: Team Activity Table (2/3) + Alerts Panel (1/3) */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
-              <TeamActivityTable dateParams={dateParams} onUserDrilldown={handleUserDrilldown} />
+              <Suspense fallback={<SectionSkeleton className="h-80" />}>
+                <TeamActivityTable dateParams={dateParams} onUserDrilldown={handleUserDrilldown} />
+              </Suspense>
             </div>
             <div className="lg:col-span-1">
-              <AlertsPanel />
+              <Suspense fallback={<SectionSkeleton className="h-80" />}>
+                <AlertsPanel overview={data} isOverviewLoading={isLoading} />
+              </Suspense>
             </div>
           </div>
 
           {/* Comparison Row: Time Period (1/2) + User Comparison (1/2) */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <TimePeriodComparison dateParams={dateParams} />
-            <UserComparison />
+            <Suspense fallback={<SectionSkeleton className="h-64" />}>
+              <TimePeriodComparison dateParams={dateParams} currentOverview={data} />
+            </Suspense>
+            <Suspense fallback={<SectionSkeleton className="h-64" />}>
+              <UserComparison />
+            </Suspense>
           </div>
 
           {/* MPD Overview - Full Width */}
-          <MPDOverviewTable />
+          <Suspense fallback={<SectionSkeleton className="h-96" />}>
+            <MPDOverviewTable />
+          </Suspense>
         </div>
 
         {/* Drill-down Panels */}
-        <FunnelDrilldownPanel
-          open={funnelDrilldown.open}
-          stage={funnelDrilldown.stage}
-          onClose={handleFunnelClose}
-        />
-        <UserDrilldownPanel
-          open={userDrilldown.open}
-          userId={userDrilldown.userId}
-          onClose={handleUserDrilldownClose}
-        />
+        <Suspense fallback={null}>
+          <FunnelDrilldownPanel
+            open={funnelDrilldown.open}
+            stage={funnelDrilldown.stage}
+            onClose={handleFunnelClose}
+          />
+        </Suspense>
+        <Suspense fallback={null}>
+          <UserDrilldownPanel
+            open={userDrilldown.open}
+            userId={userDrilldown.userId}
+            onClose={handleUserDrilldownClose}
+          />
+        </Suspense>
       </Container>
     </Section>
   )

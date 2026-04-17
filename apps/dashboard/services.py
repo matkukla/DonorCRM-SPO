@@ -438,6 +438,30 @@ def get_dashboard_summary(user):
     }
 
 
+def _compute_mpd_from_totals(total_cents, mpd_cap, months_elapsed):
+    """Shared math: turn per-user gift totals + mpd cap into the MPD dict."""
+    if total_cents == 0:
+        return {"has_data": False}
+
+    total_dollars = float(Decimal(total_cents) / Decimal(100))
+    monthly_average = total_dollars / months_elapsed
+    diff = monthly_average - mpd_cap
+    roll_forward_balance = total_dollars - (diff * months_elapsed)
+
+    if diff != 0:
+        months_remaining_str = str(round(roll_forward_balance / diff, 1))
+    else:
+        months_remaining_str = "infinite"
+
+    return {
+        "has_data": True,
+        "monthly_average": str(round(monthly_average, 2)),
+        "current_mpd_cap": str(round(mpd_cap, 2)),
+        "latest_roll_forward_balance": str(round(roll_forward_balance, 2)),
+        "months_remaining_rf": months_remaining_str,
+    }
+
+
 def get_mpd_computed(user):
     """
     Compute MPD tile values from actual Gift data for the current fiscal year.
@@ -450,7 +474,6 @@ def get_mpd_computed(user):
     fy_start = fiscal_year_start(today)
     months_elapsed = months_elapsed_in_fiscal_year(today)
 
-    # Total gifts in fiscal year (cents -> dollars)
     total_cents = (
         Gift.objects.filter(
             donor_contact__owner=user,
@@ -459,32 +482,68 @@ def get_mpd_computed(user):
         ).aggregate(total=Sum("amount_cents"))["total"]
         or 0
     )
-    total_dollars = float(Decimal(total_cents) / Decimal(100))
 
-    if total_cents == 0:
-        return {"has_data": False}
-
-    monthly_average = total_dollars / months_elapsed
-
-    # MPD cap from latest snapshot
     snapshot = MPDSnapshot.objects.filter(user=user).order_by("-upload__created_at").first()
     mpd_cap = (
         float(snapshot.current_mpd_cap) if snapshot and snapshot.current_mpd_cap else DEFAULT_MPD_CAP
     )
 
-    diff = monthly_average - mpd_cap
-    roll_forward_balance = total_dollars - (diff * months_elapsed)
+    return _compute_mpd_from_totals(total_cents, mpd_cap, months_elapsed)
 
-    if diff != 0:
-        months_remaining_val = roll_forward_balance / diff
-        months_remaining_str = str(round(months_remaining_val, 1))
-    else:
-        months_remaining_str = "infinite"
 
-    return {
-        "has_data": True,
-        "monthly_average": str(round(monthly_average, 2)),
-        "current_mpd_cap": str(round(mpd_cap, 2)),
-        "latest_roll_forward_balance": str(round(roll_forward_balance, 2)),
-        "months_remaining_rf": months_remaining_str,
-    }
+def get_mpd_computed_batch(users, snapshot_map=None):
+    """
+    Batched version of get_mpd_computed for many users.
+
+    Performs 2 queries total (gift totals + optional snapshots) instead of 2N.
+    Returns dict of {user_id: computed_dict} with the same shape as get_mpd_computed.
+
+    Args:
+        users: iterable of User instances.
+        snapshot_map: optional dict of {user_id: MPDSnapshot} to avoid refetching
+            snapshots. If None, this function fetches the latest snapshot per user.
+    """
+    users = list(users)
+    if not users:
+        return {}
+
+    today = date.today()
+    fy_start = fiscal_year_start(today)
+    months_elapsed = months_elapsed_in_fiscal_year(today)
+    user_ids = [u.id for u in users]
+
+    # Single aggregation: gift totals grouped by owner.
+    totals_rows = (
+        Gift.objects.filter(
+            donor_contact__owner_id__in=user_ids,
+            gift_date__gte=fy_start,
+            gift_date__lte=today,
+        )
+        .values("donor_contact__owner_id")
+        .annotate(total=Sum("amount_cents"))
+    )
+    totals_map = {row["donor_contact__owner_id"]: row["total"] or 0 for row in totals_rows}
+
+    # Fetch snapshots only if caller did not supply them.
+    if snapshot_map is None:
+        snapshot_map = {}
+        for snap in (
+            MPDSnapshot.objects.filter(user_id__in=user_ids)
+            .select_related("upload")
+            .order_by("user_id", "-upload__created_at")
+        ):
+            if snap.user_id not in snapshot_map:
+                snapshot_map[snap.user_id] = snap
+
+    results = {}
+    for user in users:
+        total_cents = totals_map.get(user.id, 0)
+        snapshot = snapshot_map.get(user.id)
+        mpd_cap = (
+            float(snapshot.current_mpd_cap)
+            if snapshot and snapshot.current_mpd_cap
+            else DEFAULT_MPD_CAP
+        )
+        results[user.id] = _compute_mpd_from_totals(total_cents, mpd_cap, months_elapsed)
+
+    return results

@@ -3,15 +3,22 @@ import { format, differenceInDays, subDays } from "date-fns"
 import { TrendingUp, TrendingDown, Minus } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAdminDashboardOverview } from "@/hooks/useInsights"
+import type { DashboardOverviewResponse } from "@/api/insights"
 
 interface TimePeriodComparisonProps {
   dateParams?: {
     date_from?: string
     date_to?: string
   }
+  /**
+   * Already-fetched overview data for the current period.
+   * When a user has selected a date range, the parent dashboard already fetched
+   * this same data — passing it in avoids a duplicate network request.
+   */
+  currentOverview?: DashboardOverviewResponse
 }
 
-export function TimePeriodComparison({ dateParams }: TimePeriodComparisonProps) {
+export function TimePeriodComparison({ dateParams, currentOverview }: TimePeriodComparisonProps) {
   // Calculate prior period
   const { currentDateParams, priorDateParams, currentLabel, priorLabel } = useMemo(() => {
     if (!dateParams?.date_from || !dateParams?.date_to) {
@@ -57,10 +64,22 @@ export function TimePeriodComparison({ dateParams }: TimePeriodComparisonProps) 
     }
   }, [dateParams])
 
-  const { data: currentData, isLoading: currentLoading } = useAdminDashboardOverview(currentDateParams)
+  // When a date range is selected, currentDateParams matches the parent's dateParams
+  // and the parent already fetched this data. Skip the duplicate request in that case.
+  const canReuseParentOverview = Boolean(
+    currentOverview &&
+      dateParams?.date_from === currentDateParams.date_from &&
+      dateParams?.date_to === currentDateParams.date_to,
+  )
+
+  const { data: fetchedCurrentData, isLoading: currentLoading } = useAdminDashboardOverview(
+    currentDateParams,
+    { enabled: !canReuseParentOverview },
+  )
   const { data: priorData, isLoading: priorLoading } = useAdminDashboardOverview(priorDateParams)
 
-  const isLoading = currentLoading || priorLoading
+  const currentData = canReuseParentOverview ? currentOverview : fetchedCurrentData
+  const isLoading = (!canReuseParentOverview && currentLoading) || priorLoading
 
   const metrics = useMemo(() => {
     if (!currentData || !priorData) return []
