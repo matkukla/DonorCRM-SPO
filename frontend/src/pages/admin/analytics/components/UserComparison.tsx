@@ -19,7 +19,12 @@ export function UserComparison({ users, isUsersLoading }: UserComparisonProps = 
   const [user1Id, setUser1Id] = useState<string>("")
   const [user2Id, setUser2Id] = useState<string>("")
 
-  // Only fetch if parent didn't pass `users`. Preserves standalone reusability.
+  // Only fetch if parent didn't pass `users`. When `users` is undefined on
+  // first render (parent query not yet resolved), shouldFetchUsers=true and
+  // this hook fires — but AdminAnalyticsDashboard already called
+  // useAdminUserPerformance, so React Query deduplicates to the same cache
+  // key and no extra HTTP request is made. Once the parent query resolves,
+  // shouldFetchUsers flips to false and this hook becomes a no-op.
   const shouldFetchUsers = users === undefined
   const { data: fetchedData, isLoading: fetchedLoading } = useAdminUserPerformance({
     enabled: shouldFetchUsers,

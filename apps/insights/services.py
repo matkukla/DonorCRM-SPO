@@ -993,7 +993,7 @@ def get_user_drilldown(user_id):
     # to keep metric definitions (conversion rate, decisions_logged, etc.) in
     # lockstep between the dashboard table and the drilldown panel.
     user = _annotate_user_performance(
-        User.objects.filter(id=user_id)
+        User.objects.filter(id=user_id, role__in=['missionary', 'admin', 'supervisor'])
     ).first()
     if user is None:
         return {'detail': 'User not found'}

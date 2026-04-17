@@ -145,6 +145,53 @@ class UserPerformanceQueryBudgetTest(TestCase):
                 f'Mismatch on {key}: table={perf_row[key]} drilldown={drilldown[key]}',
             )
 
+    def test_contacts_with_decisions_deduplicates_across_journals(self):
+        """One contact in two journals must count as 1, not 2."""
+        contact = Contact.objects.create(
+            owner=self.user,
+            first_name='Shared',
+            last_name='Contact',
+            email='shared@test.com',
+            status='active',
+        )
+
+        journal2 = Journal.objects.create(
+            owner=self.user,
+            name='Second Journal',
+            goal_amount=Decimal('5000.00'),
+            is_archived=False,
+        )
+
+        jc2 = JournalContact.objects.create(journal=journal2, contact=contact)
+        Decision.objects.create(journal_contact=jc2, amount=Decimal('50.00'))
+
+        # The shared contact also appears in the first journal (from setUp) via
+        # journal_contacts[0] which already has a Decision. Adding it to a second
+        # journal should not inflate contacts_with_decisions.
+        result = get_user_performance()
+        row = next(r for r in result['users'] if r['email'] == 'perf@test.com')
+
+        # decisions_logged grows by 1 (the new Decision above)
+        self.assertEqual(row['decisions_logged'], 3)
+        # Verify deduplication via conversion_rate.
+        # contacts_in_journals = 5: setUp journal has 4 contacts; journal2 adds
+        # 1 new contact (shared), deduplicated across both journals = 5 unique.
+        # contacts_with_decisions = 3: setUp's contacts[0] and contacts[1], plus shared.
+        # Expected conversion_rate = 3/5 * 100 = 60.0%
+        self.assertAlmostEqual(row['conversion_rate'], 60.0, places=1)
+
     def test_user_not_found_returns_detail(self):
         result = get_user_drilldown('00000000-0000-0000-0000-000000000000')
+        self.assertEqual(result, {'detail': 'User not found'})
+
+    def test_coach_user_drilldown_returns_not_found(self):
+        """get_user_drilldown must return not-found for coach users (role not in allowed set)."""
+        coach = User.objects.create_user(
+            email='coach@test.com',
+            password='testpass123',
+            role='coach',
+            first_name='Coach',
+            last_name='User',
+        )
+        result = get_user_drilldown(str(coach.id))
         self.assertEqual(result, {'detail': 'User not found'})

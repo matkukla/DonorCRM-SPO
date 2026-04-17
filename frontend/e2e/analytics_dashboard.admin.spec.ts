@@ -20,9 +20,10 @@ const ANALYTICS_URL = "/admin/analytics/dashboard"
 const PAGE_INTERACTIVE_MS = 3_000
 
 // Time from navigation to all data panels resolved — the "full render" SLA.
-// Set conservatively at 10s to tolerate parallel-worker CPU contention in CI.
-// The real observed time in an isolated run is ~6-7s.
-const FULL_DATA_RENDER_MS = 10_000
+// Set to 8s to match the JSDoc above. Real observed time in an isolated run
+// is ~6-7s; the 8s ceiling provides ~1-2s of regression headroom without
+// masking genuine slowdowns.
+const FULL_DATA_RENDER_MS = 8_000
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -46,11 +47,20 @@ async function waitForPageInteractive(page: Page): Promise<number> {
  * only after the overview API resolves and the skeleton is replaced.
  */
 async function waitForOverviewData(page: Page) {
-  // The CardTitle reads "Total Contacts" only when data is present.
-  // Use a broader timeout since this depends on the API round-trip.
-  await expect(
-    page.getByText("Total Contacts").first()
-  ).toBeVisible({ timeout: FULL_DATA_RENDER_MS })
+  // Scope to the summary stats grid to avoid matching "Total Contacts" inside
+  // the UserComparison metrics table, which can render earlier/independently.
+  const summaryGrid = page.locator('[data-testid="summary-stats-grid"]')
+  if (await summaryGrid.count() > 0) {
+    await expect(
+      summaryGrid.getByText("Total Contacts").first()
+    ).toBeVisible({ timeout: FULL_DATA_RENDER_MS })
+  } else {
+    // Fallback: wait for at least one stat card value to appear. Stat card
+    // values are numbers (e.g. "42"), rendered only after the API resolves.
+    await expect(
+      page.locator('[class*="text-3xl"], [class*="text-2xl"]').first()
+    ).toBeVisible({ timeout: FULL_DATA_RENDER_MS })
+  }
 }
 
 /**
