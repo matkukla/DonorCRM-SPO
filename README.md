@@ -30,6 +30,7 @@ Built from research into missionary support-raising workflows, DonorCRM delivers
 - **Role-Based Access Control** — four active roles: missionary, supervisor, coach, admin. Contact ownership is the primary data isolation boundary
 - **Insights & Analytics** — donations by month/year, monthly commitments, late donations, follow-up tracking, transaction history, and admin team performance dashboards
 - **Prayer Tracker** — prayer intentions linked to contacts and gifts with focus mode
+- **Duplicate Detection & Merge** — identify and merge duplicate contacts with audit trail
 
 ---
 
@@ -64,6 +65,7 @@ Built from research into missionary support-raising workflows, DonorCRM delivers
 | @dnd-kit | 6.3 | Drag-and-drop (dashboard tiles) |
 | Sonner | 2.0 | Toast notifications |
 | Axios | 1.13 | HTTP client |
+| Playwright | latest | E2E testing |
 
 ### Infrastructure
 
@@ -158,6 +160,11 @@ pytest -m "not slow"                                        # Skip slow tests
 cd frontend
 npm run build     # TypeScript check + Vite build
 npm run lint      # ESLint
+
+# E2E (Playwright)
+cd frontend
+npx playwright test                         # Run all E2E specs
+npx playwright test e2e/dashboard.spec.ts   # Single spec
 ```
 
 ### Environment Variables
@@ -243,7 +250,9 @@ Contact: [mkukla1105@gmail.com](mailto:mkukla1105@gmail.com)
 | v2.0 | Import Revamp, Prayer Intentions & Dashboard Polish | 10 | 2026-02-25 |
 | v2.1 | Security Hardening | 1 | 2026-02-25 |
 | v2.2 | UI Polish, Journal Report & Supervisor Role | 10 | 2026-03-11 |
-| v2.3 | Goal Tracking & View As | 6 | In progress |
+| v2.3 | Goal Tracking & View As | 9 | 2026-03-25 |
+| — | Duplicate Contact Checking & Merging | 1 | 2026-03-28 |
+| — | Dashboard Performance (Phase 1), Bug Fixes & E2E Infrastructure | — | 2026-04 (current) |
 
 ---
 
