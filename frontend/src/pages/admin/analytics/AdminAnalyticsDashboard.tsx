@@ -21,9 +21,6 @@ const AlertsPanel = lazy(() =>
 const TrendCharts = lazy(() =>
   import("./components/TrendCharts").then((m) => ({ default: m.TrendCharts })),
 )
-const ConversionFunnelChart = lazy(() =>
-  import("./components/ConversionFunnelChart").then((m) => ({ default: m.ConversionFunnelChart })),
-)
 const FunnelDrilldownPanel = lazy(() =>
   import("./components/FunnelDrilldownPanel").then((m) => ({ default: m.FunnelDrilldownPanel })),
 )
@@ -38,6 +35,29 @@ const UserComparison = lazy(() =>
 )
 const MPDOverviewTable = lazy(() =>
   import("@/components/mpd/MPDOverviewTable").then((m) => ({ default: m.MPDOverviewTable })),
+)
+
+// Admin Analytics Redesign (Issue #49) — leadership tiles, lazy-loaded.
+const FiscalYearPaceTile = lazy(() =>
+  import("./components/FiscalYearPaceTile").then((m) => ({ default: m.FiscalYearPaceTile })),
+)
+const MissionariesBehindGoalTile = lazy(() =>
+  import("./components/MissionariesBehindGoalTile").then((m) => ({
+    default: m.MissionariesBehindGoalTile,
+  })),
+)
+const WeeklyEngagementTile = lazy(() =>
+  import("./components/WeeklyEngagementTile").then((m) => ({ default: m.WeeklyEngagementTile })),
+)
+const PipelineFunnelConversionTile = lazy(() =>
+  import("./components/PipelineFunnelConversionTile").then((m) => ({
+    default: m.PipelineFunnelConversionTile,
+  })),
+)
+const FiscalYearDonationsTile = lazy(() =>
+  import("./components/FiscalYearDonationsTile").then((m) => ({
+    default: m.FiscalYearDonationsTile,
+  })),
 )
 
 function SectionSkeleton({ className = "h-64" }: { className?: string }) {
@@ -154,21 +174,51 @@ export default function AdminAnalyticsDashboard() {
           </div>
 
           {/* Header */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
               <h1 className="text-3xl font-semibold tracking-tight">Analytics Dashboard</h1>
               <p className="text-muted-foreground mt-1">
                 Organization-wide fundraising analytics
               </p>
             </div>
-            <DateRangePicker value={dateRange} onChange={handleDateRangeChange} />
+            <div className="flex flex-col items-end gap-1">
+              <DateRangePicker value={dateRange} onChange={handleDateRangeChange} />
+              <p className="text-xs text-muted-foreground">
+                Date range applies to reference counts and activity below.
+              </p>
+            </div>
           </div>
 
-          {/* Summary Cards Row */}
+          {/* Row 1: Fiscal Year Pace (hero, full width) */}
+          <Suspense fallback={<SectionSkeleton className="h-48" />}>
+            <FiscalYearPaceTile />
+          </Suspense>
+
+          {/* Row 2: Missionaries Behind Goal (2-col) + Weekly Engagement (2-col) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Suspense fallback={<SectionSkeleton className="h-80" />}>
+              <MissionariesBehindGoalTile onUserClick={handleUserDrilldown} />
+            </Suspense>
+            <Suspense fallback={<SectionSkeleton className="h-80" />}>
+              <WeeklyEngagementTile />
+            </Suspense>
+          </div>
+
+          {/* Row 3: Pipeline Funnel with Conversion (full width) */}
+          <Suspense fallback={<SectionSkeleton className="h-80" />}>
+            <PipelineFunnelConversionTile onStageClick={handleStageClick} />
+          </Suspense>
+
+          {/* Row 4: Fiscal Year Donations (full width) */}
+          <Suspense fallback={<SectionSkeleton className="h-80" />}>
+            <FiscalYearDonationsTile />
+          </Suspense>
+
+          {/* Row 5: Reference counts (demoted, compact) */}
           {isLoading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-32 bg-muted rounded-lg animate-pulse" />
+                <div key={i} className="h-24 bg-muted rounded-lg animate-pulse" />
               ))}
             </div>
           ) : error ? (
@@ -178,7 +228,7 @@ export default function AdminAnalyticsDashboard() {
           ) : data ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <Card>
-                <CardHeader>
+                <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
                     Total Contacts
                   </CardTitle>
@@ -189,7 +239,7 @@ export default function AdminAnalyticsDashboard() {
               </Card>
 
               <Card>
-                <CardHeader>
+                <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
                     Active Journals
                   </CardTitle>
@@ -200,7 +250,7 @@ export default function AdminAnalyticsDashboard() {
               </Card>
 
               <Card>
-                <CardHeader>
+                <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
                     Stalled Contacts
                   </CardTitle>
@@ -211,53 +261,32 @@ export default function AdminAnalyticsDashboard() {
               </Card>
 
               <Card>
-                <CardHeader>
+                <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Conversion Rate
+                    Donations (12 Months)
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{data.conversion_rate.toFixed(1)}%</div>
+                  <div className="text-2xl font-bold">
+                    {data.donations_12m.total_amount.toLocaleString('en-US', {
+                      style: 'currency',
+                      currency: 'USD',
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0,
+                    })}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {data.donations_12m.total_count} gifts
+                  </p>
                 </CardContent>
               </Card>
             </div>
           ) : null}
 
-          {/* Donations Card */}
-          {data && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Donations (12 Months)</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-baseline gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Total Amount</p>
-                    <p className="text-2xl font-bold">
-                      {data.donations_12m.total_amount.toLocaleString('en-US', {
-                        style: 'currency',
-                        currency: 'USD'
-                      })}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Donation Count</p>
-                    <p className="text-2xl font-bold">{data.donations_12m.total_count}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Charts Row: Trend Charts + Conversion Funnel */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Suspense fallback={<SectionSkeleton className="h-80" />}>
-              <TrendCharts dateParams={dateParams} />
-            </Suspense>
-            <Suspense fallback={<SectionSkeleton className="h-80" />}>
-              <ConversionFunnelChart dateParams={dateParams} onStageClick={handleStageClick} />
-            </Suspense>
-          </div>
+          {/* Trend Charts (moved below, remains accessible) */}
+          <Suspense fallback={<SectionSkeleton className="h-80" />}>
+            <TrendCharts dateParams={dateParams} />
+          </Suspense>
 
           {/* Activity and Alerts Row: Team Activity Table (2/3) + Alerts Panel (1/3) */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

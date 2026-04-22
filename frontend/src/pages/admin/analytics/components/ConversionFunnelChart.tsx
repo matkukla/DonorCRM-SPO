@@ -3,15 +3,9 @@ import { FunnelChart, Funnel, LabelList, Tooltip } from "recharts"
 import { ChartContainer } from "@/components/ui/chart"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAdminConversionFunnel } from "@/hooks/useInsights"
+import { CHART_COLORS } from "@/lib/chart-palette"
 
-const FUNNEL_COLORS = [
-  "hsl(var(--chart-1))",
-  "hsl(var(--chart-2))",
-  "hsl(var(--chart-3))",
-  "hsl(var(--chart-4))",
-  "hsl(var(--chart-5))",
-  "hsl(var(--chart-6))",
-]
+const FUNNEL_COLORS = CHART_COLORS
 
 interface ConversionFunnelChartProps {
   dateParams?: { date_from?: string; date_to?: string }
