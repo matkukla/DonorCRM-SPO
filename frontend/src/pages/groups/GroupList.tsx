@@ -42,7 +42,7 @@ const DEFAULT_COLORS = [
 export default function GroupList() {
   const navigate = useNavigate()
   const { isViewingAs } = useViewAs()
-  const { data: groups, isLoading, error } = useGroups()
+  const { data: groups, isLoading } = useGroups()
 
   const createMutation = useCreateGroup()
   const deleteMutation = useDeleteGroup()

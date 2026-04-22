@@ -130,7 +130,7 @@ export const LogEventDialog = React.memo(function LogEventDialog({
         }
       }
 
-      await createEventMutation.mutateAsync(payload as Parameters<typeof createEventMutation.mutateAsync>[0])
+      await createEventMutation.mutateAsync(payload as unknown as Parameters<typeof createEventMutation.mutateAsync>[0])
       onOpenChange(false)
     } catch {
       // Error toast handled by hook
