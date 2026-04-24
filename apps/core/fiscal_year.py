@@ -39,3 +39,20 @@ def months_remaining(today: date) -> int:
     fy_end = fiscal_year_end(today)
     raw = (fy_end.year - today.year) * 12 + (fy_end.month - today.month)
     return max(1, raw)
+
+
+def get_current_fiscal_year_bounds(reference_date: date | None = None) -> tuple[date, date]:
+    """Return (start, end) dates for the fiscal year containing reference_date."""
+    today = reference_date or date.today()
+    return fiscal_year_start(today), fiscal_year_end(today)
+
+
+def get_prior_fiscal_year_bounds(reference_date: date | None = None) -> tuple[date, date]:
+    """Return (start, end) dates for the fiscal year immediately prior to the one
+    containing reference_date."""
+    today = reference_date or date.today()
+    current_start, current_end = get_current_fiscal_year_bounds(today)
+    return (
+        date(current_start.year - 1, current_start.month, current_start.day),
+        date(current_end.year - 1, current_end.month, current_end.day),
+    )

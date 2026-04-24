@@ -3,8 +3,8 @@ DRF serializers for insights/analytics endpoints.
 """
 from rest_framework import serializers
 
-
 # Nested serializers
+
 
 class DonationSummarySerializer(serializers.Serializer):
     total_amount = serializers.FloatField()
@@ -58,6 +58,7 @@ class TeamActivityItemSerializer(serializers.Serializer):
 
 # Response serializers for 5 admin analytics endpoints
 
+
 class DashboardOverviewSerializer(serializers.Serializer):
     total_contacts = serializers.IntegerField()
     active_journals = serializers.IntegerField()
@@ -103,6 +104,7 @@ class TeamTrendsResponseSerializer(serializers.Serializer):
 
 # User Detail Serializers (Phase 17)
 
+
 class UserTrendDataPointSerializer(serializers.Serializer):
     week_start = serializers.CharField()
     week_label = serializers.CharField()
@@ -131,6 +133,7 @@ class UserJournalsResponseSerializer(serializers.Serializer):
 
 # Stage Contacts Serializers (Phase 18)
 
+
 class StageContactItemSerializer(serializers.Serializer):
     id = serializers.CharField()
     full_name = serializers.CharField()
@@ -146,6 +149,7 @@ class StageContactsResponseSerializer(serializers.Serializer):
 
 
 # User Drilldown Serializers (Phase 18)
+
 
 class UserDrilldownUserSerializer(serializers.Serializer):
     id = serializers.CharField()
@@ -177,3 +181,76 @@ class UserDrilldownResponseSerializer(serializers.Serializer):
     user = UserDrilldownUserSerializer()
     stats = UserDrilldownStatsSerializer()
     journals = UserDrilldownJournalSerializer(many=True)
+
+
+# Admin Analytics Redesign (Issue #49)
+
+
+class FiscalYearPaceResponseSerializer(serializers.Serializer):
+    fy_start = serializers.CharField()
+    fy_end = serializers.CharField()
+    raised_cents = serializers.IntegerField()
+    annual_goal_cents = serializers.IntegerField()
+    expected_by_today_cents = serializers.IntegerField()
+    pace_percentage = serializers.FloatField()
+    prior_year_raised_cents = serializers.IntegerField()
+    yoy_delta_percentage = serializers.FloatField(allow_null=True)
+    last_import_at = serializers.CharField(allow_null=True)
+
+
+class MissionaryBehindGoalItemSerializer(serializers.Serializer):
+    user_id = serializers.CharField()
+    name = serializers.CharField()
+    email = serializers.CharField()
+    monthly_goal_cents = serializers.IntegerField()
+    this_month_raised_cents = serializers.IntegerField()
+    pace_percentage = serializers.FloatField()
+
+
+class MissionariesBehindGoalResponseSerializer(serializers.Serializer):
+    missionaries = MissionaryBehindGoalItemSerializer(many=True)
+    total_excluded_no_goal = serializers.IntegerField()
+    total_missionaries = serializers.IntegerField()
+    as_of_date = serializers.CharField()
+
+
+class PipelineFunnelConversionStageSerializer(serializers.Serializer):
+    stage = serializers.CharField()
+    label = serializers.CharField()
+    count_at_or_past = serializers.IntegerField()
+    conversion_from_prior_percentage = serializers.FloatField(allow_null=True)
+    is_weakest_transition = serializers.BooleanField()
+
+
+class PipelineFunnelConversionResponseSerializer(serializers.Serializer):
+    stages = PipelineFunnelConversionStageSerializer(many=True)
+    total_in_pipeline = serializers.IntegerField()
+    weakest_transition = serializers.DictField(allow_null=True)
+
+
+class WeeklyEngagementPointSerializer(serializers.Serializer):
+    week_start = serializers.CharField()
+    week_label = serializers.CharField()
+    active_missionaries = serializers.IntegerField()
+    on_pace_missionaries = serializers.IntegerField()
+    total_missionaries = serializers.IntegerField()
+
+
+class WeeklyEngagementResponseSerializer(serializers.Serializer):
+    weeks = WeeklyEngagementPointSerializer(many=True)
+
+
+class FiscalYearDonationMonthSerializer(serializers.Serializer):
+    month = serializers.CharField()
+    short_label = serializers.CharField()
+    current_cents = serializers.IntegerField(allow_null=True)
+    prior_cents = serializers.IntegerField()
+    is_future = serializers.BooleanField()
+
+
+class FiscalYearDonationsResponseSerializer(serializers.Serializer):
+    fy_start = serializers.CharField()
+    fy_end = serializers.CharField()
+    months = FiscalYearDonationMonthSerializer(many=True)
+    current_fy_total_cents = serializers.IntegerField()
+    prior_fy_total_cents = serializers.IntegerField()
