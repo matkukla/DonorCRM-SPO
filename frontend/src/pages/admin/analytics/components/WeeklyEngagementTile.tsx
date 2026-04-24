@@ -49,32 +49,39 @@ export function WeeklyEngagementTile({ weeks = 12 }: WeeklyEngagementTileProps) 
     )
   }
 
-  const totalActivity = data.weeks.reduce(
-    (sum, w) => sum + w.active_missionaries + w.on_pace_missionaries,
-    0,
+  const hasAnyActivity = data.weeks.some(
+    (w) => w.active_missionaries > 0 || w.on_pace_missionaries > 0,
   )
 
   return (
-    <Card data-testid="weekly-engagement-tile" data-state="ready">
+    <Card className="flex flex-col" data-testid="weekly-engagement-tile" data-state="ready">
       <CardHeader>
         <CardTitle>Weekly Engagement</CardTitle>
         <CardDescription>
           Active missionaries and on-pace count over the last {weeks} weeks.
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        {totalActivity === 0 ? (
-          <div className="py-12 text-center">
+      <CardContent className="flex-1 flex flex-col">
+        {!hasAnyActivity ? (
+          <div className="flex-1 flex items-center justify-center py-12">
             <p className="text-muted-foreground">No engagement data for this window.</p>
           </div>
         ) : (
-          <ChartContainer config={{}} className="h-[280px] w-full">
-            <ComposedChart data={data.weeks} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
+          <ChartContainer
+            config={{}}
+            className="flex-1 w-full min-h-[320px] aspect-auto"
+          >
+            <ComposedChart data={data.weeks} margin={{ top: 20, right: 20, left: 0, bottom: 16 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis
                   dataKey="week_label"
-                  tick={{ fontSize: 12 }}
+                  tick={{ fontSize: 11 }}
                   stroke="hsl(var(--muted-foreground))"
+                  interval={0}
+                  minTickGap={0}
+                  angle={-35}
+                  textAnchor="end"
+                  height={48}
                 />
                 <YAxis tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" allowDecimals={false} />
                 <Tooltip
@@ -83,8 +90,8 @@ export function WeeklyEngagementTile({ weeks = 12 }: WeeklyEngagementTileProps) 
                     return (
                       <div className="bg-background border rounded-lg p-2 shadow-lg text-sm">
                         <p className="font-medium mb-1">Week of {label}</p>
-                        {payload.map((item) => (
-                          <p key={item.dataKey?.toString()} className="text-muted-foreground">
+                        {payload.map((item, idx) => (
+                          <p key={item.name ?? idx} className="text-muted-foreground">
                             <span
                               className="inline-block w-2 h-2 rounded-full mr-2 align-middle"
                               style={{ backgroundColor: item.color }}

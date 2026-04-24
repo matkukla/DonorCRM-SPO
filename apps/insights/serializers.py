@@ -222,12 +222,6 @@ class PipelineFunnelConversionStageSerializer(serializers.Serializer):
     is_weakest_transition = serializers.BooleanField()
 
 
-class PipelineFunnelWeakestTransitionSerializer(serializers.Serializer):
-    from_stage = serializers.CharField(source="from")
-    to = serializers.CharField()
-    rate = serializers.FloatField()
-
-
 class PipelineFunnelConversionResponseSerializer(serializers.Serializer):
     stages = PipelineFunnelConversionStageSerializer(many=True)
     total_in_pipeline = serializers.IntegerField()

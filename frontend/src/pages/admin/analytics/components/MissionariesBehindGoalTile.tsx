@@ -1,3 +1,5 @@
+import { TargetIcon } from "lucide-react"
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import {
@@ -66,10 +68,9 @@ export function MissionariesBehindGoalTile({
       </CardHeader>
       <CardContent>
         {missionaries.length === 0 ? (
-          <div className="py-8 text-center">
-            <p className="text-muted-foreground">
-              All missionaries on pace this month 🎯
-            </p>
+          <div className="py-8 text-center flex flex-col items-center gap-2">
+            <TargetIcon className="h-6 w-6 text-emerald-600" aria-hidden />
+            <p className="text-muted-foreground">All missionaries on pace this month</p>
           </div>
         ) : (
           <Table>

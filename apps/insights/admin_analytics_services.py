@@ -93,16 +93,21 @@ def _clamp(value, lo, hi):
     return max(lo, min(hi, value))
 
 
-def _last_gift_import_at(owner_ids):
+def _last_gift_import_at():
     """Return ISO timestamp of the most recent completed gift-related import,
-    or None if no such import exists. Org-wide when owner_ids is None; in
-    View As mode we scope by the uploader being the target user (best-effort —
-    uploader is typically an admin, so this stays org-wide in practice)."""
-    qs = ImportBatch.objects.filter(
-        status=ImportBatchStatus.COMPLETED,
-        import_type__in=GIFT_IMPORT_TYPES,
+    or None. Org-wide by design — uploader is typically an admin, so scoping
+    the timestamp to an individual missionary would rarely differ from the
+    org-wide value.
+    """
+    last = (
+        ImportBatch.objects.filter(
+            status=ImportBatchStatus.COMPLETED,
+            import_type__in=GIFT_IMPORT_TYPES,
+        )
+        .order_by("-created_at")
+        .values_list("created_at", flat=True)
+        .first()
     )
-    last = qs.order_by("-created_at").values_list("created_at", flat=True).first()
     return last.isoformat() if last else None
 
 
@@ -163,7 +168,7 @@ def get_fiscal_year_pace(request):
         "pace_percentage": pace_percentage,
         "prior_year_raised_cents": int(prior_year_raised_cents),
         "yoy_delta_percentage": yoy_delta_percentage,
-        "last_import_at": _last_gift_import_at(owner_ids),
+        "last_import_at": _last_gift_import_at(),
     }
 
 
@@ -189,23 +194,24 @@ def get_missionaries_behind_goal(request, limit=10):
     )
     user_ids = [row["id"] for row in user_rows]
 
-    # Single aggregate: gifts this month grouped by owner.
-    month_totals_qs = Gift.objects.filter(
-        gift_date__gte=month_start,
-        gift_date__lte=today,
-        donor_contact__owner_id__in=user_ids,
-    )
-    if owner_ids is not None:
-        month_totals_qs = month_totals_qs.filter(donor_contact__owner_id__in=owner_ids)
-    month_totals = month_totals_qs.values("donor_contact__owner_id").annotate(
-        total=Sum("amount_cents")
+    # Single aggregate: gifts this month grouped by owner. `user_ids` is
+    # already scoped by `owner_ids` via `with_goal`, so no separate scope
+    # filter is needed here.
+    month_totals = (
+        Gift.objects.filter(
+            gift_date__gte=month_start,
+            gift_date__lte=today,
+            donor_contact__owner_id__in=user_ids,
+        )
+        .values("donor_contact__owner_id")
+        .annotate(total=Sum("amount_cents"))
     )
     owner_to_total = {
         row["donor_contact__owner_id"]: int(row["total"] or 0) for row in month_totals
     }
 
     # Expected pace at this point in the month (prorated linearly).
-    ratio = day_of_month / days_in_month if days_in_month else 1
+    ratio = day_of_month / days_in_month
 
     rows = []
     for user in user_rows:
@@ -385,7 +391,7 @@ def get_weekly_engagement(request, weeks=12):
         # week_end may be before "today" for past weeks and equals today for current.
         month_start = week_end.replace(day=1)
         days_in_month = monthrange(week_end.year, week_end.month)[1]
-        ratio = week_end.day / days_in_month if days_in_month else 1
+        ratio = week_end.day / days_in_month
 
         on_pace = 0
         for uid, goal in goal_map.items():
@@ -464,8 +470,8 @@ def get_fiscal_year_donations(request):
             }
         )
 
-    current_total = sum(v for v in current_by_month.values())
-    prior_total = sum(v for v in prior_by_month.values())
+    current_total = sum(current_by_month.values())
+    prior_total = sum(prior_by_month.values())
 
     return {
         "fy_start": fy_start.isoformat(),
