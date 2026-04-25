@@ -418,7 +418,7 @@ def get_weekly_engagement(request, weeks=12):
 
 
 def get_fiscal_year_donations(request):
-    """Monthly FYTD donations vs prior year, Jul -> Jun.
+    """Monthly FYTD donations vs prior year, Jun -> May.
     current_cents is null for months beyond the current month."""
     today = date.today()
     fy_start, fy_end = get_current_fiscal_year_bounds(today)
@@ -448,7 +448,7 @@ def get_fiscal_year_donations(request):
     }
 
     months = []
-    # 12 entries starting at fy_start month (July), running through June.
+    # 12 entries starting at fy_start month (June), running through May.
     for i in range(12):
         month_year = fy_start.year + (1 if (fy_start.month + i) > 12 else 0)
         month_num = ((fy_start.month - 1 + i) % 12) + 1

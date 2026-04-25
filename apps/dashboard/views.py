@@ -226,7 +226,7 @@ class GivingSummaryView(APIView):
 
     @extend_schema(
         tags=['dashboard'],
-        summary='Get giving summary (fiscal year Jul 1 - Jun 30)',
+        summary='Get giving summary (fiscal year Jun 1 - May 31)',
     )
     def get(self, request):
         target = _resolve_target_user(request)

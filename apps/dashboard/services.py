@@ -223,7 +223,7 @@ def get_recent_gifts(user, days=30, limit=10):
 def get_giving_summary(user, as_of_date=None):
     """
     Calculate giving summary for the Given & Expecting widget.
-    Uses fiscal year (July 1 - June 30).
+    Uses fiscal year (June 1 - May 31).
     """
     today = as_of_date or date.today()
     year_start = fiscal_year_start(today)

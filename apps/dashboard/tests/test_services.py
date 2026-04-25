@@ -319,7 +319,7 @@ class TestGetGivingSummary:
     """Tests for get_giving_summary function."""
 
     def test_given_sums_current_fiscal_year_only(self):
-        """Given should only sum gifts from the current fiscal year (Jul 1 - Jun 30)."""
+        """Given should only sum gifts from the current fiscal year (Jun 1 - May 31)."""
         from apps.core.fiscal_year import fiscal_year_start
 
         user = UserFactory(role="missionary", monthly_support_goal_cents=100000)

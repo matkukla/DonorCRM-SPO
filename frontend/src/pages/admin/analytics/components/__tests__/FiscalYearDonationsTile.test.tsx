@@ -37,11 +37,11 @@ function mockHook(result: QueryResult) {
 
 function makeResponse(overrides: Partial<FiscalYearDonationsResponse> = {}): FiscalYearDonationsResponse {
   return {
-    fy_start: "2025-07-01",
-    fy_end: "2026-06-30",
+    fy_start: "2025-06-01",
+    fy_end: "2026-05-31",
     months: Array.from({ length: 12 }, (_, i) => ({
-      month: `2025-${String(7 + i).padStart(2, "0")}-01`,
-      short_label: ["Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun"][i],
+      month: `2025-${String(6 + i).padStart(2, "0")}-01`,
+      short_label: ["Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May"][i],
       current_cents: i < 3 ? 100_000 * (i + 1) : null,
       prior_cents: 50_000 * (i + 1),
       is_future: i >= 3,

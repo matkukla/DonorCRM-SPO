@@ -256,10 +256,10 @@ class TestFiscalYearDonations:
             mock_date.side_effect = lambda *args, **kw: date(*args, **kw)
             result = get_fiscal_year_donations(request)
 
-        # Jul + Aug are non-future, Sep..Jun are future
+        # Jun + Jul + Aug are non-future, Sep..May are future
         future_flags = [m["is_future"] for m in result["months"]]
-        assert future_flags[:2] == [False, False]
-        assert all(future_flags[2:])
+        assert future_flags[:3] == [False, False, False]
+        assert all(future_flags[3:])
         for m in result["months"]:
             if m["is_future"]:
                 assert m["current_cents"] is None

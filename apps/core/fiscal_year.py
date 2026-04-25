@@ -1,30 +1,30 @@
 """
 Fiscal year utilities for DonorCRM.
-Fiscal year: July 1 — June 30 (same as many missionary organizations).
+Fiscal year: June 1 — May 31.
 """
 from datetime import date
 
-FISCAL_YEAR_START_MONTH = 7  # July
+FISCAL_YEAR_START_MONTH = 6  # June
 
 
 def fiscal_year_start(today: date) -> date:
-    """Return July 1 of the current fiscal year."""
+    """Return June 1 of the current fiscal year."""
     if today.month >= FISCAL_YEAR_START_MONTH:
         return date(today.year, FISCAL_YEAR_START_MONTH, 1)
     return date(today.year - 1, FISCAL_YEAR_START_MONTH, 1)
 
 
 def fiscal_year_end(today: date) -> date:
-    """Return June 30 of the current fiscal year end."""
+    """Return May 31 of the current fiscal year end."""
     fy_start = fiscal_year_start(today)
-    return date(fy_start.year + 1, 6, 30)
+    return date(fy_start.year + 1, 5, 31)
 
 
 def months_elapsed_in_fiscal_year(today: date) -> int:
     """
-    Return integer months from July 1 through the current month (inclusive).
+    Return integer months from June 1 through the current month (inclusive).
     Minimum 1 to prevent division-by-zero.
-    Example: April 7, 2026 -> FY started July 1, 2025 -> 10 months (Jul-Apr).
+    Example: April 7, 2026 -> FY started June 1, 2025 -> 11 months (Jun-Apr).
     """
     fy_start = fiscal_year_start(today)
     elapsed = (today.year - fy_start.year) * 12 + (today.month - fy_start.month) + 1
@@ -33,7 +33,7 @@ def months_elapsed_in_fiscal_year(today: date) -> int:
 
 def months_remaining(today: date) -> int:
     """
-    Return integer months from today to June 30 of the current FY.
+    Return integer months from today to May 31 of the current FY.
     Minimum 1 to prevent division-by-zero in one-time gift calculations.
     """
     fy_end = fiscal_year_end(today)
