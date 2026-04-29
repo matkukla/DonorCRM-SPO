@@ -3,6 +3,7 @@ API URL configuration for DonorCRM.
 All API endpoints are prefixed with /api/v1/
 """
 from django.conf import settings
+from django.db import OperationalError, connection
 from django.http import JsonResponse
 from django.urls import include, path
 from drf_spectacular.views import (
@@ -14,7 +15,12 @@ from rest_framework.permissions import IsAuthenticated
 
 
 def health_check(request):
-    """Simple health check endpoint for load balancers."""
+    """Health check endpoint for load balancers. Verifies the DB is reachable."""
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute('SELECT 1')
+    except OperationalError:
+        return JsonResponse({'status': 'error', 'database': 'unreachable'}, status=503)
     return JsonResponse({'status': 'ok'})
 
 
