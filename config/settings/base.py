@@ -209,6 +209,13 @@ CORS_ALLOWED_ORIGINS = config(
     default='http://localhost:3000,http://127.0.0.1:3000',
     cast=lambda v: [s.strip() for s in v.split(',')]
 )
+# CSRF trusted origins (Django 4+ requires this for cross-origin POST/PUT/DELETE).
+# Defaults to mirror CORS_ALLOWED_ORIGINS so production deploys don't drift.
+CSRF_TRUSTED_ORIGINS = config(
+    'CSRF_TRUSTED_ORIGINS',
+    default=','.join(CORS_ALLOWED_ORIGINS),
+    cast=lambda v: [s.strip() for s in v.split(',') if s.strip()]
+)
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = [
     'accept',
