@@ -107,3 +107,5 @@ SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
 # Logging for production
 LOGGING['handlers']['console']['formatter'] = 'verbose'  # noqa: F405
 LOGGING['root']['level'] = 'WARNING'  # noqa: F405
+# Keep app-level logs at INFO during beta so tester-reported issues are debuggable.
+LOGGING['loggers']['apps']['level'] = 'INFO'  # noqa: F405
