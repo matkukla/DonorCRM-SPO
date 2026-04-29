@@ -48,8 +48,9 @@ logger = logging.getLogger(__name__)
 # File upload size limit (10 MB)
 MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10 MB
 
-# Threshold for using async import (number of rows)
-ASYNC_THRESHOLD = 50
+# Threshold for using async import (number of rows).
+# Set high to keep imports on the sync path while Celery/Redis are disabled in production.
+ASYNC_THRESHOLD = 100_000
 
 
 class ContactImportView(APIView):
