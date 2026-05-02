@@ -13,6 +13,7 @@ export interface FiscalYearPaceResponse {
   fy_end: string
   raised_cents: number
   annual_goal_cents: number
+  annual_goal_source: "org_setting" | "missionary_sum"
   expected_by_today_cents: number
   pace_percentage: number
   prior_year_raised_cents: number
@@ -23,6 +24,29 @@ export interface FiscalYearPaceResponse {
 export async function getFiscalYearPace(): Promise<FiscalYearPaceResponse> {
   const response = await apiClient.get<FiscalYearPaceResponse>(
     "/insights/admin/fiscal-year-pace/",
+  )
+  return response.data
+}
+
+// --- Org Settings -------------------------------------------------------------
+
+export interface OrgSettingsResponse {
+  annual_goal_cents: number
+}
+
+export async function getOrgSettings(): Promise<OrgSettingsResponse> {
+  const response = await apiClient.get<OrgSettingsResponse>(
+    "/insights/admin/org-settings/",
+  )
+  return response.data
+}
+
+export async function updateOrgSettings(
+  payload: Partial<OrgSettingsResponse>,
+): Promise<OrgSettingsResponse> {
+  const response = await apiClient.patch<OrgSettingsResponse>(
+    "/insights/admin/org-settings/",
+    payload,
   )
   return response.data
 }

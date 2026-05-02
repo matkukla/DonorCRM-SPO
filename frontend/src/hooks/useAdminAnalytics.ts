@@ -4,15 +4,18 @@
  * Staleness mirrors useInsights: 5 minutes fresh, 30-minute gcTime so the
  * data survives panel/drawer open/close in the same session.
  */
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import {
   getFiscalYearDonations,
   getFiscalYearPace,
   getMissionariesBehindGoal,
+  getOrgSettings,
   getPipelineFunnelConversion,
   getWeeklyEngagement,
+  updateOrgSettings,
   type MissionariesBehindGoalParams,
+  type OrgSettingsResponse,
   type WeeklyEngagementParams,
 } from "@/api/adminAnalytics"
 
@@ -61,5 +64,25 @@ export function useFiscalYearDonations() {
     queryFn: getFiscalYearDonations,
     staleTime: STALE_TIME,
     gcTime: GC_TIME,
+  })
+}
+
+export function useOrgSettings() {
+  return useQuery({
+    queryKey: ["admin-analytics", "org-settings"],
+    queryFn: getOrgSettings,
+    staleTime: STALE_TIME,
+    gcTime: GC_TIME,
+  })
+}
+
+export function useUpdateOrgSettings() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: Partial<OrgSettingsResponse>) => updateOrgSettings(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-analytics", "org-settings"] })
+      queryClient.invalidateQueries({ queryKey: ["admin-analytics", "fiscal-year-pace"] })
+    },
   })
 }

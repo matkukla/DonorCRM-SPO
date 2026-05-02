@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
@@ -8,10 +8,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/providers/AuthProvider"
 import { apiClient } from "@/api/client"
-import { User, Lock, CheckCircle, Target, ArrowRight } from "lucide-react"
+import { useOrgSettings, useUpdateOrgSettings } from "@/hooks/useAdminAnalytics"
+import { User, Lock, CheckCircle, Target, ArrowRight, Building2 } from "lucide-react"
 
 export default function Settings() {
   const { user, refreshUser } = useAuth()
+  const isAdmin = user?.role === "admin"
 
   // Profile form state
   const [firstName, setFirstName] = useState(user?.first_name || "")
@@ -19,6 +21,41 @@ export default function Settings() {
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false)
   const [profileSuccess, setProfileSuccess] = useState(false)
   const [profileError, setProfileError] = useState("")
+
+  // Org annual goal (admin-only)
+  const { data: orgSettings } = useOrgSettings()
+  const updateOrgSettings = useUpdateOrgSettings()
+  const [annualGoalDollars, setAnnualGoalDollars] = useState("")
+  const [annualGoalSaved, setAnnualGoalSaved] = useState(false)
+  const [annualGoalError, setAnnualGoalError] = useState("")
+
+  useEffect(() => {
+    if (orgSettings) {
+      setAnnualGoalDollars(
+        orgSettings.annual_goal_cents > 0
+          ? String(Math.round(orgSettings.annual_goal_cents / 100))
+          : "",
+      )
+    }
+  }, [orgSettings])
+
+  const handleSaveAnnualGoal = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setAnnualGoalError("")
+    setAnnualGoalSaved(false)
+    const dollars = annualGoalDollars.trim() === "" ? 0 : Number(annualGoalDollars)
+    if (!Number.isFinite(dollars) || dollars < 0) {
+      setAnnualGoalError("Please enter a valid non-negative dollar amount.")
+      return
+    }
+    try {
+      await updateOrgSettings.mutateAsync({ annual_goal_cents: Math.round(dollars * 100) })
+      setAnnualGoalSaved(true)
+      setTimeout(() => setAnnualGoalSaved(false), 3000)
+    } catch {
+      setAnnualGoalError("Failed to save. Please try again.")
+    }
+  }
 
   // Password form state
   const [currentPassword, setCurrentPassword] = useState("")
@@ -115,6 +152,54 @@ export default function Settings() {
               </Button>
             </CardContent>
           </Card>
+
+          {/* Org Annual Goal Card — admin only. Drives the Fiscal Year Pace tile. */}
+          {isAdmin && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-5 w-5 text-muted-foreground" />
+                  <CardTitle>Organization Annual Goal</CardTitle>
+                </div>
+                <CardDescription>
+                  Org-wide annual fundraising goal used by the Admin Analytics
+                  Fiscal Year Pace tile. Leave empty to fall back to the sum of
+                  each missionary's monthly goal × 12.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSaveAnnualGoal} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="annualGoal">Annual Goal ($)</Label>
+                    <Input
+                      id="annualGoal"
+                      type="number"
+                      min="0"
+                      step="1"
+                      placeholder="e.g. 500000"
+                      value={annualGoalDollars}
+                      onChange={(e) => setAnnualGoalDollars(e.target.value)}
+                    />
+                  </div>
+
+                  {annualGoalError && (
+                    <p className="text-sm text-destructive">{annualGoalError}</p>
+                  )}
+
+                  {annualGoalSaved && (
+                    <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+                      <CheckCircle className="h-4 w-4" />
+                      Saved
+                    </div>
+                  )}
+
+                  <Button type="submit" disabled={updateOrgSettings.isPending}>
+                    {updateOrgSettings.isPending ? "Saving..." : "Save Annual Goal"}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          )}
 
           <div className="grid gap-6 lg:grid-cols-2">
             {/* Profile Card */}

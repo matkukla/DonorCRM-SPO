@@ -20,24 +20,38 @@ from apps.users.models import User
 
 def _parse_date_range(date_from=None, date_to=None):
     """Parse date range strings to timezone-aware datetimes.
+
     Returns (dt_from, dt_to) tuple, either may be None.
+
+    Raises:
+        rest_framework.exceptions.ValidationError on malformed YYYY-MM-DD
+        input. DRF turns this into a 400 response automatically. Views
+        normally validate dates first via apps.core.utils.validate_date_params,
+        but this is defense-in-depth: a caller that forgets to validate will
+        get a clean 400 rather than silently treating bad input as "no filter".
     """
     from datetime import datetime as dt_class
+
+    from rest_framework.exceptions import ValidationError
+
     dt_from_val = None
     dt_to_val = None
-    try:
-        if date_from:
+    if date_from:
+        try:
             dt_from_val = timezone.make_aware(dt_class.strptime(date_from, '%Y-%m-%d'))
-    except ValueError:
-        pass  # Invalid date_from silently ignored; callers validate at the view layer
-    try:
-        if date_to:
-            # Include entire day
+        except ValueError as exc:
+            raise ValidationError(
+                {'date_from': 'Invalid date_from format. Use YYYY-MM-DD.'}
+            ) from exc
+    if date_to:
+        try:
             dt_to_val = timezone.make_aware(
                 dt_class.strptime(date_to, '%Y-%m-%d')
             ) + timedelta(days=1)
-    except ValueError:
-        pass  # Invalid date_to silently ignored; callers validate at the view layer
+        except ValueError as exc:
+            raise ValidationError(
+                {'date_to': 'Invalid date_to format. Use YYYY-MM-DD.'}
+            ) from exc
     return dt_from_val, dt_to_val
 
 
@@ -148,9 +162,27 @@ def get_donations_by_year(user, years=5, request=None):
 def get_monthly_commitments(user, request=None):
     """
     Get summary of active recurring gifts with monthly equivalents.
+
+    last_fulfilled_date is the most recent gift_date for any Gift whose
+    recurring_gift FK points at this pledge — i.e. "when did this pledge last
+    actually pay?". None if it has never paid.
     """
+    from django.db.models import Max
+
     recurring_gifts = _scope_recurring_gifts(user, request=request)
-    active_recurring = recurring_gifts.filter(status=RecurringGiftStatus.ACTIVE).select_related('donor_contact')
+
+    last_fulfilled_subq = (
+        Gift.objects.filter(recurring_gift_id=OuterRef('pk'))
+        .order_by()
+        .values('recurring_gift_id')
+        .annotate(latest=Max('gift_date'))
+        .values('latest')
+    )
+    active_recurring = (
+        recurring_gifts.filter(status=RecurringGiftStatus.ACTIVE)
+        .select_related('donor_contact')
+        .annotate(last_fulfilled_date=Subquery(last_fulfilled_subq))
+    )
 
     # Group by frequency
     by_frequency = {}
@@ -175,6 +207,9 @@ def get_monthly_commitments(user, request=None):
             'frequency': rg.frequency,
             'monthly_equivalent': round(monthly_equiv, 2),
             'start_date': rg.start_date.isoformat(),
+            'last_fulfilled_date': (
+                rg.last_fulfilled_date.isoformat() if rg.last_fulfilled_date else None
+            ),
         })
 
     return {
@@ -193,12 +228,24 @@ def get_monthly_commitments(user, request=None):
     }
 
 
-def get_late_donations(user, limit=50):
+def get_late_donations(user, limit=50, request=None):
     """
-    Get late donations. RecurringGift has no is_late field, so this returns
-    an empty structure. Kept for API compatibility.
+    Get late recurring donations across the visible scope (own / supervisor /
+    admin per get_visible_user_ids).
+
+    Delegates to apps.core.late_donations.compute_late_donations so the
+    Insights page and the Dashboard tile share one implementation.
     """
-    return {'late_donations': [], 'total_count': 0}
+    from apps.core.late_donations import compute_late_donations
+
+    base_qs = _scope_recurring_gifts(user, request=request)
+    # Compute once at full scope so total_count reflects the unlimited view,
+    # then take the top `limit` rows for the page.
+    full_list = compute_late_donations(base_qs)
+    return {
+        'late_donations': full_list[:limit] if limit is not None else full_list,
+        'total_count': len(full_list),
+    }
 
 
 def get_follow_ups(user, limit=50, request=None):
@@ -588,6 +635,24 @@ def get_user_performance():
     ).order_by('-total_contacts')
 
     return {'users': [_serialize_user_performance(u) for u in users]}
+
+
+def get_single_user_performance(user_id):
+    """
+    Performance metrics for a single user. Returns the serialized row or None
+    if the user doesn't exist or isn't a missionary/admin/supervisor.
+
+    Use this from the UserDetail page so we don't load the entire org just to
+    render one row.
+
+    SECURITY: same as get_user_performance — admin-gated.
+    """
+    user = _annotate_user_performance(
+        User.objects.filter(id=user_id, role__in=['missionary', 'admin', 'supervisor'])
+    ).first()
+    if user is None:
+        return None
+    return _serialize_user_performance(user)
 
 
 def get_conversion_funnel(date_from=None, date_to=None):

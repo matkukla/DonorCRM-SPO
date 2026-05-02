@@ -191,11 +191,16 @@ class FiscalYearPaceResponseSerializer(serializers.Serializer):
     fy_end = serializers.CharField()
     raised_cents = serializers.IntegerField()
     annual_goal_cents = serializers.IntegerField()
+    annual_goal_source = serializers.ChoiceField(choices=["org_setting", "missionary_sum"])
     expected_by_today_cents = serializers.IntegerField()
     pace_percentage = serializers.FloatField()
     prior_year_raised_cents = serializers.IntegerField()
     yoy_delta_percentage = serializers.FloatField(allow_null=True)
     last_import_at = serializers.CharField(allow_null=True)
+
+
+class OrgSettingsSerializer(serializers.Serializer):
+    annual_goal_cents = serializers.IntegerField(min_value=0)
 
 
 class MissionaryBehindGoalItemSerializer(serializers.Serializer):

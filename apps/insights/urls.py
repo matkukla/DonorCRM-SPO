@@ -15,7 +15,9 @@ from apps.insights.views import (
     LateDonationsView,
     MissionariesBehindGoalView,
     MonthlyCommitmentsView,
+    OrgSettingsView,
     PipelineFunnelConversionView,
+    SingleUserPerformanceView,
     StageContactsView,
     StalledContactsView,
     TeamActivityView,
@@ -46,6 +48,11 @@ urlpatterns = [
     path("admin/stalled-contacts/", StalledContactsView.as_view(), name="admin-stalled-contacts"),
     path("admin/user-performance/", UserPerformanceView.as_view(), name="admin-user-performance"),
     path(
+        "admin/user-performance/<uuid:user_id>/",
+        SingleUserPerformanceView.as_view(),
+        name="admin-user-performance-detail",
+    ),
+    path(
         "admin/conversion-funnel/", ConversionFunnelView.as_view(), name="admin-conversion-funnel"
     ),
     path("admin/team-activity/", TeamActivityView.as_view(), name="admin-team-activity"),
@@ -65,6 +72,7 @@ urlpatterns = [
         name="admin-team-activity-export",
     ),
     # Admin analytics redesign (Issue #49)
+    path("admin/org-settings/", OrgSettingsView.as_view(), name="admin-org-settings"),
     path("admin/fiscal-year-pace/", FiscalYearPaceView.as_view(), name="admin-fiscal-year-pace"),
     path(
         "admin/missionaries-behind-goal/",

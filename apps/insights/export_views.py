@@ -2,6 +2,7 @@
 CSV export views for admin analytics endpoints.
 """
 import csv
+import logging
 from datetime import datetime
 
 from drf_spectacular.utils import OpenApiParameter, extend_schema
@@ -15,11 +16,39 @@ from apps.core.utils import get_safe_int_param, validate_date_params
 from apps.imports.services import sanitize_csv_value
 from apps.insights.services import get_stalled_contacts, get_team_activity
 
+logger = logging.getLogger(__name__)
+
 
 class Echo:
     """Pseudo-buffer for csv.writer to write to StreamingHttpResponse."""
     def write(self, value):
         return value
+
+
+def _safe_csv_stream(generator_fn, *, export_name):
+    """Wrap a CSV-row generator so any exception mid-stream surfaces a sentinel
+    error row in the file and gets logged.
+
+    StreamingHttpResponse has already sent HTTP headers by the time the
+    generator yields its first row, so we cannot turn a downstream failure
+    back into a 500. The next-best signal is to append a clearly-labelled
+    error line to the CSV the user is downloading.
+
+    The sentinel row deliberately does NOT include the exception message —
+    raw exception strings can leak SQL fragments, file paths, or other
+    internal detail. The full traceback goes to the server log via
+    `logger.exception` for engineering follow-up.
+    """
+    pseudo_buffer = Echo()
+    writer = csv.writer(pseudo_buffer)
+    try:
+        yield from generator_fn(writer)
+    except Exception:  # noqa: BLE001 — we want to keep the stream alive
+        logger.exception("CSV export %s failed mid-stream", export_name)
+        yield writer.writerow([
+            "__ERROR__",
+            "Export failed; this row is incomplete. Engineering has been notified.",
+        ])
 
 
 class StalledContactsCSVView(APIView):
@@ -75,22 +104,15 @@ class StalledContactsCSVView(APIView):
         else:
             filename = f'stalled_contacts_{datetime.now().date().isoformat()}.csv'
 
-        # Create streaming CSV response
-        def generate_csv():
-            pseudo_buffer = Echo()
-            writer = csv.writer(pseudo_buffer)
-
-            # Write header
+        def rows(writer):
             yield writer.writerow([
                 'Contact Name',
                 'Email',
                 'Owner',
                 'Last Activity Date',
                 'Days Stalled',
-                'Status'
+                'Status',
             ])
-
-            # Write data rows
             for contact in data['stalled_contacts']:
                 yield writer.writerow([
                     sanitize_csv_value(contact['full_name']),
@@ -101,7 +123,10 @@ class StalledContactsCSVView(APIView):
                     sanitize_csv_value(contact['status']),
                 ])
 
-        response = StreamingHttpResponse(generate_csv(), content_type='text/csv')
+        response = StreamingHttpResponse(
+            _safe_csv_stream(rows, export_name='stalled_contacts'),
+            content_type='text/csv',
+        )
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
 
@@ -144,21 +169,14 @@ class TeamActivityCSVView(APIView):
         else:
             filename = f'team_activity_{datetime.now().date().isoformat()}.csv'
 
-        # Create streaming CSV response
-        def generate_csv():
-            pseudo_buffer = Echo()
-            writer = csv.writer(pseudo_buffer)
-
-            # Write header
+        def rows(writer):
             yield writer.writerow([
                 'Date',
                 'User',
                 'Event Type',
                 'Title',
-                'Contact Name'
+                'Contact Name',
             ])
-
-            # Write data rows
             for activity in data['activities']:
                 yield writer.writerow([
                     activity['created_at'],
@@ -168,6 +186,9 @@ class TeamActivityCSVView(APIView):
                     sanitize_csv_value(activity['contact_name'] or ''),
                 ])
 
-        response = StreamingHttpResponse(generate_csv(), content_type='text/csv')
+        response = StreamingHttpResponse(
+            _safe_csv_stream(rows, export_name='team_activity'),
+            content_type='text/csv',
+        )
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
