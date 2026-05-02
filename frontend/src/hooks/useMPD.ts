@@ -5,6 +5,7 @@ import {
   getMPDMyData,
   getMPDUploadHistory,
 } from "@/api/mpd"
+import { useViewAs } from "@/providers/ViewAsProvider"
 
 /**
  * Upload an MPD Smartsheet file (CSV or XLSX)
@@ -33,11 +34,14 @@ export function useMPDOverview({ enabled = true }: { enabled?: boolean } = {}) {
 }
 
 /**
- * Fetch current user's own MPD snapshot
+ * Fetch the "my data" MPD snapshot for the active user. In View-As mode the
+ * X-View-As-User-Id header makes the API return the viewed user's snapshot,
+ * so we bake `viewAsUserId` into the queryKey to prevent cache collisions.
  */
 export function useMPDMyData() {
+  const { viewAsUserId } = useViewAs()
   return useQuery({
-    queryKey: ["mpd", "me"],
+    queryKey: ["mpd", "me", viewAsUserId ?? "self"],
     queryFn: getMPDMyData,
   })
 }

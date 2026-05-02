@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react"
 import {
   Bar,
   CartesianGrid,
@@ -14,12 +15,28 @@ import { ChartContainer } from "@/components/ui/chart"
 import { useWeeklyEngagement } from "@/hooks/useAdminAnalytics"
 import { CHART_COLORS } from "@/lib/chart-palette"
 
+const NARROW_BREAKPOINT_PX = 640
+
+function useIsNarrowViewport(): boolean {
+  const [isNarrow, setIsNarrow] = useState(
+    () => typeof window !== "undefined" && window.innerWidth < NARROW_BREAKPOINT_PX,
+  )
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const handler = () => setIsNarrow(window.innerWidth < NARROW_BREAKPOINT_PX)
+    window.addEventListener("resize", handler)
+    return () => window.removeEventListener("resize", handler)
+  }, [])
+  return isNarrow
+}
+
 interface WeeklyEngagementTileProps {
   weeks?: number
 }
 
 export function WeeklyEngagementTile({ weeks = 12 }: WeeklyEngagementTileProps) {
   const { data, isLoading, error } = useWeeklyEngagement({ weeks })
+  const isNarrow = useIsNarrowViewport()
 
   if (isLoading) {
     return (
@@ -77,8 +94,8 @@ export function WeeklyEngagementTile({ weeks = 12 }: WeeklyEngagementTileProps) 
                   dataKey="week_label"
                   tick={{ fontSize: 11 }}
                   stroke="hsl(var(--muted-foreground))"
-                  interval={0}
-                  minTickGap={0}
+                  interval={isNarrow ? 1 : 0}
+                  minTickGap={isNarrow ? 16 : 0}
                   angle={-35}
                   textAnchor="end"
                   height={48}

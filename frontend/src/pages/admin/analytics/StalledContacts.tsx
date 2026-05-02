@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { NavLink, useSearchParams } from "react-router-dom"
 import { ArrowUpDown, Download } from "lucide-react"
 import { Container } from "@/components/layout/Container"
@@ -31,7 +31,27 @@ function formatDate(dateStr: string | null): string {
 export default function StalledContacts() {
   const [searchParams, setSearchParams] = useSearchParams()
 
-  const [pageIndex, setPageIndex] = useState(0)
+  // Pagination synced to URL so refresh / back-button preserves position.
+  const pageIndex = (() => {
+    const raw = parseInt(searchParams.get("page") ?? "1", 10)
+    return Number.isFinite(raw) && raw > 0 ? raw - 1 : 0
+  })()
+  const setPageIndex = (next: number | ((prev: number) => number)) => {
+    const value = typeof next === "function" ? next(pageIndex) : next
+    setSearchParams(
+      (prev) => {
+        const params = new URLSearchParams(prev)
+        if (value <= 0) {
+          params.delete("page")
+        } else {
+          params.set("page", String(value + 1))
+        }
+        return params
+      },
+      { replace: true },
+    )
+  }
+
   const [sortBy, setSortBy] = useState<"days_stalled" | "full_name" | "owner_name">("days_stalled")
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc")
   const [dateRange, setDateRange] = useState<DateRange | null>(() => {
@@ -66,8 +86,15 @@ export default function StalledContacts() {
 
   const exportMutation = useExportStalledContacts()
 
-  // Reset pagination when date range changes
+  // Reset pagination when date range changes — but NOT on the initial mount,
+  // otherwise visiting a direct URL like ?page=3 gets wiped before the user
+  // sees it.
+  const didMountRef = useRef(false)
   useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true
+      return
+    }
     setPageIndex(0)
   }, [dateRange])
 
