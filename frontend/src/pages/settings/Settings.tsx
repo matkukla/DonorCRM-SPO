@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Link } from "react-router-dom"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
@@ -28,9 +28,14 @@ export default function Settings() {
   const [annualGoalDollars, setAnnualGoalDollars] = useState("")
   const [annualGoalSaved, setAnnualGoalSaved] = useState(false)
   const [annualGoalError, setAnnualGoalError] = useState("")
+  const annualGoalSeededRef = useRef(false)
 
+  // Only seed the input from the server once. After that the user's local
+  // state is the source of truth — re-syncing on every orgSettings change
+  // would clobber what the user typed if the API response arrives mid-edit.
   useEffect(() => {
-    if (orgSettings) {
+    if (orgSettings && !annualGoalSeededRef.current) {
+      annualGoalSeededRef.current = true
       setAnnualGoalDollars(
         orgSettings.annual_goal_cents > 0
           ? String(Math.round(orgSettings.annual_goal_cents / 100))
@@ -153,7 +158,12 @@ export default function Settings() {
             </CardContent>
           </Card>
 
-          {/* Org Annual Goal Card — admin only. Drives the Fiscal Year Pace tile. */}
+          {/* Org Annual Goal Card — admin only. Drives the Fiscal Year Pace tile.
+              The card chrome (title + description) renders immediately so admins
+              see the section header even on slow networks; the form body only
+              mounts after orgSettings loads, so the input is seeded with the
+              persisted value on first paint and a useEffect race can't clobber
+              typed input. */}
           {isAdmin && (
             <Card>
               <CardHeader>
@@ -168,35 +178,39 @@ export default function Settings() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleSaveAnnualGoal} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="annualGoal">Annual Goal ($)</Label>
-                    <Input
-                      id="annualGoal"
-                      type="number"
-                      min="0"
-                      step="1"
-                      placeholder="e.g. 500000"
-                      value={annualGoalDollars}
-                      onChange={(e) => setAnnualGoalDollars(e.target.value)}
-                    />
-                  </div>
-
-                  {annualGoalError && (
-                    <p className="text-sm text-destructive">{annualGoalError}</p>
-                  )}
-
-                  {annualGoalSaved && (
-                    <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
-                      <CheckCircle className="h-4 w-4" />
-                      Saved
+                {orgSettings ? (
+                  <form onSubmit={handleSaveAnnualGoal} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="annualGoal">Annual Goal ($)</Label>
+                      <Input
+                        id="annualGoal"
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder="e.g. 500000"
+                        value={annualGoalDollars}
+                        onChange={(e) => setAnnualGoalDollars(e.target.value)}
+                      />
                     </div>
-                  )}
 
-                  <Button type="submit" disabled={updateOrgSettings.isPending}>
-                    {updateOrgSettings.isPending ? "Saving..." : "Save Annual Goal"}
-                  </Button>
-                </form>
+                    {annualGoalError && (
+                      <p className="text-sm text-destructive">{annualGoalError}</p>
+                    )}
+
+                    {annualGoalSaved && (
+                      <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+                        <CheckCircle className="h-4 w-4" />
+                        Saved
+                      </div>
+                    )}
+
+                    <Button type="submit" disabled={updateOrgSettings.isPending}>
+                      {updateOrgSettings.isPending ? "Saving..." : "Save Annual Goal"}
+                    </Button>
+                  </form>
+                ) : (
+                  <div className="h-24 bg-muted rounded animate-pulse" />
+                )}
               </CardContent>
             </Card>
           )}
