@@ -238,6 +238,10 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10 MB
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10 MB
 
 # Celery Configuration
+# CELERY_ENABLED: when False, code paths that would call .delay() must instead
+# return an explicit error (or run synchronously). render.yaml currently runs
+# without a Redis broker or worker dyno, so the default is False.
+CELERY_ENABLED = config('CELERY_ENABLED', default=False, cast=bool)
 CELERY_BROKER_URL = config('REDIS_URL', default='redis://localhost:6379/0')
 CELERY_RESULT_BACKEND = config('REDIS_URL', default='redis://localhost:6379/0')
 CELERY_ACCEPT_CONTENT = ['json']

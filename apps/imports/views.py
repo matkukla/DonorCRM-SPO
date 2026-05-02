@@ -102,11 +102,31 @@ class ContactImportView(APIView):
             )
 
         # Use async import for large files
+        from django.conf import settings as django_settings
+
         use_async = (
             request.query_params.get("async") == "true" or len(valid_records) > ASYNC_THRESHOLD
         )
 
         if use_async and valid_records:
+            if not getattr(django_settings, "CELERY_ENABLED", False):
+                # Hard fail rather than silently dropping the job: Celery is
+                # not available in this environment. The user should split the
+                # file or contact support.
+                logger.warning(
+                    "Async contact import requested but CELERY_ENABLED=False "
+                    "(rows=%d, user=%s)", len(valid_records), request.user.email,
+                )
+                return Response(
+                    {
+                        "detail": (
+                            "Async import is unavailable in this environment. "
+                            "Please split the file into smaller batches "
+                            f"(under {ASYNC_THRESHOLD:,} rows) and try again."
+                        ),
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             import_id = uuid.uuid4().hex[:12]
             import_contacts_async.delay(content, request.user.id, import_id)
             logger.info(f"Contact import {import_id} queued for async processing")
