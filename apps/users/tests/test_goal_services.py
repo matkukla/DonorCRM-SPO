@@ -66,8 +66,7 @@ def test_goal_progress_recurring_only():
 
 @pytest.mark.django_db
 def test_goal_progress_one_time_only():
-    """GOAL-04: One-time gifts within the fiscal year are spread over months_remaining."""
-    from apps.core.fiscal_year import months_remaining
+    """One-time gifts within the fiscal year are divided by 12."""
     user = UserFactory()
     contact = ContactFactory(owner=user)
     today = date.today()
@@ -79,9 +78,60 @@ def test_goal_progress_one_time_only():
 
     result = get_goal_progress(user)
 
-    expected_monthly = round(600.0 / months_remaining(today), 2)
-    assert result['one_time_monthly'] == expected_monthly
+    # $600 / 12 = $50/mo
+    assert result['one_time_monthly'] == 50.0
     assert result['recurring_monthly'] == 0.0
+    assert result['effective_monthly_support'] == 50.0
+
+
+@pytest.mark.django_db
+def test_goal_progress_excludes_recurring_sourced_gifts():
+    """Regression: gifts generated from an active recurring pledge must NOT be
+    counted in one_time_monthly — they are already represented via
+    recurring_monthly. Otherwise pledge payments are double-counted.
+    """
+    user = UserFactory()
+    contact = ContactFactory(owner=user)
+
+    # $100/mo active pledge
+    pledge = RecurringGiftFactory(
+        donor_contact=contact, amount_cents=10000, frequency='monthly',
+    )
+    # 3 prior pledge payments this fiscal year ($300 total)
+    today = date.today()
+    for _ in range(3):
+        GiftFactory(donor_contact=contact, amount_cents=10000,
+                    gift_date=today, recurring_gift=pledge)
+
+    journal = _make_journal(user, contacts=[contact])
+    _select_journals(user, [journal])
+
+    result = get_goal_progress(user)
+
+    # recurring_monthly should be the pledge value; one_time_monthly should be 0
+    assert result['recurring_monthly'] == 100.0
+    assert result['one_time_monthly'] == 0.0
+    assert result['effective_monthly_support'] == 100.0
+
+
+@pytest.mark.django_db
+def test_goal_progress_recurring_plus_one_time():
+    """Combined: $100/mo pledge + $1200 one-time = $100 + $100 = $200/mo."""
+    user = UserFactory()
+    contact = ContactFactory(owner=user)
+    today = date.today()
+
+    RecurringGiftFactory(donor_contact=contact, amount_cents=10000, frequency='monthly')
+    GiftFactory(donor_contact=contact, amount_cents=120000, gift_date=today)
+
+    journal = _make_journal(user, contacts=[contact])
+    _select_journals(user, [journal])
+
+    result = get_goal_progress(user)
+
+    assert result['recurring_monthly'] == 100.0
+    assert result['one_time_monthly'] == 100.0
+    assert result['effective_monthly_support'] == 200.0
 
 
 @pytest.mark.django_db

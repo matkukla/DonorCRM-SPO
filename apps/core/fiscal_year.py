@@ -1,8 +1,16 @@
 """
 Fiscal year utilities for DonorCRM.
 Fiscal year: June 1 — May 31.
+
+`today` defaults are derived from `timezone.localdate()` rather than
+`date.today()`. Today they are equivalent because settings.TIME_ZONE='UTC',
+but going through Django's timezone helper means the math stays correct if
+TIME_ZONE is ever switched to a US zone (where the FY boundary at midnight
+local time would otherwise be off by one day around June 1 / May 31).
 """
 from datetime import date
+
+from django.utils import timezone
 
 FISCAL_YEAR_START_MONTH = 6  # June
 
@@ -43,14 +51,14 @@ def months_remaining(today: date) -> int:
 
 def get_current_fiscal_year_bounds(reference_date: date | None = None) -> tuple[date, date]:
     """Return (start, end) dates for the fiscal year containing reference_date."""
-    today = reference_date or date.today()
+    today = reference_date or timezone.localdate()
     return fiscal_year_start(today), fiscal_year_end(today)
 
 
 def get_prior_fiscal_year_bounds(reference_date: date | None = None) -> tuple[date, date]:
     """Return (start, end) dates for the fiscal year immediately prior to the one
     containing reference_date."""
-    today = reference_date or date.today()
+    today = reference_date or timezone.localdate()
     current_start, current_end = get_current_fiscal_year_bounds(today)
     return (
         date(current_start.year - 1, current_start.month, current_start.day),
