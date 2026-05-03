@@ -251,6 +251,21 @@ export default function Dashboard() {
             )}
           </div>
 
+          {/* Error banner — surface API failures instead of rendering silent zeroes. */}
+          {error && (
+            <div
+              role="alert"
+              className="bg-destructive/10 border border-destructive/20 rounded-md p-4 text-sm"
+            >
+              <p className="font-medium text-destructive">
+                Failed to load dashboard data
+              </p>
+              <p className="text-destructive/90 mt-1">
+                Some tiles may show empty values. Refresh to try again.
+              </p>
+            </div>
+          )}
+
           {/* Missionary Selector */}
           {isSupervisorOrAdmin && missionaryOptions.length > 0 && (
             <div className="flex items-center gap-3">

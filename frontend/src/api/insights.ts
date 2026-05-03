@@ -309,6 +309,17 @@ export async function getAdminUserPerformance(): Promise<UserPerformanceResponse
 }
 
 /**
+ * Get one user's performance metrics. Used by the UserDetail page so we don't
+ * round-trip the entire org just to render one row.
+ */
+export async function getAdminSingleUserPerformance(userId: string): Promise<UserPerformanceItem> {
+  const response = await apiClient.get<UserPerformanceItem>(
+    `/insights/admin/user-performance/${userId}/`,
+  )
+  return response.data
+}
+
+/**
  * Get admin conversion funnel visualization data
  */
 export async function getAdminConversionFunnel(params?: ConversionFunnelParams): Promise<ConversionFunnelResponse> {

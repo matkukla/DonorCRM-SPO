@@ -102,65 +102,14 @@ def get_needs_attention(user):
 
 def get_late_donations(user, limit=10):
     """
-    Get late donations by comparing each active recurring gift's expected
-    interval against the linked contact's last_gift_date.
+    Get late donations for the user's own contacts.
 
-    A recurring gift is "late" if enough time has passed since the contact's
-    last gift based on the frequency, with a 50% grace period.
+    Delegates to apps.core.late_donations.compute_late_donations so the
+    Dashboard tile and the /insights/late-donations page agree.
     """
-    # Frequency -> expected days between gifts
-    frequency_days = {
-        RecurringGiftFrequency.WEEKLY: 7,
-        RecurringGiftFrequency.BIWEEKLY: 14,
-        RecurringGiftFrequency.MONTHLY: 30,
-        RecurringGiftFrequency.BIMONTHLY: 60,
-        RecurringGiftFrequency.QUARTERLY: 90,
-        RecurringGiftFrequency.SEMI_ANNUALLY: 180,
-        RecurringGiftFrequency.ANNUALLY: 365,
-    }
+    from apps.core.late_donations import base_recurring_for_owner, compute_late_donations
 
-    today = date.today()
-    active_recurring = (
-        RecurringGift.objects.filter(
-            donor_contact__owner=user,
-            status=RecurringGiftStatus.ACTIVE,
-        )
-        .select_related("donor_contact")
-        .exclude(
-            frequency=RecurringGiftFrequency.IRREGULAR,
-        )
-    )
-
-    late = []
-    for rg in active_recurring:
-        interval = frequency_days.get(rg.frequency)
-        if not interval:
-            continue
-
-        contact = rg.donor_contact
-        last_date = contact.last_gift_date or rg.start_date
-        # 50% grace period
-        threshold = timedelta(days=int(interval * 1.5))
-        if today - last_date > threshold:
-            days_late = (today - last_date).days - interval
-            monthly_eq = float(rg.monthly_equivalent)
-            late.append(
-                {
-                    "id": str(rg.id),
-                    "contact_id": str(contact.id),
-                    "contact_name": f"{contact.first_name} {contact.last_name}".strip(),
-                    "amount": str(rg.amount_dollars),
-                    "frequency": rg.frequency,
-                    "monthly_equivalent": monthly_eq,
-                    "last_gift_date": last_date.isoformat() if last_date else None,
-                    "days_late": days_late,
-                    "next_expected_date": (last_date + timedelta(days=interval)).isoformat(),
-                }
-            )
-
-    # Sort by days late descending, limit results
-    late.sort(key=lambda x: x["days_late"], reverse=True)
-    return late if limit is None else late[:limit]
+    return compute_late_donations(base_recurring_for_owner(user), limit=limit)
 
 
 def get_thank_you_queue(user):
@@ -176,35 +125,32 @@ def get_thank_you_queue(user):
 def get_support_progress(user):
     """
     Calculate support progress toward monthly goal.
-    Uses SQL aggregation with CASE/WHEN for frequency multipliers
-    instead of loading all RecurringGifts into Python.
+
+    Uses the shared compute_monthly_support helper so the Dashboard tile and
+    the Goal page always agree on the formula:
+        recurring_monthly + (FY one-time gifts / 12).
 
     Scoping: always filters by donor_contact__owner=user so the tile
-    reflects this user's personal fundraising progress only.
-
-    The Monthly Support Goal tile must scope to the requesting user's own
-    contacts. Other views use get_visible_user_ids for data scoping, but
-    this tile is personal — it compares against the user's own monthly_goal.
+    reflects this user's personal fundraising progress only — it compares
+    against the user's own monthly_goal regardless of role.
     """
-    # Always scope support progress to the requesting user's own contacts.
-    recurring_gifts = RecurringGift.objects.filter(donor_contact__owner=user)
+    from django.db.models import Q
 
-    # Get active recurring gifts
-    active_recurring = recurring_gifts.filter(status=RecurringGiftStatus.ACTIVE)
+    from apps.core.support_math import compute_monthly_support
 
-    # Calculate monthly equivalent via SQL aggregation (O(1) memory)
-    total_monthly = float(_monthly_equivalent_aggregate(active_recurring))
-    rg_count = active_recurring.count()
+    support = compute_monthly_support(Q(donor_contact__owner=user))
+    total_monthly = support["effective_monthly_support"]
 
-    # Get user's goal
     goal = float(user.monthly_support_goal_cents) / 100 if user.monthly_support_goal_cents else 0
 
     return {
         "current_monthly_support": total_monthly,
+        "recurring_monthly": support["recurring_monthly"],
+        "one_time_monthly": support["one_time_monthly"],
         "monthly_goal": goal,
         "percentage": (total_monthly / goal * 100) if goal > 0 else 0,
         "gap": max(0, goal - total_monthly),
-        "active_pledge_count": rg_count,
+        "active_pledge_count": support["active_pledge_count"],
     }
 
 
@@ -380,10 +326,13 @@ def get_dashboard_summary(user):
         )
     )
 
-    # Late donations — fetch all for accurate count, then slice for display
-    late_donations_all = get_late_donations(user, limit=None)
-    late_donations_count = len(late_donations_all)
-    late_donations = late_donations_all[:10]
+    # Late donations — limit the displayed list to 10 and compute the total
+    # count separately so we don't allocate dicts for every late pledge on
+    # tenants with thousands of stale recurring gifts.
+    from apps.core.late_donations import base_recurring_for_owner, count_late_donations
+
+    late_donations = get_late_donations(user, limit=10)
+    late_donations_count = count_late_donations(base_recurring_for_owner(user))
 
     thank_you_qs = get_thank_you_queue(user)
     thank_you_list = list(

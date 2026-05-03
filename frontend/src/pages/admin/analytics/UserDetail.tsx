@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import type { ChartConfig } from "@/components/ui/chart"
-import { useAdminUserPerformance, useAdminUserTrends, useAdminUserJournals } from "@/hooks/useInsights"
+import { useAdminSingleUserPerformance, useAdminUserTrends, useAdminUserJournals } from "@/hooks/useInsights"
 import { useMPDOverview } from "@/hooks/useMPD"
 import { MPDStatsInline } from "@/components/mpd/MPDStatsInline"
 import { cn, formatLocalDate } from "@/lib/utils"
@@ -43,7 +43,7 @@ export default function UserDetail() {
   }
 
   // Independent data fetching for each section
-  const { data: performanceData, isLoading: performanceLoading, error: performanceError } = useAdminUserPerformance()
+  const { data: user, isLoading: performanceLoading, error: performanceError } = useAdminSingleUserPerformance(id)
   const { data: trendsData, isLoading: trendsLoading } = useAdminUserTrends(id)
   const { data: journalsData, isLoading: journalsLoading } = useAdminUserJournals(id)
   const { data: mpdData, isLoading: mpdLoading } = useMPDOverview()
@@ -75,11 +75,6 @@ export default function UserDetail() {
       </Section>
     )
   }
-
-  if (!performanceData) return null
-
-  // Find the specific user by ID
-  const user = performanceData.users.find((u) => u.id === id)
 
   if (!user) {
     return (

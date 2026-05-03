@@ -3,12 +3,15 @@ Views for Insights/Reports data.
 """
 
 
+from django.db import transaction
+
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 
+from apps.core.models import OrgSettings
 from apps.core.permissions import IsAdmin, is_financial_role
 from apps.core.utils import get_safe_int_param, get_safe_year_param, validate_date_params
 from apps.insights.admin_analytics_services import (
@@ -24,6 +27,7 @@ from apps.insights.serializers import (
     FiscalYearDonationsResponseSerializer,
     FiscalYearPaceResponseSerializer,
     MissionariesBehindGoalResponseSerializer,
+    OrgSettingsSerializer,
     PipelineFunnelConversionResponseSerializer,
     StageContactsResponseSerializer,
     StalledContactsResponseSerializer,
@@ -48,6 +52,7 @@ from apps.insights.services import (
     get_team_activity,
     get_team_trends,
     get_transactions,
+    get_single_user_performance,
     get_user_drilldown,
     get_user_journals,
     get_user_performance,
@@ -131,7 +136,7 @@ class LateDonationsView(APIView):
         if not is_financial_role(request.user):
             return Response({"detail": "Not authorized"}, status=status.HTTP_403_FORBIDDEN)
         limit = get_safe_int_param(request, "limit", default=50, min_val=1, max_val=500)
-        return Response(get_late_donations(request.user, limit=limit))
+        return Response(get_late_donations(request.user, limit=limit, request=request))
 
 
 class FollowUpsView(APIView):
@@ -315,6 +320,26 @@ class UserPerformanceView(APIView):
         data = get_user_performance()
         serializer = UserPerformanceResponseSerializer(data)
         return Response(serializer.data)
+
+
+class SingleUserPerformanceView(APIView):
+    """
+    GET: Performance metrics for one user.
+    Admin-only endpoint. Used by the UserDetail page so we don't fetch the
+    entire org to render a single row.
+    """
+
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    @extend_schema(
+        tags=["insights"],
+        summary="Get one user's performance metrics (admin only)",
+    )
+    def get(self, request, user_id):
+        data = get_single_user_performance(user_id)
+        if data is None:
+            return Response({"detail": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(data)
 
 
 class ConversionFunnelView(APIView):
@@ -558,6 +583,46 @@ class UserDrilldownView(APIView):
 
 
 # Admin Analytics Redesign (Issue #49)
+
+
+class OrgSettingsView(APIView):
+    """
+    GET / PATCH the singleton OrgSettings row.
+    Admin-only. Powers the org-wide annual goal field on the Settings page.
+    """
+
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    @extend_schema(tags=["insights"], summary="Get org settings (admin only)")
+    def get(self, request):
+        # GET is read-only: no get_or_create. If the row doesn't exist yet
+        # we report defaults rather than spending a write to materialize it.
+        annual_goal_cents = (
+            OrgSettings.objects.values_list("annual_goal_cents", flat=True).first() or 0
+        )
+        return Response(OrgSettingsSerializer({"annual_goal_cents": annual_goal_cents}).data)
+
+    @extend_schema(tags=["insights"], summary="Update org settings (admin only)")
+    def patch(self, request):
+        serializer = OrgSettingsSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+
+        # Wrap the singleton materialise + write in a transaction with a row
+        # lock so two concurrent first-PATCH requests don't race on
+        # get_or_create. Once the row exists this is just a normal locked
+        # update; the lock cost is bounded by how long the write takes.
+        with transaction.atomic():
+            OrgSettings.get_solo()  # ensure row exists before locking it
+            instance = OrgSettings.objects.select_for_update().get(
+                pk=OrgSettings._solo_uuid()
+            )
+            if "annual_goal_cents" in serializer.validated_data:
+                instance.annual_goal_cents = serializer.validated_data["annual_goal_cents"]
+                instance.save(update_fields=["annual_goal_cents", "updated_at"])
+
+        return Response(
+            OrgSettingsSerializer({"annual_goal_cents": instance.annual_goal_cents}).data
+        )
 
 
 class FiscalYearPaceView(APIView):

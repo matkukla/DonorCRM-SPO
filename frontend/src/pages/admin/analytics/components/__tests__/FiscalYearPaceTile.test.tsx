@@ -26,6 +26,7 @@ const BASE_DATA: FiscalYearPaceResponse = {
   fy_end: "2026-06-30",
   raised_cents: 500_000_00,
   annual_goal_cents: 1_000_000_00,
+  annual_goal_source: "missionary_sum",
   expected_by_today_cents: 400_000_00,
   pace_percentage: 125.0,
   prior_year_raised_cents: 300_000_00,

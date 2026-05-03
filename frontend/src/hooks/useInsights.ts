@@ -9,6 +9,7 @@ import {
   getAdminDashboardOverview,
   getAdminStalledContacts,
   getAdminUserPerformance,
+  getAdminSingleUserPerformance,
   getAdminConversionFunnel,
   getAdminTeamActivity,
   getAdminTeamTrends,
@@ -116,6 +117,16 @@ export function useAdminUserPerformance(options?: { enabled?: boolean }) {
     staleTime: STALE_TIME,
     gcTime: ADMIN_GC_TIME,
     enabled: options?.enabled ?? true,
+  })
+}
+
+export function useAdminSingleUserPerformance(userId: string | undefined) {
+  return useQuery({
+    queryKey: ["insights", "admin", "user-performance", userId],
+    queryFn: () => getAdminSingleUserPerformance(userId as string),
+    staleTime: STALE_TIME,
+    gcTime: ADMIN_GC_TIME,
+    enabled: !!userId,
   })
 }
 

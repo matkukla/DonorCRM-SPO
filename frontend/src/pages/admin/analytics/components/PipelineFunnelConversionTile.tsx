@@ -105,6 +105,11 @@ export function PipelineFunnelConversionTile({ onStageClick }: PipelineFunnelCon
                       className="w-full text-left group"
                       onClick={() => onStageClick?.(stage.stage)}
                       disabled={!onStageClick}
+                      aria-label={
+                        stage.is_weakest_transition
+                          ? `${stage.label}: ${stage.count_at_or_past} contacts. Weakest transition in funnel.`
+                          : `${stage.label}: ${stage.count_at_or_past} contacts.`
+                      }
                     >
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-sm font-medium">{stage.label}</span>
@@ -119,6 +124,7 @@ export function PipelineFunnelConversionTile({ onStageClick }: PipelineFunnelCon
                             width: `${Math.max(barWidth, 2)}%`,
                             backgroundColor: color,
                           }}
+                          role="presentation"
                         />
                       </div>
                     </button>

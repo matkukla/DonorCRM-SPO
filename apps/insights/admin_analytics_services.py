@@ -93,21 +93,23 @@ def _clamp(value, lo, hi):
     return max(lo, min(hi, value))
 
 
-def _last_gift_import_at():
+def _last_gift_import_at(owner_ids=None):
     """Return ISO timestamp of the most recent completed gift-related import,
-    or None. Org-wide by design — uploader is typically an admin, so scoping
-    the timestamp to an individual missionary would rarely differ from the
-    org-wide value.
+    or None.
+
+    When `owner_ids` is None (admin viewing org-wide aggregates), returns the
+    most recent import across the org. When `owner_ids` is set (admin in
+    View-As mode inspecting a single missionary), scopes to imports the viewed
+    user uploaded so the timestamp on the FY Pace tile matches the data being
+    shown.
     """
-    last = (
-        ImportBatch.objects.filter(
-            status=ImportBatchStatus.COMPLETED,
-            import_type__in=GIFT_IMPORT_TYPES,
-        )
-        .order_by("-created_at")
-        .values_list("created_at", flat=True)
-        .first()
+    qs = ImportBatch.objects.filter(
+        status=ImportBatchStatus.COMPLETED,
+        import_type__in=GIFT_IMPORT_TYPES,
     )
+    if owner_ids is not None:
+        qs = qs.filter(uploaded_by_id__in=owner_ids)
+    last = qs.order_by("-created_at").values_list("created_at", flat=True).first()
     return last.isoformat() if last else None
 
 
@@ -136,10 +138,26 @@ def get_fiscal_year_pace(request):
     prior_qs = _filter_gifts_by_owner(prior_qs, owner_ids)
     prior_year_raised_cents = prior_qs.aggregate(total=Sum("amount_cents"))["total"] or 0
 
-    # Annual goal = sum of (monthly_support_goal * 12) for active missionaries
-    goal_qs = _active_missionaries(owner_ids).filter(monthly_support_goal_cents__gt=0)
-    monthly_goal_sum = goal_qs.aggregate(total=Sum("monthly_support_goal_cents"))["total"] or 0
-    annual_goal_cents = monthly_goal_sum * 12
+    # Annual goal: prefer the org-wide setting if the admin has set one;
+    # otherwise fall back to summing each active missionary's monthly goal * 12.
+    # The View-As path (owner_ids != None) keeps the missionary-sum fallback so
+    # admins inspecting a single user see that user's own goal, not the org's.
+    from apps.core.models import OrgSettings
+
+    org_annual_goal_cents = (
+        OrgSettings.objects.values_list("annual_goal_cents", flat=True).first() or 0
+    )
+
+    if owner_ids is None and org_annual_goal_cents > 0:
+        annual_goal_cents = int(org_annual_goal_cents)
+        annual_goal_source = "org_setting"
+    else:
+        goal_qs = _active_missionaries(owner_ids).filter(monthly_support_goal_cents__gt=0)
+        monthly_goal_sum = (
+            goal_qs.aggregate(total=Sum("monthly_support_goal_cents"))["total"] or 0
+        )
+        annual_goal_cents = int(monthly_goal_sum * 12)
+        annual_goal_source = "missionary_sum"
 
     months_elapsed = months_elapsed_in_fiscal_year(today)
     expected_by_today_cents = (
@@ -164,11 +182,12 @@ def get_fiscal_year_pace(request):
         "fy_end": fy_end.isoformat(),
         "raised_cents": int(raised_cents),
         "annual_goal_cents": int(annual_goal_cents),
+        "annual_goal_source": annual_goal_source,
         "expected_by_today_cents": int(expected_by_today_cents),
         "pace_percentage": pace_percentage,
         "prior_year_raised_cents": int(prior_year_raised_cents),
         "yoy_delta_percentage": yoy_delta_percentage,
-        "last_import_at": _last_gift_import_at(),
+        "last_import_at": _last_gift_import_at(owner_ids),
     }
 
 
