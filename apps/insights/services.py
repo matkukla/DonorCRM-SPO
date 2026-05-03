@@ -236,15 +236,17 @@ def get_late_donations(user, limit=50, request=None):
     Delegates to apps.core.late_donations.compute_late_donations so the
     Insights page and the Dashboard tile share one implementation.
     """
-    from apps.core.late_donations import compute_late_donations
+    from apps.core.late_donations import compute_late_donations, count_late_donations
 
     base_qs = _scope_recurring_gifts(user, request=request)
-    # Compute once at full scope so total_count reflects the unlimited view,
-    # then take the top `limit` rows for the page.
-    full_list = compute_late_donations(base_qs)
+    # Build only the top `limit` rows for display, then count separately so
+    # total_count doesn't allocate a dict per late pledge for tenants with
+    # thousands of stale recurring gifts.
+    page = compute_late_donations(base_qs, limit=limit)
+    total = count_late_donations(base_qs)
     return {
-        'late_donations': full_list[:limit] if limit is not None else full_list,
-        'total_count': len(full_list),
+        'late_donations': page,
+        'total_count': total,
     }
 
 

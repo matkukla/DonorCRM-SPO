@@ -3,12 +3,15 @@ Views for Insights/Reports data.
 """
 
 
+from django.db import transaction
+
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 
+from apps.core.models import OrgSettings
 from apps.core.permissions import IsAdmin, is_financial_role
 from apps.core.utils import get_safe_int_param, get_safe_year_param, validate_date_params
 from apps.insights.admin_analytics_services import (
@@ -24,6 +27,7 @@ from apps.insights.serializers import (
     FiscalYearDonationsResponseSerializer,
     FiscalYearPaceResponseSerializer,
     MissionariesBehindGoalResponseSerializer,
+    OrgSettingsSerializer,
     PipelineFunnelConversionResponseSerializer,
     StageContactsResponseSerializer,
     StalledContactsResponseSerializer,
@@ -591,9 +595,6 @@ class OrgSettingsView(APIView):
 
     @extend_schema(tags=["insights"], summary="Get org settings (admin only)")
     def get(self, request):
-        from apps.core.models import OrgSettings
-        from apps.insights.serializers import OrgSettingsSerializer
-
         # GET is read-only: no get_or_create. If the row doesn't exist yet
         # we report defaults rather than spending a write to materialize it.
         annual_goal_cents = (
@@ -603,17 +604,21 @@ class OrgSettingsView(APIView):
 
     @extend_schema(tags=["insights"], summary="Update org settings (admin only)")
     def patch(self, request):
-        from apps.core.models import OrgSettings
-        from apps.insights.serializers import OrgSettingsSerializer
-
         serializer = OrgSettingsSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
 
-        # PATCH is the explicit write path — materialize the singleton here.
-        instance = OrgSettings.get_solo()
-        if "annual_goal_cents" in serializer.validated_data:
-            instance.annual_goal_cents = serializer.validated_data["annual_goal_cents"]
-            instance.save(update_fields=["annual_goal_cents", "updated_at"])
+        # Wrap the singleton materialise + write in a transaction with a row
+        # lock so two concurrent first-PATCH requests don't race on
+        # get_or_create. Once the row exists this is just a normal locked
+        # update; the lock cost is bounded by how long the write takes.
+        with transaction.atomic():
+            OrgSettings.get_solo()  # ensure row exists before locking it
+            instance = OrgSettings.objects.select_for_update().get(
+                pk=OrgSettings._solo_uuid()
+            )
+            if "annual_goal_cents" in serializer.validated_data:
+                instance.annual_goal_cents = serializer.validated_data["annual_goal_cents"]
+                instance.save(update_fields=["annual_goal_cents", "updated_at"])
 
         return Response(
             OrgSettingsSerializer({"annual_goal_cents": instance.annual_goal_cents}).data

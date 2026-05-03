@@ -84,7 +84,7 @@ export default function Settings() {
       await refreshUser()
       setProfileSuccess(true)
       setTimeout(() => setProfileSuccess(false), 3000)
-    } catch (err) {
+    } catch {
       setProfileError("Failed to update profile. Please try again.")
     } finally {
       setIsUpdatingProfile(false)

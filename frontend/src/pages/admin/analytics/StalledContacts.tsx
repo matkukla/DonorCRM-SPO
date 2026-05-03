@@ -32,14 +32,18 @@ export default function StalledContacts() {
   const [searchParams, setSearchParams] = useSearchParams()
 
   // Pagination synced to URL so refresh / back-button preserves position.
-  const pageIndex = (() => {
-    const raw = parseInt(searchParams.get("page") ?? "1", 10)
+  const parsePageIndex = (params: URLSearchParams): number => {
+    const raw = parseInt(params.get("page") ?? "1", 10)
     return Number.isFinite(raw) && raw > 0 ? raw - 1 : 0
-  })()
+  }
+  const pageIndex = parsePageIndex(searchParams)
+  // Read `prev` (the live URL state) inside the updater rather than the
+  // closure-captured `pageIndex` so functional updates like `p => p + 1`
+  // see the latest value, not a stale render snapshot.
   const setPageIndex = (next: number | ((prev: number) => number)) => {
-    const value = typeof next === "function" ? next(pageIndex) : next
     setSearchParams(
       (prev) => {
+        const value = typeof next === "function" ? next(parsePageIndex(prev)) : next
         const params = new URLSearchParams(prev)
         if (value <= 0) {
           params.delete("page")
@@ -96,6 +100,9 @@ export default function StalledContacts() {
       return
     }
     setPageIndex(0)
+    // setPageIndex is recreated each render; intentionally not in deps so
+    // this effect only fires on dateRange changes, not on every setter identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateRange])
 
   const pageCount = Math.ceil((data?.total_count || 0) / PAGE_SIZE)
