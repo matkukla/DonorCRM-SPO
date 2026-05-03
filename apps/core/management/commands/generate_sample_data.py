@@ -9,7 +9,7 @@ from django.utils import timezone
 from faker import Faker
 
 from apps.contacts.models import Contact, ContactStatus
-from apps.events.models import Event, EventSeverity, EventType
+from apps.events.models import Event
 from apps.gifts.models import Gift, RecurringGift, RecurringGiftFrequency, RecurringGiftStatus
 from apps.groups.models import Group
 from apps.tasks.models import Task, TaskPriority, TaskStatus, TaskType

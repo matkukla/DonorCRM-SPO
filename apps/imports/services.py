@@ -5,12 +5,9 @@ import csv
 import io
 import logging
 import re
-import uuid
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from typing import List, Tuple
-
-from django.utils import timezone
 
 from apps.contacts.models import Contact
 from apps.imports.models import Fund, ImportStatus

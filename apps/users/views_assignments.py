@@ -3,7 +3,6 @@ Assignments API for admin to manage missionary-supervisor-coach relationships.
 """
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
 from apps.core.permissions import IsAdmin
 from apps.users.models import User
 

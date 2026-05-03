@@ -5,12 +5,11 @@ from django.db.models import Q, Prefetch
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
 from rest_framework import filters, generics, permissions, status
-from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.contacts.filters import ContactFilterSet
-from apps.contacts.models import Contact, ContactStatus, DismissedDuplicate
+from apps.contacts.models import Contact, DismissedDuplicate
 from apps.contacts.serializers import (
     ContactCreateSerializer,
     ContactDetailSerializer,

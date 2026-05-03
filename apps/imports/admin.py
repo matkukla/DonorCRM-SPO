@@ -4,7 +4,7 @@ Admin configuration for import infrastructure models.
 from django.contrib import admin
 
 from apps.imports.models import (
-    Fund, ImportRun, ImportRowError, ImportBatch, ImportBatchType, ImportBatchStatus,
+    Fund, ImportRun, ImportRowError, ImportBatch,
     MPDUpload, MPDSnapshot, MissionaryAlias
 )
 
