@@ -25,7 +25,6 @@ from apps.journals.models import (
     JournalContact,
     JournalStageEvent,
     NextStep,
-    PipelineStage,
 )
 from apps.journals.serializers import (
     DecisionHistorySerializer,

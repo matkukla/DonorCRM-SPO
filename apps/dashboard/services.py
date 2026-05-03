@@ -15,7 +15,7 @@ from apps.core.gift_utils import _monthly_equivalent_aggregate
 from apps.core.permissions import get_visible_user_ids
 from apps.events.models import Event
 from apps.imports.models import ImportBatch, ImportBatchStatus, ImportBatchType, MPDSnapshot
-from apps.gifts.models import Gift, RecurringGift, RecurringGiftFrequency, RecurringGiftStatus
+from apps.gifts.models import Gift, RecurringGift, RecurringGiftStatus
 from apps.tasks.models import Task, TaskStatus
 
 logger = logging.getLogger(__name__)

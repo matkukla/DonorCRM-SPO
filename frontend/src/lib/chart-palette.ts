@@ -15,4 +15,3 @@ export const CHART_COLORS = [
 ] as const
 
 export const CHART_WARNING_COLOR = "hsl(38 92% 50%)"
-export const CHART_MUTED_COLOR = "hsl(var(--muted-foreground))"

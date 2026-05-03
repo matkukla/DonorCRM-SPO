@@ -7,7 +7,6 @@ from datetime import datetime
 
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import permissions
-from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.http import StreamingHttpResponse
 

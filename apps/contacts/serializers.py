@@ -3,9 +3,9 @@ Serializers for Contact model.
 """
 from rest_framework import serializers
 
-from apps.contacts.models import Contact, ContactStatus
+from apps.contacts.models import Contact
 from apps.groups.serializers import GroupSerializer
-from apps.journals.models import JournalContact, Decision, JournalStageEvent, PipelineStage
+from apps.journals.models import JournalContact, PipelineStage
 
 
 class ContactListSerializer(serializers.ModelSerializer):

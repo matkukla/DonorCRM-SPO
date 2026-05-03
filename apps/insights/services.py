@@ -2,14 +2,13 @@
 Service functions for insights/reports data aggregations.
 """
 from datetime import date, timedelta
-from decimal import Decimal
 
 from dateutil.relativedelta import relativedelta
-from django.db.models import Count, Sum, Q, OuterRef, Subquery, Value, CharField, DecimalField, IntegerField
+from django.db.models import Count, Sum, Q, OuterRef, Subquery, Value, CharField, IntegerField
 from django.db.models.functions import TruncMonth, TruncYear, TruncWeek, Coalesce
 from django.utils import timezone
 
-from apps.contacts.models import Contact, ContactStatus
+from apps.contacts.models import Contact
 from apps.core.permissions import get_visible_user_ids
 from apps.events.models import Event
 from apps.gifts.models import Gift, RecurringGift, RecurringGiftStatus
