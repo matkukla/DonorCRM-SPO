@@ -45,6 +45,8 @@ const PrayerList = React.lazy(() => import("@/pages/prayer/PrayerList"))
 const AdminAssignments = React.lazy(() => import("@/pages/admin/AdminAssignments"))
 const BroadcastList = React.lazy(() => import("@/pages/admin/BroadcastList"))
 const BroadcastDetail = React.lazy(() => import("@/pages/admin/BroadcastDetail"))
+const AdminFeedback = React.lazy(() => import("@/pages/admin/AdminFeedback"))
+const AdminFeedbackDetail = React.lazy(() => import("@/pages/admin/AdminFeedbackDetail"))
 const TeamPage = React.lazy(() => import("@/pages/team/TeamPage"))
 const MissionaryProfilePage = React.lazy(() => import("@/pages/team/MissionaryProfilePage"))
 
@@ -152,6 +154,8 @@ function App() {
                   <Route path="/admin/assignments" element={<ProtectedPage requiredRole="admin"><AdminAssignments /></ProtectedPage>} />
                   <Route path="/broadcasts" element={<ProtectedPage requiredRole="admin"><BroadcastList /></ProtectedPage>} />
                   <Route path="/broadcasts/:id" element={<ProtectedPage requiredRole="admin"><BroadcastDetail /></ProtectedPage>} />
+                  <Route path="/admin/feedback" element={<ProtectedPage requiredRole="admin"><AdminFeedback /></ProtectedPage>} />
+                  <Route path="/admin/feedback/:id" element={<ProtectedPage requiredRole="admin"><AdminFeedbackDetail /></ProtectedPage>} />
                   <Route path="/admin/analytics" element={<Navigate to="/admin/analytics/dashboard" replace />} />
                   <Route path="/admin/analytics/dashboard" element={<ProtectedPage requiredRole="admin"><AdminAnalyticsDashboard /></ProtectedPage>} />
                   <Route path="/admin/analytics/stalled" element={<ProtectedPage requiredRole="admin"><StalledContacts /></ProtectedPage>} />

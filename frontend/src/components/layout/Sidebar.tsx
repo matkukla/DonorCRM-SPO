@@ -24,9 +24,11 @@ import {
   ExternalLink,
   Calculator,
   Megaphone,
+  MessageSquare,
 } from "lucide-react"
 import { useAuth } from "@/providers/AuthProvider"
 import { useViewAs } from "@/providers/ViewAsProvider"
+import { useFeedbackDialog } from "@/components/feedback/FeedbackDialogContext"
 import spoLogo from "@/assets/spo_logo.png"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import type { UserRole } from "@/api/users"
@@ -70,8 +72,9 @@ const mpdResourcesItems: NavItem[] = [
 const bottomNavItems: NavItem[] = [
   { label: "Import/Export", href: "/import-export", icon: <FileUp className="h-5 w-5" /> },
   { label: "Settings", href: "/settings", icon: <Settings className="h-5 w-5" /> },
-  { label: "Admin", href: "/admin", icon: <ShieldCheck className="h-5 w-5" />, requiredRole: "admin" },
+  { label: "Admin", href: "/admin", icon: <ShieldCheck className="h-5 w-5" />, requiredRole: "admin", end: true },
   { label: "Broadcasts", href: "/broadcasts", icon: <Megaphone className="h-5 w-5" />, requiredRole: "admin" },
+  { label: "Feedback Inbox", href: "/admin/feedback", icon: <MessageSquare className="h-5 w-5" />, requiredRole: "admin" },
 ]
 
 interface SidebarProps {
@@ -82,11 +85,17 @@ interface SidebarProps {
 const INSIGHTS_OPEN_KEY = "insights-nav-open"
 const MPD_RESOURCES_OPEN_KEY = "mpd-resources-nav-open"
 
-const VIEW_AS_HIDDEN_HREFS = new Set(["/import-export", "/admin", "/broadcasts"])
+const VIEW_AS_HIDDEN_HREFS = new Set([
+  "/import-export",
+  "/admin",
+  "/broadcasts",
+  "/admin/feedback",
+])
 
 export function Sidebar({ className, onNavClick }: SidebarProps) {
   const { user } = useAuth()
   const { isViewingAs } = useViewAs()
+  const { openFeedback } = useFeedbackDialog()
   const location = useLocation()
 
   // Check if any insights route is active
@@ -274,26 +283,45 @@ export function Sidebar({ className, onNavClick }: SidebarProps) {
           {bottomNavItems
             .filter(canAccess)
             .filter((item) => !isViewingAs || !VIEW_AS_HIDDEN_HREFS.has(item.href))
-            .map((item) => (
-            <li key={item.href}>
-              <NavLink
-                to={item.href}
-                onClick={onNavClick}
-                end={item.end}
-                className={({ isActive }) =>
-                  cn(
-                    "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )
-                }
-              >
-                {item.icon}
-                {item.label}
-              </NavLink>
-            </li>
-          ))}
+            .flatMap((item) => {
+              const navLi = (
+                <li key={item.href}>
+                  <NavLink
+                    to={item.href}
+                    onClick={onNavClick}
+                    end={item.end}
+                    className={({ isActive }) =>
+                      cn(
+                        "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                        isActive
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      )
+                    }
+                  >
+                    {item.icon}
+                    {item.label}
+                  </NavLink>
+                </li>
+              )
+              if (item.href !== "/settings") return [navLi]
+              const feedbackLi = (
+                <li key="send-feedback">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onNavClick?.()
+                      openFeedback()
+                    }}
+                    className="flex w-full items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                  >
+                    <MessageSquare className="h-5 w-5" />
+                    Send Feedback
+                  </button>
+                </li>
+              )
+              return [navLi, feedbackLi]
+            })}
         </ul>
       </div>
     </aside>
