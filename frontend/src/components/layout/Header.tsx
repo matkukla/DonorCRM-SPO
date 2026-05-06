@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { Menu, LogOut, User, Settings, Sun, Moon } from "lucide-react"
+import { Menu, LogOut, MessageSquare, User, Settings, Sun, Moon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -17,11 +17,13 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { Sidebar } from "./Sidebar"
+import { useFeedbackDialog } from "@/components/feedback/FeedbackDialogContext"
 import { useAuth } from "@/providers/AuthProvider"
 import { useTheme } from "@/providers/ThemeProvider"
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { openFeedback } = useFeedbackDialog()
   const { user, logout } = useAuth()
   const { resolvedTheme, setTheme } = useTheme()
   const navigate = useNavigate()
@@ -99,6 +101,10 @@ export function Header() {
             <DropdownMenuItem onClick={() => navigate("/settings")}>
               <Settings className="mr-2 h-4 w-4" />
               Settings
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={openFeedback}>
+              <MessageSquare className="mr-2 h-4 w-4" />
+              Send Feedback
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout}>
