@@ -32,16 +32,12 @@ def get_visible_user_ids(user, request=None):
     """
     # View As override: scope to the target user regardless of viewer role.
     if request is not None:
-        view_as_user = getattr(request, 'view_as_user', None)
+        view_as_user = getattr(request, "view_as_user", None)
         if view_as_user is not None:
             return {view_as_user.id}
 
-    if user.role == 'coach':
-        ids = set(
-            user.coached_users
-            .filter(is_active=True)
-            .values_list('id', flat=True)
-        )
+    if user.role == "coach":
+        ids = set(user.coached_users.filter(is_active=True).values_list("id", flat=True))
         ids.add(user.id)
         return ids
     return {user.id}
@@ -49,18 +45,16 @@ def get_visible_user_ids(user, request=None):
 
 def is_financial_role(user):
     """Returns True if user can see financial data. Coach is excluded."""
-    return user.role in ['admin', 'supervisor', 'missionary']
+    return user.role in ["admin", "supervisor", "missionary"]
 
 
 class IsAdmin(permissions.BasePermission):
     """
     Permission class that only allows Admin users.
     """
+
     def has_permission(self, request, view):
-        return (
-            request.user.is_authenticated and
-            request.user.role == 'admin'
-        )
+        return request.user.is_authenticated and request.user.role == "admin"
 
 
 class IsStaffOrAbove(permissions.BasePermission):
@@ -68,15 +62,16 @@ class IsStaffOrAbove(permissions.BasePermission):
     Permission class that allows Missionary, Supervisor, or Admin users.
     Excludes coach users from write operations.
     """
+
     def has_permission(self, request, view):
         if not request.user.is_authenticated:
             return False
 
         # Coach users can only perform safe methods
-        if request.user.role == 'coach':
+        if request.user.role == "coach":
             return request.method in permissions.SAFE_METHODS
 
-        return request.user.role in ['admin', 'missionary', 'supervisor']
+        return request.user.role in ["admin", "missionary", "supervisor"]
 
 
 class IsOwnerOrAdmin(permissions.BasePermission):
@@ -84,25 +79,27 @@ class IsOwnerOrAdmin(permissions.BasePermission):
     Object-level permission to only allow owners of an object or admins.
     Assumes the model instance has an `owner` field.
 
-    Shared objects (owner=None) are accessible to any authenticated user —
-    ownership is not enforced when there is no designated owner.
+    A null `owner` is treated as private (deny) by default. Models that
+    intentionally allow shared/public records must opt-in by declaring
+    ``shared_when_unowned = True`` on the model class. This prevents a
+    silent broadening of access if a future model gains a nullable owner
+    field without a permission audit.
     """
+
     def has_object_permission(self, request, view, obj):
         if not request.user.is_authenticated:
             return False
 
-        # Admin has full access
-        if request.user.role == 'admin':
+        if request.user.role == "admin":
             return True
 
-        # Check for 'owner' field on object
-        if hasattr(obj, 'owner'):
-            # Shared objects (owner=None) are accessible to all authenticated users
-            if obj.owner is None:
-                return True
-            return obj.owner == request.user
+        if not hasattr(obj, "owner"):
+            return False
 
-        return False
+        if obj.owner is None:
+            return bool(getattr(obj.__class__, "shared_when_unowned", False))
+
+        return obj.owner == request.user
 
 
 class IsContactOwnerOrReadAccess(permissions.BasePermission):
@@ -112,6 +109,7 @@ class IsContactOwnerOrReadAccess(permissions.BasePermission):
     - Admin has full access
     - Supervisor/coach with visibility can read
     """
+
     def has_object_permission(self, request, view, obj):
         if not request.user.is_authenticated:
             return False
@@ -119,14 +117,14 @@ class IsContactOwnerOrReadAccess(permissions.BasePermission):
         user = request.user
 
         # Admin has full access
-        if user.role == 'admin':
+        if user.role == "admin":
             return True
 
         # Get the contact - either the object itself or via relation
         contact = None
-        if hasattr(obj, 'owner') and obj.__class__.__name__ == 'Contact':
+        if hasattr(obj, "owner") and obj.__class__.__name__ == "Contact":
             contact = obj
-        elif hasattr(obj, 'contact'):
+        elif hasattr(obj, "contact"):
             contact = obj.contact
 
         # Owner has full access to their contacts
@@ -141,26 +139,27 @@ class IsSupervisorWriteRestricted(permissions.BasePermission):
     Supervisor can read all visible data but only write to own data.
     Admin bypasses entirely. Staff can only write own data (enforced by queryset).
     """
+
     def has_object_permission(self, request, view, obj):
         if request.method in permissions.SAFE_METHODS:
             return True
-        if request.user.role == 'admin':
+        if request.user.role == "admin":
             return True
         # For write operations, object must belong to requesting user
-        owner = getattr(obj, 'owner', None)
+        owner = getattr(obj, "owner", None)
         if owner is None:
             # Try common relation patterns
-            contact = getattr(obj, 'contact', None) or getattr(obj, 'donor_contact', None)
+            contact = getattr(obj, "contact", None) or getattr(obj, "donor_contact", None)
             if contact:
-                owner = getattr(contact, 'owner', None)
+                owner = getattr(contact, "owner", None)
         if owner is None:
-            journal = getattr(obj, 'journal', None)
+            journal = getattr(obj, "journal", None)
             if journal:
-                owner = getattr(journal, 'owner', None)
+                owner = getattr(journal, "owner", None)
         if owner is None:
-            journal_contact = getattr(obj, 'journal_contact', None)
+            journal_contact = getattr(obj, "journal_contact", None)
             if journal_contact:
-                journal = getattr(journal_contact, 'journal', None)
+                journal = getattr(journal_contact, "journal", None)
                 if journal:
-                    owner = getattr(journal, 'owner', None)
+                    owner = getattr(journal, "owner", None)
         return owner == request.user if owner else False

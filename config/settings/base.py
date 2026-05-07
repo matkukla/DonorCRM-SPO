@@ -11,7 +11,17 @@ from decouple import config
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = config("SECRET_KEY", default="django-insecure-change-me-in-production")
+# Default value is INSECURE and only intended for local dev. Production startup
+# guard in config/settings/prod.py refuses to boot with this value.
+INSECURE_DEFAULT_SECRET_KEY = "django-insecure-change-me-in-production"
+SECRET_KEY = config("SECRET_KEY", default=INSECURE_DEFAULT_SECRET_KEY)
+
+# Field-level encryption keys for donor PII. Comma-separated Fernet keys; the
+# first is the current write key, remaining keys decrypt rotated rows. Empty
+# in dev/test — apps.core.encryption raises ImproperlyConfigured on first use,
+# so columns not yet migrated to EncryptedTextField remain unaffected.
+# See docs/security/encryption-rollout.md for the rollout procedure.
+PII_ENCRYPTION_KEYS = config("PII_ENCRYPTION_KEYS", default="")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config("DEBUG", default=False, cast=bool)
@@ -38,6 +48,7 @@ THIRD_PARTY_APPS = [
     "django_filters",
     "corsheaders",
     "drf_spectacular",
+    "axes",
 ]
 
 LOCAL_APPS = [
@@ -68,7 +79,25 @@ MIDDLEWARE = [
     "apps.core.middleware.ViewAsMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # AxesMiddleware must be the LAST middleware — it inspects the response
+    # to detect failed login attempts and increment the lockout counter.
+    "axes.middleware.AxesMiddleware",
 ]
+
+# django-axes: per-account + per-IP lockout. Defends credential stuffing that
+# bypasses per-IP throttling. 5 failures within 1 hour locks for 1 hour;
+# successful login resets the counter for that user.
+AUTHENTICATION_BACKENDS = [
+    "axes.backends.AxesStandaloneBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
+AXES_FAILURE_LIMIT = 5
+AXES_COOLOFF_TIME = 1  # hours
+AXES_LOCKOUT_PARAMETERS = [["username", "ip_address"]]
+AXES_RESET_ON_SUCCESS = True
+AXES_LOCKOUT_CALLABLE = None
+# Don't store the password in axes' AccessAttempt records.
+AXES_SENSITIVE_PARAMETERS = ["password"]
 
 ROOT_URLCONF = "config.urls"
 
@@ -113,6 +142,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {
         "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {"min_length": 12},
     },
     {
         "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
@@ -167,9 +197,15 @@ REST_FRAMEWORK = {
         "rest_framework.throttling.ScopedRateThrottle",
     ],
     "DEFAULT_THROTTLE_RATES": {
-        "auth": "20/min",
-        "password": "10/min",
+        # Login burst: 5/min covers normal retries; 30/hour caps slow credential
+        # stuffing across IP rotation. Account-lockout via django-axes is the
+        # primary defense — these are belt-and-suspenders.
+        "auth": "5/min",
+        "auth_hour": "30/hour",
+        "password": "5/min",
         "feedback": "20/hour",
+        # Export endpoints: bulk PII egress is high-risk if a JWT is stolen.
+        "export": "20/hour",
     },
 }
 
@@ -304,6 +340,18 @@ LOGGING = {
         "apps": {
             "handlers": ["console"],
             "level": "DEBUG",
+            "propagate": False,
+        },
+        # Dedicated audit channel — see apps.core.audit.audit_event.
+        "security.audit": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        # django-axes lockout events — surface these alongside audit events.
+        "axes": {
+            "handlers": ["console"],
+            "level": "INFO",
             "propagate": False,
         },
     },

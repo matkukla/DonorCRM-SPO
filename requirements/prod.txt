@@ -9,5 +9,5 @@ whitenoise>=6.6,<7.0
 # Database URL parsing
 dj-database-url>=2.0,<3.0
 
-# Error tracking
-sentry-sdk>=1.30,<2.0
+# Error tracking — v2.x is the supported series; v1.x is EOL.
+sentry-sdk>=2.20,<3.0
