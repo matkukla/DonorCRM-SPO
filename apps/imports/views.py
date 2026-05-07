@@ -39,6 +39,7 @@ from apps.imports.services import (
     parse_contacts_csv,
     parse_entities_csv,
     parse_funds_csv,
+    sanitize_csv_value,
 )
 from apps.imports.spo_services import import_spo_gifts, import_spo_prayers, reconcile_missionaries
 from apps.imports.tasks import get_import_progress, import_contacts_async
@@ -86,7 +87,7 @@ class ContactImportView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        logger.info(f"Contact import started by user {request.user.email}")
+        logger.info("Contact import started by user_id=%s", request.user.id)
 
         # Parse CSV
         valid_records, errors = parse_contacts_csv(content, request.user)
@@ -115,7 +116,9 @@ class ContactImportView(APIView):
                 # file or contact support.
                 logger.warning(
                     "Async contact import requested but CELERY_ENABLED=False "
-                    "(rows=%d, user=%s)", len(valid_records), request.user.email,
+                    "(rows=%d, user_id=%s)",
+                    len(valid_records),
+                    request.user.id,
                 )
                 return Response(
                     {
@@ -178,15 +181,23 @@ class ContactExportView(APIView):
     """
 
     permission_classes = [permissions.IsAuthenticated]
+    throttle_scope = "export"
 
     def get(self, request):
         from apps.contacts.models import Contact
+        from apps.core.audit import audit_event
 
         user = request.user
         visible = get_visible_user_ids(user, request=request)
         queryset = Contact.objects.filter(owner_id__in=visible, is_merged=False)
 
         csv_content = export_contacts_csv(queryset)
+        audit_event(
+            "export.contacts.csv",
+            actor_id=user.id,
+            row_count=queryset.count(),
+            view_as=getattr(getattr(request, "view_as_user", None), "id", None),
+        )
 
         response = HttpResponse(csv_content, content_type="text/csv")
         response["Content-Disposition"] = 'attachment; filename="contacts.csv"'
@@ -199,8 +210,10 @@ class DonationExportView(APIView):
     """
 
     permission_classes = [permissions.IsAuthenticated]
+    throttle_scope = "export"
 
     def get(self, request):
+        from apps.core.audit import audit_event
         from apps.gifts.models import Gift
 
         user = request.user
@@ -216,6 +229,14 @@ class DonationExportView(APIView):
             queryset = queryset.filter(gift_date__lte=end_date)
 
         csv_content = export_gifts_csv(queryset)
+        audit_event(
+            "export.gifts.csv",
+            actor_id=user.id,
+            row_count=queryset.count(),
+            start_date=start_date,
+            end_date=end_date,
+            view_as=getattr(getattr(request, "view_as_user", None), "id", None),
+        )
 
         response = HttpResponse(csv_content, content_type="text/csv")
         response["Content-Disposition"] = 'attachment; filename="gifts.csv"'
@@ -285,7 +306,7 @@ class FundImportView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        logger.info(f"Fund import started by user {request.user.email}")
+        logger.info("Fund import started by user_id=%s", request.user.id)
 
         # Parse CSV
         valid_records, errors = parse_funds_csv(content)
@@ -380,7 +401,7 @@ class EntityImportView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        logger.info(f"Entity import started by user {request.user.email}")
+        logger.info("Entity import started by user_id=%s", request.user.id)
 
         # Parse CSV
         valid_records, errors = parse_entities_csv(content, request.user)
@@ -606,8 +627,11 @@ class ImportRunErrorsCSVView(APIView):
         writer.writeheader()
 
         for error in errors:
-            row = dict(error.row_data)
-            row["error_message"] = "; ".join(error.error_messages)
+            # row_data originated from a user-uploaded CSV — re-sanitize on
+            # export to prevent CSV/formula injection when the file is opened
+            # in Excel/Sheets. (sanitize_csv_value is idempotent.)
+            row = {k: sanitize_csv_value(v) for k, v in error.row_data.items()}
+            row["error_message"] = sanitize_csv_value("; ".join(error.error_messages))
             writer.writerow(row)
 
         # Prepare response
@@ -673,6 +697,18 @@ class MPDImportView(APIView):
         # Read raw bytes for format detection (not decoding to string)
         file_bytes = file.read()
 
+        # Magic-byte check defends against mislabelled binary uploads. The
+        # MPD path is the only one that hands raw bytes to openpyxl; a zip
+        # bomb or untrusted XLSX could trigger CVEs in older parser versions.
+        from apps.core.uploads import UploadKind, detect_upload_kind
+
+        kind = detect_upload_kind(file_bytes, file.name)
+        if kind not in (UploadKind.CSV, UploadKind.XLSX):
+            return Response(
+                {"detail": "Unsupported file type. Upload a CSV or XLSX export."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         try:
             upload = process_mpd_upload(
                 file_bytes=file_bytes,
@@ -680,7 +716,7 @@ class MPDImportView(APIView):
                 uploaded_by=request.user,
             )
         except Exception as e:
-            logger.error(f"MPD import failed: {e}")
+            logger.error("MPD import failed", exc_info=True)
             return Response(
                 {"detail": f"Import failed: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST
             )
@@ -721,16 +757,20 @@ class MPDOverviewView(APIView):
 
         # Get all active missionaries
         users = list(
-            User.objects.filter(role='missionary', is_active=True)
-            .order_by('last_name', 'first_name')
+            User.objects.filter(role="missionary", is_active=True).order_by(
+                "last_name", "first_name"
+            )
         )
 
         # Prefetch latest snapshot per user for monthly_average
         from apps.imports.models import MPDSnapshot as MPDSnapshotModel
+
         snapshot_map = {}
-        for snap in MPDSnapshotModel.objects.filter(
-            user__in=users
-        ).select_related('upload').order_by('user_id', '-upload__created_at'):
+        for snap in (
+            MPDSnapshotModel.objects.filter(user__in=users)
+            .select_related("upload")
+            .order_by("user_id", "-upload__created_at")
+        ):
             if snap.user_id not in snapshot_map:
                 snapshot_map[snap.user_id] = snap
 
@@ -745,7 +785,9 @@ class MPDOverviewView(APIView):
                 entry = {
                     "user_id": str(user.id),
                     "user_name": user.full_name,
-                    "monthly_average_snapshot": str(snapshot.monthly_average) if snapshot and snapshot.monthly_average else None,
+                    "monthly_average_snapshot": str(snapshot.monthly_average)
+                    if snapshot and snapshot.monthly_average
+                    else None,
                 }
                 entry.update({k: v for k, v in computed.items() if k != "has_data"})
                 missionaries.append(entry)
@@ -770,8 +812,12 @@ class MPDMyDataView(APIView):
 
         # Include snapshot's monthly_average under a distinct key so it
         # doesn't overwrite the computed monthly_average from gift data.
-        snapshot = MPDSnapshot.objects.filter(user=request.user).order_by("-upload__created_at").first()
-        data['monthly_average_snapshot'] = str(snapshot.monthly_average) if snapshot and snapshot.monthly_average else None
+        snapshot = (
+            MPDSnapshot.objects.filter(user=request.user).order_by("-upload__created_at").first()
+        )
+        data["monthly_average_snapshot"] = (
+            str(snapshot.monthly_average) if snapshot and snapshot.monthly_average else None
+        )
 
         return Response(data)
 

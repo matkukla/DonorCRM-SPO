@@ -1,0 +1,51 @@
+name: security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly Monday 09:00 UTC — catches new advisories against pinned deps.
+    - cron: "0 9 * * 1"
+
+jobs:
+  pip-audit:
+    name: pip-audit (dependency CVEs)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install pip-audit
+        run: pip install "pip-audit>=2.6,<3.0"
+
+      - name: Audit base requirements
+        run: pip-audit -r requirements/base.txt --strict
+      - name: Audit prod requirements
+        run: pip-audit -r requirements/prod.txt --strict
+      - name: Audit dev requirements
+        run: pip-audit -r requirements/dev.txt --strict
+
+  bandit:
+    name: bandit (static analysis)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install bandit
+        run: pip install "bandit>=1.7,<2.0"
+
+      - name: Run bandit on apps/
+        # Skip B101 (assert in tests) and report HIGH+ only on PRs to keep
+        # signal-to-noise high. Tighten over time.
+        run: bandit -r apps/ -ll --skip B101

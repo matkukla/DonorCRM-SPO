@@ -7,16 +7,17 @@ DEBUG = False
 
 # Use faster password hasher for tests
 PASSWORD_HASHERS = [
-    'django.contrib.auth.hashers.MD5PasswordHasher',
+    "django.contrib.auth.hashers.MD5PasswordHasher",
 ]
 
 # Use in-memory SQLite for faster tests (optional - can use PostgreSQL)
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': ':memory:',
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": ":memory:",
     }
 }
+
 
 # Disable migrations for faster test runs
 class DisableMigrations:
@@ -36,18 +37,22 @@ CELERY_TASK_EAGER_PROPAGATES = True
 
 # Disable logging during tests
 LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': True,
-    'handlers': {
-        'null': {
-            'class': 'logging.NullHandler',
+    "version": 1,
+    "disable_existing_loggers": True,
+    "handlers": {
+        "null": {
+            "class": "logging.NullHandler",
         },
     },
-    'root': {
-        'handlers': ['null'],
-        'level': 'CRITICAL',
+    "root": {
+        "handlers": ["null"],
+        "level": "CRITICAL",
     },
 }
 
 # Email backend for tests
-EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
+EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+
+# django-axes: never lock out during the test suite. Tests intentionally
+# exercise login failure paths and the lockout would cause flaky cascades.
+AXES_ENABLED = False
