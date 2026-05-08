@@ -79,9 +79,11 @@ immediately on the restored data.
 
 ## Purge cadence
 
-- **`purge_expired_data` runs nightly** via a Render cron job (TODO: wire
-  the cron). Logs `event=retention.purge.complete` per data class with
-  counts.
+- **`purge_expired_data` is run manually quarterly** from the Render shell
+  while pre-revenue. The Render Blueprint has a commented-out cron block
+  (`render.yaml`) that can be uncommented once traffic or a customer
+  request justifies the ~$1-3/month cost. The command logs
+  `event=retention.purge.complete` per data class with counts either way.
 - **Audit logs are retention-checked weekly** as a separate command so a
   long-running purge doesn't block.
 

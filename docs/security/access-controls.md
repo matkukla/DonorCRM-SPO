@@ -58,9 +58,10 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public
 ### Wiring the two `DATABASE_URL`s in `render.yaml`
 
 Wire the web service to `donorcrm_app` and the `donorcrm-purge` cron
-to `donorcrm_purge`. The cron entry already exists (added in PR #55);
-update its `DATABASE_URL` env var to point at a connection string built
-from the `donorcrm_purge` credentials rather than the default
+to `donorcrm_purge`. The cron block in `render.yaml` is currently
+commented out (deferred while pre-revenue); when uncommented, update
+its `DATABASE_URL` env var to point at a connection string built from
+the `donorcrm_purge` credentials rather than the default
 `fromDatabase` block.
 
 ```yaml
@@ -99,7 +100,7 @@ is rotated, the cron job must be redeployed with the new value.
 
 | Item                                              | State        |
 |---------------------------------------------------|--------------|
-| `purge_expired_data` cron wired in `render.yaml`  | Done (PR #55)|
+| `purge_expired_data` cron wired in `render.yaml`  | Deferred — block commented out while pre-revenue; run manually quarterly |
 | Two-role provisioning script run on prod          | TODO         |
 | Verification query passes on prod                 | TODO         |
 
