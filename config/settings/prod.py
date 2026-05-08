@@ -109,9 +109,15 @@ else:
 # when DATABASE_URL omits them. ssl_require=True above ensures sslmode is at
 # least 'require'; this overrides upward toward verify-ca/verify-full when
 # the env vars are set.
+#
+# libpq backward-compat trap: if `sslrootcert` is set, libpq silently
+# upgrades `sslmode=require` to `verify-ca` semantics. That breaks Render's
+# internal Postgres connection because Render's internal cert is signed by
+# a private CA not in the system bundle. Only attach `sslrootcert` when
+# the operator explicitly opted into chain verification.
 _db_options = DATABASES["default"].setdefault("OPTIONS", {})  # noqa: F405
 _db_options["sslmode"] = DB_SSLMODE
-if DB_SSLROOTCERT:
+if DB_SSLROOTCERT and DB_SSLMODE in ("verify-ca", "verify-full"):
     _db_options["sslrootcert"] = DB_SSLROOTCERT
 
 # Cache — use Redis if available, otherwise in-memory
