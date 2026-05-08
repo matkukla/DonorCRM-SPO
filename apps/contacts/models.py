@@ -6,6 +6,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.db import models
 
+from apps.core.blind_index import BinaryHashField, hash_value, normalize_phone
 from apps.core.encryption import EncryptedTextField
 from apps.core.models import TimeStampedModel
 
@@ -76,12 +77,29 @@ class Contact(TimeStampedModel):
     # Basic information
     first_name = models.CharField("first name", max_length=150, blank=True)
     last_name = models.CharField("last name", max_length=150, blank=True)
-    email = models.EmailField("email", blank=True)
-    phone = models.CharField("phone", max_length=20, blank=True)
-    phone_secondary = models.CharField("secondary phone", max_length=20, blank=True)
+    # email is encrypted at rest; equality lookups go through email_hash.
+    # See apps.core.blind_index. Substring search is no longer supported.
+    email = EncryptedTextField("email", blank=True)
+    # HMAC-SHA256 of the normalized email. Synced from email in save().
+    # The named index lives in Meta.indexes (`models.Index(fields=["email_hash"])`);
+    # we deliberately do NOT set db_index=True here to avoid Postgres
+    # maintaining a duplicate auto-generated B-tree on the same column.
+    # nullable so empty-email rows have NULL (preserving the original
+    # conditional unique constraint semantics).
+    email_hash = BinaryHashField("email hash", null=True, blank=True, editable=False)
+    # phone and phone_secondary are encrypted at rest; equality dedup goes
+    # through phone_hash / phone_secondary_hash. Substring search is no
+    # longer supported on either column.
+    phone = EncryptedTextField("phone", blank=True)
+    phone_hash = BinaryHashField("phone hash", null=True, blank=True, editable=False, db_index=True)
+    phone_secondary = EncryptedTextField("secondary phone", blank=True)
+    phone_secondary_hash = BinaryHashField(
+        "phone secondary hash", null=True, blank=True, editable=False, db_index=True
+    )
 
-    # Address
-    street_address = models.CharField("street address", max_length=255, blank=True)
+    # Address — street_address is encrypted at rest. City/state/postal/country
+    # remain plaintext; they are coarse-grained and not directly identifying.
+    street_address = EncryptedTextField("street address", blank=True)
     city = models.CharField("city", max_length=100, blank=True)
     state = models.CharField("state", max_length=50, blank=True)
     postal_code = models.CharField("postal code", max_length=20, blank=True)
@@ -136,15 +154,16 @@ class Contact(TimeStampedModel):
             models.Index(fields=["owner", "status"]),
             models.Index(fields=["owner", "last_gift_date"]),
             models.Index(fields=["last_name", "first_name"]),
-            models.Index(fields=["email"]),
+            # email plaintext is encrypted; equality lookups use email_hash
+            models.Index(fields=["email_hash"]),
             models.Index(fields=["needs_thank_you"]),
             models.Index(fields=["owner", "is_merged"]),
         ]
         constraints = [
             models.UniqueConstraint(
-                fields=["owner", "email"],
+                fields=["owner", "email_hash"],
                 name="unique_contact_email_per_owner",
-                condition=~models.Q(email="") & models.Q(is_merged=False),
+                condition=models.Q(email_hash__isnull=False) & models.Q(is_merged=False),
             ),
             models.UniqueConstraint(
                 fields=["owner", "external_id"],
@@ -160,6 +179,15 @@ class Contact(TimeStampedModel):
 
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
+
+    def save(self, *args, **kwargs):
+        # Keep blind-index hashes in sync with their plaintext sources on
+        # every save() path. bulk_update / .update() bypass this; data
+        # migrations and rotate_pii_encryption compute hashes explicitly.
+        self.email_hash = hash_value(self.email)
+        self.phone_hash = hash_value(normalize_phone(self.phone))
+        self.phone_secondary_hash = hash_value(normalize_phone(self.phone_secondary))
+        super().save(*args, **kwargs)
 
     @property
     def full_name(self):
@@ -198,18 +226,25 @@ class Contact(TimeStampedModel):
         return self.monthly_recurring_gift_amount
 
     def update_giving_stats(self):
-        """
-        Recalculate giving statistics from gifts.
-        Called when gifts are added/modified.
-        Uses select_for_update() to prevent race conditions during concurrent updates.
+        """Recalculate giving statistics from gifts.
+
+        Called when gifts are added/modified. Concurrent calls for the
+        same contact are serialized via a row-level write lock; the
+        ``SELECT ... FOR UPDATE`` statement queues subsequent callers
+        until the enclosing transaction commits.
         """
         from django.db import transaction
 
         with transaction.atomic():
-            # Lock this contact row to prevent concurrent recalculation
-            Contact.objects.select_for_update().filter(pk=self.pk).first()
+            # Acquire the row-level write lock and rebind to the locked
+            # instance so any later mutation goes through the row that
+            # was actually locked. The aggregate below reads from the
+            # gifts table, not from ``self``, so this is mostly belt-
+            # and-suspenders, but it makes the lock contract explicit
+            # and avoids a stale ``self`` field surprising future code.
+            locked = Contact.objects.select_for_update().get(pk=self.pk)
 
-            gifts = self.gifts.all()
+            gifts = locked.gifts.all()
             agg = gifts.aggregate(
                 total_cents=models.Sum("amount_cents"),
                 count=models.Count("id"),
@@ -217,22 +252,22 @@ class Contact(TimeStampedModel):
                 last=models.Max("gift_date"),
             )
 
-            self.total_given = Decimal(agg["total_cents"] or 0) / Decimal(100)
-            self.gift_count = agg["count"] or 0
-            self.first_gift_date = agg["first"]
-            self.last_gift_date = agg["last"]
+            locked.total_given = Decimal(agg["total_cents"] or 0) / Decimal(100)
+            locked.gift_count = agg["count"] or 0
+            locked.first_gift_date = agg["first"]
+            locked.last_gift_date = agg["last"]
 
             if agg["last"]:
                 last_gift = gifts.order_by("-gift_date").first()
-                self.last_gift_amount = last_gift.amount_dollars if last_gift else None
+                locked.last_gift_amount = last_gift.amount_dollars if last_gift else None
             else:
-                self.last_gift_amount = None
+                locked.last_gift_amount = None
 
             # Update status based on giving history
-            if self.gift_count > 0 and self.status == ContactStatus.PROSPECT:
-                self.status = ContactStatus.DONOR
+            if locked.gift_count > 0 and locked.status == ContactStatus.PROSPECT:
+                locked.status = ContactStatus.DONOR
 
-            self.save(
+            locked.save(
                 update_fields=[
                     "total_given",
                     "gift_count",
@@ -242,6 +277,19 @@ class Contact(TimeStampedModel):
                     "status",
                 ]
             )
+
+            # Mirror the recomputed values back onto ``self`` so callers
+            # that hold the original instance see the new state without
+            # a refresh_from_db.
+            for f in (
+                "total_given",
+                "gift_count",
+                "first_gift_date",
+                "last_gift_date",
+                "last_gift_amount",
+                "status",
+            ):
+                setattr(self, f, getattr(locked, f))
 
     def mark_thanked(self):
         """Mark contact as thanked."""

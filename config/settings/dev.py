@@ -35,6 +35,7 @@ REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {  # noqa: F405
     "auth": "100/min",
     "auth_hour": "1000/hour",
     "password": "100/min",
+    "password_hour": "1000/hour",
     "feedback": "1000/hour",
     "export": "1000/hour",
 }

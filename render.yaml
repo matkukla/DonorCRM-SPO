@@ -25,6 +25,14 @@ services:
       - path: /*
         name: Permissions-Policy
         value: "camera=(), microphone=(), geolocation=(), payment=()"
+      # HSTS: instructs browsers to use HTTPS for this host (and subdomains)
+      # for the next year, including a preload-list opt-in. The Django API
+      # service emits the same header via SECURE_HSTS_* settings; this
+      # mirrors it on the static front-end so a user landing on the SPA
+      # before any API call is also protected.
+      - path: /*
+        name: Strict-Transport-Security
+        value: "max-age=31536000; includeSubDomains; preload"
     routes:
       - type: rewrite
         source: /*
@@ -56,7 +64,7 @@ services:
       - key: CSRF_TRUSTED_ORIGINS
         value: https://donorcrm-frontend.onrender.com,https://donorcrm-web.onrender.com
       - key: JWT_ACCESS_LIFETIME_MINUTES
-        value: "60"
+        value: "15"
       - key: DATABASE_URL
         fromDatabase:
           name: donorcrm-db
@@ -122,6 +130,42 @@ services:
   #   name: donorcrm-redis
   #   plan: starter
   #   ipAllowList: []  # Allow only Render internal connections
+
+  # Retention purge cron deferred while pre-revenue. Run manually from the
+  # Render shell on a quarterly cadence:
+  #   python manage.py purge_expired_data
+  # Wire the block below as a `cron` service when traffic justifies the
+  # ~$1-3/month or when an enterprise customer asks for retention evidence.
+  # See docs/security/data-retention.md.
+  #
+  # - type: cron
+  #   name: donorcrm-purge
+  #   env: python
+  #   schedule: "0 3 * * *"
+  #   buildCommand: pip install -r requirements/prod.txt
+  #   startCommand: python manage.py purge_expired_data
+  #   envVars:
+  #     - key: DJANGO_SETTINGS_MODULE
+  #       value: config.settings.prod
+  #     - key: SECRET_KEY
+  #       fromService:
+  #         type: web
+  #         name: donorcrm-web
+  #         envVarKey: SECRET_KEY
+  #     - key: DATABASE_URL
+  #       fromDatabase:
+  #         name: donorcrm-db
+  #         property: connectionString
+  #     - key: PII_ENCRYPTION_KEYS
+  #       fromService:
+  #         type: web
+  #         name: donorcrm-web
+  #         envVarKey: PII_ENCRYPTION_KEYS
+  #     - key: BLIND_INDEX_KEYS
+  #       fromService:
+  #         type: web
+  #         name: donorcrm-web
+  #         envVarKey: BLIND_INDEX_KEYS
 
 databases:
   # PostgreSQL Database

@@ -3,6 +3,24 @@
 This document is the operational runbook for moving DonorCRM donor PII columns
 from plaintext to field-level encryption (`apps.core.encryption.EncryptedTextField`).
 
+## Current state (2026-05-07)
+
+- **Algorithm:** AES-256-GCM v1 (was Fernet/AES-128-CBC; algorithm rotation
+  shipped in [apps/core/encryption.py](../../apps/core/encryption.py)).
+- **Key custody:** `DJANGO_PII_ENCRYPTION_KEYS` env var, runbook in
+  [key-management.md](key-management.md). KMS-backed (Phase 5) is a
+  future upgrade.
+- **Encrypted columns:**
+  - `Contact.notes`
+  - `Contact.phone_secondary`
+  - `Contact.street_address`
+  - `JournalStageEvent.notes`
+- **Tooling:** `python manage.py rotate_pii_encryption --all` re-encrypts
+  every registered field under the current write key.
+
+See [crypto-architecture.md](crypto-architecture.md) for the design and
+[evidence-map.md](evidence-map.md) for the control-to-framework mapping.
+
 ## Why
 
 Render's managed Postgres provides at-rest disk encryption. That defends only
@@ -15,23 +33,20 @@ against physical theft of the storage volume. It does NOT defend:
 
 Field-level encryption ensures these egress paths reveal ciphertext only.
 
-## Scope (Phase 1)
+## Phase scope
 
-Encrypt the following columns on existing models:
-
-| App        | Model              | Columns                                              |
-|------------|--------------------|------------------------------------------------------|
-| contacts   | Contact            | `phone`, `email`, `address`, `notes`                 |
-| gifts      | Gift               | `notes`                                              |
-| prayers    | PrayerIntention    | `description`                                        |
-| journals   | JournalEntry       | `body`                                               |
-
-Out of scope for Phase 1:
-- Searchable indexes (would require a separate hashed blind-index column)
-- KMS-backed envelope encryption (Phase 2 — keys live in app env today)
-- Field-level encryption of `User.email` (used as login identifier, would
-  break django-axes username lockup; defer to Phase 3 with a normalized
-  hash column)
+| Phase | Status | Coverage |
+|-------|--------|----------|
+| 1: AES-256-GCM primitive + initial column (`Contact.notes`) | ✅ shipped | algorithm baseline + first column |
+| 2: rotate_pii_encryption command | ✅ shipped | idempotent, resumable sweep tool |
+| 3A: no-search-impact PII fields | ✅ shipped | `Contact.phone_secondary`, `Contact.street_address`, `JournalStageEvent.notes` |
+| 3B: blind-indexed equality fields | ✅ shipped | `Contact.email` (round 1), `Contact.phone` + free-text descriptions (round 2) |
+| 3B: name fields | ❌ out of scope | `first_name`, `last_name`, `organization_name` left plaintext — encrypting kills typeahead and alphabetical ordering; regulatory benefit weak for US-only scope (see [data-classification.md](data-classification.md)) |
+| 4: in-transit hardening | ✅ shipped | DB TLS startup check, HSTS, evidence doc |
+| 5: KMS envelope encryption | ⏳ pending vendor decision | move key custody to KMS HSM |
+| 6: PII access audit log | ⏳ partial | Sentry scrubbing shipped; append-only DataAccessLog pending |
+| 7: evidence + audit prep | ✅ shipped | docs in `docs/security/` |
+| 8: `User.email` (login flow) | ⏳ deferred | touches django-axes, password reset, JWT subject |
 
 ## Phase 1 procedure
 
@@ -51,9 +66,12 @@ Out of scope for Phase 1:
    - Mark the migration `atomic = False` so each batch commits independently.
 5. **Verify** with `psql`:
    ```sql
-   SELECT phone FROM contacts_contact LIMIT 5;
+   SELECT notes FROM contacts_contact LIMIT 5;
    ```
-   Values should start with `gAAAAA…`.
+   New rows should start with `v2:` (AES-256-GCM with per-field AAD).
+   Rows written before this PR may show `v1:` (AES-256-GCM, no AAD) or
+   `gAAAAA…` (legacy Fernet) until `manage.py rotate_pii_encryption`
+   sweeps them. Anything else is plaintext that hasn't been migrated.
 6. **Roll columns one app at a time** so a failed migration impacts a single
    surface, not the entire dataset.
 

@@ -4,6 +4,7 @@ Views for user management.
 from django.db.models import Count, Q
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
+from rest_framework.throttling import SimpleRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 
@@ -21,18 +22,44 @@ from apps.users.serializers import (
 )
 
 
+class _PasswordBurstThrottle(SimpleRateThrottle):
+    """Per-IP burst limit on password mutations (rate from
+    THROTTLE_RATES['password'])."""
+
+    scope = "password"
+
+    def get_cache_key(self, request, view):
+        return self.cache_format % {"scope": self.scope, "ident": self.get_ident(request)}
+
+
+class _PasswordHourThrottle(SimpleRateThrottle):
+    """Per-IP hourly cap layered on top of the burst throttle so a slow
+    attacker pacing under the burst rate still hits a daily ceiling
+    (rate from THROTTLE_RATES['password_hour'])."""
+
+    scope = "password_hour"
+
+    def get_cache_key(self, request, view):
+        return self.cache_format % {"scope": self.scope, "ident": self.get_ident(request)}
+
+
 class UserListCreateView(generics.ListCreateAPIView):
     """
     GET: List all users (admin only)
     POST: Create a new user (admin only)
     """
+
     permission_classes = [permissions.IsAuthenticated, IsAdmin]
 
     def get_queryset(self):
-        return User.objects.all().prefetch_related('supervised_users', 'coached_users').order_by('-date_joined')
+        return (
+            User.objects.all()
+            .prefetch_related("supervised_users", "coached_users")
+            .order_by("-date_joined")
+        )
 
     def get_serializer_class(self):
-        if self.request.method == 'POST':
+        if self.request.method == "POST":
             return UserCreateSerializer
         return UserSerializer
 
@@ -43,13 +70,14 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     PATCH/PUT: Update user (admin only)
     DELETE: Deactivate user (admin only)
     """
+
     permission_classes = [permissions.IsAuthenticated, IsAdmin]
 
     def get_queryset(self):
-        return User.objects.all().prefetch_related('supervised_users', 'coached_users')
+        return User.objects.all().prefetch_related("supervised_users", "coached_users")
 
     def get_serializer_class(self):
-        if self.request.method in ['PATCH', 'PUT']:
+        if self.request.method in ["PATCH", "PUT"]:
             return UserAdminUpdateSerializer
         return UserSerializer
 
@@ -66,30 +94,31 @@ class CurrentUserView(APIView):
     GET: Get current user's profile
     PATCH: Update current user's profile
     """
+
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         from apps.gifts.models import RecurringGiftStatus
 
         # Annotate user with counts to avoid N+1 queries
-        user = User.objects.filter(pk=request.user.pk).annotate(
-            _contact_count=Count('contacts', distinct=True),
-            _active_pledge_count=Count(
-                'contacts__recurring_gifts',
-                filter=Q(contacts__recurring_gifts__status=RecurringGiftStatus.ACTIVE),
-                distinct=True
+        user = (
+            User.objects.filter(pk=request.user.pk)
+            .annotate(
+                _contact_count=Count("contacts", distinct=True),
+                _active_pledge_count=Count(
+                    "contacts__recurring_gifts",
+                    filter=Q(contacts__recurring_gifts__status=RecurringGiftStatus.ACTIVE),
+                    distinct=True,
+                ),
             )
-        ).first()
+            .first()
+        )
 
         serializer = CurrentUserSerializer(user)
         return Response(serializer.data)
 
     def patch(self, request):
-        serializer = UserUpdateSerializer(
-            request.user,
-            data=request.data,
-            partial=True
-        )
+        serializer = UserUpdateSerializer(request.user, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(CurrentUserSerializer(request.user).data)
@@ -99,40 +128,44 @@ class PasswordChangeView(APIView):
     """
     POST: Change current user's password
     """
+
     permission_classes = [permissions.IsAuthenticated]
+    # Two-tier throttle: per-IP burst (THROTTLE_RATES['password']) plus an
+    # hourly cap (THROTTLE_RATES['password_hour']) to slow an attacker pacing
+    # under the burst rate.
+    throttle_classes = [_PasswordBurstThrottle, _PasswordHourThrottle]
 
     def post(self, request):
-        serializer = PasswordChangeSerializer(
-            data=request.data,
-            context={'request': request}
-        )
+        serializer = PasswordChangeSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         serializer.save()
         # Blacklist all outstanding refresh tokens for this user
         for token in OutstandingToken.objects.filter(user=request.user):
             BlacklistedToken.objects.get_or_create(token=token)
-        return Response({'detail': 'Password changed successfully.'})
+        return Response({"detail": "Password changed successfully."})
 
 
 class AdminPasswordResetView(APIView):
     """
     POST: Admin resets another user's password (no old password required).
     """
+
     permission_classes = [permissions.IsAuthenticated, IsAdmin]
+    throttle_classes = [_PasswordBurstThrottle, _PasswordHourThrottle]
 
     def post(self, request, pk):
         try:
             user = User.objects.get(pk=pk)
         except User.DoesNotExist:
             return Response(
-                {'detail': 'User not found.'},
+                {"detail": "User not found."},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
         serializer = AdminPasswordResetSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save(user=user)
-        return Response({'detail': 'Password reset successfully.'})
+        return Response({"detail": "Password reset successfully."})
 
 
 class ViewableUsersView(APIView):
@@ -144,25 +177,23 @@ class ViewableUsersView(APIView):
     - Supervisor: only missionaries in their supervised_users M2M
     - All other roles: 403 Forbidden
     """
+
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         user = request.user
 
-        if user.role == 'admin':
-            qs = User.objects.filter(
-                role__in=['missionary', 'supervisor'],
-                is_active=True
-            ).exclude(id=user.id).order_by('last_name', 'first_name')
-        elif user.role == 'supervisor':
-            qs = user.supervised_users.filter(
-                role='missionary',
-                is_active=True
-            ).order_by('last_name', 'first_name')
-        else:
-            return Response(
-                {'detail': 'You do not have permission to view this list.'},
-                status=403
+        if user.role == "admin":
+            qs = (
+                User.objects.filter(role__in=["missionary", "supervisor"], is_active=True)
+                .exclude(id=user.id)
+                .order_by("last_name", "first_name")
             )
+        elif user.role == "supervisor":
+            qs = user.supervised_users.filter(role="missionary", is_active=True).order_by(
+                "last_name", "first_name"
+            )
+        else:
+            return Response({"detail": "You do not have permission to view this list."}, status=403)
 
         return Response(ViewableUserSerializer(qs, many=True).data)
