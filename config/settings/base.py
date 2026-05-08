@@ -16,12 +16,20 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 INSECURE_DEFAULT_SECRET_KEY = "django-insecure-change-me-in-production"
 SECRET_KEY = config("SECRET_KEY", default=INSECURE_DEFAULT_SECRET_KEY)
 
-# Field-level encryption keys for donor PII. Comma-separated Fernet keys; the
-# first is the current write key, remaining keys decrypt rotated rows. Empty
-# in dev/test — apps.core.encryption raises ImproperlyConfigured on first use,
-# so columns not yet migrated to EncryptedTextField remain unaffected.
-# See docs/security/encryption-rollout.md for the rollout procedure.
+# Field-level encryption keys for donor PII. Comma-separated typed entries;
+# the first is the current write key (AES-256-GCM), remaining keys decrypt
+# legacy rows. Empty in dev — apps.core.encryption raises ImproperlyConfigured
+# on first use, so columns not yet migrated to EncryptedTextField remain
+# unaffected. See docs/security/key-management.md for format and rotation.
 PII_ENCRYPTION_KEYS = config("PII_ENCRYPTION_KEYS", default="")
+
+# Blind-index keys for HMAC-SHA256 sidecar columns that preserve equality
+# lookups on encrypted fields (e.g. Contact.email_hash). Comma-separated
+# 32-byte urlsafe-base64 values; first is the current write key.
+# Custody is intentionally separate from PII_ENCRYPTION_KEYS — a blind-index
+# key disclosure enables only targeted equality queries, never decryption.
+# See apps.core.blind_index for usage and docs/security/key-management.md.
+BLIND_INDEX_KEYS = config("BLIND_INDEX_KEYS", default="")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config("DEBUG", default=False, cast=bool)
@@ -79,6 +87,10 @@ MIDDLEWARE = [
     "apps.core.middleware.ViewAsMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # DataAccessLogMiddleware runs after auth + view-as so request.user and
+    # request.view_as_user are populated, and after AxesMiddleware would
+    # have rejected unauthorized requests so we don't log noise.
+    "apps.core.access_log_middleware.DataAccessLogMiddleware",
     # AxesMiddleware must be the LAST middleware — it inspects the response
     # to detect failed login attempts and increment the lockout counter.
     "axes.middleware.AxesMiddleware",

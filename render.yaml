@@ -25,6 +25,14 @@ services:
       - path: /*
         name: Permissions-Policy
         value: "camera=(), microphone=(), geolocation=(), payment=()"
+      # HSTS: instructs browsers to use HTTPS for this host (and subdomains)
+      # for the next year, including a preload-list opt-in. The Django API
+      # service emits the same header via SECURE_HSTS_* settings; this
+      # mirrors it on the static front-end so a user landing on the SPA
+      # before any API call is also protected.
+      - path: /*
+        name: Strict-Transport-Security
+        value: "max-age=31536000; includeSubDomains; preload"
     routes:
       - type: rewrite
         source: /*

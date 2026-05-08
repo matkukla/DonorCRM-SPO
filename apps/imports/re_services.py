@@ -656,17 +656,36 @@ def _match_contact(row_data: dict, owner: User, row_number: int) -> tuple[Contac
                 )
             return contact, "constituent_id"
 
-    # Tier 2: Match by email (owner-scoped)
+    # Tier 2: Match by email (owner-scoped). email is encrypted at rest;
+    # equality lookups go via the email_hash blind index.
     if email:
-        contact = Contact.objects.filter(owner=owner, email=email, is_merged=False).first()
-        if contact:
-            return contact, "email"
+        from apps.core.blind_index import lookup_hashes
 
-    # Tier 3: Match by phone (owner-scoped)
+        email_hashes = lookup_hashes(email)
+        if email_hashes:
+            contact = Contact.objects.filter(
+                owner=owner, email_hash__in=email_hashes, is_merged=False
+            ).first()
+            if contact:
+                return contact, "email"
+
+    # Tier 3: Match by phone (owner-scoped). phone is encrypted; equality
+    # lookups use the digit-normalized blind index, matching either the
+    # primary or secondary number.
     if phone:
-        contact = Contact.objects.filter(owner=owner, phone=phone, is_merged=False).first()
-        if contact:
-            return contact, "phone"
+        from apps.core.blind_index import lookup_hashes, normalize_phone
+
+        phone_hashes = lookup_hashes(normalize_phone(phone))
+        if phone_hashes:
+            from django.db.models import Q
+
+            contact = Contact.objects.filter(
+                Q(phone_hash__in=phone_hashes) | Q(phone_secondary_hash__in=phone_hashes),
+                owner=owner,
+                is_merged=False,
+            ).first()
+            if contact:
+                return contact, "phone"
 
     return None, "none"
 
@@ -1134,11 +1153,18 @@ def _maybe_create_prayer_intention(
         existing.gifts.add(gift)
         return existing
 
-    # Check database for existing prayer with same text
-    existing_db = PrayerIntention.objects.filter(
-        contact=contact,
-        description__iexact=text,
-    ).first()
+    # Check database for existing prayer with same text. PrayerIntention
+    # description is encrypted at rest, so SQL __iexact returns 0 rows.
+    # Per-contact intention counts are tiny (typically <50), so we load
+    # the contact's intentions and Python-compare normalized text.
+    existing_db = next(
+        (
+            p
+            for p in PrayerIntention.objects.filter(contact=contact)
+            if (p.description or "").strip().lower() == normalized
+        ),
+        None,
+    )
 
     if existing_db:
         existing_db.gifts.add(gift)
@@ -2085,10 +2111,18 @@ def import_re_recurring_gifts(
                             normalized = prayer_text.lower()
                             dedup_key = (contact.id, normalized)
                             if dedup_key not in seen_prayers:
-                                existing_prayer = PrayerIntention.objects.filter(
-                                    contact=contact,
-                                    description__iexact=prayer_text,
-                                ).first()
+                                # description is encrypted at rest, so SQL
+                                # __iexact returns nothing — Python-compare
+                                # over the contact's intentions instead.
+                                _norm = prayer_text.strip().lower()
+                                existing_prayer = next(
+                                    (
+                                        p
+                                        for p in PrayerIntention.objects.filter(contact=contact)
+                                        if (p.description or "").strip().lower() == _norm
+                                    ),
+                                    None,
+                                )
                                 if existing_prayer:
                                     seen_prayers[dedup_key] = existing_prayer
                                 else:

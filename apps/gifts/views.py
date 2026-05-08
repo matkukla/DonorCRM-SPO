@@ -32,7 +32,10 @@ class GiftListCreateView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated, IsStaffOrAbove]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = GiftFilterSet
-    search_fields = ["donor_contact__first_name", "donor_contact__last_name", "description"]
+    # 'description' is encrypted at rest — DRF SearchFilter would issue
+    # __icontains against ciphertext and never match. Substring gift-note
+    # search is no longer supported; donor name search still works.
+    search_fields = ["donor_contact__first_name", "donor_contact__last_name"]
     ordering_fields = ["gift_date", "amount_cents", "created_at"]
     ordering = ["-gift_date"]
 
@@ -108,7 +111,10 @@ class RecurringGiftListCreateView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated, IsStaffOrAbove]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = RecurringGiftFilterSet
-    search_fields = ["donor_contact__first_name", "donor_contact__last_name", "description"]
+    # 'description' is encrypted at rest — DRF SearchFilter would issue
+    # __icontains against ciphertext and never match. Substring gift-note
+    # search is no longer supported; donor name search still works.
+    search_fields = ["donor_contact__first_name", "donor_contact__last_name"]
     ordering_fields = ["start_date", "amount_cents", "status", "frequency"]
     ordering = ["-start_date"]
 

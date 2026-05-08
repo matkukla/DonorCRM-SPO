@@ -47,6 +47,7 @@ logger = logging.getLogger(__name__)
 # reconcile_missionaries — Step 1 entry point
 # ---------------------------------------------------------------------------
 
+
 def reconcile_missionaries(
     file_bytes: bytes,
     filename: str,
@@ -76,13 +77,15 @@ def reconcile_missionaries(
     # Step 1: SHA256 dedup
     existing = check_duplicate_import(file_bytes, ImportBatchType.SPO_MISSIONARY)
     if existing and not force:
-        logger.info('Duplicate SPO missionary import detected for %s', filename)
+        logger.info("Duplicate SPO missionary import detected for %s", filename)
         existing.status = ImportBatchStatus.DUPLICATE
-        existing.save(update_fields=['status'])
+        existing.save(update_fields=["status"])
         return existing
     elif existing and force:
         # Remove old batch so we can create a fresh one with the same hash
-        logger.info('Force flag set — re-importing %s (deleting old batch %s)', filename, existing.id)
+        logger.info(
+            "Force flag set — re-importing %s (deleting old batch %s)", filename, existing.id
+        )
         existing.delete()
 
     # Step 2: Decode CSV
@@ -95,7 +98,7 @@ def reconcile_missionaries(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={'errors': [{'row': 0, 'error': str(e)}]},
+            summary={"errors": [{"row": 0, "error": str(e)}]},
         )
 
     # Step 3: Parse CSV
@@ -105,7 +108,7 @@ def reconcile_missionaries(
     # Find the 'Name' column (case-insensitive)
     name_col = None
     for col in fieldnames:
-        if col.strip().lower() == 'name':
+        if col.strip().lower() == "name":
             name_col = col
             break
 
@@ -116,7 +119,7 @@ def reconcile_missionaries(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={'errors': [{'row': 0, 'error': 'Missing required "Name" column'}]},
+            summary={"errors": [{"row": 0, "error": 'Missing required "Name" column'}]},
         )
 
     # Step 4: Build lookups
@@ -146,7 +149,7 @@ def reconcile_missionaries(
 
     rows = list(reader)  # consume before tri-source query
     for row in rows:
-        raw_name = (row.get(name_col) or '').strip()
+        raw_name = (row.get(name_col) or "").strip()
         if not raw_name:
             skipped_count += 1
             continue
@@ -166,7 +169,7 @@ def reconcile_missionaries(
 
     with transaction.atomic():
         for row in rows:
-            raw_name = (row.get(name_col) or '').strip()
+            raw_name = (row.get(name_col) or "").strip()
             if not raw_name:
                 continue
 
@@ -177,22 +180,22 @@ def reconcile_missionaries(
 
             matched_user, match_type = _match_missionary_name(raw_name, user_lookup, alias_lookup)
 
-            entry: dict = {'name': raw_name, 'match_type': match_type}
+            entry: dict = {"name": raw_name, "match_type": match_type}
 
-            if match_type == 'unresolved':
+            if match_type == "unresolved":
                 unresolved += 1
                 unresolved_names.append(raw_name)
                 skipped_count += 1
-                entry['action'] = 'skipped_unresolved'
+                entry["action"] = "skipped_unresolved"
 
-            elif match_type == 'new':
+            elif match_type == "new":
                 # Auto-create missionary User
                 new_user, placeholder_email = _auto_create_missionary_user(raw_name, uploaded_by)
                 needs_real_email.append(placeholder_email)
                 created += 1
                 created_count += 1
-                entry['action'] = 'created'
-                entry['email'] = placeholder_email
+                entry["action"] = "created"
+                entry["email"] = placeholder_email
 
                 # Ensure Solicitor record exists for Step 2
                 _get_or_create_missionary_solicitor(new_user)
@@ -202,18 +205,18 @@ def reconcile_missionaries(
 
             else:
                 # matched_user is set (exact, normalized, alias)
-                if match_type == 'exact':
+                if match_type == "exact":
                     matched_exact += 1
-                elif match_type == 'normalized':
+                elif match_type == "normalized":
                     matched_normalized += 1
-                elif match_type == 'alias':
+                elif match_type == "alias":
                     matched_alias += 1
 
                 # Merge-only: fill blank User fields from CSV name
                 _merge_missionary_name_fields(matched_user, raw_name)
                 updated_count += 1
-                entry['action'] = 'matched'
-                entry['email'] = matched_user.email
+                entry["action"] = "matched"
+                entry["email"] = matched_user.email
 
                 # Ensure Solicitor record exists for Step 2
                 _get_or_create_missionary_solicitor(matched_user)
@@ -223,17 +226,19 @@ def reconcile_missionaries(
     # Step 6: Tri-source comparison
     # MPD names: all missionaries in MPD snapshots
     mpd_names: set[str] = set()
-    for snap in MPDSnapshot.objects.select_related('user').values(
-        'user__first_name', 'user__last_name'
-    ).distinct():
-        first = snap['user__first_name'] or ''
-        last = snap['user__last_name'] or ''
+    for snap in (
+        MPDSnapshot.objects.select_related("user")
+        .values("user__first_name", "user__last_name")
+        .distinct()
+    ):
+        first = snap["user__first_name"] or ""
+        last = snap["user__last_name"] or ""
         if first or last:
-            mpd_names.add(normalize_solicitor_name(f'{first} {last}'.strip()))
+            mpd_names.add(normalize_solicitor_name(f"{first} {last}".strip()))
 
     # DB names: all active missionary users
     db_names: set[str] = set()
-    for user in User.objects.filter(is_active=True, role='missionary'):
+    for user in User.objects.filter(is_active=True, role="missionary"):
         db_names.add(normalize_solicitor_name(user.full_name))
 
     tri_source = _build_tri_source_comparison(csv_names, mpd_names, db_names)
@@ -242,16 +247,16 @@ def reconcile_missionaries(
 
     # Step 7: Create ImportBatch
     summary = {
-        'missionaries_expected': len(csv_names),
-        'matched_exact': matched_exact,
-        'matched_normalized': matched_normalized,
-        'matched_alias': matched_alias,
-        'created': created,
-        'unresolved': unresolved,
-        'unresolved_names': unresolved_names,
-        'needs_real_email': needs_real_email,
-        'per_missionary': per_missionary,
-        'tri_source': tri_source_json,
+        "missionaries_expected": len(csv_names),
+        "matched_exact": matched_exact,
+        "matched_normalized": matched_normalized,
+        "matched_alias": matched_alias,
+        "created": created,
+        "unresolved": unresolved,
+        "unresolved_names": unresolved_names,
+        "needs_real_email": needs_real_email,
+        "per_missionary": per_missionary,
+        "tri_source": tri_source_json,
     }
 
     batch = ImportBatch.objects.create(
@@ -269,8 +274,8 @@ def reconcile_missionaries(
     )
 
     logger.info(
-        'SPO missionary reconciliation complete for %s: '
-        '%d exact, %d normalized, %d alias, %d created, %d unresolved',
+        "SPO missionary reconciliation complete for %s: "
+        "%d exact, %d normalized, %d alias, %d created, %d unresolved",
         filename,
         matched_exact,
         matched_normalized,
@@ -279,7 +284,7 @@ def reconcile_missionaries(
         unresolved,
     )
     if unresolved_names:
-        logger.warning('Unresolved missionary names: %s', ', '.join(unresolved_names))
+        logger.warning("Unresolved missionary names: %s", ", ".join(unresolved_names))
 
     return batch
 
@@ -288,11 +293,12 @@ def reconcile_missionaries(
 # Name matching helpers
 # ---------------------------------------------------------------------------
 
+
 def _match_missionary_name(
     raw_name: str,
-    user_lookup: dict[str, 'User'],
-    alias_lookup: dict[str, 'MissionaryAlias'],
-) -> tuple[Optional['User'], str]:
+    user_lookup: dict[str, "User"],
+    alias_lookup: dict[str, "MissionaryAlias"],
+) -> tuple[Optional["User"], str]:
     """Three-level match: exact → normalized → alias → ('unresolved'|'new').
 
     Returns:
@@ -305,24 +311,24 @@ def _match_missionary_name(
     # Level 1: Exact normalized match
     norm = normalize_solicitor_name(raw_name)
     if norm in user_lookup:
-        return user_lookup[norm], 'exact'
+        return user_lookup[norm], "exact"
 
     # Level 2: Punctuation-stripped (normalized) match
     stripped = _strip_punctuation(norm)
     for key, user in user_lookup.items():
         if _strip_punctuation(key) == stripped:
-            return user, 'normalized'
+            return user, "normalized"
 
     # Level 3: Alias table lookup
     alias_key = raw_name.strip().lower()
     if alias_key in alias_lookup:
         alias = alias_lookup[alias_key]
         if alias.user is None:
-            return None, 'unresolved'
-        return alias.user, 'alias'
+            return None, "unresolved"
+        return alias.user, "alias"
 
     # No match
-    return None, 'new'
+    return None, "new"
 
 
 def _strip_punctuation(name: str) -> str:
@@ -331,18 +337,19 @@ def _strip_punctuation(name: str) -> str:
     'o'brien, pat' → 'obrien pat'
     """
     # Normalize unicode (NFD so accents are decomposed)
-    name = unicodedata.normalize('NFD', name)
+    name = unicodedata.normalize("NFD", name)
     # Strip combining characters and punctuation
-    result = ''.join(
-        ch for ch in name
-        if not unicodedata.combining(ch) and (ch.isalnum() or ch.isspace() or ch == ',')
+    result = "".join(
+        ch
+        for ch in name
+        if not unicodedata.combining(ch) and (ch.isalnum() or ch.isspace() or ch == ",")
     )
     # Remove remaining punctuation (apostrophes, hyphens, etc.)
-    result = re.sub(r"[^\w\s,]", '', result)
+    result = re.sub(r"[^\w\s,]", "", result)
     return result.lower().strip()
 
 
-def _build_user_lookup(users_qs) -> dict[str, 'User']:
+def _build_user_lookup(users_qs) -> dict[str, "User"]:
     """Build {normalized_name: User} dict for O(1) lookup.
 
     Uses normalize_solicitor_name() — 'last, first' lowercase form.
@@ -370,11 +377,11 @@ def _build_user_lookup(users_qs) -> dict[str, 'User']:
     return lookup
 
 
-def _build_alias_lookup() -> dict[str, 'MissionaryAlias']:
+def _build_alias_lookup() -> dict[str, "MissionaryAlias"]:
     """Build {source_name_lower: MissionaryAlias} for O(1) alias lookup."""
     return {
         alias.source_name.strip().lower(): alias
-        for alias in MissionaryAlias.objects.select_related('user').all()
+        for alias in MissionaryAlias.objects.select_related("user").all()
     }
 
 
@@ -382,7 +389,8 @@ def _build_alias_lookup() -> dict[str, 'MissionaryAlias']:
 # Auto-create missionary User
 # ---------------------------------------------------------------------------
 
-def _auto_create_missionary_user(raw_name: str, uploaded_by: 'User') -> tuple['User', str]:
+
+def _auto_create_missionary_user(raw_name: str, uploaded_by: "User") -> tuple["User", str]:
     """Create User with role='missionary' and placeholder email.
 
     Email: firstname.lastname@spo.org
@@ -392,31 +400,31 @@ def _auto_create_missionary_user(raw_name: str, uploaded_by: 'User') -> tuple['U
     """
     name = raw_name.strip()
     # Parse first/last from "First Last" or "Last, First"
-    if ',' in name:
-        parts = [p.strip() for p in name.split(',', 1)]
+    if "," in name:
+        parts = [p.strip() for p in name.split(",", 1)]
         last_name = parts[0]
-        first_name = parts[1] if len(parts) > 1 else ''
+        first_name = parts[1] if len(parts) > 1 else ""
     else:
         parts = name.split()
         if len(parts) >= 2:
-            first_name = ' '.join(parts[:-1])
+            first_name = " ".join(parts[:-1])
             last_name = parts[-1]
         else:
             first_name = name
-            last_name = ''
+            last_name = ""
 
     # Build placeholder email
-    email_first = first_name.lower().replace(' ', '.')
-    email_last = last_name.lower().replace(' ', '.')
-    base_email = f'{email_first}.{email_last}@spo.org'
+    email_first = first_name.lower().replace(" ", ".")
+    email_last = last_name.lower().replace(" ", ".")
+    base_email = f"{email_first}.{email_last}@spo.org"
 
     # Handle collision with numeric suffix
     email = base_email
     suffix = 2
     while User.objects.filter(email=email).exists():
         # Insert suffix before @
-        local, domain = base_email.split('@')
-        email = f'{local}{suffix}@{domain}'
+        local, domain = base_email.split("@")
+        email = f"{local}{suffix}@{domain}"
         suffix += 1
 
     user = User.objects.create_user(
@@ -424,41 +432,41 @@ def _auto_create_missionary_user(raw_name: str, uploaded_by: 'User') -> tuple['U
         password=User.objects.make_random_password(),
         first_name=first_name,
         last_name=last_name,
-        role='missionary',
+        role="missionary",
         is_active=True,
     )
     logger.info(
-        'Auto-created missionary User: %s (email=%s)',
+        "Auto-created missionary User: %s (email=%s)",
         user.full_name,
         email,
     )
     return user, email
 
 
-def _merge_missionary_name_fields(user: 'User', raw_name: str) -> None:
+def _merge_missionary_name_fields(user: "User", raw_name: str) -> None:
     """Fill blank first_name/last_name fields from CSV name (merge-only, never overwrite)."""
     # Parse name
     name = raw_name.strip()
-    if ',' in name:
-        parts = [p.strip() for p in name.split(',', 1)]
+    if "," in name:
+        parts = [p.strip() for p in name.split(",", 1)]
         last_name = parts[0]
-        first_name = parts[1] if len(parts) > 1 else ''
+        first_name = parts[1] if len(parts) > 1 else ""
     else:
         parts = name.split()
         if len(parts) >= 2:
-            first_name = ' '.join(parts[:-1])
+            first_name = " ".join(parts[:-1])
             last_name = parts[-1]
         else:
             first_name = name
-            last_name = ''
+            last_name = ""
 
     updated_fields = []
     if not user.first_name and first_name:
         user.first_name = first_name
-        updated_fields.append('first_name')
+        updated_fields.append("first_name")
     if not user.last_name and last_name:
         user.last_name = last_name
-        updated_fields.append('last_name')
+        updated_fields.append("last_name")
 
     if updated_fields:
         user.save(update_fields=updated_fields)
@@ -467,6 +475,7 @@ def _merge_missionary_name_fields(user: 'User', raw_name: str) -> None:
 # ---------------------------------------------------------------------------
 # Tri-source comparison
 # ---------------------------------------------------------------------------
+
 
 def _build_tri_source_comparison(
     csv_names: set[str],
@@ -485,13 +494,13 @@ def _build_tri_source_comparison(
         mpd_and_db_not_csv — in MPD and DB but not CSV
     """
     return {
-        'csv_only': csv_names - mpd_names - db_names,
-        'mpd_only': mpd_names - csv_names - db_names,
-        'db_only': db_names - csv_names - mpd_names,
-        'all_three': csv_names & mpd_names & db_names,
-        'csv_and_mpd_not_db': (csv_names & mpd_names) - db_names,
-        'csv_and_db_not_mpd': (csv_names & db_names) - mpd_names,
-        'mpd_and_db_not_csv': (mpd_names & db_names) - csv_names,
+        "csv_only": csv_names - mpd_names - db_names,
+        "mpd_only": mpd_names - csv_names - db_names,
+        "db_only": db_names - csv_names - mpd_names,
+        "all_three": csv_names & mpd_names & db_names,
+        "csv_and_mpd_not_db": (csv_names & mpd_names) - db_names,
+        "csv_and_db_not_mpd": (csv_names & db_names) - mpd_names,
+        "mpd_and_db_not_csv": (mpd_names & db_names) - csv_names,
     }
 
 
@@ -499,7 +508,8 @@ def _build_tri_source_comparison(
 # Solicitor and Contact helpers
 # ---------------------------------------------------------------------------
 
-def _get_or_create_missionary_solicitor(missionary: 'User') -> 'Solicitor':
+
+def _get_or_create_missionary_solicitor(missionary: "User") -> "Solicitor":
     """Get or create a Solicitor record for a missionary User.
 
     Required so import_spo_gifts (Step 2) can create GiftCredit attribution
@@ -508,19 +518,19 @@ def _get_or_create_missionary_solicitor(missionary: 'User') -> 'Solicitor':
     solicitor, created = Solicitor.objects.get_or_create(
         user=missionary,
         defaults={
-            'normalized_name': normalize_solicitor_name(missionary.full_name),
+            "normalized_name": normalize_solicitor_name(missionary.full_name),
         },
     )
     if created:
         logger.debug(
-            'Created Solicitor record for missionary %s (id=%d)',
+            "Created Solicitor record for missionary %s (id=%d)",
             missionary.email,
             solicitor.id,
         )
     return solicitor
 
 
-def _get_or_create_anonymous_contact(missionary: 'User') -> 'Contact':
+def _get_or_create_anonymous_contact(missionary: "User") -> "Contact":
     """Get or create the per-missionary Anonymous Donor contact.
 
     The external_id key ensures idempotency — same contact reused across
@@ -531,16 +541,16 @@ def _get_or_create_anonymous_contact(missionary: 'User') -> 'Contact':
     """
     contact, created = Contact.objects.get_or_create(
         owner=missionary,
-        external_id=f'spo_anonymous_{missionary.id}',
+        external_id=f"spo_anonymous_{missionary.id}",
         defaults={
-            'first_name': 'Anonymous',
-            'last_name': 'Donor',
-            'status': 'donor',
+            "first_name": "Anonymous",
+            "last_name": "Donor",
+            "status": "donor",
         },
     )
     if created:
         logger.debug(
-            'Created Anonymous Donor contact for missionary %s',
+            "Created Anonymous Donor contact for missionary %s",
             missionary.email,
         )
     return contact
@@ -553,18 +563,18 @@ def _get_or_create_anonymous_contact(missionary: 'User') -> 'Contact':
 # Nested form: {canonical: [alias1, alias2, ...]}
 # Used to build the flat alias_map for _build_header_mapping.
 _SPO_GIFT_HEADER_ALIASES_NESTED: dict[str, list[str]] = {
-    'gift_id': ['Gift ID', 'GiftID', 'gift_id'],
-    'constituent_id': ['Constituent ID', 'ConstituentID', 'constituent_id'],
-    'is_anonymous': ['Gift Is Anonymous', 'IsAnonymous', 'is_anonymous'],
-    'solicitor_name': ['Solicitor Name', 'SolicitorName', 'solicitor_name'],
-    'solicitor_amount': ['Solicitor Amount', 'SolicitorAmount', 'solicitor_amount'],
-    'gift_amount': ['Gift Amount', 'Fund Split Amount', 'Amount', 'gift_amount'],
-    'gift_date': ['Gift Date', 'Date', 'gift_date'],
-    'payment_type': ['Gift Payment Type', 'Payment Type', 'payment_type'],
-    'prayer_description': [
-        'Gift Specific Attributes Prayer Requests Description',
-        'Prayer Description',
-        'prayer_description',
+    "gift_id": ["Gift ID", "GiftID", "gift_id"],
+    "constituent_id": ["Constituent ID", "ConstituentID", "constituent_id"],
+    "is_anonymous": ["Gift Is Anonymous", "IsAnonymous", "is_anonymous"],
+    "solicitor_name": ["Solicitor Name", "SolicitorName", "solicitor_name"],
+    "solicitor_amount": ["Solicitor Amount", "SolicitorAmount", "solicitor_amount"],
+    "gift_amount": ["Gift Amount", "Fund Split Amount", "Amount", "gift_amount"],
+    "gift_date": ["Gift Date", "Date", "gift_date"],
+    "payment_type": ["Gift Payment Type", "Payment Type", "payment_type"],
+    "prayer_description": [
+        "Gift Specific Attributes Prayer Requests Description",
+        "Prayer Description",
+        "prayer_description",
     ],
 }
 
@@ -580,10 +590,11 @@ SPO_GIFT_HEADER_ALIAS_MAP: dict[str, str] = {
 # import_spo_gifts — Step 2 entry point
 # ---------------------------------------------------------------------------
 
+
 def import_spo_gifts(
     file_bytes: bytes,
     filename: str,
-    uploaded_by: 'User',
+    uploaded_by: "User",
     force: bool = False,
 ) -> ImportBatch:
     """Step 2: Import SPO gifts CSV, attribute to missionaries, create GiftCredit records.
@@ -608,14 +619,15 @@ def import_spo_gifts(
     # Step 1: SHA256 dedup
     existing = check_duplicate_import(file_bytes, ImportBatchType.SPO_GIFT)
     if existing and not force:
-        logger.info('Duplicate SPO gift import detected for %s', filename)
+        logger.info("Duplicate SPO gift import detected for %s", filename)
         existing.status = ImportBatchStatus.DUPLICATE
-        existing.save(update_fields=['status'])
+        existing.save(update_fields=["status"])
         return existing
     elif existing and force:
         logger.info(
-            'Force flag set — re-importing gifts %s (deleting old batch %s)',
-            filename, existing.id,
+            "Force flag set — re-importing gifts %s (deleting old batch %s)",
+            filename,
+            existing.id,
         )
         existing.delete()
 
@@ -629,7 +641,7 @@ def import_spo_gifts(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={'errors': [{'row': 0, 'error': str(e)}]},
+            summary={"errors": [{"row": 0, "error": str(e)}]},
         )
 
     # Step 3: Parse CSV headers
@@ -641,8 +653,8 @@ def import_spo_gifts(
     def _get(row, canonical):
         actual_col = col_map.get(canonical)
         if actual_col is None:
-            return ''
-        return (row.get(actual_col) or '').strip()
+            return ""
+        return (row.get(actual_col) or "").strip()
 
     # Step 4: Pre-build missionary lookups
     all_active_users = User.objects.filter(is_active=True)
@@ -651,8 +663,7 @@ def import_spo_gifts(
 
     # Pre-build solicitor lookup: {user_id: Solicitor}
     solicitor_by_user_id: dict[int, Solicitor] = {
-        s.user_id: s
-        for s in Solicitor.objects.filter(user__isnull=False).select_related('user')
+        s.user_id: s for s in Solicitor.objects.filter(user__isnull=False).select_related("user")
     }
 
     # Step 5: Process rows
@@ -671,32 +682,36 @@ def import_spo_gifts(
 
     with transaction.atomic():
         for row_num, row in enumerate(rows, start=2):  # row 1 = headers
-            gift_id = _get(row, 'gift_id')
+            gift_id = _get(row, "gift_id")
             if not gift_id:
                 skipped_count += 1
                 continue
 
             total_rows += 1
-            solicitor_name_raw = _get(row, 'solicitor_name')
-            constituent_id = _get(row, 'constituent_id')
-            is_anonymous_raw = _get(row, 'is_anonymous').lower()
-            gift_amount_raw = _get(row, 'gift_amount')
-            solicitor_amount_raw = _get(row, 'solicitor_amount')
-            gift_date_raw = _get(row, 'gift_date')
-            prayer_description = _get(row, 'prayer_description')
+            solicitor_name_raw = _get(row, "solicitor_name")
+            constituent_id = _get(row, "constituent_id")
+            is_anonymous_raw = _get(row, "is_anonymous").lower()
+            gift_amount_raw = _get(row, "gift_amount")
+            solicitor_amount_raw = _get(row, "solicitor_amount")
+            gift_date_raw = _get(row, "gift_date")
+            prayer_description = _get(row, "prayer_description")
 
             sp = transaction.savepoint()
             try:
                 # 7a. Resolve missionary via solicitor_name column
                 missionary, match_type = _match_missionary_name(
-                    solicitor_name_raw, user_lookup, alias_lookup,
+                    solicitor_name_raw,
+                    user_lookup,
+                    alias_lookup,
                 )
                 if missionary is None:
                     # 'unresolved' (alias with user=None) or 'new' (unknown name)
                     # Either way: no Solicitor record exists → skip
                     logger.debug(
                         'Skipping gift %s — unresolved solicitor "%s" (match_type=%s)',
-                        gift_id, solicitor_name_raw, match_type,
+                        gift_id,
+                        solicitor_name_raw,
+                        match_type,
                     )
                     unmatched_unresolved.append(solicitor_name_raw)
                     skipped_count += 1
@@ -704,7 +719,7 @@ def import_spo_gifts(
                     continue
 
                 # 7b. Resolve contact
-                is_anonymous = is_anonymous_raw in ('yes', 'true', '1')
+                is_anonymous = is_anonymous_raw in ("yes", "true", "1")
                 if is_anonymous or not constituent_id:
                     contact = _get_or_create_anonymous_contact(missionary)
                 else:
@@ -714,8 +729,9 @@ def import_spo_gifts(
                     ).first()
                     if contact is None:
                         logger.debug(
-                            'Skipping gift %s — contact not found for constituent_id=%s',
-                            gift_id, constituent_id,
+                            "Skipping gift %s — contact not found for constituent_id=%s",
+                            gift_id,
+                            constituent_id,
                         )
                         contact_not_found.append(constituent_id)
                         skipped_count += 1
@@ -724,7 +740,7 @@ def import_spo_gifts(
 
                 # 7c. Idempotency: skip if gift already exists
                 if Gift.objects.filter(external_gift_id=gift_id).exists():
-                    logger.debug('Skipping gift %s — already imported', gift_id)
+                    logger.debug("Skipping gift %s — already imported", gift_id)
                     skipped_count += 1
                     transaction.savepoint_commit(sp)
                     continue
@@ -732,19 +748,24 @@ def import_spo_gifts(
                 # 7d. Parse gift fields
                 amount_cents = _parse_amount_to_cents(gift_amount_raw)
                 if amount_cents == 0:
-                    errors.append({'row': row_num, 'error': f'Unparseable or zero amount: {gift_amount_raw!r}'})
+                    errors.append(
+                        {
+                            "row": row_num,
+                            "error": f"Unparseable or zero amount: {gift_amount_raw!r}",
+                        }
+                    )
                     error_count += 1
                     transaction.savepoint_rollback(sp)
                     continue
 
                 gift_date = _parse_date(gift_date_raw)
                 if gift_date is None:
-                    errors.append({'row': row_num, 'error': f'Invalid date: {gift_date_raw!r}'})
+                    errors.append({"row": row_num, "error": f"Invalid date: {gift_date_raw!r}"})
                     error_count += 1
                     transaction.savepoint_rollback(sp)
                     continue
 
-                payment_type_raw = _get(row, 'payment_type')
+                payment_type_raw = _get(row, "payment_type")
                 payment_type = _normalize_payment_type(payment_type_raw)
 
                 # 7d. Create Gift
@@ -767,7 +788,7 @@ def import_spo_gifts(
                 GiftCredit.objects.get_or_create(
                     gift=gift,
                     solicitor=solicitor,
-                    defaults={'amount_cents': credit_amount_cents},
+                    defaults={"amount_cents": credit_amount_cents},
                 )
 
                 # 7f. Prayer intention
@@ -775,29 +796,33 @@ def import_spo_gifts(
                     _maybe_create_prayer_intention(gift, prayer_description, contact, seen_prayers)
 
                 created_count += 1
-                per_missionary.append({
-                    'gift_id': gift_id,
-                    'missionary': solicitor_name_raw,
-                    'match_type': match_type,
-                    'constituent_id': constituent_id,
-                    'amount_cents': amount_cents,
-                })
+                per_missionary.append(
+                    {
+                        "gift_id": gift_id,
+                        "missionary": solicitor_name_raw,
+                        "match_type": match_type,
+                        "constituent_id": constituent_id,
+                        "amount_cents": amount_cents,
+                    }
+                )
                 transaction.savepoint_commit(sp)
 
             except Exception as exc:
-                logger.exception('Error processing gift row %d (gift_id=%s): %s', row_num, gift_id, exc)
-                errors.append({'row': row_num, 'error': str(exc)})
+                logger.exception(
+                    "Error processing gift row %d (gift_id=%s): %s", row_num, gift_id, exc
+                )
+                errors.append({"row": row_num, "error": str(exc)})
                 error_count += 1
                 transaction.savepoint_rollback(sp)
 
     summary = {
-        'created': created_count,
-        'skipped': skipped_count,
-        'errors': error_count,
-        'unmatched_unresolved': unmatched_unresolved,
-        'contact_not_found': contact_not_found,
-        'per_missionary': per_missionary,
-        'error_details': errors,
+        "created": created_count,
+        "skipped": skipped_count,
+        "errors": error_count,
+        "unmatched_unresolved": unmatched_unresolved,
+        "contact_not_found": contact_not_found,
+        "per_missionary": per_missionary,
+        "error_details": errors,
     }
 
     batch = ImportBatch.objects.create(
@@ -814,8 +839,11 @@ def import_spo_gifts(
     )
 
     logger.info(
-        'SPO gift import complete for %s: %d created, %d skipped, %d errors',
-        filename, created_count, skipped_count, error_count,
+        "SPO gift import complete for %s: %d created, %d skipped, %d errors",
+        filename,
+        created_count,
+        skipped_count,
+        error_count,
     )
     return batch
 
@@ -824,10 +852,11 @@ def import_spo_gifts(
 # import_spo_prayers — Step 3 entry point
 # ---------------------------------------------------------------------------
 
+
 def import_spo_prayers(
     file_bytes: bytes,
     filename: str,
-    uploaded_by: 'User',
+    uploaded_by: "User",
     force: bool = False,
 ) -> ImportBatch:
     """Step 3: Extract prayer intentions from SPO gifts CSV (prayer-only rerun pass).
@@ -848,14 +877,15 @@ def import_spo_prayers(
     # Step 1: SHA256 dedup
     existing = check_duplicate_import(file_bytes, ImportBatchType.SPO_PRAYER)
     if existing and not force:
-        logger.info('Duplicate SPO prayer import detected for %s', filename)
+        logger.info("Duplicate SPO prayer import detected for %s", filename)
         existing.status = ImportBatchStatus.DUPLICATE
-        existing.save(update_fields=['status'])
+        existing.save(update_fields=["status"])
         return existing
     elif existing and force:
         logger.info(
-            'Force flag set — re-importing prayers %s (deleting old batch %s)',
-            filename, existing.id,
+            "Force flag set — re-importing prayers %s (deleting old batch %s)",
+            filename,
+            existing.id,
         )
         existing.delete()
 
@@ -869,7 +899,7 @@ def import_spo_prayers(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={'errors': [{'row': 0, 'error': str(e)}]},
+            summary={"errors": [{"row": 0, "error": str(e)}]},
         )
 
     # Step 3: Parse CSV headers
@@ -880,8 +910,8 @@ def import_spo_prayers(
     def _get(row, canonical):
         actual_col = col_map.get(canonical)
         if actual_col is None:
-            return ''
-        return (row.get(actual_col) or '').strip()
+            return ""
+        return (row.get(actual_col) or "").strip()
 
     # Step 4: Pre-build missionary lookups
     all_active_users = User.objects.filter(is_active=True)
@@ -897,20 +927,22 @@ def import_spo_prayers(
 
     with transaction.atomic():
         for row in rows:
-            gift_id = _get(row, 'gift_id')
-            prayer_description = _get(row, 'prayer_description')
+            gift_id = _get(row, "gift_id")
+            prayer_description = _get(row, "prayer_description")
             if not prayer_description:
                 skipped_count += 1
                 continue
 
             total_rows += 1
-            solicitor_name_raw = _get(row, 'solicitor_name')
-            constituent_id = _get(row, 'constituent_id')
-            is_anonymous_raw = _get(row, 'is_anonymous').lower()
+            solicitor_name_raw = _get(row, "solicitor_name")
+            constituent_id = _get(row, "constituent_id")
+            is_anonymous_raw = _get(row, "is_anonymous").lower()
 
             # Resolve missionary (best-effort)
             missionary, match_type = _match_missionary_name(
-                solicitor_name_raw, user_lookup, alias_lookup,
+                solicitor_name_raw,
+                user_lookup,
+                alias_lookup,
             )
             if missionary is None:
                 # Best-effort: can't link prayer to missionary — skip
@@ -918,7 +950,7 @@ def import_spo_prayers(
                 continue
 
             # Resolve contact (best-effort)
-            is_anonymous = is_anonymous_raw in ('yes', 'true', '1')
+            is_anonymous = is_anonymous_raw in ("yes", "true", "1")
             if is_anonymous or not constituent_id:
                 contact = _get_or_create_anonymous_contact(missionary)
             else:
@@ -937,30 +969,59 @@ def import_spo_prayers(
             sp = transaction.savepoint()
             try:
                 if gift is not None:
-                    result = _maybe_create_prayer_intention(gift, prayer_description, contact, seen_prayers)
+                    result = _maybe_create_prayer_intention(
+                        gift, prayer_description, contact, seen_prayers
+                    )
                     if result:
                         created_count += 1
                 else:
                     # No gift to link — create prayer intention without M2M
                     from apps.prayers.models import PrayerIntention, PrayerIntentionStatus
+
                     PRAYER_STOPLIST = {
-                        'n/a', 'na', 'none', 'no', '-', '--', '---', 'no prayer request',
-                        'x', 'xx', 'xxx', 'general', 'same', 'same as above',
-                        'see above', 'ditto', 'tbd', 'unknown',
+                        "n/a",
+                        "na",
+                        "none",
+                        "no",
+                        "-",
+                        "--",
+                        "---",
+                        "no prayer request",
+                        "x",
+                        "xx",
+                        "xxx",
+                        "general",
+                        "same",
+                        "same as above",
+                        "see above",
+                        "ditto",
+                        "tbd",
+                        "unknown",
                     }
                     text = prayer_description.strip()
-                    if text and text.lower() not in PRAYER_STOPLIST and any(c.isalnum() for c in text):
+                    if (
+                        text
+                        and text.lower() not in PRAYER_STOPLIST
+                        and any(c.isalnum() for c in text)
+                    ):
                         normalized = text.lower().strip()
                         dedup_key = (contact.id, normalized)
                         if dedup_key not in seen_prayers:
-                            existing_prayer = PrayerIntention.objects.filter(
-                                contact=contact,
-                                description__iexact=text,
-                            ).first()
+                            # description is encrypted at rest; Python-compare
+                            # against the contact's intentions because SQL
+                            # __iexact would never match ciphertext.
+                            existing_prayer = next(
+                                (
+                                    p
+                                    for p in PrayerIntention.objects.filter(contact=contact)
+                                    if (p.description or "").strip().lower() == normalized
+                                ),
+                                None,
+                            )
                             if existing_prayer:
                                 seen_prayers[dedup_key] = existing_prayer
                             else:
-                                title = text[:80].rsplit(' ', 1)[0] if len(text) > 80 else text
+                                title = text[:80].rsplit(" ", 1)[0] if len(text) > 80 else text
                                 prayer = PrayerIntention.objects.create(
                                     contact=contact,
                                     title=title,
@@ -971,12 +1032,12 @@ def import_spo_prayers(
                                 created_count += 1
                 transaction.savepoint_commit(sp)
             except Exception as exc:
-                logger.exception('Error extracting prayer from gift %s: %s', gift_id, exc)
+                logger.exception("Error extracting prayer from gift %s: %s", gift_id, exc)
                 transaction.savepoint_rollback(sp)
 
     summary = {
-        'prayers_created': created_count,
-        'skipped': skipped_count,
+        "prayers_created": created_count,
+        "skipped": skipped_count,
     }
 
     batch = ImportBatch.objects.create(
@@ -992,7 +1053,9 @@ def import_spo_prayers(
     )
 
     logger.info(
-        'SPO prayer extraction complete for %s: %d prayers created, %d skipped',
-        filename, created_count, skipped_count,
+        "SPO prayer extraction complete for %s: %d prayers created, %d skipped",
+        filename,
+        created_count,
+        skipped_count,
     )
     return batch

@@ -9,6 +9,7 @@ from decimal import Decimal
 
 from django.db import models
 
+from apps.core.encryption import EncryptedTextField
 from apps.core.models import TimeStampedModel
 
 # ---------------------------------------------------------------------------
@@ -157,7 +158,9 @@ class Gift(TimeStampedModel):
         "amount (cents)", help_text="Gift amount in cents (e.g., 10000 = $100.00)"
     )
     gift_date = models.DateField("gift date", db_index=True)
-    description = models.TextField("description", blank=True)
+    # Encrypted at rest; substring search via search_fields is no longer
+    # supported (encrypted column).
+    description = EncryptedTextField("description", blank=True)
     payment_type = models.CharField(
         "payment type",
         max_length=20,
@@ -293,7 +296,8 @@ class RecurringGift(TimeStampedModel):
         db_index=True,
     )
 
-    description = models.TextField("description", blank=True)
+    # Encrypted at rest; substring search no longer supported.
+    description = EncryptedTextField("description", blank=True)
     payment_type = models.CharField(
         "payment type",
         max_length=20,

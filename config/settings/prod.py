@@ -44,6 +44,12 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 # Sentry for error tracking
 SENTRY_DSN = config("SENTRY_DSN", default="")  # noqa: F405
 if SENTRY_DSN:
+    # Defense in depth: send_default_pii=False filters Django's auto-attached
+    # PII (request body, cookies, user.email). The before_send/before_breadcrumb
+    # hooks scrub residual PII patterns (emails, phone numbers) that may have
+    # leaked into exception messages, log breadcrumbs, or custom tags.
+    from apps.core.sentry_scrubbing import before_breadcrumb, before_send
+
     sentry_sdk.init(
         dsn=SENTRY_DSN,
         integrations=[
@@ -52,11 +58,33 @@ if SENTRY_DSN:
         ],
         traces_sample_rate=0.1,
         send_default_pii=False,
+        before_send=before_send,
+        before_breadcrumb=before_breadcrumb,
         environment=config("ENVIRONMENT", default="production"),  # noqa: F405
     )
 
 # Database configuration
-# Parse DATABASE_URL (provided by Render) or fall back to individual vars
+# Parse DATABASE_URL (provided by Render) or fall back to individual vars.
+#
+# TLS posture (transit encryption):
+#   * DB_SSLMODE controls peer/certificate verification:
+#       - require       : TLS is mandatory but cert chain is NOT verified
+#                         (current default — preserves prior behavior)
+#       - verify-ca     : verify cert chain against DB_SSLROOTCERT
+#       - verify-full   : also verify hostname (recommended for compliance)
+#   * DB_SSLROOTCERT points at the CA bundle used for verification.
+#     Set to /etc/ssl/certs/ca-certificates.crt (Debian-based images, default
+#     on Render) when Render's Postgres cert chains to a public CA. To pin to
+#     a Render-issued CA cert, mount it via a build step and set this var.
+#
+# To upgrade to verify-full in production:
+#   1. Confirm Render Postgres cert is present in the system trust store
+#      (or download the CA bundle and set DB_SSLROOTCERT to its path).
+#   2. Set DB_SSLMODE=verify-full in the Render web service env.
+#   3. Redeploy. The startup TLS check below logs the negotiated version.
+DB_SSLMODE = config("DB_SSLMODE", default="require")  # noqa: F405
+DB_SSLROOTCERT = config("DB_SSLROOTCERT", default="")  # noqa: F405
+
 if os.environ.get("DATABASE_URL"):
     DATABASES["default"] = dj_database_url.config(  # noqa: F405
         default=os.environ["DATABASE_URL"],
@@ -73,6 +101,15 @@ else:
         "HOST": config("DB_HOST", default="localhost"),  # noqa: F405
         "PORT": config("DB_PORT", default="5432"),  # noqa: F405
     }
+
+# Apply sslmode + sslrootcert as connection OPTIONS so they take effect even
+# when DATABASE_URL omits them. ssl_require=True above ensures sslmode is at
+# least 'require'; this overrides upward toward verify-ca/verify-full when
+# the env vars are set.
+_db_options = DATABASES["default"].setdefault("OPTIONS", {})  # noqa: F405
+_db_options["sslmode"] = DB_SSLMODE
+if DB_SSLROOTCERT:
+    _db_options["sslrootcert"] = DB_SSLROOTCERT
 
 # Cache — use Redis if available, otherwise in-memory
 REDIS_URL = config("REDIS_URL", default="")  # noqa: F405

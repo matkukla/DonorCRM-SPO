@@ -6,6 +6,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.db import models
 
+from apps.core.blind_index import hash_value, normalize_phone
 from apps.core.encryption import EncryptedTextField
 from apps.core.models import TimeStampedModel
 
@@ -76,12 +77,30 @@ class Contact(TimeStampedModel):
     # Basic information
     first_name = models.CharField("first name", max_length=150, blank=True)
     last_name = models.CharField("last name", max_length=150, blank=True)
-    email = models.EmailField("email", blank=True)
-    phone = models.CharField("phone", max_length=20, blank=True)
-    phone_secondary = models.CharField("secondary phone", max_length=20, blank=True)
+    # email is encrypted at rest; equality lookups go through email_hash.
+    # See apps.core.blind_index. Substring search is no longer supported.
+    email = EncryptedTextField("email", blank=True)
+    # HMAC-SHA256 of the normalized email. Synced from email in save().
+    # Indexed for equality lookups; nullable so empty-email rows have NULL
+    # (preserving the original conditional unique constraint semantics).
+    email_hash = models.BinaryField(
+        "email hash", null=True, blank=True, editable=False, db_index=True
+    )
+    # phone and phone_secondary are encrypted at rest; equality dedup goes
+    # through phone_hash / phone_secondary_hash. Substring search is no
+    # longer supported on either column.
+    phone = EncryptedTextField("phone", blank=True)
+    phone_hash = models.BinaryField(
+        "phone hash", null=True, blank=True, editable=False, db_index=True
+    )
+    phone_secondary = EncryptedTextField("secondary phone", blank=True)
+    phone_secondary_hash = models.BinaryField(
+        "phone secondary hash", null=True, blank=True, editable=False, db_index=True
+    )
 
-    # Address
-    street_address = models.CharField("street address", max_length=255, blank=True)
+    # Address — street_address is encrypted at rest. City/state/postal/country
+    # remain plaintext; they are coarse-grained and not directly identifying.
+    street_address = EncryptedTextField("street address", blank=True)
     city = models.CharField("city", max_length=100, blank=True)
     state = models.CharField("state", max_length=50, blank=True)
     postal_code = models.CharField("postal code", max_length=20, blank=True)
@@ -136,15 +155,16 @@ class Contact(TimeStampedModel):
             models.Index(fields=["owner", "status"]),
             models.Index(fields=["owner", "last_gift_date"]),
             models.Index(fields=["last_name", "first_name"]),
-            models.Index(fields=["email"]),
+            # email plaintext is encrypted; equality lookups use email_hash
+            models.Index(fields=["email_hash"]),
             models.Index(fields=["needs_thank_you"]),
             models.Index(fields=["owner", "is_merged"]),
         ]
         constraints = [
             models.UniqueConstraint(
-                fields=["owner", "email"],
+                fields=["owner", "email_hash"],
                 name="unique_contact_email_per_owner",
-                condition=~models.Q(email="") & models.Q(is_merged=False),
+                condition=models.Q(email_hash__isnull=False) & models.Q(is_merged=False),
             ),
             models.UniqueConstraint(
                 fields=["owner", "external_id"],
@@ -160,6 +180,15 @@ class Contact(TimeStampedModel):
 
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
+
+    def save(self, *args, **kwargs):
+        # Keep blind-index hashes in sync with their plaintext sources on
+        # every save() path. bulk_update / .update() bypass this; data
+        # migrations and rotate_pii_encryption compute hashes explicitly.
+        self.email_hash = hash_value(self.email)
+        self.phone_hash = hash_value(normalize_phone(self.phone))
+        self.phone_secondary_hash = hash_value(normalize_phone(self.phone_secondary))
+        super().save(*args, **kwargs)
 
     @property
     def full_name(self):

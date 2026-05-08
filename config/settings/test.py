@@ -56,3 +56,14 @@ EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 # django-axes: never lock out during the test suite. Tests intentionally
 # exercise login failure paths and the lockout would cause flaky cascades.
 AXES_ENABLED = False
+
+# Static AES-256 key for tests so factories that populate encrypted fields
+# (Contact.notes, Contact.phone_secondary, Contact.street_address,
+# JournalStageEvent.notes) work out of the box. Tests that exercise the
+# encryption module directly use override_settings to inject fresh keys.
+# This value is non-secret — it's only ever used against an in-memory SQLite
+# DB that doesn't survive the process.
+PII_ENCRYPTION_KEYS = "aes256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+
+# Static blind-index key for tests. Non-secret — see PII_ENCRYPTION_KEYS note.
+BLIND_INDEX_KEYS = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"

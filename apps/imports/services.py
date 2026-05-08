@@ -10,16 +10,27 @@ from decimal import Decimal, InvalidOperation
 from typing import List, Tuple
 
 from apps.contacts.models import Contact
+from apps.core.blind_index import lookup_hashes
 from apps.imports.models import Fund, ImportStatus
 
 logger = logging.getLogger(__name__)
 
 
+def _email_hashes(email):
+    """Wrapper around blind_index.lookup_hashes used by import dedup.
+
+    Returns a list of HMAC-SHA256 hashes (one per configured key) suitable
+    for ``Contact.objects.filter(email_hash__in=...)`` lookups when the
+    email column is encrypted.
+    """
+    return lookup_hashes(email)
+
+
 # Valid enum values for validation
-VALID_FUND_STATUSES = ['active', 'inactive', 'closed']
+VALID_FUND_STATUSES = ["active", "inactive", "closed"]
 
 # Formula characters for CSV injection prevention
-FORMULA_PREFIXES = ('=', '+', '-', '@')
+FORMULA_PREFIXES = ("=", "+", "-", "@")
 
 
 def sanitize_csv_value(value):
@@ -30,10 +41,10 @@ def sanitize_csv_value(value):
 
 
 # Date formats to try when parsing
-DATE_FORMATS = ['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%m-%d-%Y', '%d-%m-%Y']
+DATE_FORMATS = ["%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y", "%m-%d-%Y", "%d-%m-%Y"]
 
 # Email validation pattern
-EMAIL_PATTERN = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+EMAIL_PATTERN = re.compile(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
 
 
 def _validate_email(email: str) -> bool:
@@ -49,24 +60,27 @@ def _parse_amount(amount_str: str) -> Tuple[Decimal, str]:
     Returns (amount, error_message).
     """
     if not amount_str:
-        return None, 'Amount is required'
+        return None, "Amount is required"
 
     # Clean the string
-    cleaned = amount_str.strip().replace('$', '').replace(',', '').replace(' ', '')
+    cleaned = amount_str.strip().replace("$", "").replace(",", "").replace(" ", "")
 
     # Check for negative values
-    if cleaned.startswith('-'):
-        return None, 'Amount cannot be negative'
+    if cleaned.startswith("-"):
+        return None, "Amount cannot be negative"
 
     try:
         amount = Decimal(cleaned)
         if amount <= 0:
-            return None, 'Amount must be greater than zero'
-        if amount > Decimal('9999999.99'):
-            return None, 'Amount exceeds maximum allowed value'
+            return None, "Amount must be greater than zero"
+        if amount > Decimal("9999999.99"):
+            return None, "Amount exceeds maximum allowed value"
         return amount, None
     except InvalidOperation:
-        return None, f'Invalid amount format: "{amount_str}". Expected a number like "100.00" or "$1,234.56"'
+        return (
+            None,
+            f'Invalid amount format: "{amount_str}". Expected a number like "100.00" or "$1,234.56"',
+        )
 
 
 def _parse_date(date_str: str) -> Tuple[datetime.date, str]:
@@ -75,7 +89,7 @@ def _parse_date(date_str: str) -> Tuple[datetime.date, str]:
     Returns (date, error_message).
     """
     if not date_str:
-        return None, 'Date is required'
+        return None, "Date is required"
 
     cleaned = date_str.strip()
 
@@ -87,7 +101,7 @@ def _parse_date(date_str: str) -> Tuple[datetime.date, str]:
 
     return None, (
         f'Invalid date format: "{date_str}". '
-        f'Accepted formats: YYYY-MM-DD, MM/DD/YYYY, DD/MM/YYYY'
+        f"Accepted formats: YYYY-MM-DD, MM/DD/YYYY, DD/MM/YYYY"
     )
 
 
@@ -110,66 +124,68 @@ def parse_contacts_csv(file_content: str, user) -> Tuple[List[dict], List[dict]]
     try:
         reader = csv.DictReader(io.StringIO(file_content))
     except csv.Error as e:
-        return [], [{'row': 1, 'errors': [f'Invalid CSV format: {e}'], 'data': {}}]
+        return [], [{"row": 1, "errors": [f"Invalid CSV format: {e}"], "data": {}}]
 
     valid_records = []
     errors = []
     seen_emails = set()
 
-    required_fields = ['first_name', 'last_name']
+    required_fields = ["first_name", "last_name"]
 
     for row_num, row in enumerate(reader, start=2):
         row_errors = []
 
         # Check required fields
         for field in required_fields:
-            value = row.get(field, '').strip()
+            value = row.get(field, "").strip()
             if not value:
-                row_errors.append(f'Missing required field: {field}')
+                row_errors.append(f"Missing required field: {field}")
             elif len(value) > 150:
-                row_errors.append(f'{field} exceeds maximum length of 150 characters')
+                row_errors.append(f"{field} exceeds maximum length of 150 characters")
 
         # Validate email format
-        email = row.get('email', '').strip().lower()
+        email = row.get("email", "").strip().lower()
         if email:
             if not _validate_email(email):
                 row_errors.append(f'Invalid email format: "{email}"')
             elif email in seen_emails:
-                row_errors.append(f'Duplicate email in file: {email}')
-            elif Contact.objects.filter(owner=user, email=email, is_merged=False).exists():
+                row_errors.append(f"Duplicate email in file: {email}")
+            elif Contact.objects.filter(
+                owner=user,
+                email_hash__in=_email_hashes(email),
+                is_merged=False,
+            ).exists():
                 row_errors.append(f'Contact with email "{email}" already exists in your account')
             else:
                 seen_emails.add(email)
 
         # Validate phone format (basic)
-        phone = row.get('phone', '').strip()
+        phone = row.get("phone", "").strip()
         if phone and len(phone) > 20:
-            row_errors.append('Phone number exceeds maximum length of 20 characters')
+            row_errors.append("Phone number exceeds maximum length of 20 characters")
 
         # Validate postal code
-        postal_code = row.get('postal_code', '').strip()
+        postal_code = row.get("postal_code", "").strip()
         if postal_code and len(postal_code) > 20:
-            row_errors.append('Postal code exceeds maximum length of 20 characters')
+            row_errors.append("Postal code exceeds maximum length of 20 characters")
 
         if row_errors:
-            errors.append({
-                'row': row_num,
-                'errors': row_errors,
-                'data': dict(row)
-            })
+            errors.append({"row": row_num, "errors": row_errors, "data": dict(row)})
         else:
-            valid_records.append({
-                'first_name': row.get('first_name', '').strip(),
-                'last_name': row.get('last_name', '').strip(),
-                'email': email,
-                'phone': phone,
-                'street_address': row.get('street_address', '').strip()[:255],
-                'city': row.get('city', '').strip()[:100],
-                'state': row.get('state', '').strip()[:50],
-                'postal_code': postal_code,
-                'country': row.get('country', 'USA').strip()[:100] or 'USA',
-                'notes': row.get('notes', '').strip(),
-            })
+            valid_records.append(
+                {
+                    "first_name": row.get("first_name", "").strip(),
+                    "last_name": row.get("last_name", "").strip(),
+                    "email": email,
+                    "phone": phone,
+                    "street_address": row.get("street_address", "").strip()[:255],
+                    "city": row.get("city", "").strip()[:100],
+                    "state": row.get("state", "").strip()[:50],
+                    "postal_code": postal_code,
+                    "country": row.get("country", "USA").strip()[:100] or "USA",
+                    "notes": row.get("notes", "").strip(),
+                }
+            )
 
     return valid_records, errors
 
@@ -185,17 +201,14 @@ def import_contacts(records: List[dict], user) -> Tuple[int, List[Contact]]:
     Returns:
         Tuple of (count, created_contacts)
     """
-    logger.info(f'Starting contact import: {len(records)} records for user {user.email}')
+    logger.info(f"Starting contact import: {len(records)} records for user {user.email}")
     created_contacts = []
 
     for record in records:
-        contact = Contact.objects.create(
-            owner=user,
-            **record
-        )
+        contact = Contact.objects.create(owner=user, **record)
         created_contacts.append(contact)
 
-    logger.info(f'Contact import completed: {len(created_contacts)} contacts created')
+    logger.info(f"Contact import completed: {len(created_contacts)} contacts created")
     return len(created_contacts), created_contacts
 
 
@@ -215,31 +228,44 @@ def export_contacts_csv(queryset) -> str:
     """
     output = io.StringIO()
     fieldnames = [
-        'first_name', 'last_name', 'email', 'phone',
-        'street_address', 'city', 'state', 'postal_code', 'country',
-        'status', 'total_given', 'gift_count', 'last_gift_date', 'notes'
+        "first_name",
+        "last_name",
+        "email",
+        "phone",
+        "street_address",
+        "city",
+        "state",
+        "postal_code",
+        "country",
+        "status",
+        "total_given",
+        "gift_count",
+        "last_gift_date",
+        "notes",
     ]
 
     writer = csv.DictWriter(output, fieldnames=fieldnames)
     writer.writeheader()
 
     for contact in queryset:
-        writer.writerow({
-            'first_name': sanitize_csv_value(contact.first_name),
-            'last_name': sanitize_csv_value(contact.last_name),
-            'email': sanitize_csv_value(contact.email),
-            'phone': sanitize_csv_value(contact.phone),
-            'street_address': sanitize_csv_value(contact.street_address),
-            'city': sanitize_csv_value(contact.city),
-            'state': sanitize_csv_value(contact.state),
-            'postal_code': sanitize_csv_value(contact.postal_code),
-            'country': sanitize_csv_value(contact.country),
-            'status': contact.status,
-            'total_given': str(contact.total_given),
-            'gift_count': contact.gift_count,
-            'last_gift_date': str(contact.last_gift_date) if contact.last_gift_date else '',
-            'notes': sanitize_csv_value(contact.notes),
-        })
+        writer.writerow(
+            {
+                "first_name": sanitize_csv_value(contact.first_name),
+                "last_name": sanitize_csv_value(contact.last_name),
+                "email": sanitize_csv_value(contact.email),
+                "phone": sanitize_csv_value(contact.phone),
+                "street_address": sanitize_csv_value(contact.street_address),
+                "city": sanitize_csv_value(contact.city),
+                "state": sanitize_csv_value(contact.state),
+                "postal_code": sanitize_csv_value(contact.postal_code),
+                "country": sanitize_csv_value(contact.country),
+                "status": contact.status,
+                "total_given": str(contact.total_given),
+                "gift_count": contact.gift_count,
+                "last_gift_date": str(contact.last_gift_date) if contact.last_gift_date else "",
+                "notes": sanitize_csv_value(contact.notes),
+            }
+        )
 
     return output.getvalue()
 
@@ -256,23 +282,30 @@ def export_gifts_csv(queryset) -> str:
     """
     output = io.StringIO()
     fieldnames = [
-        'contact_first_name', 'contact_last_name', 'contact_email',
-        'amount', 'gift_date', 'external_gift_id', 'description'
+        "contact_first_name",
+        "contact_last_name",
+        "contact_email",
+        "amount",
+        "gift_date",
+        "external_gift_id",
+        "description",
     ]
 
     writer = csv.DictWriter(output, fieldnames=fieldnames)
     writer.writeheader()
 
-    for gift in queryset.select_related('donor_contact'):
-        writer.writerow({
-            'contact_first_name': sanitize_csv_value(gift.donor_contact.first_name),
-            'contact_last_name': sanitize_csv_value(gift.donor_contact.last_name),
-            'contact_email': sanitize_csv_value(gift.donor_contact.email),
-            'amount': f"{gift.amount_dollars:.2f}",
-            'gift_date': str(gift.gift_date),
-            'external_gift_id': sanitize_csv_value(gift.external_gift_id),
-            'description': sanitize_csv_value(gift.description),
-        })
+    for gift in queryset.select_related("donor_contact"):
+        writer.writerow(
+            {
+                "contact_first_name": sanitize_csv_value(gift.donor_contact.first_name),
+                "contact_last_name": sanitize_csv_value(gift.donor_contact.last_name),
+                "contact_email": sanitize_csv_value(gift.donor_contact.email),
+                "amount": f"{gift.amount_dollars:.2f}",
+                "gift_date": str(gift.gift_date),
+                "external_gift_id": sanitize_csv_value(gift.external_gift_id),
+                "description": sanitize_csv_value(gift.description),
+            }
+        )
 
     return output.getvalue()
 
@@ -284,7 +317,7 @@ def get_contacts_template() -> str:
     Returns:
         CSV header row as string
     """
-    return 'first_name,last_name,email,phone,street_address,city,state,postal_code,country,notes\n'
+    return "first_name,last_name,email,phone,street_address,city,state,postal_code,country,notes\n"
 
 
 ## Old get_donations_template removed. Superseded by RE import pipeline.
@@ -297,7 +330,7 @@ def get_funds_template() -> str:
     Returns:
         CSV header row as string
     """
-    return 'fund_id,name,status\n'
+    return "fund_id,name,status\n"
 
 
 def parse_funds_csv(file_content: str) -> Tuple[List[dict], List[dict]]:
@@ -317,20 +350,22 @@ def parse_funds_csv(file_content: str) -> Tuple[List[dict], List[dict]]:
     try:
         reader = csv.DictReader(io.StringIO(file_content))
     except csv.Error as e:
-        return [], [{'row': 1, 'errors': [f'Invalid CSV format: {e}'], 'data': {}}]
+        return [], [{"row": 1, "errors": [f"Invalid CSV format: {e}"], "data": {}}]
 
     # Validate required column headers before processing rows
     if reader.fieldnames is None:
-        return [], [{'row': 1, 'errors': ['CSV file is empty or has no headers'], 'data': {}}]
+        return [], [{"row": 1, "errors": ["CSV file is empty or has no headers"], "data": {}}]
 
-    required_columns = ['fund_id', 'name']
+    required_columns = ["fund_id", "name"]
     missing_columns = [col for col in required_columns if col not in reader.fieldnames]
     if missing_columns:
-        return [], [{
-            'row': 1,
-            'errors': [f'Missing required column: {", ".join(missing_columns)}'],
-            'data': {}
-        }]
+        return [], [
+            {
+                "row": 1,
+                "errors": [f'Missing required column: {", ".join(missing_columns)}'],
+                "data": {},
+            }
+        ]
 
     valid_records = []
     errors = []
@@ -340,29 +375,29 @@ def parse_funds_csv(file_content: str) -> Tuple[List[dict], List[dict]]:
         row_errors = []
 
         # Get and trim values
-        fund_id = row.get('fund_id', '').strip()
-        name = row.get('name', '').strip()
-        status = row.get('status', '').strip().lower() or 'active'
+        fund_id = row.get("fund_id", "").strip()
+        name = row.get("name", "").strip()
+        status = row.get("status", "").strip().lower() or "active"
 
         # Validate fund_id
         if not fund_id:
-            row_errors.append('fund_id is required')
+            row_errors.append("fund_id is required")
         elif len(fund_id) > 100:
-            row_errors.append('fund_id exceeds maximum length of 100 characters')
+            row_errors.append("fund_id exceeds maximum length of 100 characters")
         elif fund_id.startswith(FORMULA_PREFIXES):
-            row_errors.append(f'fund_id cannot start with formula character ({fund_id[0]})')
+            row_errors.append(f"fund_id cannot start with formula character ({fund_id[0]})")
         elif fund_id in seen_fund_ids:
-            row_errors.append(f'Duplicate fund_id in file: {fund_id}')
+            row_errors.append(f"Duplicate fund_id in file: {fund_id}")
         else:
             seen_fund_ids.add(fund_id)
 
         # Validate name
         if not name:
-            row_errors.append('name is required')
+            row_errors.append("name is required")
         elif len(name) > 255:
-            row_errors.append('name exceeds maximum length of 255 characters')
+            row_errors.append("name exceeds maximum length of 255 characters")
         elif name.startswith(FORMULA_PREFIXES):
-            row_errors.append(f'name cannot start with formula character ({name[0]})')
+            row_errors.append(f"name cannot start with formula character ({name[0]})")
 
         # Validate status
         if status not in VALID_FUND_STATUSES:
@@ -371,17 +406,15 @@ def parse_funds_csv(file_content: str) -> Tuple[List[dict], List[dict]]:
             )
 
         if row_errors:
-            errors.append({
-                'row': row_num,
-                'errors': row_errors,
-                'data': dict(row)
-            })
+            errors.append({"row": row_num, "errors": row_errors, "data": dict(row)})
         else:
-            valid_records.append({
-                'fund_id': fund_id,
-                'name': name,
-                'status': status,
-            })
+            valid_records.append(
+                {
+                    "fund_id": fund_id,
+                    "name": name,
+                    "status": status,
+                }
+            )
 
     return valid_records, errors
 
@@ -397,7 +430,7 @@ def import_funds(records: List[dict], import_run) -> Tuple[int, int]:
     Returns:
         Tuple of (created_count, updated_count)
     """
-    logger.info(f'Starting fund import: {len(records)} records for import run {import_run.id}')
+    logger.info(f"Starting fund import: {len(records)} records for import run {import_run.id}")
 
     if not records:
         # Update import run for empty records
@@ -408,18 +441,18 @@ def import_funds(records: List[dict], import_run) -> Tuple[int, int]:
         return 0, 0
 
     # Get existing external_ids to calculate created vs updated
-    external_ids = [record['fund_id'] for record in records]
+    external_ids = [record["fund_id"] for record in records]
     existing_external_ids = set(
-        Fund.objects.filter(external_id__in=external_ids).values_list('external_id', flat=True)
+        Fund.objects.filter(external_id__in=external_ids).values_list("external_id", flat=True)
     )
 
     # Prepare Fund objects for bulk create
     fund_objects = [
         Fund(
-            external_id=record['fund_id'],
-            name=record['name'],
-            status=record['status'],
-            owner=None  # Funds are org-wide
+            external_id=record["fund_id"],
+            name=record["name"],
+            status=record["status"],
+            owner=None,  # Funds are org-wide
         )
         for record in records
     ]
@@ -428,13 +461,13 @@ def import_funds(records: List[dict], import_run) -> Tuple[int, int]:
     Fund.objects.bulk_create(
         fund_objects,
         update_conflicts=True,
-        unique_fields=['external_id'],
-        update_fields=['name', 'status']
+        unique_fields=["external_id"],
+        update_fields=["name", "status"],
     )
 
     # Calculate counts
-    created_count = sum(1 for record in records if record['fund_id'] not in existing_external_ids)
-    updated_count = sum(1 for record in records if record['fund_id'] in existing_external_ids)
+    created_count = sum(1 for record in records if record["fund_id"] not in existing_external_ids)
+    updated_count = sum(1 for record in records if record["fund_id"] in existing_external_ids)
 
     # Update import run
     import_run.created_count = created_count
@@ -442,7 +475,7 @@ def import_funds(records: List[dict], import_run) -> Tuple[int, int]:
     import_run.status = ImportStatus.COMPLETED
     import_run.save()
 
-    logger.info(f'Fund import completed: {created_count} created, {updated_count} updated')
+    logger.info(f"Fund import completed: {created_count} created, {updated_count} updated")
     return created_count, updated_count
 
 
@@ -453,7 +486,7 @@ def get_entities_template() -> str:
     Returns:
         CSV header row as string
     """
-    return 'entity_id,name,email,phone,address,entity_type\n'
+    return "entity_id,name,email,phone,address,entity_type\n"
 
 
 def parse_entities_csv(file_content: str, user) -> Tuple[List[dict], List[dict]]:
@@ -475,20 +508,22 @@ def parse_entities_csv(file_content: str, user) -> Tuple[List[dict], List[dict]]
     try:
         reader = csv.DictReader(io.StringIO(file_content))
     except csv.Error as e:
-        return [], [{'row': 1, 'errors': [f'Invalid CSV format: {e}'], 'data': {}}]
+        return [], [{"row": 1, "errors": [f"Invalid CSV format: {e}"], "data": {}}]
 
     # Validate required column headers before processing rows
     if reader.fieldnames is None:
-        return [], [{'row': 1, 'errors': ['CSV file is empty or has no headers'], 'data': {}}]
+        return [], [{"row": 1, "errors": ["CSV file is empty or has no headers"], "data": {}}]
 
-    required_columns = ['entity_id', 'name']
+    required_columns = ["entity_id", "name"]
     missing_columns = [col for col in required_columns if col not in reader.fieldnames]
     if missing_columns:
-        return [], [{
-            'row': 1,
-            'errors': [f'Missing required column: {", ".join(missing_columns)}'],
-            'data': {}
-        }]
+        return [], [
+            {
+                "row": 1,
+                "errors": [f'Missing required column: {", ".join(missing_columns)}'],
+                "data": {},
+            }
+        ]
 
     valid_records = []
     errors = []
@@ -498,76 +533,74 @@ def parse_entities_csv(file_content: str, user) -> Tuple[List[dict], List[dict]]
         row_errors = []
 
         # Get and trim values
-        entity_id = row.get('entity_id', '').strip()
-        name = row.get('name', '').strip()
-        email = row.get('email', '').strip()
-        phone = row.get('phone', '').strip()
-        address = row.get('address', '').strip()
+        entity_id = row.get("entity_id", "").strip()
+        name = row.get("name", "").strip()
+        email = row.get("email", "").strip()
+        phone = row.get("phone", "").strip()
+        address = row.get("address", "").strip()
         # entity_type is intentionally ignored - Contact has no such field
 
         # Validate entity_id
         if not entity_id:
-            row_errors.append('entity_id is required')
+            row_errors.append("entity_id is required")
         elif len(entity_id) > 100:
-            row_errors.append('entity_id exceeds maximum length of 100 characters')
+            row_errors.append("entity_id exceeds maximum length of 100 characters")
         elif entity_id.startswith(FORMULA_PREFIXES):
-            row_errors.append(f'entity_id cannot start with formula character ({entity_id[0]})')
+            row_errors.append(f"entity_id cannot start with formula character ({entity_id[0]})")
         elif entity_id in seen_entity_ids:
-            row_errors.append(f'Duplicate entity_id in file: {entity_id}')
+            row_errors.append(f"Duplicate entity_id in file: {entity_id}")
         else:
             seen_entity_ids.add(entity_id)
 
         # Validate name
         if not name:
-            row_errors.append('name is required')
+            row_errors.append("name is required")
         elif len(name) > 300:
-            row_errors.append('name exceeds maximum length of 300 characters')
+            row_errors.append("name exceeds maximum length of 300 characters")
         elif name.startswith(FORMULA_PREFIXES):
-            row_errors.append(f'name cannot start with formula character ({name[0]})')
+            row_errors.append(f"name cannot start with formula character ({name[0]})")
 
         # Split name into first_name and last_name
         # Last word is last_name, everything else is first_name
-        first_name = ''
-        last_name = ''
+        first_name = ""
+        last_name = ""
         if name and not row_errors:
             parts = name.split()
             if len(parts) > 1:
-                first_name = ' '.join(parts[:-1])
+                first_name = " ".join(parts[:-1])
                 last_name = parts[-1]
             else:
-                first_name = parts[0] if parts else ''
-                last_name = ''
+                first_name = parts[0] if parts else ""
+                last_name = ""
 
         # Validate email (optional)
         if email:
             if len(email) > 254:
-                row_errors.append('email exceeds maximum length of 254 characters')
+                row_errors.append("email exceeds maximum length of 254 characters")
             elif not _validate_email(email):
                 row_errors.append(f'Invalid email format: "{email}"')
 
         # Validate phone (optional)
         if phone and len(phone) > 20:
-            row_errors.append('phone exceeds maximum length of 20 characters')
+            row_errors.append("phone exceeds maximum length of 20 characters")
 
         # Validate address (optional) - maps to street_address
         if address and len(address) > 255:
-            row_errors.append('address exceeds maximum length of 255 characters')
+            row_errors.append("address exceeds maximum length of 255 characters")
 
         if row_errors:
-            errors.append({
-                'row': row_num,
-                'errors': row_errors,
-                'data': dict(row)
-            })
+            errors.append({"row": row_num, "errors": row_errors, "data": dict(row)})
         else:
-            valid_records.append({
-                'entity_id': entity_id,
-                'first_name': first_name,
-                'last_name': last_name,
-                'email': email,
-                'phone': phone,
-                'street_address': address,  # address maps to street_address
-            })
+            valid_records.append(
+                {
+                    "entity_id": entity_id,
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "email": email,
+                    "phone": phone,
+                    "street_address": address,  # address maps to street_address
+                }
+            )
 
     return valid_records, errors
 
@@ -585,7 +618,7 @@ def import_entities(records: List[dict], user, import_run) -> Tuple[int, int]:
     Returns:
         Tuple of (created_count, updated_count)
     """
-    logger.info(f'Starting entity import: {len(records)} records for user {user.email}')
+    logger.info(f"Starting entity import: {len(records)} records for user {user.email}")
 
     if not records:
         # Update import run for empty records
@@ -596,12 +629,11 @@ def import_entities(records: List[dict], user, import_run) -> Tuple[int, int]:
         return 0, 0
 
     # Get existing external_ids for this user to calculate created vs updated
-    external_ids = [record['entity_id'] for record in records]
+    external_ids = [record["entity_id"] for record in records]
     existing_external_ids = set(
-        Contact.objects.filter(
-            owner=user,
-            external_id__in=external_ids
-        ).values_list('external_id', flat=True)
+        Contact.objects.filter(owner=user, external_id__in=external_ids).values_list(
+            "external_id", flat=True
+        )
     )
 
     # Upsert contacts individually
@@ -614,14 +646,14 @@ def import_entities(records: List[dict], user, import_run) -> Tuple[int, int]:
     for record in records:
         contact, created = Contact.objects.update_or_create(
             owner=user,
-            external_id=record['entity_id'],
+            external_id=record["entity_id"],
             defaults={
-                'first_name': record['first_name'],
-                'last_name': record['last_name'],
-                'email': record.get('email', ''),
-                'phone': record.get('phone', ''),
-                'street_address': record.get('street_address', '')
-            }
+                "first_name": record["first_name"],
+                "last_name": record["last_name"],
+                "email": record.get("email", ""),
+                "phone": record.get("phone", ""),
+                "street_address": record.get("street_address", ""),
+            },
         )
         if created:
             created_count += 1
@@ -634,7 +666,7 @@ def import_entities(records: List[dict], user, import_run) -> Tuple[int, int]:
     import_run.status = ImportStatus.COMPLETED
     import_run.save()
 
-    logger.info(f'Entity import completed: {created_count} created, {updated_count} updated')
+    logger.info(f"Entity import completed: {created_count} created, {updated_count} updated")
     return created_count, updated_count
 
 
