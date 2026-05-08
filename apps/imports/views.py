@@ -4,7 +4,6 @@ Views for CSV import/export.
 import csv
 import io
 import logging
-import uuid
 
 from django.http import HttpResponse
 
@@ -42,7 +41,7 @@ from apps.imports.services import (
     sanitize_csv_value,
 )
 from apps.imports.spo_services import import_spo_gifts, import_spo_prayers, reconcile_missionaries
-from apps.imports.tasks import get_import_progress, import_contacts_async
+from apps.imports.tasks import get_import_progress
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +59,6 @@ class ContactImportView(APIView):
 
     Query params:
         validate_only: If 'true', only validate without importing
-        async: If 'true', process import asynchronously (recommended for large files)
     """
 
     permission_classes = [permissions.IsAuthenticated, IsAdmin]
@@ -102,49 +100,28 @@ class ContactImportView(APIView):
                 }
             )
 
-        # Use async import for large files
-        from django.conf import settings as django_settings
-
-        use_async = (
-            request.query_params.get("async") == "true" or len(valid_records) > ASYNC_THRESHOLD
-        )
-
-        if use_async and valid_records:
-            if not getattr(django_settings, "CELERY_ENABLED", False):
-                # Hard fail rather than silently dropping the job: Celery is
-                # not available in this environment. The user should split the
-                # file or contact support.
-                logger.warning(
-                    "Async contact import requested but CELERY_ENABLED=False "
-                    "(rows=%d, user_id=%s)",
-                    len(valid_records),
-                    request.user.id,
-                )
-                return Response(
-                    {
-                        "detail": (
-                            "Async import is unavailable in this environment. "
-                            "Please split the file into smaller batches "
-                            f"(under {ASYNC_THRESHOLD:,} rows) and try again."
-                        ),
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            import_id = uuid.uuid4().hex[:12]
-            import_contacts_async.delay(content, request.user.id, import_id)
-            logger.info(f"Contact import {import_id} queued for async processing")
+        # Refuse files past the size limit. Even with the long gunicorn
+        # timeout, a sync import of this size on a Starter instance would
+        # exceed it. Larger imports require splitting client-side.
+        if len(valid_records) > ASYNC_THRESHOLD:
+            logger.warning(
+                "Contact import refused — file too large (rows=%d, user_id=%s)",
+                len(valid_records),
+                request.user.id,
+            )
             return Response(
                 {
-                    "status": "processing",
-                    "import_id": import_id,
-                    "message": f"{len(valid_records)} contacts queued for import",
-                    "error_count": len(errors),
-                    "errors": errors[:20],
+                    "detail": (
+                        f"This file has {len(valid_records):,} rows, which "
+                        f"exceeds the {ASYNC_THRESHOLD:,}-row limit. Please "
+                        "split it into smaller files and upload each "
+                        "separately."
+                    ),
                 },
-                status=status.HTTP_202_ACCEPTED,
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Sync import for small files
+        # Sync import — fits inside the gunicorn --timeout window.
         if valid_records:
             count, contacts = import_contacts(valid_records, request.user)
         else:
