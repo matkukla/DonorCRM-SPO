@@ -16,16 +16,6 @@ from apps.imports.models import Fund, ImportStatus
 logger = logging.getLogger(__name__)
 
 
-def _email_hashes(email):
-    """Wrapper around blind_index.lookup_hashes used by import dedup.
-
-    Returns a list of HMAC-SHA256 hashes (one per configured key) suitable
-    for ``Contact.objects.filter(email_hash__in=...)`` lookups when the
-    email column is encrypted.
-    """
-    return lookup_hashes(email)
-
-
 # Valid enum values for validation
 VALID_FUND_STATUSES = ["active", "inactive", "closed"]
 
@@ -152,7 +142,7 @@ def parse_contacts_csv(file_content: str, user) -> Tuple[List[dict], List[dict]]
                 row_errors.append(f"Duplicate email in file: {email}")
             elif Contact.objects.filter(
                 owner=user,
-                email_hash__in=_email_hashes(email),
+                email_hash__in=lookup_hashes(email),
                 is_merged=False,
             ).exists():
                 row_errors.append(f'Contact with email "{email}" already exists in your account')
@@ -201,7 +191,7 @@ def import_contacts(records: List[dict], user) -> Tuple[int, List[Contact]]:
     Returns:
         Tuple of (count, created_contacts)
     """
-    logger.info(f"Starting contact import: {len(records)} records for user {user.email}")
+    logger.info("Starting contact import: %d records for user %s", len(records), user.id)
     created_contacts = []
 
     for record in records:
@@ -618,7 +608,7 @@ def import_entities(records: List[dict], user, import_run) -> Tuple[int, int]:
     Returns:
         Tuple of (created_count, updated_count)
     """
-    logger.info(f"Starting entity import: {len(records)} records for user {user.email}")
+    logger.info("Starting entity import: %d records for user %s", len(records), user.id)
 
     if not records:
         # Update import run for empty records

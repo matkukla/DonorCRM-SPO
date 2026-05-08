@@ -68,22 +68,25 @@ if SENTRY_DSN:
 #
 # TLS posture (transit encryption):
 #   * DB_SSLMODE controls peer/certificate verification:
-#       - require       : TLS is mandatory but cert chain is NOT verified
-#                         (current default — preserves prior behavior)
+#       - require       : TLS is mandatory but cert chain is NOT verified —
+#                         vulnerable to MITM if a network-positioned attacker
+#                         can present a forged cert. NOT recommended.
 #       - verify-ca     : verify cert chain against DB_SSLROOTCERT
-#       - verify-full   : also verify hostname (recommended for compliance)
+#       - verify-full   : also verify hostname (default; recommended)
 #   * DB_SSLROOTCERT points at the CA bundle used for verification.
-#     Set to /etc/ssl/certs/ca-certificates.crt (Debian-based images, default
-#     on Render) when Render's Postgres cert chains to a public CA. To pin to
-#     a Render-issued CA cert, mount it via a build step and set this var.
+#     Defaults to /etc/ssl/certs/ca-certificates.crt (Debian-based images,
+#     including Render's). Override only if Render's Postgres cert chains to
+#     a private CA you have to ship explicitly.
 #
-# To upgrade to verify-full in production:
-#   1. Confirm Render Postgres cert is present in the system trust store
-#      (or download the CA bundle and set DB_SSLROOTCERT to its path).
-#   2. Set DB_SSLMODE=verify-full in the Render web service env.
-#   3. Redeploy. The startup TLS check below logs the negotiated version.
-DB_SSLMODE = config("DB_SSLMODE", default="require")  # noqa: F405
-DB_SSLROOTCERT = config("DB_SSLROOTCERT", default="")  # noqa: F405
+# Operator note: if a deploy fails with "could not get server's host name from
+# server certificate", either (a) downgrade to DB_SSLMODE=verify-ca, or (b)
+# set DB_SSLROOTCERT to a CA bundle that matches Render's Postgres cert.
+# DO NOT downgrade to require — that defeats the purpose of TLS.
+DB_SSLMODE = config("DB_SSLMODE", default="verify-full")  # noqa: F405
+DB_SSLROOTCERT = config(  # noqa: F405
+    "DB_SSLROOTCERT",
+    default="/etc/ssl/certs/ca-certificates.crt",
+)
 
 if os.environ.get("DATABASE_URL"):
     DATABASES["default"] = dj_database_url.config(  # noqa: F405

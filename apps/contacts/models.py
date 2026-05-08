@@ -6,7 +6,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.db import models
 
-from apps.core.blind_index import hash_value, normalize_phone
+from apps.core.blind_index import BinaryHashField, hash_value, normalize_phone
 from apps.core.encryption import EncryptedTextField
 from apps.core.models import TimeStampedModel
 
@@ -81,20 +81,19 @@ class Contact(TimeStampedModel):
     # See apps.core.blind_index. Substring search is no longer supported.
     email = EncryptedTextField("email", blank=True)
     # HMAC-SHA256 of the normalized email. Synced from email in save().
-    # Indexed for equality lookups; nullable so empty-email rows have NULL
-    # (preserving the original conditional unique constraint semantics).
-    email_hash = models.BinaryField(
-        "email hash", null=True, blank=True, editable=False, db_index=True
-    )
+    # The named index lives in Meta.indexes (`models.Index(fields=["email_hash"])`);
+    # we deliberately do NOT set db_index=True here to avoid Postgres
+    # maintaining a duplicate auto-generated B-tree on the same column.
+    # nullable so empty-email rows have NULL (preserving the original
+    # conditional unique constraint semantics).
+    email_hash = BinaryHashField("email hash", null=True, blank=True, editable=False)
     # phone and phone_secondary are encrypted at rest; equality dedup goes
     # through phone_hash / phone_secondary_hash. Substring search is no
     # longer supported on either column.
     phone = EncryptedTextField("phone", blank=True)
-    phone_hash = models.BinaryField(
-        "phone hash", null=True, blank=True, editable=False, db_index=True
-    )
+    phone_hash = BinaryHashField("phone hash", null=True, blank=True, editable=False, db_index=True)
     phone_secondary = EncryptedTextField("secondary phone", blank=True)
-    phone_secondary_hash = models.BinaryField(
+    phone_secondary_hash = BinaryHashField(
         "phone secondary hash", null=True, blank=True, editable=False, db_index=True
     )
 
@@ -227,18 +226,25 @@ class Contact(TimeStampedModel):
         return self.monthly_recurring_gift_amount
 
     def update_giving_stats(self):
-        """
-        Recalculate giving statistics from gifts.
-        Called when gifts are added/modified.
-        Uses select_for_update() to prevent race conditions during concurrent updates.
+        """Recalculate giving statistics from gifts.
+
+        Called when gifts are added/modified. Concurrent calls for the
+        same contact are serialized via a row-level write lock; the
+        ``SELECT ... FOR UPDATE`` statement queues subsequent callers
+        until the enclosing transaction commits.
         """
         from django.db import transaction
 
         with transaction.atomic():
-            # Lock this contact row to prevent concurrent recalculation
-            Contact.objects.select_for_update().filter(pk=self.pk).first()
+            # Acquire the row-level write lock and rebind to the locked
+            # instance so any later mutation goes through the row that
+            # was actually locked. The aggregate below reads from the
+            # gifts table, not from ``self``, so this is mostly belt-
+            # and-suspenders, but it makes the lock contract explicit
+            # and avoids a stale ``self`` field surprising future code.
+            locked = Contact.objects.select_for_update().get(pk=self.pk)
 
-            gifts = self.gifts.all()
+            gifts = locked.gifts.all()
             agg = gifts.aggregate(
                 total_cents=models.Sum("amount_cents"),
                 count=models.Count("id"),
@@ -246,22 +252,22 @@ class Contact(TimeStampedModel):
                 last=models.Max("gift_date"),
             )
 
-            self.total_given = Decimal(agg["total_cents"] or 0) / Decimal(100)
-            self.gift_count = agg["count"] or 0
-            self.first_gift_date = agg["first"]
-            self.last_gift_date = agg["last"]
+            locked.total_given = Decimal(agg["total_cents"] or 0) / Decimal(100)
+            locked.gift_count = agg["count"] or 0
+            locked.first_gift_date = agg["first"]
+            locked.last_gift_date = agg["last"]
 
             if agg["last"]:
                 last_gift = gifts.order_by("-gift_date").first()
-                self.last_gift_amount = last_gift.amount_dollars if last_gift else None
+                locked.last_gift_amount = last_gift.amount_dollars if last_gift else None
             else:
-                self.last_gift_amount = None
+                locked.last_gift_amount = None
 
             # Update status based on giving history
-            if self.gift_count > 0 and self.status == ContactStatus.PROSPECT:
-                self.status = ContactStatus.DONOR
+            if locked.gift_count > 0 and locked.status == ContactStatus.PROSPECT:
+                locked.status = ContactStatus.DONOR
 
-            self.save(
+            locked.save(
                 update_fields=[
                     "total_given",
                     "gift_count",
@@ -271,6 +277,19 @@ class Contact(TimeStampedModel):
                     "status",
                 ]
             )
+
+            # Mirror the recomputed values back onto ``self`` so callers
+            # that hold the original instance see the new state without
+            # a refresh_from_db.
+            for f in (
+                "total_given",
+                "gift_count",
+                "first_gift_date",
+                "last_gift_date",
+                "last_gift_amount",
+                "status",
+            ):
+                setattr(self, f, getattr(locked, f))
 
     def mark_thanked(self):
         """Mark contact as thanked."""

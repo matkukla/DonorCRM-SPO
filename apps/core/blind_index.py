@@ -50,6 +50,7 @@ from typing import Final, List, Tuple
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
+from django.db import models
 
 _ENV_VAR: Final = "DJANGO_BLIND_INDEX_KEYS"
 _KEY_LEN: Final = 32  # SHA-256 / HMAC key length
@@ -152,3 +153,26 @@ def normalize_phone(value: str | None) -> str | None:
 def _clear_caches() -> None:
     """Reset memoization. Test-only helper."""
     _get_keys.cache_clear()
+
+
+class BinaryHashField(models.BinaryField):
+    """BinaryField that always returns ``bytes`` (never ``memoryview``).
+
+    psycopg2's BYTEA adapter returns ``memoryview`` for binary columns,
+    which silently fails Python equality against ``bytes``:
+
+        contact.email_hash == hash_value(email)   # False even when equal!
+
+    ORM ``__in`` filters work fine because psycopg2 handles the
+    comparison in SQL. This subclass is for the Python-side path: any
+    caller comparing the hash via ``==`` gets a ``bytes`` result so the
+    comparison works as expected.
+
+    Schema-wise this is identical to ``BinaryField``; the override is
+    purely a Python-side type guarantee.
+    """
+
+    def from_db_value(self, value, expression, connection):
+        if value is None:
+            return None
+        return bytes(value)

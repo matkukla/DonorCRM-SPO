@@ -84,7 +84,7 @@ class DataAccessLog(models.Model):
     For DB-level append-only enforcement (recommended for SOC 2-credible
     posture), grant the application's Postgres role only INSERT/SELECT on
     this table and run ``purge_expired_data`` under a separate role with
-    DELETE. Documented in ``docs/security/access-controls.md`` (TODO).
+    DELETE. Provisioning runbook: ``docs/security/access-controls.md``.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -141,6 +141,10 @@ class DataAccessLog(models.Model):
         indexes = [
             models.Index(fields=["actor", "-timestamp"]),
             models.Index(fields=["resource_type", "resource_id"]),
+            # actor_id_snapshot is the only stable identifier after the
+            # actor FK is SET_NULL'd on user deletion. Index it so audit
+            # queries about a deleted actor do not table-scan.
+            models.Index(fields=["actor_id_snapshot"]),
         ]
         # No default permissions; do not register in admin.
         default_permissions = ()

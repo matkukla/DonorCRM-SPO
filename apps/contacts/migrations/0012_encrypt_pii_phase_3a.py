@@ -46,25 +46,6 @@ def reencrypt_phase_3a(apps, schema_editor):
             Contact.objects.bulk_update(batch, [field_name])
 
 
-def decrypt_phase_3a(apps, schema_editor):
-    """Reverse step. See note in 0011_alter_contact_notes about reversibility."""
-    Contact = apps.get_model("contacts", "Contact")
-    for field_name in _FIELDS:
-        qs = (
-            Contact.objects.exclude(**{field_name: ""})
-            .exclude(**{f"{field_name}__isnull": True})
-            .only("id", field_name)
-        )
-        batch = []
-        for contact in qs.iterator(chunk_size=BATCH_SIZE):
-            batch.append(contact)
-            if len(batch) >= BATCH_SIZE:
-                Contact.objects.bulk_update(batch, [field_name])
-                batch = []
-        if batch:
-            Contact.objects.bulk_update(batch, [field_name])
-
-
 class Migration(migrations.Migration):
     atomic = False
 
@@ -87,5 +68,9 @@ class Migration(migrations.Migration):
                 blank=True, verbose_name="street address"
             ),
         ),
-        migrations.RunPython(reencrypt_phase_3a, decrypt_phase_3a),
+        # Reverse is RunPython.noop because reading + bulk_update would
+        # re-encrypt under a new nonce, not decrypt. Plaintext rollback for
+        # an EncryptedTextField requires `manage.py rotate_pii_encryption`
+        # under the old key, not a Django migration.
+        migrations.RunPython(reencrypt_phase_3a, migrations.RunPython.noop),
     ]

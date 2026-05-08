@@ -68,6 +68,10 @@ class Migration(migrations.Migration):
                         fields=["resource_type", "resource_id"],
                         name="core_dataac_resourc_864cdb_idx",
                     ),
+                    models.Index(
+                        fields=["actor_id_snapshot"],
+                        name="core_dataac_actor_snap_idx",
+                    ),
                 ],
             },
         ),

@@ -32,9 +32,9 @@ def generate_weekly_summary():
                 summaries_sent += 1
             else:
                 errors += 1
-                logger.warning(f'Failed to send weekly summary to {user.email}')
-        except Exception as e:
+                logger.warning("Failed to send weekly summary to user %s", user.id)
+        except Exception:
             errors += 1
-            logger.error(f'Error generating summary for {user.email}: {e}')
+            logger.exception("Error generating summary for user %s", user.id)
 
-    return f'Sent {summaries_sent} weekly summaries ({errors} errors)'
+    return f"Sent {summaries_sent} weekly summaries ({errors} errors)"

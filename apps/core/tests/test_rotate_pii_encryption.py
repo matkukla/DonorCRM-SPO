@@ -125,7 +125,9 @@ class TestRotatePiiEncryption:
 
             for pk in (v1_id, fernet_id, plain_id):
                 raw = self._raw_notes(pk)
-                assert raw.startswith("v1:"), f"row {pk} stored as {raw[:20]!r}"
+                # Rotation now upgrades to v2 (per-field AAD); legacy v1
+                # rows remain readable but new writes use v2.
+                assert raw.startswith("v2:"), f"row {pk} stored as {raw[:20]!r}"
 
             # Plaintext still readable through ORM.
             assert Contact.objects.get(pk=v1_id).notes == "already v1"
@@ -196,7 +198,7 @@ class TestRotatePiiEncryption:
             out = StringIO()
             call_command("rotate_pii_encryption", "--all", stdout=out)
 
-            assert self._raw_notes(c.pk).startswith("v1:")
+            assert self._raw_notes(c.pk).startswith("v2:")
             assert Contact.objects.get(pk=c.pk).notes == "raw plaintext"
 
     def test_unknown_field_raises(self):

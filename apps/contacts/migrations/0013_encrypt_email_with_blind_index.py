@@ -39,14 +39,29 @@ BATCH_SIZE = 500
 
 
 def backfill_email_hash(apps, schema_editor):
-    """RunPython A: compute email_hash for every existing contact."""
+    """RunPython A: compute email_hash for every existing contact.
+
+    Belt-and-suspenders: at this point in the migration sequence the
+    email column is still a plain EmailField in the historical model
+    state, so ``c.email`` is plaintext. But if the migration is partially
+    applied and re-run after AlterField has fired, ``c.email`` could be
+    ciphertext (``v1:``/``v2:``) or legacy Fernet (``gAAAAA``). Decrypt
+    in those cases via the encryption module so the hash is computed
+    over plaintext, not ciphertext.
+    """
     from apps.core.blind_index import hash_value
+    from apps.core.encryption import decrypt_str
 
     Contact = apps.get_model("contacts", "Contact")
     qs = Contact.objects.exclude(email="").exclude(email__isnull=True).only("id", "email")
     batch = []
     for c in qs.iterator(chunk_size=BATCH_SIZE):
-        c.email_hash = hash_value(c.email)
+        raw = c.email
+        if raw and (raw.startswith(("v1:", "v2:")) or raw.startswith("gAAAAA")):
+            # decrypt_str handles all three formats; AAD is None because
+            # this migration predates v2 binding for the email column.
+            raw = decrypt_str(raw)
+        c.email_hash = hash_value(raw)
         batch.append(c)
         if len(batch) >= BATCH_SIZE:
             Contact.objects.bulk_update(batch, ["email_hash"])
@@ -69,19 +84,6 @@ def reencrypt_email(apps, schema_editor):
         # Reading c.email returned plaintext via the legacy fallback in
         # EncryptedTextField.from_db_value. Writing it back through bulk_update
         # invokes get_prep_value, which encrypts under the current write key.
-        batch.append(c)
-        if len(batch) >= BATCH_SIZE:
-            Contact.objects.bulk_update(batch, ["email"])
-            batch = []
-    if batch:
-        Contact.objects.bulk_update(batch, ["email"])
-
-
-def decrypt_email(apps, schema_editor):
-    Contact = apps.get_model("contacts", "Contact")
-    qs = Contact.objects.exclude(email="").exclude(email__isnull=True).only("id", "email")
-    batch = []
-    for c in qs.iterator(chunk_size=BATCH_SIZE):
         batch.append(c)
         if len(batch) >= BATCH_SIZE:
             Contact.objects.bulk_update(batch, ["email"])
@@ -121,7 +123,11 @@ class Migration(migrations.Migration):
             field=apps.core.encryption.EncryptedTextField(blank=True, verbose_name="email"),
         ),
         # Re-encrypt every existing email under the current write key.
-        migrations.RunPython(reencrypt_email, decrypt_email),
+        # Reverse is RunPython.noop because reading + bulk_update would
+        # re-encrypt under a new nonce, not decrypt. Plaintext rollback
+        # for an EncryptedTextField requires `manage.py rotate_pii_encryption`
+        # under the old key, not a Django migration.
+        migrations.RunPython(reencrypt_email, migrations.RunPython.noop),
         migrations.AddIndex(
             model_name="contact",
             index=models.Index(fields=["email_hash"], name="contacts_email_h_7c5d3c_idx"),

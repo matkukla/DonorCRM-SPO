@@ -31,10 +31,6 @@ def reencrypt_description(apps, schema_editor):
         PrayerIntention.objects.bulk_update(batch, ["description"])
 
 
-def decrypt_description(apps, schema_editor):
-    reencrypt_description(apps, schema_editor)
-
-
 class Migration(migrations.Migration):
     atomic = False
 
@@ -48,5 +44,6 @@ class Migration(migrations.Migration):
             name="description",
             field=apps.core.encryption.EncryptedTextField(blank=True, verbose_name="description"),
         ),
-        migrations.RunPython(reencrypt_description, decrypt_description),
+        # Reverse is RunPython.noop — see contacts/0012 docstring.
+        migrations.RunPython(reencrypt_description, migrations.RunPython.noop),
     ]

@@ -59,7 +59,15 @@ _ENV_VAR: Final = "DJANGO_PII_ENCRYPTION_KEYS"
 
 # Storage prefixes — outside the base64 payload so detection is unambiguous
 # regardless of plaintext contents.
+#
+#   v1: AES-256-GCM, no associated data. Original format. Read-only path is
+#       retained so existing v1 rows continue to decrypt during rollout.
+#   v2: AES-256-GCM with per-field AAD = b"<app_label>.<ModelName>.<attname>".
+#       Binds the ciphertext to its (model, field) context so a swap between
+#       columns or rows fails authentication. EncryptedTextField writes v2
+#       on every save once this code is deployed.
 _V1_PREFIX: Final = "v1:"
+_V2_PREFIX: Final = "v2:"
 
 # Fernet's binary token starts with version byte 0x80, which encodes to
 # ``gAAAAA`` in URL-safe base64 (the next chars come from the timestamp);
@@ -178,49 +186,79 @@ def _all_aes256_keys() -> List[bytes]:
     return [k.raw for k in _get_keys() if k.algo == "aes256"]
 
 
-def encrypt_str(plaintext: str | None) -> str | None:
-    """Encrypt a UTF-8 string with AES-256-GCM. Returns ``v1:<base64>``."""
+def encrypt_str(plaintext: str | None, aad: bytes | None = None) -> str | None:
+    """Encrypt a UTF-8 string with AES-256-GCM.
+
+    When ``aad`` is provided, emits ``v2:<base64>`` with that bytes object
+    bound as AES-GCM associated data. The same ``aad`` must be supplied
+    on decrypt or authentication fails. ``EncryptedTextField`` derives
+    ``aad`` from ``b"<app_label>.<ModelName>.<attname>"`` so a ciphertext
+    cannot be silently moved between columns or models.
+
+    When ``aad`` is None, falls back to ``v1:<base64>`` (no AAD) for
+    backward compatibility with direct callers.
+    """
     if plaintext is None:
         return None
     if not isinstance(plaintext, str):
         raise TypeError(f"encrypt_str requires str, got {type(plaintext).__name__}")
     aesgcm = _get_write_aesgcm()
     nonce = os.urandom(_NONCE_LEN)
+    if aad is not None:
+        ct = aesgcm.encrypt(nonce, plaintext.encode("utf-8"), associated_data=aad)
+        return _V2_PREFIX + _b64url_encode(nonce + ct)
     ct = aesgcm.encrypt(nonce, plaintext.encode("utf-8"), associated_data=None)
     return _V1_PREFIX + _b64url_encode(nonce + ct)
 
 
-def decrypt_str(token: str | None) -> str | None:
+def decrypt_str(token: str | None, aad: bytes | None = None) -> str | None:
     """Decrypt a token produced by ``encrypt_str`` (any historical version).
 
     Dispatches by storage prefix:
-      * ``v1:`` — AES-256-GCM, tries each configured aes256 key
+      * ``v2:`` — AES-256-GCM with AAD; ``aad`` MUST be supplied and match
+        the value used at encrypt time, else authentication fails.
+      * ``v1:`` — AES-256-GCM, no AAD; ``aad`` is ignored on this path so
+        existing v1 rows continue to decrypt during rollout.
       * ``gAAAAA`` — legacy Fernet, decrypted via configured fernet keys
-      * anything else — treated as legacy plaintext and returned as-is
+        (``aad`` is ignored).
+      * anything else — treated as legacy plaintext and returned as-is.
     """
     if token is None:
         return None
 
-    if token.startswith(_V1_PREFIX):
-        blob = _b64url_decode(token[len(_V1_PREFIX) :])
+    if token.startswith(_V2_PREFIX) or token.startswith(_V1_PREFIX):
+        is_v2 = token.startswith(_V2_PREFIX)
+        prefix_len = len(_V2_PREFIX) if is_v2 else len(_V1_PREFIX)
+        blob = _b64url_decode(token[prefix_len:])
         if len(blob) < _NONCE_LEN + _TAG_LEN:
-            raise ValueError("EncryptedTextField: v1 token too short for nonce + tag.")
+            raise ValueError(
+                f"EncryptedTextField: {'v2' if is_v2 else 'v1'} token too short " "for nonce + tag."
+            )
         nonce, ct = blob[:_NONCE_LEN], blob[_NONCE_LEN:]
         aes_keys = _all_aes256_keys()
         if not aes_keys:
             raise ValueError(
-                "EncryptedTextField: v1 ciphertext encountered but no aes256 keys "
-                f"configured in {_ENV_VAR}."
+                "EncryptedTextField: AES-GCM ciphertext encountered but no aes256 "
+                f"keys configured in {_ENV_VAR}."
             )
+        # v2 binds the per-field AAD; v1 ignores it (AAD was None at encrypt
+        # time, so passing None on decrypt preserves the legacy contract).
+        decrypt_aad = aad if is_v2 else None
         for key in aes_keys:
             try:
-                return AESGCM(key).decrypt(nonce, ct, None).decode("utf-8")
+                return AESGCM(key).decrypt(nonce, ct, decrypt_aad).decode("utf-8")
             except InvalidTag:
                 continue
         raise ValueError(
-            "EncryptedTextField: v1 row decryption failed under all configured "
-            f"aes256 keys. Check {_ENV_VAR} — a key may have been rotated out "
-            "without re-encrypting this row."
+            f"EncryptedTextField: {'v2' if is_v2 else 'v1'} row decryption failed "
+            f"under all configured aes256 keys. Check {_ENV_VAR} — a key may have "
+            "been rotated out without re-encrypting this row."
+            + (
+                " For v2, also verify the field has not been renamed/moved since "
+                "encryption (the AAD is bound to model + field name)."
+                if is_v2
+                else ""
+            )
         )
 
     if token.startswith(_FERNET_PREFIX):
@@ -229,7 +267,7 @@ def decrypt_str(token: str | None) -> str | None:
             raise ValueError(
                 "EncryptedTextField: legacy Fernet ciphertext found but no "
                 f"fernet: keys configured. Add the legacy key to {_ENV_VAR} "
-                "or run rotate_pii_encryption to upgrade rows to v1."
+                "or run rotate_pii_encryption to upgrade rows to v1/v2."
             )
         try:
             return legacy.decrypt(token.encode("ascii")).decode("utf-8")
@@ -254,24 +292,46 @@ def _clear_caches() -> None:
 class EncryptedTextField(models.TextField):
     """TextField that transparently encrypts/decrypts on save/load.
 
-    Storage is ``v1:<base64-urlsafe>`` (AES-256-GCM) for new writes. Reads
-    transparently handle legacy Fernet ciphertext (``gAAAAA`` prefix) and
-    legacy plaintext so a rolling migration does not crash before all rows
-    are re-encrypted.
+    Storage is ``v2:<base64-urlsafe>`` (AES-256-GCM with per-field AAD)
+    for new writes. The AAD is ``b"<app_label>.<ModelName>.<attname>"``,
+    binding ciphertext to its column so a swap between models or fields
+    fails authentication. Reads transparently handle:
+
+      * v2 ciphertext (current writes) — verifies AAD on decrypt
+      * v1 ciphertext (pre-AAD) — decrypts without AAD for backward compat
+      * legacy Fernet ``gAAAAA`` prefix — handled via configured fernet keys
+      * legacy plaintext — returned as-is so rolling migrations do not crash
 
     Notes
     -----
     - Encrypted columns cannot be queried with ``__contains`` / ``__iexact``.
       For searchable PII keep a separate hashed-blind-index column.
     - ``null=True`` is honored: a null DB value round-trips as ``None``.
+    - Renaming a model or field invalidates v2 AAD. Run
+      ``manage.py rotate_pii_encryption`` after such a rename — but plan
+      a maintenance window because reads will fail until rotation completes.
     """
 
-    description = "Text encrypted at rest with AES-256-GCM (v1) — see apps.core.encryption."
+    description = (
+        "Text encrypted at rest with AES-256-GCM (v2 with per-field AAD) — "
+        "see apps.core.encryption."
+    )
+
+    # Default for instances not yet attached to a model (e.g. constructed in
+    # tests). When None, encrypt_str/decrypt_str fall back to v1 semantics.
+    _aad: bytes | None = None
+
+    def contribute_to_class(self, cls, name, **kwargs):
+        super().contribute_to_class(cls, name, **kwargs)
+        # Precomputed at model-class load and never changes for the lifetime
+        # of the process. Format mirrors Django's `Model._meta.label`
+        # ("app_label.ModelName") plus the field's attname.
+        self._aad = f"{cls._meta.label}.{self.attname}".encode("utf-8")
 
     def from_db_value(self, value, expression, connection):
         if value is None or value == "":
             return value
-        return decrypt_str(value)
+        return decrypt_str(value, aad=self._aad)
 
     def to_python(self, value):
         return value
@@ -279,7 +339,7 @@ class EncryptedTextField(models.TextField):
     def get_prep_value(self, value):
         if value is None or value == "":
             return value
-        return encrypt_str(value)
+        return encrypt_str(value, aad=self._aad)
 
 
 # Compatibility shim for legacy callers that referenced ``encryption._get_cipher``

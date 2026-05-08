@@ -25,19 +25,6 @@ def reencrypt_notes(apps, schema_editor):
         Event.objects.bulk_update(batch, ["notes"])
 
 
-def decrypt_notes(apps, schema_editor):
-    Event = apps.get_model("journals", "JournalStageEvent")
-    qs = Event.objects.exclude(notes="").exclude(notes__isnull=True).only("id", "notes")
-    batch = []
-    for ev in qs.iterator(chunk_size=BATCH_SIZE):
-        batch.append(ev)
-        if len(batch) >= BATCH_SIZE:
-            Event.objects.bulk_update(batch, ["notes"])
-            batch = []
-    if batch:
-        Event.objects.bulk_update(batch, ["notes"])
-
-
 class Migration(migrations.Migration):
     atomic = False
 
@@ -53,5 +40,6 @@ class Migration(migrations.Migration):
                 blank=True, help_text="Optional notes about this event", verbose_name="notes"
             ),
         ),
-        migrations.RunPython(reencrypt_notes, decrypt_notes),
+        # Reverse is RunPython.noop — see contacts/0012 docstring.
+        migrations.RunPython(reencrypt_notes, migrations.RunPython.noop),
     ]

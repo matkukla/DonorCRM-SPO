@@ -432,7 +432,7 @@ def import_re_solicitors(
                     logger.info(
                         'Auto-linked solicitor "%s" to user %s',
                         norm_name,
-                        matched_user.email,
+                        matched_user.id,
                     )
 
                 solicitor.save()
@@ -447,7 +447,10 @@ def import_re_solicitors(
                     )
 
     except Exception as e:
-        logger.error("Solicitor import failed for %s: %s", filename, e)
+        # logger.exception attaches the traceback so a programming error
+        # surfaces in Sentry rather than getting silently rolled into a
+        # FAILED ImportBatch.
+        logger.exception("Solicitor import failed for %s", filename)
         batch = ImportBatch.objects.create(
             import_type=ImportBatchType.RE_SOLICITOR,
             status=ImportBatchStatus.FAILED,
@@ -633,26 +636,23 @@ def _match_contact(row_data: dict, owner: User, row_number: int) -> tuple[Contac
     if ext_id:
         contact = Contact.objects.filter(external_constituent_id=ext_id, is_merged=False).first()
         if contact:
-            # Log warnings for mismatched email/phone
+            # Log warnings for mismatched email/phone. Existing values are
+            # encrypted PII; reference the contact by id only.
             if email and contact.email and contact.email != email:
                 logger.warning(
-                    "Row %d: Constituent ID %s matched contact %s, but email "
-                    "differs (existing: %s, CSV: %s)",
+                    "Row %d: Constituent ID %s matched contact %s, but CSV "
+                    "email differs from existing value",
                     row_number,
                     ext_id,
                     contact.id,
-                    contact.email,
-                    email,
                 )
             if phone and contact.phone and contact.phone != phone:
                 logger.warning(
-                    "Row %d: Constituent ID %s matched contact %s, but phone "
-                    "differs (existing: %s, CSV: %s)",
+                    "Row %d: Constituent ID %s matched contact %s, but CSV "
+                    "phone differs from existing value",
                     row_number,
                     ext_id,
                     contact.id,
-                    contact.phone,
-                    phone,
                 )
             return contact, "constituent_id"
 
@@ -866,7 +866,10 @@ def import_re_constituents(
                                 }
                             )
 
-                        # Record warnings for ID match conflicts
+                        # Record warnings for ID match conflicts. Existing
+                        # email/phone are encrypted PII and must not appear in
+                        # the warnings payload (which is persisted in
+                        # ImportBatch.summary).
                         if match_type == "constituent_id":
                             csv_email = row_data.get("email", "")
                             csv_phone = row_data.get("phone", "")
@@ -874,10 +877,11 @@ def import_re_constituents(
                                 warnings.append(
                                     {
                                         "row": row_number,
+                                        "contact_id": str(contact.id),
                                         "warning": (
-                                            f"Constituent ID {ext_id} matched but email "
-                                            f"differs (existing: {contact.email}, "
-                                            f"CSV: {csv_email})"
+                                            f"Constituent ID {ext_id} matched contact "
+                                            f"{contact.id} but CSV email differs from "
+                                            "existing value"
                                         ),
                                     }
                                 )
@@ -885,10 +889,11 @@ def import_re_constituents(
                                 warnings.append(
                                     {
                                         "row": row_number,
+                                        "contact_id": str(contact.id),
                                         "warning": (
-                                            f"Constituent ID {ext_id} matched but phone "
-                                            f"differs (existing: {contact.phone}, "
-                                            f"CSV: {csv_phone})"
+                                            f"Constituent ID {ext_id} matched contact "
+                                            f"{contact.id} but CSV phone differs from "
+                                            "existing value"
                                         ),
                                     }
                                 )
@@ -939,7 +944,7 @@ def import_re_constituents(
                     )
 
     except Exception as e:
-        logger.error("Constituent import failed for %s: %s", filename, e)
+        logger.exception("Constituent import failed for %s", filename)
         batch = ImportBatch.objects.create(
             import_type=ImportBatchType.RE_CONSTITUENT,
             status=ImportBatchStatus.FAILED,
@@ -1564,7 +1569,7 @@ def import_re_gifts(
                     )
 
     except Exception as e:
-        logger.error("Gift import failed for %s: %s", filename, e)
+        logger.exception("Gift import failed for %s", filename)
         batch = ImportBatch.objects.create(
             import_type=ImportBatchType.RE_GIFT,
             status=ImportBatchStatus.FAILED,
@@ -2156,11 +2161,7 @@ def import_re_recurring_gifts(
                     )
 
     except Exception as e:
-        logger.error(
-            "Recurring gift import failed for %s: %s",
-            filename,
-            e,
-        )
+        logger.exception("Recurring gift import failed for %s", filename)
         batch = ImportBatch.objects.create(
             import_type=ImportBatchType.RE_RECURRING_GIFT,
             status=ImportBatchStatus.FAILED,

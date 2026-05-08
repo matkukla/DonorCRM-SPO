@@ -13,12 +13,23 @@ Phase 3B (round 2). After this migration:
 
 Sequence:
   1. Add nullable phone_hash + phone_secondary_hash columns.
-  2. RunPython: backfill both hashes (and re-encrypt phone).
-  3. AlterField phone -> EncryptedTextField.
+  2. RunPython: backfill both hashes AND re-encrypt phone, while phone
+     is still a plain CharField in the historical model state. Reading
+     c.phone returns plaintext directly; bulk_update writes ciphertext
+     once the AlterField swap (step 3) takes effect.
+  3. AlterField phone -> EncryptedTextField (column type swap is a no-op
+     at the storage layer; both map to TEXT/varchar in Postgres).
 
-Notes:
-  * email_hash is also re-altered here only because the AddField above
-    forced an ordering recompute. The semantics are unchanged.
+The previous version inverted steps 2 and 3, relying on
+``decrypt_str``'s legacy plaintext fallback to handle the historical
+model state. That worked but was semantically fragile: tightening the
+fallback would silently break the migration. The current ordering does
+not depend on the fallback.
+
+Note: this migration intentionally does NOT re-alter email_hash. The
+named index on email_hash is created in 0013; the previous redundant
+AlterField with db_index=True caused Postgres to maintain a duplicate
+auto-generated B-tree index for the same column.
 """
 
 from django.db import migrations, models
@@ -35,11 +46,11 @@ def backfill_phone_hashes_and_reencrypt(apps, schema_editor):
     qs = Contact.objects.only("id", "phone", "phone_secondary").iterator(chunk_size=BATCH_SIZE)
     batch = []
     for c in qs:
-        # Reading c.phone returns plaintext (still CharField in this model state).
-        # Reading c.phone_secondary returns plaintext via from_db_value
-        # legacy fallback even though the column was migrated in 3A — until
-        # the rotate command sweeps the table, on-disk values can still be
-        # plaintext.
+        # phone is still a plain CharField in this RunPython's model state
+        # (the AlterField below has not run yet), so c.phone is plaintext.
+        # phone_secondary was migrated in 3A but on-disk values may still be
+        # plaintext until rotate_pii_encryption sweeps; from_db_value's
+        # legacy fallback returns plaintext in that case as well.
         c.phone_hash = hash_value(normalize_phone(c.phone))
         c.phone_secondary_hash = hash_value(normalize_phone(c.phone_secondary))
         batch.append(c)
@@ -77,18 +88,16 @@ class Migration(migrations.Migration):
                 blank=True, db_index=True, null=True, verbose_name="phone secondary hash"
             ),
         ),
-        migrations.AlterField(
-            model_name="contact",
-            name="email_hash",
-            field=models.BinaryField(
-                blank=True, db_index=True, null=True, verbose_name="email hash"
-            ),
+        # Backfill BEFORE AlterField so the historical model still has phone
+        # as a plain CharField (returns plaintext directly, no decrypt path).
+        # Reverse is RunPython.noop because reading + bulk_update would
+        # re-encrypt under a new nonce, not decrypt.
+        migrations.RunPython(
+            backfill_phone_hashes_and_reencrypt, migrations.RunPython.noop
         ),
         migrations.AlterField(
             model_name="contact",
             name="phone",
             field=apps.core.encryption.EncryptedTextField(blank=True, verbose_name="phone"),
         ),
-        # Both writes happen inside one batch loop so we visit each row once.
-        migrations.RunPython(backfill_phone_hashes_and_reencrypt, clear_phone_hashes),
     ]

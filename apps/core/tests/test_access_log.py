@@ -90,6 +90,8 @@ class TestMiddlewareIntegration:
         assert log.actor_id == owner.id
 
     def test_health_endpoint_does_not_log(self, authenticated_client):
+        # authenticated_client is a (client, user) tuple — see conftest.
+        client, _ = authenticated_client
         before = DataAccessLog.objects.count()
         # The health endpoint may not be wired in test settings; if reverse
         # fails, skip — the path classifier was already covered above.
@@ -97,7 +99,7 @@ class TestMiddlewareIntegration:
             url = reverse("api-health")
         except Exception:
             pytest.skip("health endpoint not registered in test URLs")
-        authenticated_client.get(url)
+        client.get(url)
         assert DataAccessLog.objects.count() == before
 
     def test_anonymous_request_to_pii_endpoint(self, api_client):

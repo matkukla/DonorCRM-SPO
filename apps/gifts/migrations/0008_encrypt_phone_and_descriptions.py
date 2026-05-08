@@ -31,10 +31,6 @@ def reencrypt_descriptions(apps, schema_editor):
             Model.objects.bulk_update(batch, ["description"])
 
 
-def decrypt_descriptions(apps, schema_editor):
-    reencrypt_descriptions(apps, schema_editor)
-
-
 class Migration(migrations.Migration):
     atomic = False
 
@@ -53,5 +49,6 @@ class Migration(migrations.Migration):
             name="description",
             field=apps.core.encryption.EncryptedTextField(blank=True, verbose_name="description"),
         ),
-        migrations.RunPython(reencrypt_descriptions, decrypt_descriptions),
+        # Reverse is RunPython.noop — see contacts/0012 docstring.
+        migrations.RunPython(reencrypt_descriptions, migrations.RunPython.noop),
     ]

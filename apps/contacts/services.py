@@ -12,6 +12,7 @@ from django.db.models import Q, Value
 from django.db.models.functions import Greatest
 
 from apps.contacts.models import Contact, ContactMergeLog, DismissedDuplicate
+from apps.core.blind_index import lookup_hashes, normalize_phone
 
 # Fields eligible for auto-fill during merge (survivor blank → copy loser's value)
 # Note: 'status' deliberately excluded — survivor keeps their status
@@ -84,8 +85,6 @@ def find_duplicates_for_contact(contact_data, owner_id, exclude_id=None):
     # Exact email match (case-insensitive). email is encrypted at rest;
     # equality lookups go through the email_hash blind index.
     if email:
-        from apps.core.blind_index import lookup_hashes
-
         candidates = lookup_hashes(email)
         if candidates:
             for c in base_qs.filter(email_hash__in=candidates):
@@ -94,8 +93,6 @@ def find_duplicates_for_contact(contact_data, owner_id, exclude_id=None):
     # Exact phone match (primary or secondary). Both columns are encrypted
     # at rest; equality lookups go via the digit-normalized blind index.
     if phone:
-        from apps.core.blind_index import lookup_hashes, normalize_phone
-
         phone_hashes = lookup_hashes(normalize_phone(phone))
         if phone_hashes:
             for c in base_qs.filter(
@@ -213,7 +210,19 @@ def merge_contacts(survivor_id, loser_id, merged_by):
     if all_fields_to_clear:
         for field_name in all_fields_to_clear:
             setattr(loser, field_name, "")
-        loser.save(update_fields=all_fields_to_clear + ["updated_at"])
+        # Contact.save() recomputes blind-index hashes on the instance, but
+        # Django only persists columns named in update_fields. Include the
+        # hash sidecars so the cleared values do not leave stale hashes
+        # pointing at the soft-deleted row.
+        _hash_sidecars = {
+            "email": "email_hash",
+            "phone": "phone_hash",
+            "phone_secondary": "phone_secondary_hash",
+        }
+        hash_fields_to_clear = [
+            _hash_sidecars[f] for f in all_fields_to_clear if f in _hash_sidecars
+        ]
+        loser.save(update_fields=all_fields_to_clear + hash_fields_to_clear + ["updated_at"])
 
     # Reassign FK relationships, capturing counts
     gifts_count = Gift.objects.filter(donor_contact=loser).update(donor_contact=survivor)

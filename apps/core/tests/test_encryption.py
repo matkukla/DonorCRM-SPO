@@ -244,6 +244,53 @@ class TestEncryptedTextField:
                 field.from_db_value(ct, None, None)
 
 
+class TestV2AssociatedData:
+    """v2 ciphertext is bound to its (model, field) context via AAD.
+
+    A ciphertext from one column cannot be decrypted as another column,
+    even though both use the same key. v1 ciphertext (no AAD) is still
+    readable by anyone with the key.
+    """
+
+    def test_v2_round_trip_with_matching_aad(self):
+        with override_settings(PII_ENCRYPTION_KEYS=_fresh_aes256_key()):
+            aad = b"contacts.Contact.notes"
+            ct = encryption.encrypt_str("pastoral note", aad=aad)
+            assert ct.startswith("v2:")
+            assert encryption.decrypt_str(ct, aad=aad) == "pastoral note"
+
+    def test_v2_decrypt_fails_with_wrong_aad(self):
+        with override_settings(PII_ENCRYPTION_KEYS=_fresh_aes256_key()):
+            ct = encryption.encrypt_str("notes value", aad=b"contacts.Contact.notes")
+            # Substituting AAD simulates moving the ciphertext to a different
+            # field — authentication MUST fail.
+            with pytest.raises(ValueError, match="v2 row decryption failed"):
+                encryption.decrypt_str(ct, aad=b"contacts.Contact.email")
+
+    def test_v2_decrypt_fails_without_aad(self):
+        with override_settings(PII_ENCRYPTION_KEYS=_fresh_aes256_key()):
+            ct = encryption.encrypt_str("v2 with aad", aad=b"contacts.Contact.notes")
+            with pytest.raises(ValueError, match="v2 row decryption failed"):
+                encryption.decrypt_str(ct, aad=None)
+
+    def test_v1_decrypt_ignores_aad(self):
+        """v1 ciphertext was written without AAD; passing AAD on decrypt
+        is silently ignored so existing v1 rows continue to read."""
+        with override_settings(PII_ENCRYPTION_KEYS=_fresh_aes256_key()):
+            v1_ct = encryption.encrypt_str("legacy v1", aad=None)
+            assert v1_ct.startswith("v1:")
+            assert encryption.decrypt_str(v1_ct, aad=b"any.AAD.here") == "legacy v1"
+
+    def test_field_writes_v2_when_attached_to_model(self):
+        """EncryptedTextField bound to a real model writes v2 with AAD."""
+        from apps.contacts.models import Contact
+
+        with override_settings(PII_ENCRYPTION_KEYS=_fresh_aes256_key()):
+            notes_field = Contact._meta.get_field("notes")
+            stored = notes_field.get_prep_value("hello")
+            assert stored.startswith("v2:")
+
+
 @pytest.mark.django_db
 class TestContactNotesEncryption:
     """Integration test: Contact.notes round-trips through the ORM."""

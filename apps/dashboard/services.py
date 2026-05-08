@@ -299,7 +299,7 @@ def get_dashboard_summary(user):
     Get complete dashboard data in one call.
     Caches querysets to avoid duplicate database queries.
     """
-    logger.info(f"Fetching dashboard summary for user {user.email}")
+    logger.info("Fetching dashboard summary for user %s", user.id)
 
     what_changed = get_what_changed(user)
     # Convert querysets to lists of dicts
@@ -434,7 +434,9 @@ def get_mpd_computed(user):
 
     snapshot = MPDSnapshot.objects.filter(user=user).order_by("-upload__created_at").first()
     mpd_cap = (
-        float(snapshot.current_mpd_cap) if snapshot and snapshot.current_mpd_cap else DEFAULT_MPD_CAP
+        float(snapshot.current_mpd_cap)
+        if snapshot and snapshot.current_mpd_cap
+        else DEFAULT_MPD_CAP
     )
 
     return _compute_mpd_from_totals(total_cents, mpd_cap, months_elapsed)

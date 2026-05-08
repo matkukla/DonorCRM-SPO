@@ -441,7 +441,10 @@ def import_generic_contacts(
                     )
 
     except Exception as e:
-        logger.error("Generic contact import failed for %s: %s", filename, e)
+        # logger.exception attaches the traceback so a programming error
+        # (AttributeError, TypeError, KeyError, etc) surfaces in Sentry
+        # rather than getting silently rolled into a FAILED ImportBatch.
+        logger.exception("Generic contact import failed for %s", filename)
         batch = ImportBatch.objects.create(
             import_type=ImportBatchType.GENERIC_CONTACTS,
             status=ImportBatchStatus.FAILED,
@@ -777,7 +780,7 @@ def import_generic_donations(
                     )
 
     except Exception as e:
-        logger.error("Generic donation import failed for %s: %s", filename, e)
+        logger.exception("Generic donation import failed for %s", filename)
         batch = ImportBatch.objects.create(
             import_type=ImportBatchType.GENERIC_DONATIONS,
             status=ImportBatchStatus.FAILED,

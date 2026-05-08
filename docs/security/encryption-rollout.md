@@ -66,9 +66,12 @@ Field-level encryption ensures these egress paths reveal ciphertext only.
    - Mark the migration `atomic = False` so each batch commits independently.
 5. **Verify** with `psql`:
    ```sql
-   SELECT phone FROM contacts_contact LIMIT 5;
+   SELECT notes FROM contacts_contact LIMIT 5;
    ```
-   Values should start with `gAAAAA…`.
+   New rows should start with `v2:` (AES-256-GCM with per-field AAD).
+   Rows written before this PR may show `v1:` (AES-256-GCM, no AAD) or
+   `gAAAAA…` (legacy Fernet) until `manage.py rotate_pii_encryption`
+   sweeps them. Anything else is plaintext that hasn't been migrated.
 6. **Roll columns one app at a time** so a failed migration impacts a single
    surface, not the entire dataset.
 

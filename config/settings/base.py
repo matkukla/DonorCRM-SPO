@@ -133,6 +133,10 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
+#
+# OPTIONS.sslmode: "prefer" lets dev/test connections use TLS when the server
+# offers it but does not require it (so a local Postgres without TLS still
+# works). config/settings/prod.py overrides this to "verify-full".
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
@@ -141,6 +145,7 @@ DATABASES = {
         "PASSWORD": config("DB_PASSWORD", default="donorcrm"),
         "HOST": config("DB_HOST", default="localhost"),
         "PORT": config("DB_PORT", default="5432"),
+        "OPTIONS": {"sslmode": config("DB_SSLMODE", default="prefer")},
     }
 }
 
@@ -215,10 +220,15 @@ REST_FRAMEWORK = {
         "auth": "5/min",
         "auth_hour": "30/hour",
         "password": "5/min",
+        "password_hour": "50/hour",
         "feedback": "20/hour",
         # Export endpoints: bulk PII egress is high-risk if a JWT is stolen.
         "export": "20/hour",
     },
+    # Render terminates TLS and prepends one trusted proxy hop. Tell DRF to
+    # trust exactly one X-Forwarded-For entry so attackers can't spoof their
+    # rate-limit identity by injecting fake XFF values per request.
+    "NUM_PROXIES": 1,
 }
 
 # API Documentation (drf-spectacular)

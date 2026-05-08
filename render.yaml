@@ -64,7 +64,7 @@ services:
       - key: CSRF_TRUSTED_ORIGINS
         value: https://donorcrm-frontend.onrender.com,https://donorcrm-web.onrender.com
       - key: JWT_ACCESS_LIFETIME_MINUTES
-        value: "60"
+        value: "15"
       - key: DATABASE_URL
         fromDatabase:
           name: donorcrm-db
@@ -130,6 +130,38 @@ services:
   #   name: donorcrm-redis
   #   plan: starter
   #   ipAllowList: []  # Allow only Render internal connections
+
+  # Nightly retention purge — DataAccessLog rows past 365 days, soft-deleted
+  # contacts, and stale ImportBatch rows. Without this cron the audit-log
+  # retention claim is aspirational.
+  - type: cron
+    name: donorcrm-purge
+    env: python
+    schedule: "0 3 * * *"
+    buildCommand: pip install -r requirements/prod.txt
+    startCommand: python manage.py purge_expired_data
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings.prod
+      - key: SECRET_KEY
+        fromService:
+          type: web
+          name: donorcrm-web
+          envVarKey: SECRET_KEY
+      - key: DATABASE_URL
+        fromDatabase:
+          name: donorcrm-db
+          property: connectionString
+      - key: PII_ENCRYPTION_KEYS
+        fromService:
+          type: web
+          name: donorcrm-web
+          envVarKey: PII_ENCRYPTION_KEYS
+      - key: BLIND_INDEX_KEYS
+        fromService:
+          type: web
+          name: donorcrm-web
+          envVarKey: BLIND_INDEX_KEYS
 
 databases:
   # PostgreSQL Database
