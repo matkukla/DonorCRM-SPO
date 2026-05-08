@@ -4,6 +4,7 @@ Views for user management.
 from django.db.models import Count, Q
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
+from rest_framework.throttling import SimpleRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 
@@ -19,6 +20,27 @@ from apps.users.serializers import (
     UserUpdateSerializer,
     ViewableUserSerializer,
 )
+
+
+class _PasswordBurstThrottle(SimpleRateThrottle):
+    """Per-IP burst limit on password mutations (rate from
+    THROTTLE_RATES['password'])."""
+
+    scope = "password"
+
+    def get_cache_key(self, request, view):
+        return self.cache_format % {"scope": self.scope, "ident": self.get_ident(request)}
+
+
+class _PasswordHourThrottle(SimpleRateThrottle):
+    """Per-IP hourly cap layered on top of the burst throttle so a slow
+    attacker pacing under the burst rate still hits a daily ceiling
+    (rate from THROTTLE_RATES['password_hour'])."""
+
+    scope = "password_hour"
+
+    def get_cache_key(self, request, view):
+        return self.cache_format % {"scope": self.scope, "ident": self.get_ident(request)}
 
 
 class UserListCreateView(generics.ListCreateAPIView):
@@ -108,9 +130,10 @@ class PasswordChangeView(APIView):
     """
 
     permission_classes = [permissions.IsAuthenticated]
-    # Throttle password mutations independently of auth endpoints so a burst
-    # of password-change attempts triggers its own scope, not the login one.
-    throttle_scope = "password"
+    # Two-tier throttle: per-IP burst (THROTTLE_RATES['password']) plus an
+    # hourly cap (THROTTLE_RATES['password_hour']) to slow an attacker pacing
+    # under the burst rate.
+    throttle_classes = [_PasswordBurstThrottle, _PasswordHourThrottle]
 
     def post(self, request):
         serializer = PasswordChangeSerializer(data=request.data, context={"request": request})
@@ -128,7 +151,7 @@ class AdminPasswordResetView(APIView):
     """
 
     permission_classes = [permissions.IsAuthenticated, IsAdmin]
-    throttle_scope = "password"
+    throttle_classes = [_PasswordBurstThrottle, _PasswordHourThrottle]
 
     def post(self, request, pk):
         try:

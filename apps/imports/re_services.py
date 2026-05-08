@@ -932,14 +932,21 @@ def import_re_constituents(
                     errors.append(
                         {
                             "row": row_number,
-                            "error": f"Row {row_number}: {str(e)}",
+                            "error": f"Row {row_number}: {type(e).__name__}",
                         }
                     )
                 except Exception as e:
+                    logger.exception(
+                        "Row %s failed in import_re_constituents",
+                        row_number,
+                    )
                     errors.append(
                         {
                             "row": row_number,
-                            "error": f"Row {row_number}: Unexpected error: {str(e)}",
+                            "error": (
+                                f"Row {row_number}: Unexpected error: "
+                                f"{type(e).__name__}"
+                            ),
                         }
                     )
 
@@ -1558,12 +1565,15 @@ def import_re_gifts(
                 except Exception as e:
                     transaction.savepoint_rollback(sp)
                     row_nums = ", ".join(r.get("_row_number", "?") for r in rows)
+                    logger.exception(
+                        "Gift group %s failed in import_re_gifts", gift_id
+                    )
                     errors.append(
                         {
                             "row": int(rows[0].get("_row_number", 0)),
                             "error": (
                                 f"Gift group {gift_id} (rows {row_nums}): "
-                                f"Unexpected error: {str(e)}"
+                                f"Unexpected error: {type(e).__name__}"
                             ),
                         }
                     )
@@ -2150,12 +2160,17 @@ def import_re_recurring_gifts(
                 except Exception as e:
                     transaction.savepoint_rollback(sp)
                     row_nums = ", ".join(r.get("_row_number", "?") for r in rows)
+                    logger.exception(
+                        "Recurring gift group %s failed in "
+                        "import_re_recurring_gifts",
+                        gift_id,
+                    )
                     errors.append(
                         {
                             "row": int(rows[0].get("_row_number", 0)),
                             "error": (
                                 f"Recurring gift group {gift_id} (rows {row_nums}): "
-                                f"Unexpected error: {str(e)}"
+                                f"Unexpected error: {type(e).__name__}"
                             ),
                         }
                     )

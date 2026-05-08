@@ -433,10 +433,14 @@ def import_generic_contacts(
                         created_count += 1
 
                 except Exception as e:
+                    logger.exception(
+                        "Row %s failed in import_generic_contacts",
+                        row_number,
+                    )
                     errors.append(
                         {
                             "row": row_number,
-                            "error": f"Row {row_number}: {str(e)}",
+                            "error": f"Row {row_number}: {type(e).__name__}",
                         }
                     )
 
@@ -772,10 +776,14 @@ def import_generic_donations(
                     created_count += 1
 
                 except Exception as e:
+                    logger.exception(
+                        "Row %s failed in import_generic_donations",
+                        row_number,
+                    )
                     errors.append(
                         {
                             "row": row_number,
-                            "error": f"Row {row_number}: {str(e)}",
+                            "error": f"Row {row_number}: {type(e).__name__}",
                         }
                     )
 
