@@ -2,13 +2,15 @@
 Views for user management.
 """
 from django.db.models import Count, Q
+
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
-from rest_framework.throttling import SimpleRateThrottle
 from rest_framework.views import APIView
+
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 
 from apps.core.permissions import IsAdmin
+from apps.core.throttling import FailOpenSimpleRateThrottle
 from apps.users.models import User
 from apps.users.serializers import (
     AdminPasswordResetSerializer,
@@ -22,7 +24,7 @@ from apps.users.serializers import (
 )
 
 
-class _PasswordBurstThrottle(SimpleRateThrottle):
+class _PasswordBurstThrottle(FailOpenSimpleRateThrottle):
     """Per-IP burst limit on password mutations (rate from
     THROTTLE_RATES['password'])."""
 
@@ -32,7 +34,7 @@ class _PasswordBurstThrottle(SimpleRateThrottle):
         return self.cache_format % {"scope": self.scope, "ident": self.get_ident(request)}
 
 
-class _PasswordHourThrottle(SimpleRateThrottle):
+class _PasswordHourThrottle(FailOpenSimpleRateThrottle):
     """Per-IP hourly cap layered on top of the burst throttle so a slow
     attacker pacing under the burst rate still hits a daily ceiling
     (rate from THROTTLE_RATES['password_hour'])."""

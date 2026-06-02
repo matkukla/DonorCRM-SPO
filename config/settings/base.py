@@ -211,7 +211,9 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_THROTTLE_CLASSES": [
-        "rest_framework.throttling.ScopedRateThrottle",
+        # Fail-open variant: degrades to "allow" if the cache backend is
+        # unreachable instead of turning throttled endpoints into 500s.
+        "apps.core.throttling.FailOpenScopedRateThrottle",
     ],
     "DEFAULT_THROTTLE_RATES": {
         # Login burst: 5/min covers normal retries; 30/hour caps slow credential
