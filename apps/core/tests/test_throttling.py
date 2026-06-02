@@ -6,7 +6,9 @@ the cache is healthy.
 """
 from unittest.mock import Mock
 
+from django.contrib.auth.models import AnonymousUser
 from django.core.cache.backends.locmem import LocMemCache
+from django.core.exceptions import ImproperlyConfigured
 from django.test import override_settings
 
 from rest_framework import status
@@ -33,6 +35,14 @@ class _SimpleAuthThrottle(FailOpenSimpleRateThrottle):
 
 class _ScopedView:
     throttle_scope = "feedback"  # 20/hour in DEFAULT_THROTTLE_RATES
+
+
+class _ScopedAuthView:
+    throttle_scope = "auth"  # 5/min in DEFAULT_THROTTLE_RATES
+
+
+class _UnknownScopeView:
+    throttle_scope = "does-not-exist"  # no rate in DEFAULT_THROTTLE_RATES
 
 
 class TestFailOpenSimpleRateThrottle:
@@ -74,6 +84,31 @@ class TestFailOpenScopedRateThrottle:
 
         assert allowed is True
         assert "failing open" in caplog.text.lower()
+
+    def test_still_enforces_limit_with_working_cache(self):
+        throttle = FailOpenScopedRateThrottle()
+        throttle.cache = LocMemCache("throttle-scoped-test-loc", {})
+        request = factory.get("/api/v1/auth/login/")
+        # DRF's ScopedRateThrottle.get_cache_key reads request.user; the real
+        # middleware always populates it, so mirror that here.
+        request.user = AnonymousUser()
+        view = _ScopedAuthView()  # 5/min
+
+        results = [throttle.allow_request(request, view) for _ in range(6)]
+
+        # Fail-open must NOT disable scoped throttling when the cache is healthy.
+        assert results[:5] == [True, True, True, True, True]
+        assert results[5] is False
+
+    def test_unknown_scope_raises_instead_of_failing_open(self):
+        # A missing throttle rate is a config bug: it must surface (and would,
+        # without the ImproperlyConfigured re-raise, be silently swallowed into
+        # an unthrottled fail-open).
+        throttle = FailOpenScopedRateThrottle()
+        request = factory.get("/api/v1/auth/login/")
+
+        with pytest.raises(ImproperlyConfigured):
+            throttle.allow_request(request, view=_UnknownScopeView())
 
 
 @pytest.mark.django_db

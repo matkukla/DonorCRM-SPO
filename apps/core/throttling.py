@@ -17,6 +17,8 @@ a degraded limiter is preferable to a hard outage.
 """
 import logging
 
+from django.core.exceptions import ImproperlyConfigured
+
 from rest_framework.throttling import ScopedRateThrottle, SimpleRateThrottle
 
 logger = logging.getLogger(__name__)
@@ -25,22 +27,35 @@ logger = logging.getLogger(__name__)
 class CacheFailOpenThrottleMixin:
     """Allow the request when the throttle's cache backend raises.
 
-    Mix in *before* a DRF throttle class. Only cache I/O inside
-    ``allow_request`` is expected to raise here (rate parsing happens in
-    ``__init__``); on any such failure we fail open so a cache outage cannot
-    convert benign requests into 500s. The error is logged at WARNING with a
-    traceback so the outage is never silent.
+    Mix in *before* a DRF throttle class. The intent is to fail open on cache
+    I/O failures (``cache.get``/``cache.set`` against an unreachable backend) so
+    a cache outage cannot convert benign requests into 500s.
+
+    Configuration errors are NOT swallowed: ``ScopedRateThrottle`` resolves and
+    parses its rate inside ``allow_request`` (unlike ``SimpleRateThrottle``,
+    which does so in ``__init__``), so a ``throttle_scope`` missing from
+    ``DEFAULT_THROTTLE_RATES`` raises ``ImproperlyConfigured`` here. We re-raise
+    that so a misconfiguration surfaces loudly instead of silently disabling
+    throttling.
+
+    Fail-open events are logged at WARNING (with the underlying error message,
+    but without a per-request traceback) so a sustained outage is visible
+    without flooding the logs.
     """
 
     def allow_request(self, request, view):
         try:
             return super().allow_request(request, view)
-        except Exception:
+        except ImproperlyConfigured:
+            # A missing/invalid throttle rate is a config bug, not a cache
+            # outage — let it surface rather than silently allowing traffic.
+            raise
+        except Exception as exc:
             logger.warning(
-                "Throttle cache unavailable for scope %r; failing open and "
-                "allowing the request.",
+                "Throttle cache unavailable for scope %r (%s); failing open "
+                "and allowing the request.",
                 getattr(self, "scope", None),
-                exc_info=True,
+                exc,
             )
             return True
 
