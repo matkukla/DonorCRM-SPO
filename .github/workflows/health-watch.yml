@@ -39,7 +39,7 @@ jobs:
 
       - name: Checkout (for Claude context on failure)
         if: steps.probe.outputs.healthy == 'false'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 1
 
