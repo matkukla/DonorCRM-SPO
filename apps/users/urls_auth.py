@@ -2,16 +2,14 @@
 URL patterns for authentication endpoints.
 """
 from django.urls import path
-from rest_framework.throttling import SimpleRateThrottle
-from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
-    TokenRefreshView,
-)
 
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+
+from apps.core.throttling import FailOpenSimpleRateThrottle
 from apps.users.views_auth import LogoutView
 
 
-class _AuthBurstThrottle(SimpleRateThrottle):
+class _AuthBurstThrottle(FailOpenSimpleRateThrottle):
     """Per-IP burst limit on auth endpoints (rate from THROTTLE_RATES['auth'])."""
 
     scope = "auth"
@@ -20,7 +18,7 @@ class _AuthBurstThrottle(SimpleRateThrottle):
         return self.cache_format % {"scope": self.scope, "ident": self.get_ident(request)}
 
 
-class _AuthHourThrottle(SimpleRateThrottle):
+class _AuthHourThrottle(FailOpenSimpleRateThrottle):
     """Per-IP hourly cap layered on top of the burst throttle to slow
     credential stuffing across short pauses (rate from
     THROTTLE_RATES['auth_hour'])."""
