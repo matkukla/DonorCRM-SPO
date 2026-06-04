@@ -1,0 +1,59 @@
+version: 2
+
+# Dependabot opens grouped dependency-bump PRs. Each one is vetted by the CI
+# gate (ci.yml) and the Claude review action (claude-code-review.yml) before a
+# human merges. This closes the loop on the CVEs that security.yml's pip-audit
+# already surfaces — but does NOT auto-merge (propose-and-approve).
+
+updates:
+  # Python — one entry per requirements file so PRs map to a single file.
+  - package-ecosystem: pip
+    directory: "/requirements"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 5
+    groups:
+      # Batch patch + minor bumps into one PR to cut review volume; majors
+      # come as individual PRs so breaking changes are reviewed in isolation.
+      python-minor-patch:
+        update-types: ["minor", "patch"]
+    labels: ["dependencies", "python"]
+    commit-message:
+      prefix: "chore"
+      include: scope
+    # django-filter must stay <25 (25.2+ requires Django 5.2). See CLAUDE.md.
+    ignore:
+      - dependency-name: "django-filter"
+        versions: [">=25.0"]
+
+  # Frontend npm
+  - package-ecosystem: npm
+    directory: "/frontend"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 5
+    groups:
+      npm-minor-patch:
+        update-types: ["minor", "patch"]
+    labels: ["dependencies", "frontend"]
+    commit-message:
+      prefix: "chore"
+      include: scope
+
+  # The GitHub Actions themselves (claude-code-action, checkout, setup-*).
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Etc/UTC
+    labels: ["dependencies", "ci"]
+    commit-message:
+      prefix: "ci"

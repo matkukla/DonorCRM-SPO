@@ -1,0 +1,77 @@
+name: AI Fix Issues
+
+# Self-driving issue fixing, propose-and-approve. Label an issue `ai-fix` (or
+# trigger manually with an issue number) and Claude implements a fix on a
+# branch and opens a PR. It NEVER merges — the CI gate (ci.yml) and Claude
+# review (claude-code-review.yml) run on the PR, and a human merges.
+
+on:
+  issues:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: "Issue number to fix"
+        required: true
+        type: string
+
+jobs:
+  fix:
+    # Only act when the `ai-fix` label is applied, or via manual dispatch.
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issues' && github.event.label.name == 'ai-fix')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve issue number
+        id: meta
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "number=${{ github.event.inputs.issue_number }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "number=${{ github.event.issue.number }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Implement fix and open PR
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: '--allowed-tools "Bash(git:*),Bash(gh:*),Bash(pytest:*),Bash(black:*),Bash(isort:*),Bash(flake8:*),Edit,Write,Read"'
+          prompt: |
+            Implement a fix for issue #${{ steps.meta.outputs.number }} in this
+            repository.
+
+            Workflow (follow exactly, then stop):
+            1. Read the issue with `gh issue view ${{ steps.meta.outputs.number }}`
+               to understand the request.
+            2. Read CLAUDE.md for project conventions (money in cents, owner
+               scoping, isort sections, black line-length 100, etc.).
+            3. Create a branch named `ai-fix/issue-${{ steps.meta.outputs.number }}`.
+            4. Implement the smallest correct change. Add or update tests that
+               FAIL before your change and PASS after — a test must fail when
+               the feature is broken (see the #1 E2E rule in CLAUDE.md).
+            5. Run locally and ensure all pass:
+               `black --check apps/ config/`, `isort --check-only apps/ config/`,
+               `flake8 apps/ config/`, and `pytest`.
+            6. Commit and open a PR with `gh pr create`, body linking the issue
+               (`Closes #${{ steps.meta.outputs.number }}`) and summarizing the
+               change and how you verified it.
+
+            Constraints:
+            - Do NOT merge the PR. Open it as a draft if you are not fully
+              confident in the fix.
+            - Do NOT touch migrations, secrets, deploy config (render.yaml), or
+              authentication/permission logic without flagging it prominently in
+              the PR body and leaving the PR as a draft.
+            - If the issue is ambiguous or too risky to fix safely, do NOT open
+              a PR — instead comment on the issue explaining what's blocking and
+              what you'd need.
