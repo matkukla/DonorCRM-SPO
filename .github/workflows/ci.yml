@@ -1,0 +1,83 @@
+name: CI
+
+# The verification gate. Everything downstream (Dependabot bumps, AI-authored
+# fix PRs) is only trustworthy because this runs on every PR. Branch protection
+# should require these jobs before merge.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: backend (pytest + lint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        # Tests run on SQLite in-memory (config.settings.test), so prod.txt is
+        # not required; dev.txt pulls in base.txt + pytest/black/isort/flake8.
+        run: pip install -r requirements/dev.txt
+
+      # Lint is ADVISORY until the pre-existing formatting/lint debt is cleaned
+      # up (black would reformat ~153 files, plus isort/flake8 backlog). These
+      # steps surface violations without failing the build so the gate can land
+      # now. Cleanup tracked separately; flip continue-on-error off once green.
+      - name: black
+        run: black --check apps/ config/
+        continue-on-error: true
+
+      - name: isort
+        run: isort --check-only apps/ config/
+        continue-on-error: true
+
+      - name: flake8
+        run: flake8 apps/ config/
+        continue-on-error: true
+
+      # HARD gate: tests + 80% coverage must pass.
+      - name: pytest (80% coverage gate)
+        # --cov-fail-under=80 is enforced via pyproject.toml addopts.
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.test
+        run: pytest
+
+  frontend:
+    name: frontend (build + lint)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Advisory, same as the backend linters: ESLint has a pre-existing
+      # backlog (~51 errors). Surfaces issues without failing the build.
+      - name: ESLint
+        run: npm run lint
+        continue-on-error: true
+
+      # HARD gate: the TypeScript compile + production build must succeed.
+      - name: Build (tsc + vite)
+        run: npm run build

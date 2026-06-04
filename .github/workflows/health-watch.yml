@@ -1,0 +1,86 @@
+name: Health Watch
+
+# Probes the production health endpoint on a schedule. If it's down, Claude
+# pulls Render logs, diagnoses the root cause, and opens an issue — the same
+# investigation done manually for the auth-500 incident, now automated.
+# It only DIAGNOSES and FILES; it never deploys or changes prod.
+
+on:
+  schedule:
+    # Every 30 minutes. Render web services can cold-start; a single blip
+    # shouldn't page, so the probe step retries before declaring failure.
+    - cron: "*/30 * * * *"
+  workflow_dispatch: {}
+
+env:
+  HEALTH_URL: https://donorcrm-web.onrender.com/api/v1/health/
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      id-token: write
+    steps:
+      - name: Probe health endpoint
+        id: probe
+        run: |
+          ok=false
+          for attempt in 1 2 3; do
+            code=$(curl -s -o /tmp/body -w "%{http_code}" --max-time 30 "$HEALTH_URL" || echo 000)
+            echo "Attempt $attempt: HTTP $code"
+            if [ "$code" = "200" ]; then ok=true; break; fi
+            sleep 20
+          done
+          echo "status_code=$code" >> "$GITHUB_OUTPUT"
+          echo "body<<EOF" >> "$GITHUB_OUTPUT"; cat /tmp/body >> "$GITHUB_OUTPUT"; echo "" >> "$GITHUB_OUTPUT"; echo "EOF" >> "$GITHUB_OUTPUT"
+          if [ "$ok" = "true" ]; then echo "healthy=true" >> "$GITHUB_OUTPUT"; else echo "healthy=false" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Checkout (for Claude context on failure)
+        if: steps.probe.outputs.healthy == 'false'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Diagnose and file issue
+        if: steps.probe.outputs.healthy == 'false'
+        uses: anthropics/claude-code-action@v1
+        env:
+          # Injected into the Render MCP Authorization header below via
+          # ${RENDER_API_KEY} expansion at runtime. Stored as a GitHub Actions
+          # secret (Settings > Secrets and variables > Actions) — never in the
+          # repo, and masked in logs. Create the key in Render Account Settings.
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Register Render's hosted MCP server so Claude can read live service
+          # logs. It authenticates via a Bearer header; the key is expanded from
+          # the env var above inside the CLI, so the secret never lands in the
+          # claude_args string or the process argv.
+          claude_args: |
+            --mcp-config '{"mcpServers":{"render":{"type":"http","url":"https://mcp.render.com/mcp","headers":{"Authorization":"Bearer ${RENDER_API_KEY}"}}}}'
+            --allowed-tools "Bash(gh issue:*),mcp__render"
+          prompt: |
+            The production health probe for DonorCRM is FAILING.
+
+            Endpoint: ${{ env.HEALTH_URL }}
+            Last HTTP status: ${{ steps.probe.outputs.status_code }}
+            Response body:
+            ${{ steps.probe.outputs.body }}
+
+            Do the following, then stop:
+            1. Use the Render MCP tools to read recent logs for the
+               `donorcrm-web` service and identify the most likely root cause.
+               (Recall: a prior outage was a 500 on /auth/login/ caused by
+               REDIS_URL pointing at an unreachable Redis used for throttle
+               caching. Check for similar config/connection issues first.)
+            2. Search existing open issues for a duplicate before filing
+               (`gh issue list --label incident --state open`). If a matching
+               open incident exists, add a comment instead of a new issue.
+            3. Otherwise open ONE issue with `gh issue create`, labeled
+               `incident`, titled "Health check failing: <one-line cause>",
+               containing: observed symptom, probable root cause from the
+               logs, and a concrete suggested fix.
+            Do NOT attempt to deploy, restart services, or change any
+            production configuration. Diagnosis and issue-filing only.

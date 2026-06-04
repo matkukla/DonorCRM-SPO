@@ -15,6 +15,7 @@ from unittest.mock import patch
 from rest_framework.test import APIRequestFactory
 
 import pytest
+from freezegun import freeze_time
 
 from apps.contacts.tests.factories import ContactFactory
 from apps.core.fiscal_year import get_current_fiscal_year_bounds, get_prior_fiscal_year_bounds
@@ -56,6 +57,10 @@ class TestFiscalYearPace:
         assert result["pace_percentage"] == 0.0
         assert result["yoy_delta_percentage"] is None
 
+    # Pinned mid-fiscal-year (FY runs Jun 1 - May 31) so the gift dated
+    # fy_start + 10 days is always in the past relative to "today"; otherwise
+    # this fails when run in the first days of the fiscal year (early June).
+    @freeze_time("2026-10-15")
     def test_sums_current_fy_gifts(self):
         request = _admin_request()
         fy_start, _ = get_current_fiscal_year_bounds()
@@ -266,6 +271,9 @@ class TestFiscalYearDonations:
             else:
                 assert m["current_cents"] is not None
 
+    # Pinned mid-fiscal-year so fy_start + 5 days stays in the past; see the
+    # note on test_sums_current_fy_gifts above.
+    @freeze_time("2026-10-15")
     def test_sums_current_and_prior_year_gifts(self):
         request = _admin_request()
         fy_start, _ = get_current_fiscal_year_bounds()
