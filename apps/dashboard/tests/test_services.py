@@ -347,21 +347,24 @@ class TestGetGivingSummary:
         """
         user = UserFactory(role="missionary", monthly_support_goal_cents=100000)
         contact = ContactFactory(owner=user)
-        today = date.today()
+        # Fiscal year runs June 1 - May 31. Anchor "today" to March 1 so the
+        # Jan/Feb gifts below fall in the same (past) fiscal year regardless of
+        # when the suite runs. as_of_date is the service's deterministic seam.
+        as_of = date(2025, 3, 1)
 
         # $100/month recurring = $1200/year annualized
         rg = RecurringGiftFactory(donor_contact=contact, amount_cents=10000, frequency="monthly")
-        # $200 recurring payment this year (linked to recurring gift)
+        # $200 recurring payment this fiscal year (linked to recurring gift)
         GiftFactory(
             donor_contact=contact,
             amount_cents=20000,
-            gift_date=date(today.year, 1, 15),
+            gift_date=date(2025, 1, 15),
             recurring_gift=rg,
         )
         # $500 one-time gift (NOT linked to recurring — should not reduce expecting)
-        GiftFactory(donor_contact=contact, amount_cents=50000, gift_date=date(today.year, 2, 15))
+        GiftFactory(donor_contact=contact, amount_cents=50000, gift_date=date(2025, 2, 15))
 
-        result = get_giving_summary(user)
+        result = get_giving_summary(user, as_of_date=as_of)
 
         assert result["given"] == 700.0  # $200 recurring + $500 one-time
         assert result["expecting"] == 1000.0  # 1200 - 200 (only recurring) = 1000
@@ -370,7 +373,9 @@ class TestGetGivingSummary:
         """Expecting should floor at 0 when recurring given > annualized recurring."""
         user = UserFactory(role="missionary", monthly_support_goal_cents=100000)
         contact = ContactFactory(owner=user)
-        today = date.today()
+        # Anchor "today" to March 1 so the Jan gift falls in the same (past)
+        # fiscal year (June 1 - May 31) regardless of when the suite runs.
+        as_of = date(2025, 3, 1)
 
         # $100/month recurring = $1200/year
         rg = RecurringGiftFactory(donor_contact=contact, amount_cents=10000, frequency="monthly")
@@ -378,11 +383,11 @@ class TestGetGivingSummary:
         GiftFactory(
             donor_contact=contact,
             amount_cents=200000,
-            gift_date=date(today.year, 1, 15),
+            gift_date=date(2025, 1, 15),
             recurring_gift=rg,
         )
 
-        result = get_giving_summary(user)
+        result = get_giving_summary(user, as_of_date=as_of)
 
         assert result["expecting"] == 0
 
