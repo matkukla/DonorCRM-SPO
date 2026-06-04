@@ -84,9 +84,7 @@ class TestGiftExportCSV:
         assert len(rows) == 2
         data = rows[1]
         assert data[0] == "Donald Giver"
-        # NOTE: export emits str(Decimal(cents)/100) so 12500 -> "125"
-        # (no currency padding). This documents the app's real output.
-        assert data[1] == "125"
+        assert data[1] == "125.00"
         assert data[2] == "2026-03-15"
         assert data[3] == "Check"
         assert data[4] == "General Fund"
@@ -103,7 +101,7 @@ class TestGiftExportCSV:
         rows = _parse_csv(response)
         assert len(rows) == 2
         data = rows[1]
-        assert data[1] == "50"
+        assert data[1] == "50.00"
         # No payment type and no fund render as empty strings.
         assert data[3] == ""
         assert data[4] == ""
@@ -125,7 +123,7 @@ class TestGiftExportCSV:
         # Header + exactly one owned row.
         assert len(rows) == 2
         assert rows[1][0] == "My Donor"
-        assert rows[1][1] == "80"
+        assert rows[1][1] == "80.00"
 
     def test_export_applies_payment_type_filter(self, missionary):
         contact = ContactFactory(owner=missionary, first_name="Filter", last_name="Me")
@@ -144,7 +142,7 @@ class TestGiftExportCSV:
         response = _client(missionary).get(GIFT_EXPORT_URL, {"payment_type": "cash"})
         rows = _parse_csv(response)
         assert len(rows) == 2
-        assert rows[1][1] == "100"
+        assert rows[1][1] == "100.00"
         assert rows[1][3] == "Cash"
 
     def test_export_applies_min_amount_filter(self, missionary):
@@ -154,7 +152,20 @@ class TestGiftExportCSV:
         response = _client(missionary).get(GIFT_EXPORT_URL, {"min_amount": "100"})
         rows = _parse_csv(response)
         assert len(rows) == 2
-        assert rows[1][1] == "500"
+        assert rows[1][1] == "500.00"
+
+    def test_export_amount_always_two_decimal_places(self, missionary):
+        """45050 cents must render as '450.50', not '450.5' (issue #62)."""
+        contact = ContactFactory(owner=missionary, first_name="Half", last_name="Dollar")
+        Gift.objects.create(
+            donor_contact=contact,
+            amount_cents=45050,
+            gift_date=date(2026, 6, 1),
+        )
+        response = _client(missionary).get(GIFT_EXPORT_URL)
+        rows = _parse_csv(response)
+        assert len(rows) == 2
+        assert rows[1][1] == "450.50"
 
     def test_coach_forbidden_from_gift_export(self):
         coach = CoachUserFactory()
@@ -225,8 +236,7 @@ class TestRecurringGiftExportCSV:
         assert len(rows) == 2
         data = rows[1]
         assert data[0] == "Reggie Recurring"
-        # str(Decimal(25000)/100) -> "250" (no currency padding).
-        assert data[1] == "250"
+        assert data[1] == "250.00"
         assert data[2] == "monthly"
         assert data[3] == "active"
         assert data[4] == "2026-01-10"
@@ -254,7 +264,7 @@ class TestRecurringGiftExportCSV:
         rows = _parse_csv(response)
         assert len(rows) == 2
         assert rows[1][0] == "Mine Recur"
-        assert rows[1][1] == "100"
+        assert rows[1][1] == "100.00"
 
     def test_export_applies_status_filter(self, missionary):
         contact = ContactFactory(owner=missionary, first_name="Stat", last_name="Filt")
@@ -275,7 +285,7 @@ class TestRecurringGiftExportCSV:
         response = _client(missionary).get(RECURRING_EXPORT_URL, {"status": "active"})
         rows = _parse_csv(response)
         assert len(rows) == 2
-        assert rows[1][1] == "120"
+        assert rows[1][1] == "120.00"
         assert rows[1][3] == "active"
 
     def test_coach_forbidden_from_recurring_export(self):

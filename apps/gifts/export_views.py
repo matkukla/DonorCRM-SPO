@@ -72,7 +72,7 @@ class GiftExportCSVView(APIView):
                 yield writer.writerow(
                     [
                         sanitize_csv_value(gift.donor_contact.full_name),
-                        str(gift.amount_dollars),
+                        f"{gift.amount_dollars:.2f}",
                         gift.gift_date.isoformat(),
                         gift.get_payment_type_display() or "",
                         sanitize_csv_value(gift.fund.name if gift.fund else ""),
@@ -135,7 +135,7 @@ class RecurringGiftExportCSVView(APIView):
                 yield writer.writerow(
                     [
                         sanitize_csv_value(rg.donor_contact.full_name),
-                        str(rg.amount_dollars),
+                        f"{rg.amount_dollars:.2f}",
                         rg.frequency,
                         rg.status,
                         rg.start_date.isoformat(),
