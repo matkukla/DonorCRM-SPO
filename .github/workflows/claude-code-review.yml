@@ -12,11 +12,11 @@ on:
 
 jobs:
   claude-review:
-    # Optional: Filter by PR author
-    # if: |
-    #   github.event.pull_request.user.login == 'external-contributor' ||
-    #   github.event.pull_request.user.login == 'new-developer' ||
-    #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
+    # Skip Dependabot PRs: their pull_request runs can't access secrets (so the
+    # review can't authenticate) and reviewing a version bump adds little. The
+    # dependabot-auto-merge workflow + CI gate already cover those; a human can
+    # still @claude on a major bump for an on-demand review.
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
 
     runs-on: ubuntu-latest
     permissions:
@@ -39,7 +39,10 @@ jobs:
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
           plugins: 'code-review@claude-code-plugins'
           prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
-          allowed_bots: 'dependabot'
+          # Allow the ai-fix pipeline's PRs (authored by the Claude GitHub App,
+          # claude[bot]) to be reviewed — the review half of propose-and-approve.
+          # Human PRs are always reviewed; Dependabot is skipped via the job `if`.
+          allowed_bots: 'claude[bot]'
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
 
