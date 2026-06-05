@@ -166,10 +166,13 @@ class GroupContactEmailsView(APIView):
         except Group.DoesNotExist:
             return Response({"detail": "Group not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        emails = list(
+        # email is encrypted at rest with a random nonce, so a DB-level
+        # .order_by("email") sorts by (effectively random) ciphertext. Pull the
+        # decrypted plaintext via values_list and sort case-insensitively here.
+        emails = sorted(
             group.contacts.exclude(email__isnull=True)
             .exclude(email="")
-            .values_list("email", flat=True)
-            .order_by("email")
+            .values_list("email", flat=True),
+            key=str.casefold,
         )
         return Response({"emails": emails, "count": len(emails)})

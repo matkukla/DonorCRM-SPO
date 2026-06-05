@@ -245,20 +245,22 @@ class TestGroupContactsRemoval:
 class TestGroupContactEmailsView:
     """The group contact-emails export endpoint."""
 
-    def test_returns_group_contact_emails_with_count(self):
-        """Returns every in-group contact email plus a matching count.
+    def test_returns_group_contact_emails_sorted_with_count(self):
+        """Returns every in-group email, case-insensitively sorted, plus a count.
 
-        NOTE: order is not asserted. The Contact.email column is encrypted at
-        rest, so the view's order_by('email') sorts by ciphertext rather than
-        plaintext (see bug report). We assert the set + count, which is the
-        correct behavioral contract regardless of ordering.
+        Regression guard for the encrypted-ordering bug: Contact.email is
+        encrypted at rest with a random nonce, so a DB-level order_by('email')
+        sorts by (random) ciphertext. The view decrypts and sorts in Python, so
+        the result must be alphabetical regardless of insertion order. Several
+        mixed-case emails are inserted out of order so a ciphertext/random order
+        cannot coincidentally pass.
         """
         user = UserFactory(role="missionary")
         group = GroupFactory(owner=user)
-        c1 = ContactFactory(owner=user, email="zed@example.com")
-        c2 = ContactFactory(owner=user, email="amy@example.com")
-        c1.groups.add(group)
-        c2.groups.add(group)
+        emails = ["zoe@example.com", "Amy@example.com", "mike@example.com", "Bob@example.com"]
+        for addr in emails:
+            contact = ContactFactory(owner=user, email=addr)
+            contact.groups.add(group)
 
         client = APIClient()
         client.force_authenticate(user=user)
@@ -266,8 +268,8 @@ class TestGroupContactEmailsView:
         response = client.get(f"/api/v1/groups/{group.id}/contacts/emails/")
 
         assert response.status_code == status.HTTP_200_OK
-        assert set(response.data["emails"]) == {"amy@example.com", "zed@example.com"}
-        assert response.data["count"] == 2
+        assert response.data["emails"] == sorted(emails, key=str.casefold)
+        assert response.data["count"] == 4
 
     def test_excludes_blank_and_null_emails(self):
         """Contacts with empty-string emails are excluded from the export."""
