@@ -211,6 +211,35 @@ class TestGroupContactsRemoval:
         # Not visible to `other`, so it is NOT removed.
         assert contact in group.contacts.all()
 
+    def test_admin_cannot_remove_other_users_contact_without_view_as(self):
+        """Admin without View As cannot remove a contact owned by another user.
+
+        get_visible_user_ids() always returns a set (never None), so the
+        owner_id__in filter always applies.  This guards against re-introducing
+        the old dead 'if visible is None' branch that would have allowed
+        unscoped contact removal.
+        """
+        admin = UserFactory(role="admin")
+        missionary = UserFactory(role="missionary")
+        group = GroupFactory(owner=admin)
+        contact = ContactFactory(owner=missionary)
+        contact.groups.add(group)
+        assert contact in group.contacts.all()
+
+        client = APIClient()
+        client.force_authenticate(user=admin)
+
+        response = client.delete(
+            f"/api/v1/groups/{group.id}/contacts/",
+            {"contact_ids": [str(contact.id)]},
+            format="json",
+        )
+
+        # 200 is returned (same as any noop removal), but the contact must
+        # remain because it is not in the admin's visible set.
+        assert response.status_code == status.HTTP_200_OK
+        assert contact in group.contacts.all()
+
 
 @pytest.mark.django_db
 class TestGroupContactEmailsView:
