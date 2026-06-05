@@ -16,7 +16,6 @@ class GiftFilterSet(django_filters.FilterSet):
     min_amount = django_filters.NumberFilter(method="filter_min_amount")
     max_amount = django_filters.NumberFilter(method="filter_max_amount")
     payment_type = django_filters.CharFilter(field_name="payment_type")
-    owner = django_filters.NumberFilter(field_name="donor_contact__owner")
     is_recurring = django_filters.BooleanFilter(method="filter_is_recurring")
 
     class Meta:
@@ -29,7 +28,6 @@ class GiftFilterSet(django_filters.FilterSet):
             "min_amount",
             "max_amount",
             "payment_type",
-            "owner",
             "is_recurring",
         ]
 
@@ -58,8 +56,7 @@ class RecurringGiftFilterSet(django_filters.FilterSet):
     fund = django_filters.UUIDFilter(field_name="fund")
     status = django_filters.CharFilter(field_name="status")
     frequency = django_filters.CharFilter(field_name="frequency")
-    owner = django_filters.NumberFilter(field_name="donor_contact__owner")
 
     class Meta:
         model = RecurringGift
-        fields = ["donor_contact", "fund", "status", "frequency", "owner"]
+        fields = ["donor_contact", "fund", "status", "frequency"]

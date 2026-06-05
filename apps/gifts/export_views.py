@@ -36,14 +36,11 @@ class GiftExportCSVView(APIView):
 
         user = request.user
 
-        # Same owner-scoping as GiftListCreateView
+        # Same owner-scoping as GiftListCreateView. Cross-user access is
+        # reached only via View As (X-View-As-User-Id -> get_visible_user_ids),
+        # never a ?owner= query param.
         visible = get_visible_user_ids(user, request=request)
         queryset = Gift.objects.filter(donor_contact__owner_id__in=visible)
-
-        # Admin/supervisor owner filter
-        owner_id = request.query_params.get("owner")
-        if owner_id and user.role in ["admin", "supervisor"]:
-            queryset = queryset.filter(donor_contact__owner_id=owner_id)
 
         # Apply FilterSet (same as list endpoint)
         filterset = GiftFilterSet(request.query_params, queryset=queryset)
@@ -99,14 +96,11 @@ class RecurringGiftExportCSVView(APIView):
 
         user = request.user
 
-        # Same owner-scoping as RecurringGiftListCreateView
+        # Same owner-scoping as RecurringGiftListCreateView. Cross-user access
+        # is reached only via View As (X-View-As-User-Id -> get_visible_user_ids),
+        # never a ?owner= query param.
         visible = get_visible_user_ids(user, request=request)
         queryset = RecurringGift.objects.filter(donor_contact__owner_id__in=visible)
-
-        # Admin/supervisor owner filter
-        owner_id = request.query_params.get("owner")
-        if owner_id and user.role in ["admin", "supervisor"]:
-            queryset = queryset.filter(donor_contact__owner_id=owner_id)
 
         # Apply FilterSet (same as list endpoint)
         filterset = RecurringGiftFilterSet(request.query_params, queryset=queryset)
