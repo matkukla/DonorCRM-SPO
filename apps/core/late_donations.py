@@ -78,17 +78,19 @@ def compute_late_donations(active_recurring_qs, today=None, limit=None):
         interval, reference_date, days_late = result
         contact = rg.donor_contact
         last_gift_date = contact.last_gift_date
-        late.append({
-            "id": str(rg.id),
-            "contact_id": str(contact.id),
-            "contact_name": f"{contact.first_name} {contact.last_name}".strip(),
-            "amount": float(rg.amount_dollars),
-            "frequency": rg.frequency,
-            "monthly_equivalent": float(rg.monthly_equivalent),
-            "last_gift_date": last_gift_date.isoformat() if last_gift_date else None,
-            "days_late": days_late,
-            "next_expected_date": (reference_date + timedelta(days=interval)).isoformat(),
-        })
+        late.append(
+            {
+                "id": str(rg.id),
+                "contact_id": str(contact.id),
+                "contact_name": f"{contact.first_name} {contact.last_name}".strip(),
+                "amount": float(rg.amount_dollars),
+                "frequency": rg.frequency,
+                "monthly_equivalent": float(rg.monthly_equivalent),
+                "last_gift_date": last_gift_date.isoformat() if last_gift_date else None,
+                "days_late": days_late,
+                "next_expected_date": (reference_date + timedelta(days=interval)).isoformat(),
+            }
+        )
 
     late.sort(key=lambda x: x["days_late"], reverse=True)
     return late if limit is None else late[:limit]
@@ -102,11 +104,7 @@ def count_late_donations(active_recurring_qs, today=None):
     doesn't OOM building a list that gets discarded.
     """
     today = today or timezone.localdate()
-    return sum(
-        1
-        for rg in _scoped_qs(active_recurring_qs)
-        if _is_late(rg, today) is not None
-    )
+    return sum(1 for rg in _scoped_qs(active_recurring_qs) if _is_late(rg, today) is not None)
 
 
 def base_recurring_for_owner(user):

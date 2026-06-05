@@ -5,9 +5,9 @@ the right resource_type / resource_id, and that non-PII paths are skipped.
 """
 from __future__ import annotations
 
-import pytest
 from django.urls import reverse
-from rest_framework.test import APIClient
+
+import pytest
 
 from apps.core import access_log_middleware
 from apps.core.models import DataAccessLog

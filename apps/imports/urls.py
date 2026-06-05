@@ -38,40 +38,50 @@ from apps.imports.views import (
     TransactionTemplateView,
 )
 
-app_name = 'imports'
+app_name = "imports"
 
 urlpatterns = [
-    path('contacts/', ContactImportView.as_view(), name='import-contacts'),
-    path('donations/', DonationImportView.as_view(), name='import-donations'),
-    path('entities/', EntityImportView.as_view(), name='import-entities'),
-    path('funds/', FundImportView.as_view(), name='import-funds'),
-    path('funds/list/', FundListView.as_view(), name='fund-list'),
-    path('mpd/', MPDImportView.as_view(), name='import-mpd'),
-    path('mpd/overview/', MPDOverviewView.as_view(), name='mpd-overview'),
-    path('mpd/me/', MPDMyDataView.as_view(), name='mpd-my-data'),
-    path('mpd/uploads/', MPDUploadHistoryView.as_view(), name='mpd-upload-history'),
-    path('batches/', ImportBatchListView.as_view(), name='import-batch-list'),
-    path('generic/contacts/', GenericContactImportView.as_view(), name='import-generic-contacts'),
-    path('generic/donations/', GenericDonationImportView.as_view(), name='import-generic-donations'),
-    path('re/constituents/', REConstituentImportView.as_view(), name='import-re-constituents'),
-    path('re/gifts/', REGiftImportView.as_view(), name='import-re-gifts'),
-    path('re/recurring-gifts/', RERecurringGiftImportView.as_view(), name='import-re-recurring-gifts'),
-    path('re/solicitors/', RESolicitorImportView.as_view(), name='import-re-solicitors'),
+    path("contacts/", ContactImportView.as_view(), name="import-contacts"),
+    path("donations/", DonationImportView.as_view(), name="import-donations"),
+    path("entities/", EntityImportView.as_view(), name="import-entities"),
+    path("funds/", FundImportView.as_view(), name="import-funds"),
+    path("funds/list/", FundListView.as_view(), name="fund-list"),
+    path("mpd/", MPDImportView.as_view(), name="import-mpd"),
+    path("mpd/overview/", MPDOverviewView.as_view(), name="mpd-overview"),
+    path("mpd/me/", MPDMyDataView.as_view(), name="mpd-my-data"),
+    path("mpd/uploads/", MPDUploadHistoryView.as_view(), name="mpd-upload-history"),
+    path("batches/", ImportBatchListView.as_view(), name="import-batch-list"),
+    path("generic/contacts/", GenericContactImportView.as_view(), name="import-generic-contacts"),
+    path(
+        "generic/donations/", GenericDonationImportView.as_view(), name="import-generic-donations"
+    ),
+    path("re/constituents/", REConstituentImportView.as_view(), name="import-re-constituents"),
+    path("re/gifts/", REGiftImportView.as_view(), name="import-re-gifts"),
+    path(
+        "re/recurring-gifts/", RERecurringGiftImportView.as_view(), name="import-re-recurring-gifts"
+    ),
+    path("re/solicitors/", RESolicitorImportView.as_view(), name="import-re-solicitors"),
     # SPO import pipeline (three-step workflow)
-    path('spo/missionaries/', SPOMissionaryImportView.as_view(), name='import-spo-missionaries'),
-    path('spo/gifts/', SPOGiftImportView.as_view(), name='import-spo-gifts'),
-    path('spo/prayers/', SPOPrayerImportView.as_view(), name='import-spo-prayers'),
-    path('pledges/', PledgeImportView.as_view(), name='import-pledges'),
-    path('transactions/', TransactionImportView.as_view(), name='import-transactions'),
-    path('export/contacts/', ContactExportView.as_view(), name='export-contacts'),
-    path('export/donations/', DonationExportView.as_view(), name='export-donations'),
-    path('templates/contacts/', ContactTemplateView.as_view(), name='template-contacts'),
-    path('templates/donations/', DonationTemplateView.as_view(), name='template-donations'),
-    path('templates/entities/', EntityTemplateView.as_view(), name='template-entities'),
-    path('templates/funds/', FundTemplateView.as_view(), name='template-funds'),
-    path('templates/pledges/', PledgeTemplateView.as_view(), name='template-pledges'),
-    path('templates/transactions/', TransactionTemplateView.as_view(), name='template-transactions'),
-    path('runs/latest/', LatestImportRunsView.as_view(), name='latest-import-runs'),
-    path('runs/<uuid:import_run_id>/errors/csv/', ImportRunErrorsCSVView.as_view(), name='import-run-errors-csv'),
-    path('status/<str:import_id>/', ImportStatusView.as_view(), name='import-status'),
+    path("spo/missionaries/", SPOMissionaryImportView.as_view(), name="import-spo-missionaries"),
+    path("spo/gifts/", SPOGiftImportView.as_view(), name="import-spo-gifts"),
+    path("spo/prayers/", SPOPrayerImportView.as_view(), name="import-spo-prayers"),
+    path("pledges/", PledgeImportView.as_view(), name="import-pledges"),
+    path("transactions/", TransactionImportView.as_view(), name="import-transactions"),
+    path("export/contacts/", ContactExportView.as_view(), name="export-contacts"),
+    path("export/donations/", DonationExportView.as_view(), name="export-donations"),
+    path("templates/contacts/", ContactTemplateView.as_view(), name="template-contacts"),
+    path("templates/donations/", DonationTemplateView.as_view(), name="template-donations"),
+    path("templates/entities/", EntityTemplateView.as_view(), name="template-entities"),
+    path("templates/funds/", FundTemplateView.as_view(), name="template-funds"),
+    path("templates/pledges/", PledgeTemplateView.as_view(), name="template-pledges"),
+    path(
+        "templates/transactions/", TransactionTemplateView.as_view(), name="template-transactions"
+    ),
+    path("runs/latest/", LatestImportRunsView.as_view(), name="latest-import-runs"),
+    path(
+        "runs/<uuid:import_run_id>/errors/csv/",
+        ImportRunErrorsCSVView.as_view(),
+        name="import-run-errors-csv",
+    ),
+    path("status/<str:import_id>/", ImportStatusView.as_view(), name="import-status"),
 ]

@@ -3,8 +3,10 @@ Integration test stubs for Goals API endpoint.
 GOAL-02: PATCH /api/v1/goals/me/ saves monthly_support_goal_cents and goal_weeks.
 GOAL-03: PATCH /api/v1/goals/me/ with journal_ids replaces GoalJournalSelection set.
 """
-import pytest
 from rest_framework.test import APIClient
+
+import pytest
+
 from apps.users.tests.factories import UserFactory
 
 
@@ -123,6 +125,7 @@ def test_calls_count_reflects_journal_events():
 
     # Create a JournalContact to attach events to
     from apps.contacts.tests.factories import ContactFactory
+
     contact = ContactFactory(owner=user)
     jc = JournalContact.objects.create(journal=journal, contact=contact)
 
@@ -130,8 +133,8 @@ def test_calls_count_reflects_journal_events():
     for _ in range(3):
         JournalStageEvent.objects.create(
             journal_contact=jc,
-            stage='contact',
-            event_type='call_logged',
+            stage="contact",
+            event_type="call_logged",
         )
 
     # Select this journal
@@ -148,6 +151,7 @@ def test_calls_count_reflects_journal_events():
 def test_supervisor_can_get_goal_readonly():
     """GOAL-10: Supervisor role can GET /api/v1/goals/me/ (read-only enforced in UI, not API)."""
     from apps.users.models import UserRole
+
     user = UserFactory(role=UserRole.SUPERVISOR)
     client = APIClient()
     client.force_authenticate(user=user)

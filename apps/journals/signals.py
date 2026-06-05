@@ -23,16 +23,13 @@ def handle_journal_created(sender, instance, created, **kwargs):
         Event.objects.create(
             user=instance.owner,
             event_type=EventType.JOURNAL_CREATED,
-            title=f'Journal created: {instance.name}',
-            message=f'Goal: ${instance.goal_amount}',
+            title=f"Journal created: {instance.name}",
+            message=f"Goal: ${instance.goal_amount}",
             severity=EventSeverity.INFO,
-            metadata={
-                'journal_id': str(instance.id),
-                'goal_amount': str(instance.goal_amount)
-            }
+            metadata={"journal_id": str(instance.id), "goal_amount": str(instance.goal_amount)},
         )
     except Exception as e:
-        logger.warning(f'Failed to create JOURNAL_CREATED event: {e}')
+        logger.warning(f"Failed to create JOURNAL_CREATED event: {e}")
 
 
 @receiver(post_save, sender=JournalStageEvent)
@@ -49,15 +46,15 @@ def handle_stage_event_created(sender, instance, created, **kwargs):
         Event.objects.create(
             user=journal.owner,
             event_type=EventType.JOURNAL_STAGE_EVENT,
-            title=f'{instance.get_stage_display()}: {instance.get_event_type_display()}',
-            message=instance.notes[:200] if instance.notes else '',
+            title=f"{instance.get_stage_display()}: {instance.get_event_type_display()}",
+            message=instance.notes[:200] if instance.notes else "",
             severity=EventSeverity.INFO,
             metadata={
-                'journal_id': str(journal.id),
-                'stage': instance.stage,
-                'event_type': instance.event_type,
-                'journal_contact_id': str(instance.journal_contact_id)
-            }
+                "journal_id": str(journal.id),
+                "stage": instance.stage,
+                "event_type": instance.event_type,
+                "journal_contact_id": str(instance.journal_contact_id),
+            },
         )
     except Exception as e:
-        logger.warning(f'Failed to create JOURNAL_STAGE_EVENT event: {e}')
+        logger.warning(f"Failed to create JOURNAL_STAGE_EVENT event: {e}")

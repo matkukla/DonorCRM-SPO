@@ -10,11 +10,11 @@ from apps.prayers.views import (
     TodaysFocusView,
 )
 
-app_name = 'prayers'
+app_name = "prayers"
 
 urlpatterns = [
-    path('', PrayerIntentionListCreateView.as_view(), name='prayer-list'),
-    path('focus/', TodaysFocusView.as_view(), name='prayer-focus'),
-    path('<uuid:pk>/', PrayerIntentionDetailView.as_view(), name='prayer-detail'),
-    path('<uuid:pk>/prayed/', MarkPrayedView.as_view(), name='prayer-mark-prayed'),
+    path("", PrayerIntentionListCreateView.as_view(), name="prayer-list"),
+    path("focus/", TodaysFocusView.as_view(), name="prayer-focus"),
+    path("<uuid:pk>/", PrayerIntentionDetailView.as_view(), name="prayer-detail"),
+    path("<uuid:pk>/prayed/", MarkPrayedView.as_view(), name="prayer-mark-prayed"),
 ]

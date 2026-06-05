@@ -12,14 +12,14 @@ from apps.gifts.models import RecurringGiftFrequency
 # Frequency multipliers for SQL CASE/WHEN aggregation.
 # Must match RecurringGift.monthly_equivalent property exactly.
 FREQUENCY_MULTIPLIERS = {
-    RecurringGiftFrequency.MONTHLY: Decimal('1'),
-    RecurringGiftFrequency.QUARTERLY: Decimal('1') / Decimal('3'),
-    RecurringGiftFrequency.SEMI_ANNUALLY: Decimal('1') / Decimal('6'),
-    RecurringGiftFrequency.ANNUALLY: Decimal('1') / Decimal('12'),
-    RecurringGiftFrequency.BIMONTHLY: Decimal('1') / Decimal('2'),
-    RecurringGiftFrequency.BIWEEKLY: Decimal('26') / Decimal('12'),
-    RecurringGiftFrequency.WEEKLY: Decimal('52') / Decimal('12'),
-    RecurringGiftFrequency.IRREGULAR: Decimal('1'),
+    RecurringGiftFrequency.MONTHLY: Decimal("1"),
+    RecurringGiftFrequency.QUARTERLY: Decimal("1") / Decimal("3"),
+    RecurringGiftFrequency.SEMI_ANNUALLY: Decimal("1") / Decimal("6"),
+    RecurringGiftFrequency.ANNUALLY: Decimal("1") / Decimal("12"),
+    RecurringGiftFrequency.BIMONTHLY: Decimal("1") / Decimal("2"),
+    RecurringGiftFrequency.BIWEEKLY: Decimal("26") / Decimal("12"),
+    RecurringGiftFrequency.WEEKLY: Decimal("52") / Decimal("12"),
+    RecurringGiftFrequency.IRREGULAR: Decimal("1"),
 }
 
 
@@ -39,11 +39,11 @@ def _monthly_equivalent_aggregate(queryset):
                 When(frequency=freq, then=Value(mult))
                 for freq, mult in FREQUENCY_MULTIPLIERS.items()
             ],
-            default=Value(Decimal('1')),
+            default=Value(Decimal("1")),
             output_field=DecimalField(max_digits=20, decimal_places=10),
         ),
-        monthly_cents=F('amount_cents') * F('freq_multiplier'),
-    ).aggregate(total=Sum('monthly_cents'))
+        monthly_cents=F("amount_cents") * F("freq_multiplier"),
+    ).aggregate(total=Sum("monthly_cents"))
 
-    total_cents = result['total'] or Decimal('0')
-    return round(total_cents / Decimal('100'), 2)
+    total_cents = result["total"] or Decimal("0")
+    return round(total_cents / Decimal("100"), 2)

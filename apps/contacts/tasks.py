@@ -24,17 +24,17 @@ def detect_at_risk_donors():
 
     cutoff_date = timezone.now().date() - timedelta(days=60)
 
-    logger.info('Starting at-risk donor detection')
+    logger.info("Starting at-risk donor detection")
 
     # Find at-risk donors who haven't already been flagged recently
     at_risk_contacts = Contact.active.filter(
         status=ContactStatus.DONOR,
         last_gift_date__lt=cutoff_date,
-        gift_count__gte=2  # Has given at least twice
+        gift_count__gte=2,  # Has given at least twice
     ).exclude(
         # Exclude those we already notified in the last 30 days
         events__event_type=EventType.AT_RISK,
-        events__created_at__gte=timezone.now() - timedelta(days=30)
+        events__created_at__gte=timezone.now() - timedelta(days=30),
     )
 
     at_risk_count = 0
@@ -43,18 +43,18 @@ def detect_at_risk_donors():
         Event.objects.create(
             user=contact.owner,
             event_type=EventType.AT_RISK,
-            title=f'{contact.full_name} is at risk of lapsing',
-            message=f'Last gift was on {contact.last_gift_date}. Consider reaching out.',
+            title=f"{contact.full_name} is at risk of lapsing",
+            message=f"Last gift was on {contact.last_gift_date}. Consider reaching out.",
             severity=EventSeverity.WARNING,
             contact=contact,
             metadata={
-                'last_gift_date': str(contact.last_gift_date),
-                'days_since_last_gift': (timezone.now().date() - contact.last_gift_date).days,
-                'total_given': str(contact.total_given),
-            }
+                "last_gift_date": str(contact.last_gift_date),
+                "days_since_last_gift": (timezone.now().date() - contact.last_gift_date).days,
+                "total_given": str(contact.total_given),
+            },
         )
         at_risk_count += 1
 
-    logger.info(f'At-risk detection completed: {at_risk_count} donors identified')
+    logger.info(f"At-risk detection completed: {at_risk_count} donors identified")
 
-    return f'Identified {at_risk_count} at-risk donors'
+    return f"Identified {at_risk_count} at-risk donors"

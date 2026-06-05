@@ -10,17 +10,26 @@ class EventSerializer(serializers.ModelSerializer):
     """
     Serializer for Event model.
     """
-    contact_name = serializers.CharField(source='contact.full_name', read_only=True, allow_null=True)
+
+    contact_name = serializers.CharField(
+        source="contact.full_name", read_only=True, allow_null=True
+    )
 
     class Meta:
         model = Event
         fields = [
-            'id', 'user', 'event_type', 'severity',
-            'title', 'message',
-            'contact', 'contact_name',
-            'is_read', 'read_at', 'is_new',
-            'metadata', 'created_at'
+            "id",
+            "user",
+            "event_type",
+            "severity",
+            "title",
+            "message",
+            "contact",
+            "contact_name",
+            "is_read",
+            "read_at",
+            "is_new",
+            "metadata",
+            "created_at",
         ]
         read_only_fields = fields
-
-

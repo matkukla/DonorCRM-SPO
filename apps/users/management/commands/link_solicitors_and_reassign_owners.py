@@ -20,7 +20,7 @@ from apps.users.models import User, UserRole
 
 def _solicitor_to_email(normalized_name: str) -> str:
     """Convert 'last, first' to 'first.last@spo.org'."""
-    parts = [p.strip() for p in normalized_name.split(',', 1)]
+    parts = [p.strip() for p in normalized_name.split(",", 1)]
     if len(parts) == 2:
         last, first = parts
         return f"{first.lower()}.{last.lower()}@spo.org"
@@ -29,34 +29,34 @@ def _solicitor_to_email(normalized_name: str) -> str:
 
 def _solicitor_to_names(normalized_name: str) -> tuple[str, str]:
     """Convert 'last, first' to (first, last)."""
-    parts = [p.strip() for p in normalized_name.split(',', 1)]
+    parts = [p.strip() for p in normalized_name.split(",", 1)]
     if len(parts) == 2:
         return parts[1], parts[0]
-    return normalized_name, ''
+    return normalized_name, ""
 
 
 class Command(BaseCommand):
     help = (
-        'Create User accounts for unlinked solicitors, link them, '
-        'then reassign contact owners based on gift credits.'
+        "Create User accounts for unlinked solicitors, link them, "
+        "then reassign contact owners based on gift credits."
     )
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--dry-run',
-            action='store_true',
-            help='Preview changes without writing to the database.',
+            "--dry-run",
+            action="store_true",
+            help="Preview changes without writing to the database.",
         )
 
     def handle(self, *args, **options):
-        dry_run = options['dry_run']
+        dry_run = options["dry_run"]
         if dry_run:
-            self.stdout.write(self.style.WARNING('DRY RUN — no changes will be saved.\n'))
+            self.stdout.write(self.style.WARNING("DRY RUN — no changes will be saved.\n"))
 
         # ── Step 1 & 2: Create users and link solicitors ──────────────────────
 
         unlinked = Solicitor.objects.filter(user__isnull=True).select_related()
-        self.stdout.write(f'Found {unlinked.count()} unlinked solicitor(s).\n')
+        self.stdout.write(f"Found {unlinked.count()} unlinked solicitor(s).\n")
 
         solicitors_linked = 0
         users_created = 0
@@ -94,8 +94,8 @@ class Command(BaseCommand):
 
         self.stdout.write(
             self.style.SUCCESS(
-                f'Step 1+2: {users_created} user(s) created, '
-                f'{solicitors_linked} solicitor(s) linked.\n'
+                f"Step 1+2: {users_created} user(s) created, "
+                f"{solicitors_linked} solicitor(s) linked.\n"
             )
         )
 
@@ -106,11 +106,16 @@ class Command(BaseCommand):
         # Set contact.owner = that solicitor's user.
 
         # Collect all contacts owned by non-missionaries
-        non_missionary_owners = User.objects.exclude(role=UserRole.MISSIONARY).values_list('id', flat=True)
+        non_missionary_owners = User.objects.exclude(role=UserRole.MISSIONARY).values_list(
+            "id", flat=True
+        )
 
         from apps.contacts.models import Contact  # avoid circular at module level
+
         contacts_to_fix = Contact.objects.filter(owner_id__in=non_missionary_owners)
-        self.stdout.write(f'Found {contacts_to_fix.count()} contact(s) owned by non-missionaries.\n')
+        self.stdout.write(
+            f"Found {contacts_to_fix.count()} contact(s) owned by non-missionaries.\n"
+        )
 
         reassigned = 0
         skipped_no_credits = 0
@@ -119,52 +124,58 @@ class Command(BaseCommand):
             # Find solicitor with highest total credit amount across both
             # one-time gifts (GiftCredit) and recurring gifts (RecurringGiftCredit).
             gift_credits = (
-                GiftCredit.objects
-                .filter(gift__donor_contact=contact, solicitor__user__isnull=False)
-                .values('solicitor__user')
-                .annotate(total=Sum('amount_cents'))
+                GiftCredit.objects.filter(
+                    gift__donor_contact=contact, solicitor__user__isnull=False
+                )
+                .values("solicitor__user")
+                .annotate(total=Sum("amount_cents"))
             )
             recurring_credits = (
-                RecurringGiftCredit.objects
-                .filter(recurring_gift__donor_contact=contact, solicitor__user__isnull=False)
-                .values('solicitor__user')
-                .annotate(total=Sum('amount_cents'))
+                RecurringGiftCredit.objects.filter(
+                    recurring_gift__donor_contact=contact, solicitor__user__isnull=False
+                )
+                .values("solicitor__user")
+                .annotate(total=Sum("amount_cents"))
             )
 
             combined: dict[int, int] = {}
             for row in gift_credits:
-                combined[row['solicitor__user']] = combined.get(row['solicitor__user'], 0) + row['total']
+                combined[row["solicitor__user"]] = (
+                    combined.get(row["solicitor__user"], 0) + row["total"]
+                )
             for row in recurring_credits:
-                combined[row['solicitor__user']] = combined.get(row['solicitor__user'], 0) + row['total']
+                combined[row["solicitor__user"]] = (
+                    combined.get(row["solicitor__user"], 0) + row["total"]
+                )
 
             if not combined:
                 skipped_no_credits += 1
                 self.stdout.write(
-                    f'  SKIP {contact.id} ({contact.first_name} {contact.last_name})'
-                    ' — no credited solicitor with a linked user'
+                    f"  SKIP {contact.id} ({contact.first_name} {contact.last_name})"
+                    " — no credited solicitor with a linked user"
                 )
                 continue
 
             new_owner_id = max(combined, key=combined.get)
             new_owner = User.objects.get(pk=new_owner_id)
             self.stdout.write(
-                f'  REASSIGN {contact.first_name} {contact.last_name or contact.organization_name}'
-                f' → {new_owner.email}'
+                f"  REASSIGN {contact.first_name} {contact.last_name or contact.organization_name}"
+                f" → {new_owner.email}"
             )
 
             if not dry_run:
                 contact.owner = new_owner
-                contact.save(update_fields=['owner_id'])
+                contact.save(update_fields=["owner_id"])
             reassigned += 1
 
         self.stdout.write(
             self.style.SUCCESS(
-                f'Step 3: {reassigned} contact(s) reassigned, '
-                f'{skipped_no_credits} skipped (no linked solicitor).\n'
+                f"Step 3: {reassigned} contact(s) reassigned, "
+                f"{skipped_no_credits} skipped (no linked solicitor).\n"
             )
         )
 
         if dry_run:
-            self.stdout.write(self.style.WARNING('Dry run complete — no changes written.'))
+            self.stdout.write(self.style.WARNING("Dry run complete — no changes written."))
         else:
-            self.stdout.write(self.style.SUCCESS('Done.'))
+            self.stdout.write(self.style.SUCCESS("Done."))

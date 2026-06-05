@@ -10,8 +10,9 @@ yet created — current model has ForeignKey `supervisor` not ManyToManyField
 
 Run: pytest apps/users/tests/test_m2m_assignments.py -q
 """
-import pytest
 from rest_framework.test import APIClient
+
+import pytest
 
 from apps.users.models import User, UserRole
 from apps.users.tests.factories import (
@@ -21,10 +22,10 @@ from apps.users.tests.factories import (
     UserFactory,
 )
 
-
 # ---------------------------------------------------------------------------
 # Model-level M2M behaviors
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.django_db
 class TestM2MModelBehaviors:
@@ -44,7 +45,7 @@ class TestM2MModelBehaviors:
         missionary.supervisors.add(sup1)
         missionary.supervisors.add(sup2)
 
-        assigned_ids = set(missionary.supervisors.values_list('id', flat=True))
+        assigned_ids = set(missionary.supervisors.values_list("id", flat=True))
         assert sup1.id in assigned_ids
         assert sup2.id in assigned_ids
         assert missionary.supervisors.count() == 2
@@ -83,6 +84,7 @@ class TestM2MModelBehaviors:
 # AssignmentsView — M2M API shape (GET and PATCH)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.django_db
 class TestAssignmentsViewM2M:
     """Integration tests for AssignmentsView returning/accepting M2M arrays."""
@@ -110,22 +112,22 @@ class TestAssignmentsViewM2M:
         # Plan 02 will provide: missionary.supervisors.add(sup)
         missionary.supervisors.add(sup)
 
-        response = client.get('/api/v1/users/admin/assignments/')
+        response = client.get("/api/v1/users/admin/assignments/")
 
         assert response.status_code == 200
-        missionaries_data = response.data['missionaries']
+        missionaries_data = response.data["missionaries"]
         missionary_entry = next(
-            (m for m in missionaries_data if str(m['id']) == str(missionary.id)),
+            (m for m in missionaries_data if str(m["id"]) == str(missionary.id)),
             None,
         )
         assert missionary_entry is not None, "Missionary not in response"
 
         # Plan 03 changes `supervisor_id` → `supervisor_ids` (list field)
-        assert 'supervisor_ids' in missionary_entry, (
-            "Expected `supervisor_ids` list field, got scalar `supervisor_id`"
-        )
-        assert isinstance(missionary_entry['supervisor_ids'], list)
-        assert str(sup.id) in missionary_entry['supervisor_ids']
+        assert (
+            "supervisor_ids" in missionary_entry
+        ), "Expected `supervisor_ids` list field, got scalar `supervisor_id`"
+        assert isinstance(missionary_entry["supervisor_ids"], list)
+        assert str(sup.id) in missionary_entry["supervisor_ids"]
 
     def test_patch_additive_appends_supervisor_assignments(self):
         """PATCH with additive=True appends supervisors without replacing.
@@ -145,25 +147,25 @@ class TestAssignmentsViewM2M:
         missionary.supervisors.add(sup1)
 
         payload = {
-            'assignments': [
+            "assignments": [
                 {
-                    'missionary_id': str(missionary.id),
-                    'supervisor_ids': [str(sup2.id)],
-                    'additive': True,
+                    "missionary_id": str(missionary.id),
+                    "supervisor_ids": [str(sup2.id)],
+                    "additive": True,
                 }
             ]
         }
         response = client.patch(
-            '/api/v1/users/admin/assignments/',
+            "/api/v1/users/admin/assignments/",
             data=payload,
-            format='json',
+            format="json",
         )
 
         assert response.status_code == 200
         missionary.refresh_from_db()
 
         # Both should remain after additive patch
-        assigned_ids = set(missionary.supervisors.values_list('id', flat=True))
+        assigned_ids = set(missionary.supervisors.values_list("id", flat=True))
         assert sup1.id in assigned_ids, "Additive patch should not remove sup1"
         assert sup2.id in assigned_ids, "Additive patch should add sup2"
 
@@ -185,24 +187,24 @@ class TestAssignmentsViewM2M:
         missionary.supervisors.add(sup1, sup2)
 
         payload = {
-            'assignments': [
+            "assignments": [
                 {
-                    'missionary_id': str(missionary.id),
-                    'supervisor_ids': [str(sup3.id)],
+                    "missionary_id": str(missionary.id),
+                    "supervisor_ids": [str(sup3.id)],
                     # additive defaults to False — full replacement
                 }
             ]
         }
         response = client.patch(
-            '/api/v1/users/admin/assignments/',
+            "/api/v1/users/admin/assignments/",
             data=payload,
-            format='json',
+            format="json",
         )
 
         assert response.status_code == 200
         missionary.refresh_from_db()
 
-        assigned_ids = set(missionary.supervisors.values_list('id', flat=True))
+        assigned_ids = set(missionary.supervisors.values_list("id", flat=True))
         assert sup3.id in assigned_ids, "sup3 should be assigned after replacement"
         assert sup1.id not in assigned_ids, "sup1 should be removed on non-additive"
         assert sup2.id not in assigned_ids, "sup2 should be removed on non-additive"
@@ -211,6 +213,7 @@ class TestAssignmentsViewM2M:
 # ---------------------------------------------------------------------------
 # Auto-unassign on role change
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.django_db
 class TestAutoUnassignOnRoleChange:
@@ -232,21 +235,24 @@ class TestAutoUnassignOnRoleChange:
         missionary1.supervisors.add(sup)
         missionary2.supervisors.add(sup)
 
-        assert sup.supervised_users.count() == 2  # noqa: E501 (Plan 02 reverses FK→M2M reverse relation)
+        assert (
+            sup.supervised_users.count() == 2
+        )  # noqa: E501 (Plan 02 reverses FK→M2M reverse relation)
 
         # Change supervisor's role to missionary — Plan 03 should auto-clear
         sup.role = UserRole.MISSIONARY
         sup.save()
 
         # After role change, no missionaries should be linked to former supervisor
-        assert sup.supervised_users.count() == 0, (
-            "Changing role away from supervisor should auto-clear supervised_users"
-        )
+        assert (
+            sup.supervised_users.count() == 0
+        ), "Changing role away from supervisor should auto-clear supervised_users"
 
 
 # ---------------------------------------------------------------------------
 # Role-filter regression tests (Plan 06: Ghost supervisor fix)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.django_db
 class TestAssignmentsViewRoleFilter:
@@ -278,19 +284,19 @@ class TestAssignmentsViewRoleFilter:
         missionary.supervisors.add(ex_sup)
 
         # Directly change role in DB, bypassing User.save() — creates ghost row
-        User.objects.filter(id=ex_sup.id).update(role='missionary')
+        User.objects.filter(id=ex_sup.id).update(role="missionary")
 
-        response = client.get('/api/v1/users/admin/assignments/')
+        response = client.get("/api/v1/users/admin/assignments/")
 
         assert response.status_code == 200
         missionary_entry = next(
-            (m for m in response.data['missionaries'] if str(m['id']) == str(missionary.id)),
+            (m for m in response.data["missionaries"] if str(m["id"]) == str(missionary.id)),
             None,
         )
         assert missionary_entry is not None, "Missionary must appear in GET response"
-        assert str(ex_sup.id) not in missionary_entry['supervisor_ids'], (
-            "Ghost supervisor (role changed to missionary) must not appear in supervisor_ids"
-        )
+        assert (
+            str(ex_sup.id) not in missionary_entry["supervisor_ids"]
+        ), "Ghost supervisor (role changed to missionary) must not appear in supervisor_ids"
 
     def test_ghost_coach_excluded_from_get(self):
         """A role-changed user (coach → missionary) must NOT appear in coach_ids.
@@ -305,19 +311,19 @@ class TestAssignmentsViewRoleFilter:
         missionary.coaches.add(ex_coach)
 
         # Directly change role in DB, bypassing User.save()
-        User.objects.filter(id=ex_coach.id).update(role='missionary')
+        User.objects.filter(id=ex_coach.id).update(role="missionary")
 
-        response = client.get('/api/v1/users/admin/assignments/')
+        response = client.get("/api/v1/users/admin/assignments/")
 
         assert response.status_code == 200
         missionary_entry = next(
-            (m for m in response.data['missionaries'] if str(m['id']) == str(missionary.id)),
+            (m for m in response.data["missionaries"] if str(m["id"]) == str(missionary.id)),
             None,
         )
         assert missionary_entry is not None, "Missionary must appear in GET response"
-        assert str(ex_coach.id) not in missionary_entry['coach_ids'], (
-            "Ghost coach (role changed to missionary) must not appear in coach_ids"
-        )
+        assert (
+            str(ex_coach.id) not in missionary_entry["coach_ids"]
+        ), "Ghost coach (role changed to missionary) must not appear in coach_ids"
 
     def test_active_supervisor_with_correct_role_appears_in_get(self):
         """An active supervisor with role='supervisor' DOES appear in supervisor_ids."""
@@ -326,17 +332,17 @@ class TestAssignmentsViewRoleFilter:
         sup = SupervisorUserFactory()
         missionary.supervisors.add(sup)
 
-        response = client.get('/api/v1/users/admin/assignments/')
+        response = client.get("/api/v1/users/admin/assignments/")
 
         assert response.status_code == 200
         missionary_entry = next(
-            (m for m in response.data['missionaries'] if str(m['id']) == str(missionary.id)),
+            (m for m in response.data["missionaries"] if str(m["id"]) == str(missionary.id)),
             None,
         )
         assert missionary_entry is not None
-        assert str(sup.id) in missionary_entry['supervisor_ids'], (
-            "Active supervisor with correct role must appear in supervisor_ids"
-        )
+        assert (
+            str(sup.id) in missionary_entry["supervisor_ids"]
+        ), "Active supervisor with correct role must appear in supervisor_ids"
 
     def test_inactive_supervisor_excluded_from_get(self):
         """A supervisor with is_active=False must NOT appear in supervisor_ids."""
@@ -348,22 +354,23 @@ class TestAssignmentsViewRoleFilter:
         # Deactivate the supervisor via direct DB update (bypasses save() hooks)
         User.objects.filter(id=sup.id).update(is_active=False)
 
-        response = client.get('/api/v1/users/admin/assignments/')
+        response = client.get("/api/v1/users/admin/assignments/")
 
         assert response.status_code == 200
         missionary_entry = next(
-            (m for m in response.data['missionaries'] if str(m['id']) == str(missionary.id)),
+            (m for m in response.data["missionaries"] if str(m["id"]) == str(missionary.id)),
             None,
         )
         assert missionary_entry is not None
-        assert str(sup.id) not in missionary_entry['supervisor_ids'], (
-            "Inactive supervisor (is_active=False) must not appear in supervisor_ids"
-        )
+        assert (
+            str(sup.id) not in missionary_entry["supervisor_ids"]
+        ), "Inactive supervisor (is_active=False) must not appear in supervisor_ids"
 
 
 # ---------------------------------------------------------------------------
 # Migration preservation (integration / manual test)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.skip(
     reason=(
@@ -378,7 +385,8 @@ def test_migration_preserves_existing_fk_supervisor_assignment():
     in `missionary.supervisors.all()` after the Plan 02 migration runs.
 
     This test requires running against the full migration history:
-        pytest apps/users/tests/test_m2m_assignments.py::test_migration_preserves_existing_fk_supervisor_assignment --migrations
+        pytest apps/users/tests/test_m2m_assignments.py\
+            ::test_migration_preserves_existing_fk_supervisor_assignment --migrations
     """
     # Verify post-migration state — illustrative, not runnable in unit suite
     pass  # pragma: no cover

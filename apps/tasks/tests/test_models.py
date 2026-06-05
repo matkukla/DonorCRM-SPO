@@ -3,15 +3,12 @@ Tests for Task model.
 """
 from datetime import timedelta
 
-import pytest
 from django.utils import timezone
 
-from apps.tasks.models import Task, TaskPriority, TaskStatus, TaskType
-from apps.tasks.tests.factories import (
-    CompletedTaskFactory,
-    OverdueTaskFactory,
-    TaskFactory,
-)
+import pytest
+
+from apps.tasks.models import TaskPriority, TaskStatus, TaskType
+from apps.tasks.tests.factories import CompletedTaskFactory, OverdueTaskFactory, TaskFactory
 from apps.users.tests.factories import UserFactory
 
 
@@ -21,9 +18,9 @@ class TestTaskModel:
 
     def test_task_str(self):
         """Test task string representation."""
-        task = TaskFactory(title='Call John')
-        assert 'Call John' in str(task)
-        assert 'due:' in str(task)
+        task = TaskFactory(title="Call John")
+        assert "Call John" in str(task)
+        assert "due:" in str(task)
 
     def test_task_is_overdue_pending(self):
         """Test is_overdue for overdue pending task."""
@@ -48,8 +45,7 @@ class TestTaskModel:
     def test_task_not_overdue_cancelled(self):
         """Test is_overdue for cancelled task (even if past due)."""
         task = TaskFactory(
-            status=TaskStatus.CANCELLED,
-            due_date=timezone.now().date() - timedelta(days=5)
+            status=TaskStatus.CANCELLED, due_date=timezone.now().date() - timedelta(days=5)
         )
         assert task.is_overdue is False
 
@@ -66,15 +62,15 @@ class TestTaskModel:
 
     def test_task_types(self):
         """Test task type choices."""
-        assert TaskType.CALL == 'call'
-        assert TaskType.EMAIL == 'email'
-        assert TaskType.THANK_YOU == 'thank_you'
-        assert TaskType.MEETING == 'meeting'
-        assert TaskType.FOLLOW_UP == 'follow_up'
+        assert TaskType.CALL == "call"
+        assert TaskType.EMAIL == "email"
+        assert TaskType.THANK_YOU == "thank_you"
+        assert TaskType.MEETING == "meeting"
+        assert TaskType.FOLLOW_UP == "follow_up"
 
     def test_task_priorities(self):
         """Test task priority choices."""
-        assert TaskPriority.LOW == 'low'
-        assert TaskPriority.MEDIUM == 'medium'
-        assert TaskPriority.HIGH == 'high'
-        assert TaskPriority.URGENT == 'urgent'
+        assert TaskPriority.LOW == "low"
+        assert TaskPriority.MEDIUM == "medium"
+        assert TaskPriority.HIGH == "high"
+        assert TaskPriority.URGENT == "urgent"

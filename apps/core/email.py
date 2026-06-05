@@ -12,11 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 def send_email(
-    subject: str,
-    to_email: str,
-    template_name: str,
-    context: dict,
-    from_email: Optional[str] = None
+    subject: str, to_email: str, template_name: str, context: dict, from_email: Optional[str] = None
 ) -> bool:
     """
     Send an email using a template.
@@ -36,31 +32,28 @@ def send_email(
 
     try:
         # Render text version
-        text_content = render_to_string(f'emails/{template_name}.txt', context)
+        text_content = render_to_string(f"emails/{template_name}.txt", context)
 
         # Try to render HTML version (optional)
         try:
-            html_content = render_to_string(f'emails/{template_name}.html', context)
+            html_content = render_to_string(f"emails/{template_name}.html", context)
         except Exception:
             html_content = None
 
         # Create email
         email = EmailMultiAlternatives(
-            subject=subject,
-            body=text_content,
-            from_email=from_email,
-            to=[to_email]
+            subject=subject, body=text_content, from_email=from_email, to=[to_email]
         )
 
         if html_content:
-            email.attach_alternative(html_content, 'text/html')
+            email.attach_alternative(html_content, "text/html")
 
         email.send()
-        logger.info(f'Email sent to {to_email}: {subject}')
+        logger.info(f"Email sent to {to_email}: {subject}")
         return True
 
     except Exception as e:
-        logger.error(f'Failed to send email to {to_email}: {e}')
+        logger.error(f"Failed to send email to {to_email}: {e}")
         return False
 
 
@@ -76,20 +69,18 @@ def send_weekly_summary_email(user, summary_data: dict) -> bool:
         True if email sent successfully, False otherwise
     """
     context = {
-        'user': user,
-        'summary': summary_data,
-        'what_changed': summary_data.get('what_changed', {}),
-        'needs_attention': summary_data.get('needs_attention', {}),
-        'at_risk_count': summary_data.get('at_risk_count', 0),
-        'thank_you_count': summary_data.get('thank_you_count', 0),
-        'support_progress': summary_data.get('support_progress', {}),
+        "user": user,
+        "summary": summary_data,
+        "what_changed": summary_data.get("what_changed", {}),
+        "needs_attention": summary_data.get("needs_attention", {}),
+        "at_risk_count": summary_data.get("at_risk_count", 0),
+        "thank_you_count": summary_data.get("thank_you_count", 0),
+        "support_progress": summary_data.get("support_progress", {}),
     }
 
     return send_email(
-        subject=f'DonorCRM Weekly Summary - {user.first_name}',
+        subject=f"DonorCRM Weekly Summary - {user.first_name}",
         to_email=user.email,
-        template_name='weekly_summary',
-        context=context
+        template_name="weekly_summary",
+        context=context,
     )
-
-

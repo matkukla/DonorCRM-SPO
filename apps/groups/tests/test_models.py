@@ -15,8 +15,8 @@ class TestGroupModel:
 
     def test_group_str(self):
         """Test group string representation."""
-        group = GroupFactory(name='Monthly Supporters')
-        assert str(group) == 'Monthly Supporters'
+        group = GroupFactory(name="Monthly Supporters")
+        assert str(group) == "Monthly Supporters"
 
     def test_contact_count_empty(self):
         """Test contact count for empty group."""
@@ -47,25 +47,25 @@ class TestGroupModel:
     def test_group_default_color(self):
         """Test group default color."""
         user = UserFactory()
-        group = Group.objects.create(name='Test Group', owner=user)
-        assert group.color == '#6366f1'
+        group = Group.objects.create(name="Test Group", owner=user)
+        assert group.color == "#6366f1"
 
     def test_unique_name_per_owner(self):
         """Test unique name constraint per owner."""
         user = UserFactory()
-        GroupFactory(name='Unique Name', owner=user)
+        GroupFactory(name="Unique Name", owner=user)
 
         # Same name with same owner should fail
         with pytest.raises(Exception):  # IntegrityError
-            GroupFactory(name='Unique Name', owner=user)
+            GroupFactory(name="Unique Name", owner=user)
 
     def test_same_name_different_owners(self):
         """Test same name allowed for different owners."""
         user1 = UserFactory()
         user2 = UserFactory()
 
-        group1 = GroupFactory(name='Same Name', owner=user1)
-        group2 = GroupFactory(name='Same Name', owner=user2)
+        group1 = GroupFactory(name="Same Name", owner=user1)
+        group2 = GroupFactory(name="Same Name", owner=user2)
 
         assert group1.name == group2.name
         assert group1.owner != group2.owner

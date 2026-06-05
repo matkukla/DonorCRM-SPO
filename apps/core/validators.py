@@ -13,15 +13,15 @@ class AlphanumericPasswordValidator:
     """
 
     def validate(self, password, user=None):
-        if not re.search(r'[a-zA-Z]', password):
+        if not re.search(r"[a-zA-Z]", password):
             raise ValidationError(
                 _("Your password must contain at least one letter."),
-                code='password_no_letter',
+                code="password_no_letter",
             )
-        if not re.search(r'[0-9]', password):
+        if not re.search(r"[0-9]", password):
             raise ValidationError(
                 _("Your password must contain at least one number."),
-                code='password_no_number',
+                code="password_no_number",
             )
 
     def get_help_text(self):

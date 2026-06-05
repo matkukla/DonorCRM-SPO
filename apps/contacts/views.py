@@ -1,24 +1,26 @@
 """
 Views for Contact management.
 """
-from django.db.models import Q, Prefetch
-from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
+from django.db.models import Prefetch, Q
+
 from rest_framework import filters, generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 
 from apps.contacts.filters import ContactFilterSet
 from apps.contacts.models import Contact, DismissedDuplicate
 from apps.contacts.serializers import (
     ContactCreateSerializer,
     ContactDetailSerializer,
-    ContactListSerializer,
     ContactJournalMembershipSerializer,
+    ContactListSerializer,
+    DismissRequestSerializer,
     DuplicateCheckSerializer,
     DuplicateMatchSerializer,
     MergeRequestSerializer,
-    DismissRequestSerializer,
 )
 from apps.contacts.services import find_duplicates_for_contact, merge_contacts
 from apps.core.pagination import StandardPagination
@@ -339,7 +341,7 @@ class ContactJournalsView(generics.ListAPIView):
     pagination_class = None
 
     def get_queryset(self):
-        from apps.journals.models import JournalStageEvent, Decision
+        from apps.journals.models import Decision, JournalStageEvent
 
         contact_id = self.kwargs.get("pk")
         user = self.request.user
@@ -513,9 +515,7 @@ class DismissDuplicateView(APIView):
             contact_a = Contact.objects.get(
                 pk=ser.validated_data["contact_a_id"], owner_id__in=visible
             )
-            contact_b = Contact.objects.get(
-                pk=ser.validated_data["contact_b_id"], owner_id__in=visible
-            )
+            Contact.objects.get(pk=ser.validated_data["contact_b_id"], owner_id__in=visible)
         except Contact.DoesNotExist:
             return Response({"detail": "Contact not found."}, status=status.HTTP_404_NOT_FOUND)
         # Only the contact owner or an admin can dismiss duplicates

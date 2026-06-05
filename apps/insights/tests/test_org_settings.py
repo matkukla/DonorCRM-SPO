@@ -2,8 +2,9 @@
 Tests for the org-wide annual goal setting and its effect on the
 Fiscal Year Pace tile.
 """
-import pytest
 from rest_framework.test import APIClient
+
+import pytest
 
 from apps.contacts.tests.factories import ContactFactory
 from apps.core.models import OrgSettings
@@ -61,11 +62,14 @@ def test_org_settings_admin_only():
     client.force_authenticate(user=user)
 
     assert client.get("/api/v1/insights/admin/org-settings/").status_code == 403
-    assert client.patch(
-        "/api/v1/insights/admin/org-settings/",
-        {"annual_goal_cents": 1},
-        format="json",
-    ).status_code == 403
+    assert (
+        client.patch(
+            "/api/v1/insights/admin/org-settings/",
+            {"annual_goal_cents": 1},
+            format="json",
+        ).status_code
+        == 403
+    )
 
 
 @pytest.mark.django_db

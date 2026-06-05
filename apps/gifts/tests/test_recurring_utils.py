@@ -2,7 +2,6 @@
 Tests for recurring gift payment generation utilities.
 """
 from datetime import date
-from decimal import Decimal
 
 import pytest
 
@@ -14,7 +13,6 @@ from apps.gifts.recurring_utils import (
     make_recurring_external_id,
     sync_recurring_gift_payments,
 )
-from apps.gifts.tests.factories import RecurringGiftFactory
 from apps.users.tests.factories import UserFactory
 
 

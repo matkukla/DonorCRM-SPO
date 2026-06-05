@@ -47,7 +47,8 @@ def find_duplicates_for_contact(contact_data, owner_id, exclude_id=None):
         exclude_id: optional UUID to exclude (e.g., the contact being edited)
 
     Returns:
-        List of dicts: [{'contact': Contact, 'confidence': str, 'reasons': list, 'similarity': float}]
+        List of dicts:
+        [{'contact': Contact, 'confidence': str, 'reasons': list, 'similarity': float}]
         Sorted by confidence (high > medium > low), then similarity descending.
         Limited to 10 results.
     """

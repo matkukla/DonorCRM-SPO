@@ -19,7 +19,7 @@ def test_late_donations_returns_overdue_pledge():
     """A monthly pledge with no gifts in 60+ days must show up."""
     from rest_framework.test import APIClient
 
-    user = UserFactory(role='missionary')
+    user = UserFactory(role="missionary")
     contact = ContactFactory(
         owner=user,
         last_gift_date=date.today() - timedelta(days=60),
@@ -27,23 +27,23 @@ def test_late_donations_returns_overdue_pledge():
     RecurringGiftFactory(
         donor_contact=contact,
         amount_cents=10000,
-        frequency='monthly',
+        frequency="monthly",
         start_date=date.today() - timedelta(days=120),
     )
 
     client = APIClient()
     client.force_authenticate(user=user)
-    response = client.get('/api/v1/insights/late-donations/')
+    response = client.get("/api/v1/insights/late-donations/")
 
     assert response.status_code == 200
     body = response.json()
-    assert body['total_count'] == 1
-    assert len(body['late_donations']) == 1
-    item = body['late_donations'][0]
-    assert item['contact_id'] == str(contact.id)
-    assert item['days_late'] > 0
-    assert isinstance(item['amount'], (int, float))
-    assert isinstance(item['monthly_equivalent'], (int, float))
+    assert body["total_count"] == 1
+    assert len(body["late_donations"]) == 1
+    item = body["late_donations"][0]
+    assert item["contact_id"] == str(contact.id)
+    assert item["days_late"] > 0
+    assert isinstance(item["amount"], (int, float))
+    assert isinstance(item["monthly_equivalent"], (int, float))
 
 
 @pytest.mark.django_db
@@ -51,7 +51,7 @@ def test_late_donations_empty_when_on_track():
     """No late pledges => empty list."""
     from rest_framework.test import APIClient
 
-    user = UserFactory(role='missionary')
+    user = UserFactory(role="missionary")
     contact = ContactFactory(
         owner=user,
         last_gift_date=date.today() - timedelta(days=10),
@@ -59,18 +59,18 @@ def test_late_donations_empty_when_on_track():
     RecurringGiftFactory(
         donor_contact=contact,
         amount_cents=10000,
-        frequency='monthly',
+        frequency="monthly",
         start_date=date.today() - timedelta(days=120),
     )
 
     client = APIClient()
     client.force_authenticate(user=user)
-    response = client.get('/api/v1/insights/late-donations/')
+    response = client.get("/api/v1/insights/late-donations/")
 
     assert response.status_code == 200
     body = response.json()
-    assert body['total_count'] == 0
-    assert body['late_donations'] == []
+    assert body["total_count"] == 0
+    assert body["late_donations"] == []
 
 
 @pytest.mark.django_db
@@ -83,7 +83,7 @@ def test_count_late_donations_matches_full_list():
         count_late_donations,
     )
 
-    user = UserFactory(role='missionary')
+    user = UserFactory(role="missionary")
     # 3 late pledges
     for _ in range(3):
         contact = ContactFactory(
@@ -93,7 +93,7 @@ def test_count_late_donations_matches_full_list():
         RecurringGiftFactory(
             donor_contact=contact,
             amount_cents=10000,
-            frequency='monthly',
+            frequency="monthly",
             start_date=date.today() - timedelta(days=120),
         )
     # 1 on-track pledge — must NOT be counted
@@ -104,7 +104,7 @@ def test_count_late_donations_matches_full_list():
     RecurringGiftFactory(
         donor_contact=on_track,
         amount_cents=10000,
-        frequency='monthly',
+        frequency="monthly",
         start_date=date.today() - timedelta(days=120),
     )
 
@@ -118,8 +118,8 @@ def test_late_donations_no_cross_user_leakage():
     """Missionary A must not see missionary B's late pledges."""
     from rest_framework.test import APIClient
 
-    user_a = UserFactory(role='missionary')
-    user_b = UserFactory(role='missionary')
+    user_a = UserFactory(role="missionary")
+    user_b = UserFactory(role="missionary")
 
     contact_b = ContactFactory(
         owner=user_b,
@@ -128,13 +128,13 @@ def test_late_donations_no_cross_user_leakage():
     RecurringGiftFactory(
         donor_contact=contact_b,
         amount_cents=10000,
-        frequency='monthly',
+        frequency="monthly",
         start_date=date.today() - timedelta(days=120),
     )
 
     client = APIClient()
     client.force_authenticate(user=user_a)
-    response = client.get('/api/v1/insights/late-donations/')
+    response = client.get("/api/v1/insights/late-donations/")
 
     assert response.status_code == 200
-    assert response.json()['total_count'] == 0
+    assert response.json()["total_count"] == 0

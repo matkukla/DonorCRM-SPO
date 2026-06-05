@@ -69,7 +69,7 @@ def _parse_amount(amount_str: str) -> Tuple[Decimal, str]:
     except InvalidOperation:
         return (
             None,
-            f'Invalid amount format: "{amount_str}". Expected a number like "100.00" or "$1,234.56"',
+            f'Invalid amount format: "{amount_str}". Expected a number like "100.00" or "$1,234.56"',  # noqa: E501
         )
 
 
@@ -202,8 +202,8 @@ def import_contacts(records: List[dict], user) -> Tuple[int, List[Contact]]:
     return len(created_contacts), created_contacts
 
 
-## Old SPO donation import functions (parse_donations_csv, import_donations) removed.
-## Superseded by Phase 28-29 RE import pipeline in apps/imports/re_services.py.
+# Old SPO donation import functions (parse_donations_csv, import_donations) removed.
+# Superseded by Phase 28-29 RE import pipeline in apps/imports/re_services.py.
 
 
 def export_contacts_csv(queryset) -> str:
@@ -310,7 +310,7 @@ def get_contacts_template() -> str:
     return "first_name,last_name,email,phone,street_address,city,state,postal_code,country,notes\n"
 
 
-## Old get_donations_template removed. Superseded by RE import pipeline.
+# Old get_donations_template removed. Superseded by RE import pipeline.
 
 
 def get_funds_template() -> str:
@@ -618,14 +618,6 @@ def import_entities(records: List[dict], user, import_run) -> Tuple[int, int]:
         import_run.save()
         return 0, 0
 
-    # Get existing external_ids for this user to calculate created vs updated
-    external_ids = [record["entity_id"] for record in records]
-    existing_external_ids = set(
-        Contact.objects.filter(owner=user, external_id__in=external_ids).values_list(
-            "external_id", flat=True
-        )
-    )
-
     # Upsert contacts individually
     # Note: Using update_or_create instead of bulk_create with update_conflicts
     # because the Contact model has a conditional unique constraint which
@@ -660,7 +652,7 @@ def import_entities(records: List[dict], user, import_run) -> Tuple[int, int]:
     return created_count, updated_count
 
 
-## Old SPO transaction/pledge import functions removed.
-## (get_transactions_template, parse_transactions_csv, import_transactions,
-##  update_contact_stats_for_import, get_pledges_template, parse_pledges_csv, import_pledges)
-## Superseded by Phase 28-29 RE import pipeline in apps/imports/re_services.py.
+# Old SPO transaction/pledge import functions removed.
+# (get_transactions_template, parse_transactions_csv, import_transactions,
+#  update_contact_stats_for_import, get_pledges_template, parse_pledges_csv, import_pledges)
+# Superseded by Phase 28-29 RE import pipeline in apps/imports/re_services.py.

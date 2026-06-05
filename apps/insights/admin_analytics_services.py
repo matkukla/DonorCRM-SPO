@@ -153,9 +153,7 @@ def get_fiscal_year_pace(request):
         annual_goal_source = "org_setting"
     else:
         goal_qs = _active_missionaries(owner_ids).filter(monthly_support_goal_cents__gt=0)
-        monthly_goal_sum = (
-            goal_qs.aggregate(total=Sum("monthly_support_goal_cents"))["total"] or 0
-        )
+        monthly_goal_sum = goal_qs.aggregate(total=Sum("monthly_support_goal_cents"))["total"] or 0
         annual_goal_cents = int(monthly_goal_sum * 12)
         annual_goal_source = "missionary_sum"
 

@@ -82,6 +82,7 @@ class TestRotatePiiEncryption:
 
     def _raw_set_notes(self, pk, value):
         from django.db import connection
+
         from apps.contacts.models import Contact
 
         with connection.cursor() as cur:
@@ -92,6 +93,7 @@ class TestRotatePiiEncryption:
 
     def _raw_notes(self, pk):
         from django.db import connection
+
         from apps.contacts.models import Contact
 
         with connection.cursor() as cur:

@@ -12,8 +12,9 @@ They specify all behaviors that Wave 1 tasks must implement:
 6. GET /contacts/search/?q=<org> finds org contacts (search Q filter)
 7. CSV export Name column shows organization_name for org contacts
 """
-import pytest
 from rest_framework.test import APIClient
+
+import pytest
 
 from apps.contacts.serializers import ContactCreateSerializer, ContactListSerializer
 from apps.contacts.tests.factories import OrgContactFactory
@@ -32,16 +33,18 @@ class TestOrgContactSerializer:
     def test_contact_list_serializer_includes_org_name(self):
         contact = OrgContactFactory()
         data = ContactListSerializer(contact).data
-        assert 'organization_name' in data
-        assert data['organization_name'] == contact.organization_name
+        assert "organization_name" in data
+        assert data["organization_name"] == contact.organization_name
 
     def test_create_serializer_accepts_blank_names_with_org(self):
-        serializer = ContactCreateSerializer(data={
-            'first_name': '',
-            'last_name': '',
-            'organization_name': 'Acme Corp',
-            'status': 'prospect',
-        })
+        serializer = ContactCreateSerializer(
+            data={
+                "first_name": "",
+                "last_name": "",
+                "organization_name": "Acme Corp",
+                "status": "prospect",
+            }
+        )
         assert serializer.is_valid(), serializer.errors
 
 
@@ -54,25 +57,25 @@ class TestOrgContactAPIEndpoints:
         self.org_contact = OrgContactFactory(owner=self.user)
 
     def test_contact_list_api_includes_org_name(self):
-        resp = self.client.get('/api/v1/contacts/')
+        resp = self.client.get("/api/v1/contacts/")
         assert resp.status_code == 200
-        results = resp.json()['results']
-        assert any(c['id'] == str(self.org_contact.id) for c in results)
-        contact_data = next(c for c in results if c['id'] == str(self.org_contact.id))
-        assert 'organization_name' in contact_data
+        results = resp.json()["results"]
+        assert any(c["id"] == str(self.org_contact.id) for c in results)
+        contact_data = next(c for c in results if c["id"] == str(self.org_contact.id))
+        assert "organization_name" in contact_data
 
     def test_list_endpoint_search_finds_org_by_name(self):
         query = self.org_contact.organization_name[:5]
-        resp = self.client.get(f'/api/v1/contacts/?search={query}')
+        resp = self.client.get(f"/api/v1/contacts/?search={query}")
         assert resp.status_code == 200
-        ids = [c['id'] for c in resp.json()['results']]
+        ids = [c["id"] for c in resp.json()["results"]]
         assert str(self.org_contact.id) in ids
 
     def test_search_endpoint_finds_org_by_name(self):
         query = self.org_contact.organization_name[:5]
-        resp = self.client.get(f'/api/v1/contacts/search/?q={query}')
+        resp = self.client.get(f"/api/v1/contacts/search/?q={query}")
         assert resp.status_code == 200
-        ids = [c['id'] for c in resp.json()]
+        ids = [c["id"] for c in resp.json()]
         assert str(self.org_contact.id) in ids
 
 
@@ -85,10 +88,10 @@ class TestOrgContactCSVExport:
         self.org_contact = OrgContactFactory(owner=self.user)
 
     def test_csv_export_uses_full_name_for_org(self):
-        resp = self.client.get('/api/v1/contacts/export/csv/')
+        resp = self.client.get("/api/v1/contacts/export/csv/")
         assert resp.status_code == 200
-        content = b''.join(resp.streaming_content).decode()
-        lines = content.strip().split('\n')
+        content = b"".join(resp.streaming_content).decode()
+        lines = content.strip().split("\n")
         # Header row first, then data rows
         assert len(lines) >= 2
         # The org contact's name should appear in the CSV content

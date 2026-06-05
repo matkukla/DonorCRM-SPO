@@ -2,6 +2,7 @@
 Serializers for PrayerIntention model.
 """
 from django.utils import timezone
+
 from rest_framework import serializers
 
 from apps.prayers.models import PrayerIntention
@@ -16,39 +17,53 @@ class PrayerIntentionSerializer(serializers.ModelSerializer):
     - answered: sets answered_at, clears archived_at
     - archived: sets archived_at, clears answered_at
     """
-    contact_name = serializers.CharField(source='contact.full_name', read_only=True)
+
+    contact_name = serializers.CharField(source="contact.full_name", read_only=True)
     owner_name = serializers.SerializerMethodField()
 
     class Meta:
         model = PrayerIntention
         fields = [
-            'id', 'contact', 'contact_name', 'owner_name', 'title', 'description',
-            'status', 'last_prayed_at', 'answered_at', 'archived_at',
-            'created_at', 'updated_at',
+            "id",
+            "contact",
+            "contact_name",
+            "owner_name",
+            "title",
+            "description",
+            "status",
+            "last_prayed_at",
+            "answered_at",
+            "archived_at",
+            "created_at",
+            "updated_at",
         ]
         read_only_fields = [
-            'id', 'answered_at', 'archived_at', 'last_prayed_at',
-            'created_at', 'updated_at',
+            "id",
+            "answered_at",
+            "archived_at",
+            "last_prayed_at",
+            "created_at",
+            "updated_at",
         ]
 
     def get_owner_name(self, obj):
-        contact = getattr(obj, 'contact', None)
+        contact = getattr(obj, "contact", None)
         if contact:
-            owner = getattr(contact, 'owner', None)
+            owner = getattr(contact, "owner", None)
             return owner.full_name if owner else None
         return None
 
     def update(self, instance, validated_data):
-        new_status = validated_data.get('status')
+        new_status = validated_data.get("status")
         if new_status and new_status != instance.status:
             now = timezone.now()
-            if new_status == 'answered':
-                validated_data['answered_at'] = now
-                validated_data['archived_at'] = None
-            elif new_status == 'archived':
-                validated_data['archived_at'] = now
-                validated_data['answered_at'] = None
-            elif new_status == 'active':
-                validated_data['answered_at'] = None
-                validated_data['archived_at'] = None
+            if new_status == "answered":
+                validated_data["answered_at"] = now
+                validated_data["archived_at"] = None
+            elif new_status == "archived":
+                validated_data["archived_at"] = now
+                validated_data["answered_at"] = None
+            elif new_status == "active":
+                validated_data["answered_at"] = None
+                validated_data["archived_at"] = None
         return super().update(instance, validated_data)

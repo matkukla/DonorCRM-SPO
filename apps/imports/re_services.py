@@ -856,12 +856,13 @@ def import_re_constituents(
                             updated_count += 1
                         else:
                             skipped_count += 1
+                            contact_name = f"{contact.first_name} {contact.last_name}".strip()
                             skipped_details.append(
                                 {
                                     "row": row_number,
                                     "reason": "all_fields_populated",
                                     "match_type": match_type,
-                                    "contact_name": f"{contact.first_name} {contact.last_name}".strip(),
+                                    "contact_name": contact_name,
                                     "constituent_id": ext_id,
                                 }
                             )
@@ -944,8 +945,7 @@ def import_re_constituents(
                         {
                             "row": row_number,
                             "error": (
-                                f"Row {row_number}: Unexpected error: "
-                                f"{type(e).__name__}"
+                                f"Row {row_number}: Unexpected error: " f"{type(e).__name__}"
                             ),
                         }
                     )
@@ -1565,9 +1565,7 @@ def import_re_gifts(
                 except Exception as e:
                     transaction.savepoint_rollback(sp)
                     row_nums = ", ".join(r.get("_row_number", "?") for r in rows)
-                    logger.exception(
-                        "Gift group %s failed in import_re_gifts", gift_id
-                    )
+                    logger.exception("Gift group %s failed in import_re_gifts", gift_id)
                     errors.append(
                         {
                             "row": int(rows[0].get("_row_number", 0)),
@@ -2161,8 +2159,7 @@ def import_re_recurring_gifts(
                     transaction.savepoint_rollback(sp)
                     row_nums = ", ".join(r.get("_row_number", "?") for r in rows)
                     logger.exception(
-                        "Recurring gift group %s failed in "
-                        "import_re_recurring_gifts",
+                        "Recurring gift group %s failed in " "import_re_recurring_gifts",
                         gift_id,
                     )
                     errors.append(

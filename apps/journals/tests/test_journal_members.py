@@ -14,6 +14,7 @@ Tests verify:
 """
 from django.contrib.auth import get_user_model
 from django.urls import reverse
+
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -198,9 +199,7 @@ class JournalContactTests(APITestCase):
     def test_cannot_add_to_journal_owned_by_other_user(self):
         """Test that user cannot add contacts to another user's journal."""
         # Create journal owned by user_b
-        journal_b = Journal.objects.create(
-            owner=self.user_b, name="User B Journal", goal_amount=30000.00
-        )
+        Journal.objects.create(owner=self.user_b, name="User B Journal", goal_amount=30000.00)
 
         # Authenticate as user_b
         self.client.force_authenticate(user=self.user_b)
@@ -379,8 +378,8 @@ class JournalContactTests(APITestCase):
         )
 
         # Create memberships in both journals
-        jc1 = JournalContact.objects.create(journal=self.journal, contact=self.contact_a1)
-        jc2 = JournalContact.objects.create(journal=journal2, contact=self.contact_a2)
+        JournalContact.objects.create(journal=self.journal, contact=self.contact_a1)
+        JournalContact.objects.create(journal=journal2, contact=self.contact_a2)
 
         url = reverse("journals:journal-member-list")
 

@@ -31,21 +31,15 @@ jobs:
         # not required; dev.txt pulls in base.txt + pytest/black/isort/flake8.
         run: pip install -r requirements/dev.txt
 
-      # Lint is ADVISORY until the pre-existing formatting/lint debt is cleaned
-      # up (black would reformat ~153 files, plus isort/flake8 backlog). These
-      # steps surface violations without failing the build so the gate can land
-      # now. Cleanup tracked separately; flip continue-on-error off once green.
+      # HARD gates: the backend lint debt was cleaned up, so these now block.
       - name: black
         run: black --check apps/ config/
-        continue-on-error: true
 
       - name: isort
         run: isort --check-only apps/ config/
-        continue-on-error: true
 
       - name: flake8
         run: flake8 apps/ config/
-        continue-on-error: true
 
       # HARD gate: tests + 80% coverage must pass.
       - name: pytest (80% coverage gate)
@@ -72,8 +66,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Advisory, same as the backend linters: ESLint has a pre-existing
-      # backlog (~51 errors). Surfaces issues without failing the build.
+      # Still ADVISORY: ESLint has ~51 pre-existing errors, many from strict
+      # react-hooks rules (conditional hook calls, set-state-in-effect) that
+      # need careful per-component refactoring. The frontend has no unit-test
+      # net, so forcing these blind risks regressions — tracked as a separate,
+      # app-verified effort before this becomes a hard gate.
       - name: ESLint
         run: npm run lint
         continue-on-error: true
