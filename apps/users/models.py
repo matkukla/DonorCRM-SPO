@@ -120,7 +120,7 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
         ]
 
     def save(self, *args, **kwargs):
-        """Override save to auto-clear M2M assignments when role changes away from supervisor/coach."""
+        """Auto-clear M2M assignments when role changes away from supervisor/coach."""
         old_role = None
         if self.pk:
             try:

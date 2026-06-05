@@ -385,7 +385,8 @@ def test_migration_preserves_existing_fk_supervisor_assignment():
     in `missionary.supervisors.all()` after the Plan 02 migration runs.
 
     This test requires running against the full migration history:
-        pytest apps/users/tests/test_m2m_assignments.py::test_migration_preserves_existing_fk_supervisor_assignment --migrations
+        pytest apps/users/tests/test_m2m_assignments.py\
+            ::test_migration_preserves_existing_fk_supervisor_assignment --migrations
     """
     # Verify post-migration state — illustrative, not runnable in unit suite
     pass  # pragma: no cover

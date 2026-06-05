@@ -3,11 +3,9 @@ Tests for duplicate contact detection functionality.
 SQLite-compatible -- TrigramSimilarity is mocked where needed since pg_trgm
 functions do not work on SQLite.
 """
-from unittest.mock import MagicMock, patch
-
 import pytest
 
-from apps.contacts.models import Contact, DismissedDuplicate
+from apps.contacts.models import DismissedDuplicate
 from apps.contacts.tests.factories import ContactFactory
 from apps.users.tests.factories import UserFactory
 

@@ -11,7 +11,7 @@ from rest_framework.test import APIClient
 import pytest
 
 from apps.tasks.broadcast_services import create_broadcast
-from apps.tasks.models import BroadcastTask, Task, TaskStatus
+from apps.tasks.models import Task, TaskStatus
 from apps.tasks.tests.factories import TaskFactory
 from apps.users.tests.factories import UserFactory
 
@@ -112,7 +112,8 @@ class TestBroadcastListCreate:
         admin = UserFactory(role="admin")
         sup = UserFactory(role="supervisor")
         m1 = UserFactory(role="missionary")
-        m2 = UserFactory(role="missionary")
+        # Extra missionary populates the broadcast recipient pool (side effect)
+        UserFactory(role="missionary")
         sup.supervised_users.add(m1)
 
         # Create one broadcast from admin, one from supervisor
@@ -146,7 +147,8 @@ class TestBroadcastListCreate:
         admin = UserFactory(role="admin")
         sup = UserFactory(role="supervisor")
         m1 = UserFactory(role="missionary")
-        m2 = UserFactory(role="missionary")
+        # Extra missionary populates the broadcast recipient pool (side effect)
+        UserFactory(role="missionary")
         sup.supervised_users.add(m1)
 
         create_broadcast(
@@ -206,8 +208,9 @@ class TestBroadcastDetail:
     def test_patch_cascades_to_copies(self):
         admin = UserFactory(role="admin")
         m1 = UserFactory(role="missionary")
-        m2 = UserFactory(role="missionary")
-        m3 = UserFactory(role="missionary")
+        # Extra missionaries populate the broadcast recipient pool (side effect)
+        UserFactory(role="missionary")
+        UserFactory(role="missionary")
 
         broadcast = create_broadcast(
             sender=admin,
@@ -252,8 +255,9 @@ class TestBroadcastCancel:
     def test_cancel_removes_incomplete(self):
         admin = UserFactory(role="admin")
         m1 = UserFactory(role="missionary")
-        m2 = UserFactory(role="missionary")
-        m3 = UserFactory(role="missionary")
+        # Extra missionaries populate the broadcast recipient pool (side effect)
+        UserFactory(role="missionary")
+        UserFactory(role="missionary")
 
         broadcast = create_broadcast(
             sender=admin,

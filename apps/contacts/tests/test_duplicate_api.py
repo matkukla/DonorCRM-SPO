@@ -11,7 +11,7 @@ from rest_framework.test import APIClient
 
 import pytest
 
-from apps.contacts.models import Contact, DismissedDuplicate
+from apps.contacts.models import DismissedDuplicate
 from apps.contacts.tests.factories import ContactFactory
 from apps.users.tests.factories import UserFactory
 

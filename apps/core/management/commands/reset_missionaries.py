@@ -135,7 +135,7 @@ class Command(BaseCommand):
         self._log_delete("GiftCredit", GiftCredit.objects.all())
         self._log_delete("RecurringGiftCredit", RecurringGiftCredit.objects.all())
 
-        # --- PROTECT: Gifts/RecurringGifts -> Contact (CASCADE), but Solicitor PROTECT is cleared ---
+        # --- PROTECT: Gifts/RecurringGifts -> Contact (CASCADE), Solicitor PROTECT cleared ---
         # Now delete all gifts (contact CASCADE will handle if we delete contacts)
         self._log_delete("Gift", Gift.objects.exclude(donor_contact__owner_id__in=kept_ids))
         self._log_delete(
@@ -143,7 +143,7 @@ class Command(BaseCommand):
         )
 
         # --- Journal sub-models (all CASCADE from JournalContact/Journal) ---
-        # NextStep, Decision, DecisionHistory, JournalStageEvent -> journal_contact -> journal -> owner
+        # NextStep, Decision, DecisionHistory, JournalStageEvent -> journal_contact -> journal
         journals_to_delete = Journal.objects.exclude(owner_id__in=kept_ids)
         jc_to_delete = JournalContact.objects.filter(journal__in=journals_to_delete)
         self._log_delete("NextStep", NextStep.objects.filter(journal_contact__in=jc_to_delete))

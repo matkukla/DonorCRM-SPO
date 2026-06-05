@@ -188,9 +188,9 @@ class TestReconcileMissionariesCommand(TestCase):
         )
         # Ensure it's on the John Smith line
         lines = output.splitlines()
-        john_lines = [l for l in lines if "John Smith" in l]
+        john_lines = [line for line in lines if "John Smith" in line]
         self.assertTrue(
-            any("ZERO DONATIONS" in l for l in john_lines),
+            any("ZERO DONATIONS" in line for line in john_lines),
             f"Expected 'ZERO DONATIONS' near 'John Smith' in output:\n{output}",
         )
 

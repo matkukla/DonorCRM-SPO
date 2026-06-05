@@ -56,11 +56,11 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS("Sample data generated successfully!"))
         self.stdout.write("")
         self.stdout.write("Login credentials:")
-        self.stdout.write(f"  Staff: staff@example.com / testpass123")
-        self.stdout.write(f"  Admin: admin@example.com / testpass123")
+        self.stdout.write("  Staff: staff@example.com / testpass123")
+        self.stdout.write("  Admin: admin@example.com / testpass123")
         self.stdout.write("")
-        self.stdout.write(f"Created:")
-        self.stdout.write(f"  - 2 users (staff, admin)")
+        self.stdout.write("Created:")
+        self.stdout.write("  - 2 users (staff, admin)")
         self.stdout.write(f"  - {len(groups)} groups")
         self.stdout.write(f"  - {len(contacts)} contacts")
         self.stdout.write(f"  - {Gift.objects.count()} gifts")
@@ -112,7 +112,7 @@ class Command(BaseCommand):
         admin.save()
         users["admin"] = admin
 
-        self.stdout.write(f"  Created/updated 2 users")
+        self.stdout.write("  Created/updated 2 users")
         return users
 
     def _create_groups(self, owner):

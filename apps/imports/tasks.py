@@ -129,5 +129,5 @@ def import_contacts_async(self, file_content: str, user_id: int, import_id: str 
     }
 
 
-## Old import_donations_async task removed.
-## Superseded by Phase 28-29 RE import pipeline.
+# Old import_donations_async task removed.
+# Superseded by Phase 28-29 RE import pipeline.

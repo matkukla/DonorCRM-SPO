@@ -7,7 +7,7 @@ from django.utils import timezone
 
 import pytest
 
-from apps.tasks.models import Task, TaskPriority, TaskStatus, TaskType
+from apps.tasks.models import TaskPriority, TaskStatus, TaskType
 from apps.tasks.tests.factories import CompletedTaskFactory, OverdueTaskFactory, TaskFactory
 from apps.users.tests.factories import UserFactory
 

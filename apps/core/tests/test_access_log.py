@@ -7,8 +7,6 @@ from __future__ import annotations
 
 from django.urls import reverse
 
-from rest_framework.test import APIClient
-
 import pytest
 
 from apps.core import access_log_middleware

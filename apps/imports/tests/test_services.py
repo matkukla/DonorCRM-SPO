@@ -1,8 +1,6 @@
 """
 Tests for import/export services.
 """
-from decimal import Decimal
-
 import pytest
 
 from apps.contacts.models import Contact

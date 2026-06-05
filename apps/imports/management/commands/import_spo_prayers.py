@@ -97,4 +97,4 @@ class Command(BaseCommand):
         stdout.write("Aggregate:")
         stdout.write(f"  Prayer intentions created: {prayers_created}")
         stdout.write(f"  Rows skipped:              {skipped}")
-        stdout.write(f"  (Rows without prayer description or unresolvable contacts are skipped)")
+        stdout.write("  (Rows without prayer description or unresolvable contacts are skipped)")

@@ -219,7 +219,10 @@ class DashboardOverviewView(APIView):
     @extend_schema(
         tags=["insights"],
         summary="Get dashboard overview (admin only)",
-        description="Cross-user aggregation for admin dashboard: total contacts, active journals, stalled count, conversion rate, donation summary.",
+        description=(
+            "Cross-user aggregation for admin dashboard: total contacts, "
+            "active journals, stalled count, conversion rate, donation summary."
+        ),
         parameters=[
             OpenApiParameter(
                 name="date_from", description="Filter start date (YYYY-MM-DD)", type=str
@@ -313,7 +316,9 @@ class UserPerformanceView(APIView):
     @extend_schema(
         tags=["insights"],
         summary="Get user performance metrics (admin only)",
-        description="Per-missionary: total contacts, active journals, decisions logged, donation totals.",
+        description=(
+            "Per-missionary: total contacts, active journals, decisions logged, " "donation totals."
+        ),
         responses={200: UserPerformanceResponseSerializer},
     )
     def get(self, request):
@@ -353,7 +358,10 @@ class ConversionFunnelView(APIView):
     @extend_schema(
         tags=["insights"],
         summary="Get conversion funnel (admin only)",
-        description="Pipeline stage distribution with counts and percentages using Journal 6-stage pipeline.",
+        description=(
+            "Pipeline stage distribution with counts and percentages "
+            "using Journal 6-stage pipeline."
+        ),
         parameters=[
             OpenApiParameter(
                 name="date_from", description="Filter start date (YYYY-MM-DD)", type=str
@@ -421,7 +429,10 @@ class TeamTrendsView(APIView):
     @extend_schema(
         tags=["insights"],
         summary="Get team trends (admin only)",
-        description="Weekly aggregated metrics: decisions logged, donations received, stage progressions.",
+        description=(
+            "Weekly aggregated metrics: decisions logged, donations received, "
+            "stage progressions."
+        ),
         parameters=[
             OpenApiParameter(
                 name="weeks", description="Number of weeks (default: 12, min: 1, max: 52)", type=int
@@ -459,7 +470,10 @@ class UserTrendsView(APIView):
     @extend_schema(
         tags=["insights"],
         summary="Get user trends (admin only)",
-        description="Weekly aggregated metrics for a specific user: decisions logged, donations received, stage progressions.",
+        description=(
+            "Weekly aggregated metrics for a specific user: decisions logged, "
+            "donations received, stage progressions."
+        ),
         parameters=[
             OpenApiParameter(
                 name="user_id", description="User ID (required)", type=str, required=True
@@ -492,7 +506,10 @@ class UserJournalsView(APIView):
     @extend_schema(
         tags=["insights"],
         summary="Get user journals (admin only)",
-        description="Journal list with member count, decision count, and active member count for a specific user.",
+        description=(
+            "Journal list with member count, decision count, and active member "
+            "count for a specific user."
+        ),
         parameters=[
             OpenApiParameter(
                 name="user_id", description="User ID (required)", type=str, required=True
@@ -521,7 +538,11 @@ class StageContactsView(APIView):
     @extend_schema(
         tags=["insights"],
         summary="Get stage contacts (admin only)",
-        description='Contacts currently in a specific pipeline stage. Pass stage parameter (contact, meet, close, decision, thank, next_steps) or "none" for no activity.',
+        description=(
+            "Contacts currently in a specific pipeline stage. Pass stage parameter "
+            '(contact, meet, close, decision, thank, next_steps) or "none" '
+            "for no activity."
+        ),
         parameters=[
             OpenApiParameter(
                 name="stage", description="Pipeline stage (required)", type=str, required=True
@@ -559,7 +580,10 @@ class UserDrilldownView(APIView):
     @extend_schema(
         tags=["insights"],
         summary="Get user drilldown (admin only)",
-        description="Combined user summary with key stats, stalled count, and recent journals for quick inspection.",
+        description=(
+            "Combined user summary with key stats, stalled count, and recent "
+            "journals for quick inspection."
+        ),
         parameters=[
             OpenApiParameter(
                 name="user_id", description="User ID (required)", type=str, required=True

@@ -17,7 +17,7 @@ from django.test import TestCase
 
 import pytest
 
-from apps.imports.models import ImportBatch, ImportBatchStatus
+from apps.imports.models import ImportBatchStatus
 from apps.users.models import User
 
 FIXTURE_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "..", "test_data")

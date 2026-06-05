@@ -1,18 +1,13 @@
 """
 Tests for user detail endpoints in insights app.
 """
-from datetime import timedelta
 from decimal import Decimal
 
-from django.utils import timezone
-
 from rest_framework import status
-from rest_framework.test import APIClient
 
 import pytest
 
 from apps.contacts.tests.factories import ContactFactory
-from apps.gifts.tests.factories import GiftFactory
 from apps.journals.models import Decision, Journal, JournalContact
 from apps.users.tests.factories import UserFactory
 
@@ -111,7 +106,7 @@ class TestUserJournals:
         contact1 = ContactFactory(owner=staff)
         contact2 = ContactFactory(owner=staff)
         jc1 = JournalContact.objects.create(journal=journal, contact=contact1)
-        jc2 = JournalContact.objects.create(journal=journal, contact=contact2)
+        JournalContact.objects.create(journal=journal, contact=contact2)
 
         # Create a decision for one contact
         Decision.objects.create(journal_contact=jc1, amount=Decimal("100.00"), cadence="monthly")

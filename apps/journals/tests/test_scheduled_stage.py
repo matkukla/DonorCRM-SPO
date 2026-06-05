@@ -43,8 +43,8 @@ class ScheduledStageModelTests(TestCase):
         self.assertEqual(meet_idx, scheduled_idx + 1)
 
     def test_create_event_with_scheduled_stage_and_valid_metadata(self):
-        """Test 2: Creating JournalStageEvent with stage='scheduled', event_type='meeting_scheduled',
-        metadata={'scheduled_date': '2026-04-15'} succeeds."""
+        """Test 2: Creating JournalStageEvent with stage='scheduled',
+        event_type='meeting_scheduled', metadata={'scheduled_date': '2026-04-15'} succeeds."""
         user = User.objects.create_user(
             email="test@example.com",
             password="pass123",

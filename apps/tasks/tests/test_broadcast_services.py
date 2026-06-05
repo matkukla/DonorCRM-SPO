@@ -16,7 +16,6 @@ from apps.tasks.broadcast_services import (
     update_broadcast,
 )
 from apps.tasks.models import BroadcastTask, Task, TaskStatus
-from apps.tasks.tests.factories import TaskFactory
 from apps.users.tests.factories import UserFactory
 
 
@@ -157,8 +156,9 @@ class TestUpdateBroadcast:
     def test_cascades_to_incomplete_only(self):
         admin = UserFactory(role="admin")
         m1 = UserFactory(role="missionary")
-        m2 = UserFactory(role="missionary")
-        m3 = UserFactory(role="missionary")
+        # Extra missionaries populate the broadcast recipient pool (side effect)
+        UserFactory(role="missionary")
+        UserFactory(role="missionary")
 
         broadcast = create_broadcast(
             sender=admin,
@@ -216,8 +216,9 @@ class TestCancelBroadcast:
     def test_deletes_incomplete_keeps_completed(self):
         admin = UserFactory(role="admin")
         m1 = UserFactory(role="missionary")
-        m2 = UserFactory(role="missionary")
-        m3 = UserFactory(role="missionary")
+        # Extra missionaries populate the broadcast recipient pool (side effect)
+        UserFactory(role="missionary")
+        UserFactory(role="missionary")
 
         broadcast = create_broadcast(
             sender=admin,

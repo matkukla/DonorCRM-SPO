@@ -79,7 +79,9 @@ class BroadcastCreateSerializer(serializers.Serializer):
         if target_type == "specific_users" and not specific_user_ids:
             raise serializers.ValidationError(
                 {
-                    "specific_user_ids": "At least one user ID is required for specific_users target type."
+                    "specific_user_ids": (
+                        "At least one user ID is required for specific_users target type."
+                    )
                 }
             )
 
@@ -89,7 +91,9 @@ class BroadcastCreateSerializer(serializers.Serializer):
             if target_type in ("all_missionaries", "all_supervisors"):
                 raise serializers.ValidationError(
                     {
-                        "target_type": "Supervisors cannot target all missionaries or all supervisors."
+                        "target_type": (
+                            "Supervisors cannot target all missionaries or all supervisors."
+                        )
                     }
                 )
 

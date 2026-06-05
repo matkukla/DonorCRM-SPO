@@ -146,7 +146,10 @@ class DonationImportView(APIView):
     def post(self, request):
         return Response(
             {
-                "detail": "Legacy donation import has been removed. Use the RE Gift import endpoint instead."
+                "detail": (
+                    "Legacy donation import has been removed. "
+                    "Use the RE Gift import endpoint instead."
+                )
             },
             status=status.HTTP_410_GONE,
         )
@@ -245,7 +248,9 @@ class DonationTemplateView(APIView):
     def get(self, request):
         return Response(
             {
-                "detail": "Legacy donation template has been removed. Use the RE Gift import instead."
+                "detail": (
+                    "Legacy donation template has been removed. " "Use the RE Gift import instead."
+                )
             },
             status=status.HTTP_410_GONE,
         )
@@ -453,7 +458,10 @@ class TransactionImportView(APIView):
     def post(self, request):
         return Response(
             {
-                "detail": "Legacy transaction import has been removed. Use the RE Gift import endpoint instead."
+                "detail": (
+                    "Legacy transaction import has been removed. "
+                    "Use the RE Gift import endpoint instead."
+                )
             },
             status=status.HTTP_410_GONE,
         )
@@ -470,7 +478,10 @@ class TransactionTemplateView(APIView):
     def get(self, request):
         return Response(
             {
-                "detail": "Legacy transaction template has been removed. Use the RE Gift import instead."
+                "detail": (
+                    "Legacy transaction template has been removed. "
+                    "Use the RE Gift import instead."
+                )
             },
             status=status.HTTP_410_GONE,
         )
@@ -500,7 +511,10 @@ class PledgeImportView(APIView):
     def post(self, request):
         return Response(
             {
-                "detail": "Legacy pledge import has been removed. Use the RE Recurring Gift import endpoint instead."
+                "detail": (
+                    "Legacy pledge import has been removed. "
+                    "Use the RE Recurring Gift import endpoint instead."
+                )
             },
             status=status.HTTP_410_GONE,
         )
@@ -517,7 +531,10 @@ class PledgeTemplateView(APIView):
     def get(self, request):
         return Response(
             {
-                "detail": "Legacy pledge template has been removed. Use the RE Recurring Gift import instead."
+                "detail": (
+                    "Legacy pledge template has been removed. "
+                    "Use the RE Recurring Gift import instead."
+                )
             },
             status=status.HTTP_410_GONE,
         )

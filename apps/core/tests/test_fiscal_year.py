@@ -8,8 +8,6 @@ apps/core/fiscal_year.py exists. Tests fail at runtime with ImportError (correct
 """
 from datetime import date
 
-import pytest
-
 # FISC-01: fiscal_year_start boundary cases
 
 

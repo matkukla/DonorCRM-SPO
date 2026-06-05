@@ -148,7 +148,7 @@ class GroupContactsView(APIView):
         contacts = Contact.objects.filter(id__in=contact_ids, owner_id__in=visible)
         group.contacts.remove(*contacts)
 
-        return Response({"detail": f"Removed contacts from group."})
+        return Response({"detail": "Removed contacts from group."})
 
 
 class GroupContactEmailsView(APIView):

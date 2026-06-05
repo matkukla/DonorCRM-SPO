@@ -8,8 +8,6 @@ Tests verify:
 - Ownership validation (only owner can access)
 - Cross-user protection
 """
-from datetime import date
-
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 
@@ -274,9 +272,9 @@ class NextStepAPITests(APITestCase):
     def test_next_steps_ordered_by_order_then_created_at(self):
         """Test that next steps are returned in correct order."""
         # Create next steps with different orders
-        ns3 = NextStep.objects.create(journal_contact=self.jc1, title="Third", order=3)
-        ns1 = NextStep.objects.create(journal_contact=self.jc1, title="First", order=1)
-        ns2 = NextStep.objects.create(journal_contact=self.jc1, title="Second", order=2)
+        NextStep.objects.create(journal_contact=self.jc1, title="Third", order=3)
+        NextStep.objects.create(journal_contact=self.jc1, title="First", order=1)
+        NextStep.objects.create(journal_contact=self.jc1, title="Second", order=2)
 
         url = reverse("journals:nextstep-list")
         response = self.client.get(url, {"journal_contact": str(self.jc1.id)})

@@ -206,9 +206,7 @@ class ContactJournalsAPITests(APITestCase):
         )
 
         # Add contact to other user's journal
-        other_membership = JournalContact.objects.create(
-            journal=other_journal, contact=self.contact
-        )
+        JournalContact.objects.create(journal=other_journal, contact=self.contact)
 
         # Original user should only see their own journal
         self.client.force_authenticate(user=self.user)

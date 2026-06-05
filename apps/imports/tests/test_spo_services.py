@@ -2,14 +2,15 @@
 Tests for SPO reconcile_missionaries() and import_spo_gifts() services.
 
 TDD plan 02: TestReconcileMissionaries stubs filled in.
-TDD plan 03: TestImportSpoGifts stubs filled in (import_spo_gifts, import_spo_prayers, TestIdempotency).
+TDD plan 03: TestImportSpoGifts stubs filled in
+(import_spo_gifts, import_spo_prayers, TestIdempotency).
 """
 import csv as csv_mod
 import io
 
 from django.test import TestCase
 
-from apps.imports.models import ImportBatch, ImportBatchStatus, MissionaryAlias
+from apps.imports.models import ImportBatchStatus, MissionaryAlias
 from apps.users.models import User
 
 
@@ -112,7 +113,7 @@ class TestReconcileMissionaries(TestCase):
         from apps.imports.spo_services import reconcile_missionaries
 
         admin = _make_admin()
-        missionary = _make_user("peter.anderson@test.com", "Peter", "Anderson")
+        _make_user("peter.anderson@test.com", "Peter", "Anderson")
 
         csv_bytes = _make_solicitor_csv("Peter Anderson")
         batch = reconcile_missionaries(csv_bytes, "solicitors.csv", admin)
@@ -128,7 +129,7 @@ class TestReconcileMissionaries(TestCase):
 
         admin = _make_admin()
         # User stored as "O'Brien" (with apostrophe)
-        missionary = _make_user("pat.obrien@test.com", "Pat", "O'Brien")
+        _make_user("pat.obrien@test.com", "Pat", "O'Brien")
 
         # CSV has "OBrien, Pat" (no apostrophe) — normalized match
         csv_bytes = _make_solicitor_csv("OBrien, Pat")
@@ -192,7 +193,7 @@ class TestReconcileMissionaries(TestCase):
 
         admin = _make_admin()
         # Pre-existing user with the expected placeholder email
-        existing = _make_user("john.smith@spo.org", "John", "Smith")
+        _make_user("john.smith@spo.org", "John", "Smith")
 
         # Another John Smith in CSV (different person)
         csv_bytes = _make_solicitor_csv("John Smith")
@@ -211,7 +212,7 @@ class TestReconcileMissionaries(TestCase):
 
         admin = _make_admin()
         # Create user with the expected placeholder email
-        existing = User.objects.create_user(
+        User.objects.create_user(
             email="bob.jones@spo.org",
             password="pass",
             first_name="Bob",
@@ -258,7 +259,7 @@ class TestReconcileMissionaries(TestCase):
         original_first = missionary.first_name
 
         csv_bytes = _make_solicitor_csv("Carol White")
-        batch = reconcile_missionaries(csv_bytes, "solicitors.csv", admin)
+        reconcile_missionaries(csv_bytes, "solicitors.csv", admin)
 
         missionary.refresh_from_db()
         # first_name should NOT be overwritten (it was already set)
@@ -324,7 +325,7 @@ class TestReconcileMissionaries(TestCase):
         missionary = _make_user("alice.resolved@test.com", "Alice", "Resolved")
 
         csv_bytes = _make_solicitor_csv("Alice Resolved")
-        batch = reconcile_missionaries(csv_bytes, "solicitors.csv", admin)
+        reconcile_missionaries(csv_bytes, "solicitors.csv", admin)
 
         self.assertTrue(
             Solicitor.objects.filter(user=missionary).exists(),
@@ -341,7 +342,7 @@ class TestReconcileMissionaries(TestCase):
 
         initial_solicitor_count = Solicitor.objects.count()
         csv_bytes = _make_solicitor_csv("No Solicitor Person")
-        batch = reconcile_missionaries(csv_bytes, "solicitors.csv", admin)
+        reconcile_missionaries(csv_bytes, "solicitors.csv", admin)
 
         # No new Solicitor records should have been created
         self.assertEqual(Solicitor.objects.count(), initial_solicitor_count)
@@ -460,7 +461,6 @@ class TestGetOrCreateMissionarySolicitor(TestCase):
 
     def test_creates_solicitor_for_missionary(self):
         """Creates Solicitor record for a missionary User."""
-        from apps.gifts.models import Solicitor
         from apps.imports.spo_services import _get_or_create_missionary_solicitor
 
         missionary = User.objects.create_user(
@@ -497,7 +497,6 @@ class TestGetOrCreateAnonymousContact(TestCase):
 
     def test_creates_contact(self):
         """Creates Anonymous Donor contact for missionary."""
-        from apps.contacts.models import Contact
         from apps.imports.spo_services import _get_or_create_anonymous_contact
 
         missionary = User.objects.create_user(
@@ -665,7 +664,7 @@ class TestImportSpoGifts(TestCase):
 
         admin = _make_admin()
         missionary = _make_user("peter.attr@test.com", "Peter", "Attr")
-        solicitor = Solicitor.objects.create(
+        Solicitor.objects.create(
             user=missionary,
             normalized_name=normalize_solicitor_name(missionary.full_name),
         )
@@ -746,7 +745,7 @@ class TestImportSpoGifts(TestCase):
 
     def test_type_label_row_skipped(self):
         """Leading SPO type-label row (Gift,...) is skipped before DictReader."""
-        from apps.gifts.models import Gift, Solicitor
+        from apps.gifts.models import Solicitor
         from apps.imports.re_services import normalize_solicitor_name
         from apps.imports.spo_services import import_spo_gifts
 
@@ -813,7 +812,7 @@ class TestImportSpoGifts(TestCase):
             {"gift_id": "G-ZERO-02", "solicitor_name": "Zero Amt", "gift_amount": "N/A"},
             {"gift_id": "G-GOOD-01", "solicitor_name": "Zero Amt", "gift_amount": "50.00"},
         )
-        batch = import_spo_gifts(csv_bytes, "gifts.csv", admin)
+        import_spo_gifts(csv_bytes, "gifts.csv", admin)
 
         # Only the valid $50 gift should be created
         self.assertEqual(Gift.objects.filter(external_gift_id="G-GOOD-01").count(), 1)
@@ -826,7 +825,6 @@ class TestImportSpoPrayers(TestCase):
 
     def test_prayer_extracted_without_gift_creation(self):
         """import_spo_prayers() creates PrayerIntention but NOT Gift records."""
-        from apps.contacts.models import Contact
         from apps.gifts.models import Gift, Solicitor
         from apps.imports.re_services import normalize_solicitor_name
         from apps.imports.spo_services import import_spo_prayers

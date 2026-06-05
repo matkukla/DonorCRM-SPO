@@ -603,7 +603,6 @@ def import_generic_donations(
     # Step 5: Iterate rows with error collection
     errors: list[dict] = []
     created_count = 0
-    error_count_rows = 0
     total_rows = 0
 
     try:

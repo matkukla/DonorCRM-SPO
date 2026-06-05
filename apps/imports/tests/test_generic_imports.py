@@ -15,7 +15,7 @@ from rest_framework.test import APIClient
 from apps.contacts.models import Contact
 from apps.gifts.models import Gift
 from apps.imports.generic_services import import_generic_contacts, import_generic_donations
-from apps.imports.models import ImportBatch, ImportBatchStatus
+from apps.imports.models import ImportBatchStatus
 from apps.users.models import User, UserRole
 
 

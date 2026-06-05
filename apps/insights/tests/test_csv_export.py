@@ -9,7 +9,6 @@ from io import StringIO
 from django.utils import timezone
 
 from rest_framework import status
-from rest_framework.test import APIClient
 
 import pytest
 
@@ -108,7 +107,8 @@ class TestStalledContactsCSVExport:
         date_from = "2025-01-01"
         date_to = "2025-01-31"
         response = client.get(
-            f"/api/v1/insights/admin/stalled-contacts/export/?date_from={date_from}&date_to={date_to}"
+            "/api/v1/insights/admin/stalled-contacts/export/"
+            f"?date_from={date_from}&date_to={date_to}"
         )
         assert response.status_code == status.HTTP_200_OK
         assert f"{date_from}_to_{date_to}" in response["Content-Disposition"]
@@ -159,7 +159,6 @@ class TestStalledContactsCSVExport:
         rows = list(csv_reader)
 
         # Should only have contact2 (recent event is within date range)
-        contact_names = [row[0] for row in rows]
         # Note: with date_from filter, we filter contacts that have activity >= date_from
         # So contact2 (15 days ago) should be included, contact1 (30 days ago) should be excluded
         # Actually, the date_from filter in stalled contacts filters by last_activity_date

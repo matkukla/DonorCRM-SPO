@@ -5,7 +5,6 @@ Covers all 5 sections, --verbose/--json flags, zero-solicitors edge case,
 and HEALTHY vs NEEDS ATTENTION verdict logic.
 """
 import json
-from decimal import Decimal
 from io import StringIO
 
 from django.core.management import call_command
@@ -78,7 +77,8 @@ class AuditImportHealthSolicitorsTest(TestCase):
         self.assertIn("John Smith", output)
 
     def test_section1_near_miss_alias(self):
-        """Detects near-misses by comparing unlinked solicitor names to MissionaryAlias source_names."""
+        """Detects near-misses by comparing unlinked solicitor names to
+        MissionaryAlias source_names."""
         MissionaryAlias.objects.create(source_name="Johnny Smith", user=self.missionary)
         Solicitor.objects.create(normalized_name="Johny Smith", user=None)
 

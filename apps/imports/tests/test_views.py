@@ -67,7 +67,7 @@ class TestLatestImportRunsView:
         url = reverse("imports:latest-import-runs")
 
         # Create two fund import runs (older and newer)
-        older_run = ImportRun.objects.create(
+        ImportRun.objects.create(
             type=ImportType.FUNDS,
             status=ImportStatus.COMPLETED,
             filename="funds_old.csv",

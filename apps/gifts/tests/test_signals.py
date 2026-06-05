@@ -13,7 +13,7 @@ from decimal import Decimal
 
 import pytest
 
-from apps.contacts.models import Contact, ContactStatus
+from apps.contacts.models import ContactStatus
 from apps.contacts.tests.factories import ContactFactory
 from apps.events.models import Event, EventType
 from apps.gifts.models import Gift, RecurringGift, RecurringGiftFrequency, RecurringGiftStatus

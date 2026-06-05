@@ -5,7 +5,7 @@ import logging
 from datetime import date, timedelta
 from decimal import Decimal
 
-from django.db.models import Count, DecimalField, ExpressionWrapper, F, Q, Sum, Value
+from django.db.models import Count, DecimalField, ExpressionWrapper, F, Sum, Value
 from django.db.models.functions import TruncMonth
 
 from dateutil.relativedelta import relativedelta
@@ -344,7 +344,9 @@ def get_dashboard_summary(user):
     thank_you_count = thank_you_qs.count()
 
     logger.debug(
-        f"Dashboard data fetched: {late_donations_count} late donations, {thank_you_count} thank-you needed"
+        "Dashboard data fetched: %d late donations, %d thank-you needed",
+        late_donations_count,
+        thank_you_count,
     )
 
     # Pre-aggregate total of ALL recent gifts (not just the limited list)

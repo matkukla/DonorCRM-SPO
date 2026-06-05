@@ -5,8 +5,7 @@ from rest_framework import status
 
 import pytest
 
-from apps.users.models import UserRole
-from apps.users.tests.factories import AdminUserFactory, UserFactory
+from apps.users.tests.factories import UserFactory
 
 
 @pytest.mark.django_db
@@ -204,7 +203,7 @@ class TestAuthEndpoints:
 
     def test_login_wrong_password(self, api_client, user_factory):
         """Test login with wrong password fails."""
-        user = user_factory(email="wrong@test.com")
+        user_factory(email="wrong@test.com")
 
         response = api_client.post(
             "/api/v1/auth/login/", {"email": "wrong@test.com", "password": "wrongpassword"}

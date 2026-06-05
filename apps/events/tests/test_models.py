@@ -1,8 +1,6 @@
 """
 Tests for Event model.
 """
-from django.utils import timezone
-
 import pytest
 
 from apps.events.models import Event, EventSeverity, EventType

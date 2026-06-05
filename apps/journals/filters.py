@@ -12,4 +12,5 @@ class JournalFilterSet(django_filters.FilterSet):
     class Meta:
         model = Journal
         fields = ["deadline_after", "deadline_before", "owner"]
-        # NOTE: is_archived is handled in get_queryset(), NOT here — preserves archived-by-default behavior
+        # NOTE: is_archived is handled in get_queryset(), NOT here —
+        # preserves archived-by-default behavior

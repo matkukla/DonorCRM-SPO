@@ -6,7 +6,10 @@ from apps.users.models import User
 
 
 class Command(BaseCommand):
-    help = "Set a random monthly_support_goal_cents (2500-5000, rounded to nearest 100) for missionary accounts."
+    help = (
+        "Set a random monthly_support_goal_cents (2500-5000, rounded to nearest 100) "
+        "for missionary accounts."
+    )
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -40,8 +43,9 @@ class Command(BaseCommand):
             self.stdout.write("No missionary accounts to update (all already have goals set).")
             return
 
+        prefix = "[DRY RUN] " if dry_run else ""
         self.stdout.write(
-            f'{"[DRY RUN] " if dry_run else ""}Setting monthly goals for {len(missionaries)} missionary account(s):\n'
+            f"{prefix}Setting monthly goals for {len(missionaries)} missionary account(s):\n"
         )
 
         for user in missionaries:

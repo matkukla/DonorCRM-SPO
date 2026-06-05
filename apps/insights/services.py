@@ -1018,7 +1018,8 @@ def get_stage_contacts(stage, limit=100):
     Target: <5 queries.
 
     Args:
-        stage: PipelineStage value (string) or None for "No Activity" (contacts with no stage events)
+        stage: PipelineStage value (string) or None for "No Activity"
+            (contacts with no stage events)
         limit: Max results to return (default 100)
 
     Returns:

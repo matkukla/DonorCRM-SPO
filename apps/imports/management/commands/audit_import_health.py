@@ -334,11 +334,13 @@ class Command(BaseCommand):
                 flag_reasons.append("0 contacts — will see empty dashboard")
             if contacts_count == 0 and credit_count > 0:
                 flag_reasons.append(
-                    "0 contacts but has gift credits via solicitor — suggests contact ownership not reassigned"
+                    "0 contacts but has gift credits via solicitor — "
+                    "suggests contact ownership not reassigned"
                 )
             if gift_sum == 0 and credit_count > 0:
                 flag_reasons.append(
-                    "0 gifts (by ownership) but has gift credits via solicitor — suggests contact ownership not reassigned"
+                    "0 gifts (by ownership) but has gift credits via solicitor — "
+                    "suggests contact ownership not reassigned"
                 )
 
             if flag_reasons:

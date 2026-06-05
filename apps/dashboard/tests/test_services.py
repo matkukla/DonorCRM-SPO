@@ -22,7 +22,7 @@ from apps.dashboard.services import (
 )
 from apps.events.tests.factories import EventFactory
 from apps.gifts.tests.factories import GiftFactory, RecurringGiftFactory
-from apps.tasks.tests.factories import OverdueTaskFactory, TaskFactory
+from apps.tasks.tests.factories import OverdueTaskFactory
 from apps.users.tests.factories import AdminUserFactory, UserFactory
 
 

@@ -7,7 +7,6 @@ from decimal import Decimal
 from django.utils import timezone
 
 from rest_framework import status
-from rest_framework.test import APIClient
 
 import pytest
 

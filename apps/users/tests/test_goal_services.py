@@ -1,7 +1,8 @@
 """
 Tests for goal progress service functions.
 GOAL-04: get_goal_progress(user) computes effective_monthly_support from journal-scoped donations.
-GH-26: get_decisions_progress(user) computes monthly-normalized decision amounts vs journal goal sums.
+GH-26: get_decisions_progress(user) computes monthly-normalized decision amounts
+vs journal goal sums.
 """
 from datetime import date
 from decimal import Decimal
@@ -351,7 +352,7 @@ def test_decisions_progress_multiple_journals_sum_goals():
 
 @pytest.mark.django_db
 def test_goal_api_includes_decisions_fields():
-    """GH-26: GET /api/v1/goals/me/ includes decisions_current, decisions_goal, decisions_percentage."""
+    """GH-26: goals/me/ includes decisions_current, decisions_goal, decisions_percentage."""
     from rest_framework.test import APIClient
 
     user = UserFactory()

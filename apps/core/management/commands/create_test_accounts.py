@@ -57,9 +57,8 @@ class Command(BaseCommand):
         )
         alex.set_password(PASSWORD)
         alex.save()
-        self.stdout.write(
-            f'  {"Created" if alex_created else "Updated"}: Alex Becker (alex.becker@spo.org) [admin]'
-        )
+        action = "Created" if alex_created else "Updated"
+        self.stdout.write(f"  {action}: Alex Becker (alex.becker@spo.org) [admin]")
         if alex_created:
             new_count += 1
 

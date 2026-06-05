@@ -1,8 +1,6 @@
 from django.db import IntegrityError
 from django.test import TestCase
 
-import pytest
-
 from apps.imports.models import MissionaryAlias
 from apps.users.models import User
 

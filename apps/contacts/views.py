@@ -515,9 +515,7 @@ class DismissDuplicateView(APIView):
             contact_a = Contact.objects.get(
                 pk=ser.validated_data["contact_a_id"], owner_id__in=visible
             )
-            contact_b = Contact.objects.get(
-                pk=ser.validated_data["contact_b_id"], owner_id__in=visible
-            )
+            Contact.objects.get(pk=ser.validated_data["contact_b_id"], owner_id__in=visible)
         except Contact.DoesNotExist:
             return Response({"detail": "Contact not found."}, status=status.HTTP_404_NOT_FOUND)
         # Only the contact owner or an admin can dismiss duplicates

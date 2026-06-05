@@ -856,12 +856,13 @@ def import_re_constituents(
                             updated_count += 1
                         else:
                             skipped_count += 1
+                            contact_name = f"{contact.first_name} {contact.last_name}".strip()
                             skipped_details.append(
                                 {
                                     "row": row_number,
                                     "reason": "all_fields_populated",
                                     "match_type": match_type,
-                                    "contact_name": f"{contact.first_name} {contact.last_name}".strip(),
+                                    "contact_name": contact_name,
                                     "constituent_id": ext_id,
                                 }
                             )

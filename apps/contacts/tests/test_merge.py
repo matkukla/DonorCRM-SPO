@@ -2,13 +2,11 @@
 Tests for contact merge functionality.
 All tests are SQLite-safe (no pg_trgm usage).
 """
-from datetime import date, timedelta
-
-from django.utils import timezone
+from datetime import date
 
 import pytest
 
-from apps.contacts.models import Contact, ContactMergeLog
+from apps.contacts.models import ContactMergeLog
 from apps.contacts.tests.factories import ContactFactory
 from apps.events.tests.factories import EventFactory
 from apps.gifts.tests.factories import GiftFactory, RecurringGiftFactory
@@ -56,7 +54,6 @@ class TestMergeContacts:
     def test_merge_reassigns_tasks(self):
         """After merge, tasks from loser belong to survivor."""
         from apps.contacts.services import merge_contacts
-        from apps.tasks.models import Task
 
         user = UserFactory()
         survivor = ContactFactory(owner=user)
@@ -86,7 +83,6 @@ class TestMergeContacts:
     def test_merge_reassigns_events(self):
         """After merge, events linked to loser contact are reassigned to survivor."""
         from apps.contacts.services import merge_contacts
-        from apps.events.models import Event
 
         user = UserFactory()
         survivor = ContactFactory(owner=user)

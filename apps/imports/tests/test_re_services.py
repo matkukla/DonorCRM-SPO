@@ -9,13 +9,11 @@ Covers all 4 RE import functions with minimal CSV inputs:
 
 Plus SHA256 dedup and malformed CSV handling.
 """
-from datetime import date
-
 import pytest
 
 from apps.contacts.models import Contact
 from apps.gifts.models import Gift, RecurringGift, Solicitor
-from apps.imports.models import ImportBatch, ImportBatchStatus, ImportBatchType
+from apps.imports.models import ImportBatch, ImportBatchStatus
 from apps.imports.re_services import (
     import_re_constituents,
     import_re_gifts,
@@ -488,7 +486,7 @@ class TestImportREGiftsOwnerReassignment:
             first_name="Cross",
             last_name="Admin",
         )
-        solicitor = Solicitor.objects.create(
+        Solicitor.objects.create(
             normalized_name="doe, john",
             external_solicitor_id="SOL-REOWN-01",
             user=missionary,

@@ -1,10 +1,7 @@
 """
 Tests for admin analytics endpoints in insights app.
 """
-from datetime import timedelta
 from decimal import Decimal
-
-from django.utils import timezone
 
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -391,7 +388,7 @@ class TestConversionFunnelBugFixes:
             goal_amount=Decimal("10000.00"),
         )
         jc1 = JournalContact.objects.create(journal=journal, contact=contact1)
-        jc2 = JournalContact.objects.create(journal=journal, contact=contact2)
+        JournalContact.objects.create(journal=journal, contact=contact2)
 
         # Only jc1 gets a stage event; jc2 has no activity
         from apps.journals.models import JournalStageEvent, PipelineStage
