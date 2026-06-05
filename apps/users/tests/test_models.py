@@ -1,8 +1,9 @@
 """
 Tests for User model.
 """
-import pytest
 from django.db import IntegrityError
+
+import pytest
 
 from apps.users.models import User, UserRole
 from apps.users.tests.factories import AdminUserFactory, UserFactory
@@ -29,19 +30,19 @@ class TestUserModel:
 
     def test_full_name_property(self):
         """Test full_name property."""
-        user = UserFactory(first_name='John', last_name='Doe')
-        assert user.full_name == 'John Doe'
+        user = UserFactory(first_name="John", last_name="Doe")
+        assert user.full_name == "John Doe"
 
     def test_email_unique(self):
         """Test that email must be unique."""
-        UserFactory(email='test@example.com')
+        UserFactory(email="test@example.com")
         with pytest.raises(IntegrityError):
-            UserFactory(email='test@example.com')
+            UserFactory(email="test@example.com")
 
     def test_user_str(self):
         """Test string representation."""
-        user = UserFactory(first_name='Jane', last_name='Smith', email='jane@example.com')
-        assert str(user) == 'Jane Smith (jane@example.com)'
+        user = UserFactory(first_name="Jane", last_name="Smith", email="jane@example.com")
+        assert str(user) == "Jane Smith (jane@example.com)"
 
 
 @pytest.mark.django_db
@@ -51,23 +52,17 @@ class TestUserManager:
     def test_create_user(self):
         """Test creating user via manager."""
         user = User.objects.create_user(
-            email='test@example.com',
-            password='testpass123',
-            first_name='Test',
-            last_name='User'
+            email="test@example.com", password="testpass123", first_name="Test", last_name="User"
         )
-        assert user.email == 'test@example.com'
-        assert user.check_password('testpass123')
+        assert user.email == "test@example.com"
+        assert user.check_password("testpass123")
         assert user.is_staff is False
         assert user.is_superuser is False
 
     def test_create_superuser(self):
         """Test creating superuser via manager."""
         user = User.objects.create_superuser(
-            email='admin@example.com',
-            password='adminpass123',
-            first_name='Admin',
-            last_name='User'
+            email="admin@example.com", password="adminpass123", first_name="Admin", last_name="User"
         )
         assert user.is_staff is True
         assert user.is_superuser is True
@@ -77,14 +72,11 @@ class TestUserManager:
         """Test that creating user without email raises error."""
         with pytest.raises(ValueError):
             User.objects.create_user(
-                email='',
-                password='testpass123',
-                first_name='Test',
-                last_name='User'
+                email="", password="testpass123", first_name="Test", last_name="User"
             )
 
     def test_get_by_natural_key_case_insensitive(self):
         """Test email lookup is case-insensitive."""
-        UserFactory(email='Test@Example.com')
-        user = User.objects.get_by_natural_key('test@example.com')
-        assert user.email == 'Test@Example.com'
+        UserFactory(email="Test@Example.com")
+        user = User.objects.get_by_natural_key("test@example.com")
+        assert user.email == "Test@Example.com"

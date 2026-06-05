@@ -20,28 +20,31 @@ class ContactFactory(factory.django.DjangoModelFactory):
     first_name = factory.LazyFunction(fake.first_name)
     last_name = factory.LazyFunction(fake.last_name)
     email = factory.LazyFunction(fake.email)
-    phone = factory.LazyFunction(lambda: fake.numerify('###-###-####'))
+    phone = factory.LazyFunction(lambda: fake.numerify("###-###-####"))
     street_address = factory.LazyFunction(fake.street_address)
     city = factory.LazyFunction(fake.city)
     state = factory.LazyFunction(fake.state_abbr)
     postal_code = factory.LazyFunction(fake.zipcode)
-    country = 'USA'
+    country = "USA"
     status = ContactStatus.PROSPECT
-    notes = ''
+    notes = ""
 
 
 class DonorContactFactory(ContactFactory):
     """Factory for creating donor contacts with giving history."""
+
     status = ContactStatus.DONOR
 
 
 class LapsedContactFactory(ContactFactory):
     """Factory for creating lapsed donor contacts."""
+
     status = ContactStatus.LAPSED
 
 
 class OrgContactFactory(ContactFactory):
     """Factory for creating organization-type contacts with blank first/last names."""
-    first_name = ''
-    last_name = ''
+
+    first_name = ""
+    last_name = ""
     organization_name = factory.LazyFunction(lambda: fake.company())

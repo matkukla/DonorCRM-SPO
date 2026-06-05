@@ -4,8 +4,9 @@ Tests for dashboard service functions.
 from datetime import date, timedelta
 from decimal import Decimal
 
-import pytest
 from django.utils import timezone
+
+import pytest
 
 from apps.contacts.tests.factories import ContactFactory
 from apps.dashboard.services import (
@@ -328,7 +329,9 @@ class TestGetGivingSummary:
         fy_start = fiscal_year_start(today)
 
         # Gift in current fiscal year
-        GiftFactory(donor_contact=contact, amount_cents=5000, gift_date=fy_start + timedelta(days=30))
+        GiftFactory(
+            donor_contact=contact, amount_cents=5000, gift_date=fy_start + timedelta(days=30)
+        )
         # Gift before fiscal year start — should be excluded
         GiftFactory(
             donor_contact=contact, amount_cents=9999, gift_date=fy_start - timedelta(days=30)

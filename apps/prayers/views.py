@@ -5,11 +5,13 @@ import hashlib
 
 from django.db.models import Case, Value, When
 from django.utils import timezone
-from django_filters.rest_framework import DjangoFilterBackend
+
 from rest_framework import generics, permissions, status
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from django_filters.rest_framework import DjangoFilterBackend
 
 from apps.core.permissions import get_visible_user_ids
 from apps.prayers.filters import PrayerIntentionFilterSet
@@ -19,7 +21,7 @@ from apps.prayers.serializers import PrayerIntentionSerializer
 
 def _owner_scoped_queryset(user, request=None):
     """Return PrayerIntention queryset scoped by ownership."""
-    qs = PrayerIntention.objects.select_related('contact', 'contact__owner').all()
+    qs = PrayerIntention.objects.select_related("contact", "contact__owner").all()
     visible = get_visible_user_ids(user, request=request)
     qs = qs.filter(contact__owner_id__in=visible)
     return qs
@@ -30,22 +32,27 @@ class PrayerIntentionListCreateView(generics.ListCreateAPIView):
     GET: List prayer intentions (owner-scoped)
     POST: Create a new prayer intention
     """
+
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = PrayerIntentionSerializer
     filterset_class = PrayerIntentionFilterSet
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    search_fields = ['title', 'contact__first_name', 'contact__last_name']
-    ordering_fields = ['created_at', 'status', 'last_prayed_at']
+    search_fields = ["title", "contact__first_name", "contact__last_name"]
+    ordering_fields = ["created_at", "status", "last_prayed_at"]
 
     def get_queryset(self):
-        return _owner_scoped_queryset(self.request.user, request=self.request).annotate(
-            status_order=Case(
-                When(status='active', then=Value(0)),
-                When(status='answered', then=Value(1)),
-                When(status='archived', then=Value(2)),
-                default=Value(3),
+        return (
+            _owner_scoped_queryset(self.request.user, request=self.request)
+            .annotate(
+                status_order=Case(
+                    When(status="active", then=Value(0)),
+                    When(status="answered", then=Value(1)),
+                    When(status="archived", then=Value(2)),
+                    default=Value(3),
+                )
             )
-        ).order_by('status_order', '-created_at')
+            .order_by("status_order", "-created_at")
+        )
 
 
 class PrayerIntentionDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -54,6 +61,7 @@ class PrayerIntentionDetailView(generics.RetrieveUpdateDestroyAPIView):
     PATCH/PUT: Update prayer intention (with status timestamp management)
     DELETE: Delete prayer intention
     """
+
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = PrayerIntentionSerializer
 
@@ -65,6 +73,7 @@ class MarkPrayedView(APIView):
     """
     POST: Mark a prayer intention as prayed (sets last_prayed_at to now).
     """
+
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk):
@@ -73,12 +82,12 @@ class MarkPrayedView(APIView):
             intention = qs.get(pk=pk)
         except PrayerIntention.DoesNotExist:
             return Response(
-                {'detail': 'Not found.'},
+                {"detail": "Not found."},
                 status=status.HTTP_404_NOT_FOUND,
             )
         intention.last_prayed_at = timezone.now()
-        intention.save(update_fields=['last_prayed_at'])
-        return Response({'detail': 'Marked as prayed.'})
+        intention.save(update_fields=["last_prayed_at"])
+        return Response({"detail": "Marked as prayed."})
 
 
 class TodaysFocusView(generics.ListAPIView):
@@ -89,13 +98,14 @@ class TodaysFocusView(generics.ListAPIView):
     Uses deterministic daily rotation based on hash of date + user pk.
     Limited to min(5, total active intentions).
     """
+
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = PrayerIntentionSerializer
     pagination_class = None
 
     def get_queryset(self):
         user = self.request.user
-        qs = _owner_scoped_queryset(user, request=self.request).filter(status='active')
+        qs = _owner_scoped_queryset(user, request=self.request).filter(status="active")
 
         # Deterministic daily rotation: compute offset from hash of date + user pk
         today_str = timezone.now().date().isoformat()
@@ -108,8 +118,8 @@ class TodaysFocusView(generics.ListAPIView):
                 When(last_prayed_at__isnull=True, then=Value(0)),
                 default=Value(1),
             ),
-            'last_prayed_at',
-            'created_at',
+            "last_prayed_at",
+            "created_at",
         )
 
         total = ordered.count()
@@ -120,15 +130,16 @@ class TodaysFocusView(generics.ListAPIView):
         offset = hash_val % total
 
         # Wrap around: pick `limit` items starting at offset
-        pks = list(ordered.values_list('pk', flat=True))
+        pks = list(ordered.values_list("pk", flat=True))
         selected_pks = []
         for i in range(limit):
             selected_pks.append(pks[(offset + i) % total])
 
         # Preserve the ordering from the selected set
-        preserved = Case(
-            *[When(pk=pk, then=Value(i)) for i, pk in enumerate(selected_pks)]
+        preserved = Case(*[When(pk=pk, then=Value(i)) for i, pk in enumerate(selected_pks)])
+        return (
+            PrayerIntention.objects.select_related("contact", "contact__owner")
+            .filter(pk__in=selected_pks)
+            .annotate(focus_order=preserved)
+            .order_by("focus_order")
         )
-        return PrayerIntention.objects.select_related('contact', 'contact__owner').filter(
-            pk__in=selected_pks
-        ).annotate(focus_order=preserved).order_by('focus_order')

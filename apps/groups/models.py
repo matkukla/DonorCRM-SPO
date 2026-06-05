@@ -12,13 +12,11 @@ class Group(TimeStampedModel):
     Tag or segment for organizing contacts.
     Can be organization-wide (owner=None) or private to a user.
     """
-    name = models.CharField('name', max_length=100)
-    description = models.TextField('description', blank=True)
+
+    name = models.CharField("name", max_length=100)
+    description = models.TextField("description", blank=True)
     color = models.CharField(
-        'color',
-        max_length=7,
-        default='#6366f1',
-        help_text='Hex color code for UI display'
+        "color", max_length=7, default="#6366f1", help_text="Hex color code for UI display"
     )
 
     # Ownership - null means organization-wide (shared)
@@ -27,23 +25,20 @@ class Group(TimeStampedModel):
         on_delete=models.CASCADE,
         null=True,
         blank=True,
-        related_name='owned_groups',
-        help_text='If set, group is private to this user'
+        related_name="owned_groups",
+        help_text="If set, group is private to this user",
     )
 
     # System groups can\'t be deleted by users
-    is_system = models.BooleanField('system group', default=False)
+    is_system = models.BooleanField("system group", default=False)
 
     class Meta:
-        db_table = 'groups'
-        verbose_name = 'group'
-        verbose_name_plural = 'groups'
-        ordering = ['name']
+        db_table = "groups"
+        verbose_name = "group"
+        verbose_name_plural = "groups"
+        ordering = ["name"]
         constraints = [
-            models.UniqueConstraint(
-                fields=['name', 'owner'],
-                name='unique_group_name_per_owner'
-            )
+            models.UniqueConstraint(fields=["name", "owner"], name="unique_group_name_per_owner")
         ]
 
     def __str__(self):

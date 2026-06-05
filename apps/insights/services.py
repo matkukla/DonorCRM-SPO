@@ -3,16 +3,17 @@ Service functions for insights/reports data aggregations.
 """
 from datetime import date, timedelta
 
-from dateutil.relativedelta import relativedelta
-from django.db.models import Count, Sum, Q, OuterRef, Subquery, Value, CharField, IntegerField
-from django.db.models.functions import TruncMonth, TruncYear, TruncWeek, Coalesce
+from django.db.models import CharField, Count, IntegerField, OuterRef, Q, Subquery, Sum, Value
+from django.db.models.functions import Coalesce, TruncMonth, TruncWeek, TruncYear
 from django.utils import timezone
+
+from dateutil.relativedelta import relativedelta
 
 from apps.contacts.models import Contact
 from apps.core.permissions import get_visible_user_ids
 from apps.events.models import Event
 from apps.gifts.models import Gift, RecurringGift, RecurringGiftStatus
-from apps.journals.models import Journal, JournalContact, JournalStageEvent, PipelineStage, Decision
+from apps.journals.models import Decision, Journal, JournalContact, JournalStageEvent, PipelineStage
 from apps.tasks.models import Task, TaskStatus
 from apps.users.models import User
 
@@ -37,20 +38,18 @@ def _parse_date_range(date_from=None, date_to=None):
     dt_to_val = None
     if date_from:
         try:
-            dt_from_val = timezone.make_aware(dt_class.strptime(date_from, '%Y-%m-%d'))
+            dt_from_val = timezone.make_aware(dt_class.strptime(date_from, "%Y-%m-%d"))
         except ValueError as exc:
             raise ValidationError(
-                {'date_from': 'Invalid date_from format. Use YYYY-MM-DD.'}
+                {"date_from": "Invalid date_from format. Use YYYY-MM-DD."}
             ) from exc
     if date_to:
         try:
-            dt_to_val = timezone.make_aware(
-                dt_class.strptime(date_to, '%Y-%m-%d')
-            ) + timedelta(days=1)
+            dt_to_val = timezone.make_aware(dt_class.strptime(date_to, "%Y-%m-%d")) + timedelta(
+                days=1
+            )
         except ValueError as exc:
-            raise ValidationError(
-                {'date_to': 'Invalid date_to format. Use YYYY-MM-DD.'}
-            ) from exc
+            raise ValidationError({"date_to": "Invalid date_to format. Use YYYY-MM-DD."}) from exc
     return dt_from_val, dt_to_val
 
 
@@ -84,38 +83,37 @@ def get_donations_by_month(user, year=None, request=None):
 
     monthly_data = (
         gifts.filter(gift_date__year=year)
-        .annotate(month=TruncMonth('gift_date'))
-        .values('month')
-        .annotate(
-            total=Sum('amount_cents'),
-            count=Count('id')
-        )
-        .order_by('month')
+        .annotate(month=TruncMonth("gift_date"))
+        .values("month")
+        .annotate(total=Sum("amount_cents"), count=Count("id"))
+        .order_by("month")
     )
 
     # Build complete 12-month list (fill gaps with 0)
-    monthly_map = {item['month'].month: item for item in monthly_data}
+    monthly_map = {item["month"].month: item for item in monthly_data}
 
     result = []
     for month_num in range(1, 13):
         month_date = date(year, month_num, 1)
-        month_data = monthly_map.get(month_num, {'total': 0, 'count': 0})
-        result.append({
-            'month': month_date.strftime('%Y-%m'),
-            'label': month_date.strftime('%B %Y'),
-            'short_label': month_date.strftime('%b'),
-            'total': float(month_data['total'] or 0) / 100,
-            'count': month_data['count'],
-        })
+        month_data = monthly_map.get(month_num, {"total": 0, "count": 0})
+        result.append(
+            {
+                "month": month_date.strftime("%Y-%m"),
+                "label": month_date.strftime("%B %Y"),
+                "short_label": month_date.strftime("%b"),
+                "total": float(month_data["total"] or 0) / 100,
+                "count": month_data["count"],
+            }
+        )
 
     # Calculate year total
-    year_total = sum(m['total'] for m in result)
+    year_total = sum(m["total"] for m in result)
 
     return {
-        'year': year,
-        'months': result,
-        'year_total': year_total,
-        'donation_count': sum(m['count'] for m in result),
+        "year": year,
+        "months": result,
+        "year_total": year_total,
+        "donation_count": sum(m["count"] for m in result),
     }
 
 
@@ -130,31 +128,30 @@ def get_donations_by_year(user, years=5, request=None):
 
     yearly_data = (
         gifts.filter(gift_date__year__gte=start_year)
-        .annotate(year=TruncYear('gift_date'))
-        .values('year')
-        .annotate(
-            total=Sum('amount_cents'),
-            count=Count('id')
-        )
-        .order_by('year')
+        .annotate(year=TruncYear("gift_date"))
+        .values("year")
+        .annotate(total=Sum("amount_cents"), count=Count("id"))
+        .order_by("year")
     )
 
     # Build map
-    yearly_map = {item['year'].year: item for item in yearly_data}
+    yearly_map = {item["year"].year: item for item in yearly_data}
 
     result = []
     for year in range(start_year, current_year + 1):
-        year_data = yearly_map.get(year, {'total': 0, 'count': 0})
-        result.append({
-            'year': year,
-            'total': float(year_data['total'] or 0) / 100,
-            'count': year_data['count'],
-        })
+        year_data = yearly_map.get(year, {"total": 0, "count": 0})
+        result.append(
+            {
+                "year": year,
+                "total": float(year_data["total"] or 0) / 100,
+                "count": year_data["count"],
+            }
+        )
 
     return {
-        'years': result,
-        'grand_total': sum(y['total'] for y in result),
-        'total_donations': sum(y['count'] for y in result),
+        "years": result,
+        "grand_total": sum(y["total"] for y in result),
+        "total_donations": sum(y["count"] for y in result),
     }
 
 
@@ -171,15 +168,15 @@ def get_monthly_commitments(user, request=None):
     recurring_gifts = _scope_recurring_gifts(user, request=request)
 
     last_fulfilled_subq = (
-        Gift.objects.filter(recurring_gift_id=OuterRef('pk'))
+        Gift.objects.filter(recurring_gift_id=OuterRef("pk"))
         .order_by()
-        .values('recurring_gift_id')
-        .annotate(latest=Max('gift_date'))
-        .values('latest')
+        .values("recurring_gift_id")
+        .annotate(latest=Max("gift_date"))
+        .values("latest")
     )
     active_recurring = (
         recurring_gifts.filter(status=RecurringGiftStatus.ACTIVE)
-        .select_related('donor_contact')
+        .select_related("donor_contact")
         .annotate(last_fulfilled_date=Subquery(last_fulfilled_subq))
     )
 
@@ -194,33 +191,35 @@ def get_monthly_commitments(user, request=None):
 
         freq = rg.frequency
         if freq not in by_frequency:
-            by_frequency[freq] = {'count': 0, 'monthly_total': 0}
-        by_frequency[freq]['count'] += 1
-        by_frequency[freq]['monthly_total'] += monthly_equiv
+            by_frequency[freq] = {"count": 0, "monthly_total": 0}
+        by_frequency[freq]["count"] += 1
+        by_frequency[freq]["monthly_total"] += monthly_equiv
 
-        rg_list.append({
-            'id': str(rg.id),
-            'contact_id': str(rg.donor_contact.id),
-            'contact_name': rg.donor_contact.full_name,
-            'amount': float(rg.amount_dollars),
-            'frequency': rg.frequency,
-            'monthly_equivalent': round(monthly_equiv, 2),
-            'start_date': rg.start_date.isoformat(),
-            'last_fulfilled_date': (
-                rg.last_fulfilled_date.isoformat() if rg.last_fulfilled_date else None
-            ),
-        })
+        rg_list.append(
+            {
+                "id": str(rg.id),
+                "contact_id": str(rg.donor_contact.id),
+                "contact_name": rg.donor_contact.full_name,
+                "amount": float(rg.amount_dollars),
+                "frequency": rg.frequency,
+                "monthly_equivalent": round(monthly_equiv, 2),
+                "start_date": rg.start_date.isoformat(),
+                "last_fulfilled_date": (
+                    rg.last_fulfilled_date.isoformat() if rg.last_fulfilled_date else None
+                ),
+            }
+        )
 
     return {
-        'pledges': rg_list,
-        'total_monthly': round(total_monthly, 2),
-        'total_annual': round(total_monthly * 12, 2),
-        'active_count': len(rg_list),
-        'by_frequency': [
+        "pledges": rg_list,
+        "total_monthly": round(total_monthly, 2),
+        "total_annual": round(total_monthly * 12, 2),
+        "active_count": len(rg_list),
+        "by_frequency": [
             {
-                'frequency': freq,
-                'count': data['count'],
-                'monthly_total': round(data['monthly_total'], 2),
+                "frequency": freq,
+                "count": data["count"],
+                "monthly_total": round(data["monthly_total"], 2),
             }
             for freq, data in by_frequency.items()
         ],
@@ -244,8 +243,8 @@ def get_late_donations(user, limit=50, request=None):
     page = compute_late_donations(base_qs, limit=limit)
     total = count_late_donations(base_qs)
     return {
-        'late_donations': page,
-        'total_count': total,
+        "late_donations": page,
+        "total_count": total,
     }
 
 
@@ -255,29 +254,35 @@ def get_follow_ups(user, limit=50, request=None):
     """
     tasks = _scope_tasks(user, request=request)
 
-    follow_ups = tasks.filter(
-        status__in=[TaskStatus.PENDING, TaskStatus.IN_PROGRESS]
-    ).select_related('contact', 'owner').order_by('due_date', '-priority')[:limit]
+    follow_ups = (
+        tasks.filter(status__in=[TaskStatus.PENDING, TaskStatus.IN_PROGRESS])
+        .select_related("contact", "owner")
+        .order_by("due_date", "-priority")[:limit]
+    )
 
     today = date.today()
 
     return {
-        'tasks': [{
-            'id': str(t.id),
-            'title': t.title,
-            'description': t.description,
-            'task_type': t.task_type,
-            'priority': t.priority,
-            'status': t.status,
-            'due_date': t.due_date.isoformat(),
-            'is_overdue': t.due_date < today,
-            'contact_id': str(t.contact.id) if t.contact else None,
-            'contact_name': t.contact.full_name if t.contact else None,
-        } for t in follow_ups],
-        'total_count': tasks.filter(status__in=[TaskStatus.PENDING, TaskStatus.IN_PROGRESS]).count(),
-        'overdue_count': tasks.filter(
-            status__in=[TaskStatus.PENDING, TaskStatus.IN_PROGRESS],
-            due_date__lt=today
+        "tasks": [
+            {
+                "id": str(t.id),
+                "title": t.title,
+                "description": t.description,
+                "task_type": t.task_type,
+                "priority": t.priority,
+                "status": t.status,
+                "due_date": t.due_date.isoformat(),
+                "is_overdue": t.due_date < today,
+                "contact_id": str(t.contact.id) if t.contact else None,
+                "contact_name": t.contact.full_name if t.contact else None,
+            }
+            for t in follow_ups
+        ],
+        "total_count": tasks.filter(
+            status__in=[TaskStatus.PENDING, TaskStatus.IN_PROGRESS]
+        ).count(),
+        "overdue_count": tasks.filter(
+            status__in=[TaskStatus.PENDING, TaskStatus.IN_PROGRESS], due_date__lt=today
         ).count(),
     }
 
@@ -287,7 +292,7 @@ def get_transactions(user, limit=100, offset=0, contact_id=None, date_from=None,
     Get full transaction ledger (gifts).
     Admin-only endpoint.
     """
-    gifts = Gift.objects.all().select_related('donor_contact')
+    gifts = Gift.objects.all().select_related("donor_contact")
 
     # Apply filters
     if contact_id:
@@ -298,20 +303,23 @@ def get_transactions(user, limit=100, offset=0, contact_id=None, date_from=None,
         gifts = gifts.filter(gift_date__lte=date_to)
 
     total_count = gifts.count()
-    transactions = gifts.order_by('-gift_date', '-created_at')[offset:offset + limit]
+    transactions = gifts.order_by("-gift_date", "-created_at")[offset : offset + limit]
 
     return {
-        'transactions': [{
-            'id': str(d.id),
-            'contact_id': str(d.donor_contact.id),
-            'contact_name': d.donor_contact.full_name,
-            'amount': float(d.amount_dollars),
-            'date': d.gift_date.isoformat(),
-            'notes': d.description,
-        } for d in transactions],
-        'total_count': total_count,
-        'limit': limit,
-        'offset': offset,
+        "transactions": [
+            {
+                "id": str(d.id),
+                "contact_id": str(d.donor_contact.id),
+                "contact_name": d.donor_contact.full_name,
+                "amount": float(d.amount_dollars),
+                "date": d.gift_date.isoformat(),
+                "notes": d.description,
+            }
+            for d in transactions
+        ],
+        "total_count": total_count,
+        "limit": limit,
+        "offset": offset,
     }
 
 
@@ -349,17 +357,21 @@ def get_dashboard_overview(date_from=None, date_to=None):
     # Stalled contacts count (last journal activity >14 days ago)
     # If date_to provided, use it as "now" for stalled calculation
     cutoff_date = (dt_to if dt_to else timezone.now()) - timedelta(days=14)
-    last_activity = JournalStageEvent.objects.filter(
-        journal_contact__contact=OuterRef('pk')
-    ).order_by('-created_at').values('created_at')[:1]
+    last_activity = (
+        JournalStageEvent.objects.filter(journal_contact__contact=OuterRef("pk"))
+        .order_by("-created_at")
+        .values("created_at")[:1]
+    )
 
-    stalled_qs = Contact.active.annotate(
-        last_activity_date=Subquery(last_activity)
-    ).filter(
-        Q(last_activity_date__lt=cutoff_date) | Q(last_activity_date__isnull=True),
-        # Only count contacts that are in at least one journal
-        journal_memberships__isnull=False
-    ).distinct()
+    stalled_qs = (
+        Contact.active.annotate(last_activity_date=Subquery(last_activity))
+        .filter(
+            Q(last_activity_date__lt=cutoff_date) | Q(last_activity_date__isnull=True),
+            # Only count contacts that are in at least one journal
+            journal_memberships__isnull=False,
+        )
+        .distinct()
+    )
     stalled_count = stalled_qs.count()
 
     # Conversion rate: contacts with a Decision / total contacts in journals
@@ -371,11 +383,10 @@ def get_dashboard_overview(date_from=None, date_to=None):
     if dt_to:
         jc_qs = jc_qs.filter(created_at__lt=dt_to)
         decision_qs = decision_qs.filter(created_at__lt=dt_to)
-    contacts_in_journals = jc_qs.values('contact').distinct().count()
-    contacts_with_decision = decision_qs.values('journal_contact__contact').distinct().count()
+    contacts_in_journals = jc_qs.values("contact").distinct().count()
+    contacts_with_decision = decision_qs.values("journal_contact__contact").distinct().count()
     conversion_rate = round(
-        (contacts_with_decision / contacts_in_journals * 100) if contacts_in_journals > 0 else 0,
-        1
+        (contacts_with_decision / contacts_in_journals * 100) if contacts_in_journals > 0 else 0, 1
     )
 
     # Gift summary - filter by date range if provided, else default to last 12 months
@@ -389,24 +400,23 @@ def get_dashboard_overview(date_from=None, date_to=None):
         twelve_months_ago = date.today() - relativedelta(months=12)
         gift_qs = Gift.objects.filter(gift_date__gte=twelve_months_ago)
 
-    gift_stats = gift_qs.aggregate(
-        total_amount=Sum('amount_cents'),
-        total_count=Count('id')
-    )
+    gift_stats = gift_qs.aggregate(total_amount=Sum("amount_cents"), total_count=Count("id"))
 
     return {
-        'total_contacts': total_contacts,
-        'active_journals': active_journals,
-        'stalled_contacts': stalled_count,
-        'conversion_rate': conversion_rate,
-        'donations_12m': {
-            'total_amount': float((gift_stats['total_amount'] or 0)) / 100,
-            'total_count': gift_stats['total_count'] or 0,
+        "total_contacts": total_contacts,
+        "active_journals": active_journals,
+        "stalled_contacts": stalled_count,
+        "conversion_rate": conversion_rate,
+        "donations_12m": {
+            "total_amount": float((gift_stats["total_amount"] or 0)) / 100,
+            "total_count": gift_stats["total_count"] or 0,
         },
     }
 
 
-def get_stalled_contacts(limit=50, offset=0, sort_by='days_stalled', sort_dir='desc', date_from=None, date_to=None):
+def get_stalled_contacts(
+    limit=50, offset=0, sort_by="days_stalled", sort_dir="desc", date_from=None, date_to=None
+):
     """
     Find contacts with last journal activity >14 days ago.
     Uses Subquery annotation per requirement API-04.
@@ -423,25 +433,34 @@ def get_stalled_contacts(limit=50, offset=0, sort_by='days_stalled', sort_dir='d
     """
     dt_from, dt_to = _parse_date_range(date_from, date_to)
 
-    last_activity = JournalStageEvent.objects.filter(
-        journal_contact__contact=OuterRef('pk')
-    ).order_by('-created_at').values('created_at')[:1]
+    last_activity = (
+        JournalStageEvent.objects.filter(journal_contact__contact=OuterRef("pk"))
+        .order_by("-created_at")
+        .values("created_at")[:1]
+    )
 
     # Subquery for earliest journal membership date (for zero-activity contacts)
-    journal_membership_date = JournalContact.objects.filter(
-        contact=OuterRef('pk')
-    ).order_by('created_at').values('created_at')[:1]
+    journal_membership_date = (
+        JournalContact.objects.filter(contact=OuterRef("pk"))
+        .order_by("created_at")
+        .values("created_at")[:1]
+    )
 
     # Use date_to as "now" if provided, else current time
     cutoff_date = (dt_to if dt_to else timezone.now()) - timedelta(days=14)
 
-    base_qs = Contact.active.annotate(
-        last_activity_date=Subquery(last_activity),
-        journal_membership_date=Subquery(journal_membership_date),
-    ).filter(
-        Q(last_activity_date__lt=cutoff_date) | Q(last_activity_date__isnull=True),
-        journal_memberships__isnull=False
-    ).distinct().select_related('owner')
+    base_qs = (
+        Contact.active.annotate(
+            last_activity_date=Subquery(last_activity),
+            journal_membership_date=Subquery(journal_membership_date),
+        )
+        .filter(
+            Q(last_activity_date__lt=cutoff_date) | Q(last_activity_date__isnull=True),
+            journal_memberships__isnull=False,
+        )
+        .distinct()
+        .select_related("owner")
+    )
 
     # Apply date range filter on last_activity_date if provided
     if dt_from:
@@ -453,33 +472,35 @@ def get_stalled_contacts(limit=50, offset=0, sort_by='days_stalled', sort_dir='d
 
     # Define allowed sort fields (security: prevent arbitrary field ordering)
     SORT_FIELDS = {
-        'days_stalled': Coalesce('last_activity_date', 'journal_membership_date', Value('1970-01-01')),
-        'full_name': 'first_name',
-        'owner_name': 'owner__first_name',
-        'last_activity_date': Coalesce('last_activity_date', Value('1970-01-01')),
+        "days_stalled": Coalesce(
+            "last_activity_date", "journal_membership_date", Value("1970-01-01")
+        ),
+        "full_name": "first_name",
+        "owner_name": "owner__first_name",
+        "last_activity_date": Coalesce("last_activity_date", Value("1970-01-01")),
     }
 
     # Apply sorting
-    sort_field = SORT_FIELDS.get(sort_by, SORT_FIELDS['days_stalled'])
+    sort_field = SORT_FIELDS.get(sort_by, SORT_FIELDS["days_stalled"])
 
     # For days_stalled: older date = more stalled, so desc on days_stalled = asc on date
     # For date fields, we need to invert the direction
-    if sort_by in ('days_stalled', 'last_activity_date'):
+    if sort_by in ("days_stalled", "last_activity_date"):
         # Invert direction for date-based sorting
-        effective_dir = 'asc' if sort_dir == 'desc' else 'desc'
+        effective_dir = "asc" if sort_dir == "desc" else "desc"
     else:
         effective_dir = sort_dir
 
-    if hasattr(sort_field, 'asc'):
+    if hasattr(sort_field, "asc"):
         # Expression object (Coalesce)
-        ordering = sort_field.asc() if effective_dir == 'asc' else sort_field.desc()
+        ordering = sort_field.asc() if effective_dir == "asc" else sort_field.desc()
     else:
         # String field name
-        ordering = sort_field if effective_dir == 'asc' else f'-{sort_field}'
+        ordering = sort_field if effective_dir == "asc" else f"-{sort_field}"
 
     # Apply pagination (limit=None means no limit for CSV export)
     if limit is not None:
-        stalled = base_qs.order_by(ordering)[offset:offset + limit]
+        stalled = base_qs.order_by(ordering)[offset : offset + limit]
     else:
         stalled = base_qs.order_by(ordering)[offset:]
 
@@ -487,28 +508,30 @@ def get_stalled_contacts(limit=50, offset=0, sort_by='days_stalled', sort_dir='d
     reference_time = dt_to if dt_to else timezone.now()
 
     return {
-        'stalled_contacts': [
+        "stalled_contacts": [
             {
-                'id': str(c.id),
-                'full_name': c.full_name,
-                'email': c.email,
-                'owner_email': c.owner.email,
-                'owner_name': f'{c.owner.first_name} {c.owner.last_name}'.strip(),
-                'last_activity_date': c.last_activity_date.isoformat() if c.last_activity_date else None,
-                'days_stalled': (
+                "id": str(c.id),
+                "full_name": c.full_name,
+                "email": c.email,
+                "owner_email": c.owner.email,
+                "owner_name": f"{c.owner.first_name} {c.owner.last_name}".strip(),
+                "last_activity_date": c.last_activity_date.isoformat()
+                if c.last_activity_date
+                else None,
+                "days_stalled": (
                     (reference_time - c.last_activity_date).days
                     if c.last_activity_date
                     else (reference_time - c.journal_membership_date).days
                     if c.journal_membership_date
                     else None
                 ),
-                'status': c.status,
+                "status": c.status,
             }
             for c in stalled
         ],
-        'total_count': total_count,
-        'limit': limit,
-        'offset': offset,
+        "total_count": total_count,
+        "limit": limit,
+        "offset": offset,
     }
 
 
@@ -524,71 +547,70 @@ def _annotate_user_performance(queryset):
     query plan. Scalar subqueries keep complexity at O(users) + O(decisions).
     """
     # Per-user gift total (cents)
-    gift_totals = Gift.objects.filter(
-        donor_contact__owner=OuterRef('pk')
-    ).values('donor_contact__owner').annotate(
-        total=Sum('amount_cents')
-    ).values('total')
+    gift_totals = (
+        Gift.objects.filter(donor_contact__owner=OuterRef("pk"))
+        .values("donor_contact__owner")
+        .annotate(total=Sum("amount_cents"))
+        .values("total")
+    )
 
     # Per-user gift count
-    gift_counts = Gift.objects.filter(
-        donor_contact__owner=OuterRef('pk')
-    ).values('donor_contact__owner').annotate(
-        count=Count('id')
-    ).values('count')
+    gift_counts = (
+        Gift.objects.filter(donor_contact__owner=OuterRef("pk"))
+        .values("donor_contact__owner")
+        .annotate(count=Count("id"))
+        .values("count")
+    )
 
     # Per-user decision count
-    decision_counts = Decision.objects.filter(
-        journal_contact__journal__owner=OuterRef('pk')
-    ).values('journal_contact__journal__owner').annotate(
-        count=Count('id')
-    ).values('count')
+    decision_counts = (
+        Decision.objects.filter(journal_contact__journal__owner=OuterRef("pk"))
+        .values("journal_contact__journal__owner")
+        .annotate(count=Count("id"))
+        .values("count")
+    )
 
     # Per-user distinct-contact count among JournalContacts
-    contacts_in_journals_counts = JournalContact.objects.filter(
-        journal__owner=OuterRef('pk')
-    ).values('journal__owner').annotate(
-        count=Count('contact', distinct=True)
-    ).values('count')
+    contacts_in_journals_counts = (
+        JournalContact.objects.filter(journal__owner=OuterRef("pk"))
+        .values("journal__owner")
+        .annotate(count=Count("contact", distinct=True))
+        .values("count")
+    )
 
     # Per-user distinct-contact count among Decisions
-    contacts_with_decisions_counts = Decision.objects.filter(
-        journal_contact__journal__owner=OuterRef('pk')
-    ).values('journal_contact__journal__owner').annotate(
-        count=Count('journal_contact__contact', distinct=True)
-    ).values('count')
+    contacts_with_decisions_counts = (
+        Decision.objects.filter(journal_contact__journal__owner=OuterRef("pk"))
+        .values("journal_contact__journal__owner")
+        .annotate(count=Count("journal_contact__contact", distinct=True))
+        .values("count")
+    )
 
     # Per-user active-journal count (is_archived=False)
-    active_journal_counts = Journal.objects.filter(
-        owner=OuterRef('pk'),
-        is_archived=False,
-    ).values('owner').annotate(
-        count=Count('id')
-    ).values('count')
+    active_journal_counts = (
+        Journal.objects.filter(
+            owner=OuterRef("pk"),
+            is_archived=False,
+        )
+        .values("owner")
+        .annotate(count=Count("id"))
+        .values("count")
+    )
 
     # Per-user contact count
-    contact_counts = Contact.active.filter(
-        owner=OuterRef('pk')
-    ).values('owner').annotate(
-        count=Count('id')
-    ).values('count')
+    contact_counts = (
+        Contact.active.filter(owner=OuterRef("pk"))
+        .values("owner")
+        .annotate(count=Count("id"))
+        .values("count")
+    )
 
     return queryset.annotate(
-        total_contacts=Coalesce(
-            Subquery(contact_counts, output_field=IntegerField()), 0
-        ),
-        active_journals=Coalesce(
-            Subquery(active_journal_counts, output_field=IntegerField()), 0
-        ),
-        total_gift_amount_cents=Coalesce(
-            Subquery(gift_totals, output_field=IntegerField()), 0
-        ),
-        gift_count=Coalesce(
-            Subquery(gift_counts, output_field=IntegerField()), 0
-        ),
-        decisions_logged=Coalesce(
-            Subquery(decision_counts, output_field=IntegerField()), 0
-        ),
+        total_contacts=Coalesce(Subquery(contact_counts, output_field=IntegerField()), 0),
+        active_journals=Coalesce(Subquery(active_journal_counts, output_field=IntegerField()), 0),
+        total_gift_amount_cents=Coalesce(Subquery(gift_totals, output_field=IntegerField()), 0),
+        gift_count=Coalesce(Subquery(gift_counts, output_field=IntegerField()), 0),
+        decisions_logged=Coalesce(Subquery(decision_counts, output_field=IntegerField()), 0),
         _contacts_with_decisions=Coalesce(
             Subquery(contacts_with_decisions_counts, output_field=IntegerField()), 0
         ),
@@ -607,16 +629,16 @@ def _serialize_user_performance(user):
         1,
     )
     return {
-        'id': str(user.id),
-        'email': user.email,
-        'name': f'{user.first_name} {user.last_name}'.strip(),
-        'role': user.role,
-        'total_contacts': user.total_contacts,
-        'active_journals': user.active_journals,
-        'decisions_logged': user.decisions_logged,
-        'conversion_rate': conversion_rate,
-        'total_donations': float(user.total_gift_amount_cents or 0) / 100,
-        'donation_count': user.gift_count,
+        "id": str(user.id),
+        "email": user.email,
+        "name": f"{user.first_name} {user.last_name}".strip(),
+        "role": user.role,
+        "total_contacts": user.total_contacts,
+        "active_journals": user.active_journals,
+        "decisions_logged": user.decisions_logged,
+        "conversion_rate": conversion_rate,
+        "total_donations": float(user.total_gift_amount_cents or 0) / 100,
+        "donation_count": user.gift_count,
     }
 
 
@@ -632,10 +654,10 @@ def get_user_performance():
     (HIGH-3).
     """
     users = _annotate_user_performance(
-        User.objects.filter(role__in=['missionary', 'admin', 'supervisor'])
-    ).order_by('-total_contacts')
+        User.objects.filter(role__in=["missionary", "admin", "supervisor"])
+    ).order_by("-total_contacts")
 
-    return {'users': [_serialize_user_performance(u) for u in users]}
+    return {"users": [_serialize_user_performance(u) for u in users]}
 
 
 def get_single_user_performance(user_id):
@@ -649,7 +671,7 @@ def get_single_user_performance(user_id):
     SECURITY: same as get_user_performance — admin-gated.
     """
     user = _annotate_user_performance(
-        User.objects.filter(id=user_id, role__in=['missionary', 'admin', 'supervisor'])
+        User.objects.filter(id=user_id, role__in=["missionary", "admin", "supervisor"])
     ).first()
     if user is None:
         return None
@@ -675,18 +697,21 @@ def get_conversion_funnel(date_from=None, date_to=None):
     if dt_to:
         stage_events_qs = stage_events_qs.filter(created_at__lt=dt_to)
 
-    latest_stage = stage_events_qs.filter(
-        journal_contact=OuterRef('pk')
-    ).order_by('-created_at').values('stage')[:1]
+    latest_stage = (
+        stage_events_qs.filter(journal_contact=OuterRef("pk"))
+        .order_by("-created_at")
+        .values("stage")[:1]
+    )
 
     # Annotate each journal_contact with current stage, aggregate counts
-    breakdown = JournalContact.objects.annotate(
-        current_stage=Subquery(latest_stage)
-    ).values('current_stage').annotate(
-        count=Count('id')
-    ).order_by('current_stage')
+    breakdown = (
+        JournalContact.objects.annotate(current_stage=Subquery(latest_stage))
+        .values("current_stage")
+        .annotate(count=Count("id"))
+        .order_by("current_stage")
+    )
 
-    stage_counts = {item['current_stage']: item['count'] for item in breakdown}
+    stage_counts = {item["current_stage"]: item["count"] for item in breakdown}
 
     # Separate null-stage contacts from the pipeline total
     null_count = stage_counts.pop(None, 0)
@@ -699,17 +724,19 @@ def get_conversion_funnel(date_from=None, date_to=None):
     funnel = []
     for stage_value in stage_order:
         count = stage_counts.get(stage_value, 0)
-        funnel.append({
-            'stage': stage_value,
-            'label': stage_labels.get(stage_value, stage_value),
-            'count': count,
-            'percentage': round((count / total * 100) if total > 0 else 0, 1),
-        })
+        funnel.append(
+            {
+                "stage": stage_value,
+                "label": stage_labels.get(stage_value, stage_value),
+                "count": count,
+                "percentage": round((count / total * 100) if total > 0 else 0, 1),
+            }
+        )
 
     return {
-        'funnel': funnel,
-        'total_contacts_in_pipeline': total,
-        'no_activity_count': null_count,
+        "funnel": funnel,
+        "total_contacts_in_pipeline": total,
+        "no_activity_count": null_count,
     }
 
 
@@ -731,31 +758,29 @@ def get_team_activity(limit=50, date_from=None, date_to=None):
     if dt_to:
         events_qs = events_qs.filter(created_at__lt=dt_to)
 
-    recent_events = events_qs.select_related(
-        'user', 'contact'
-    ).order_by('-created_at')[:limit]
+    recent_events = events_qs.select_related("user", "contact").order_by("-created_at")[:limit]
 
     # Count with same filters for total_count
     total_count = events_qs.count()
 
     return {
-        'activities': [
+        "activities": [
             {
-                'id': str(e.id),
-                'user_id': str(e.user.id),
-                'user_email': e.user.email,
-                'user_name': f'{e.user.first_name} {e.user.last_name}'.strip(),
-                'event_type': e.event_type,
-                'title': e.title,
-                'message': e.message,
-                'severity': e.severity,
-                'contact_id': str(e.contact.id) if e.contact else None,
-                'contact_name': e.contact.full_name if e.contact else None,
-                'created_at': e.created_at.isoformat(),
+                "id": str(e.id),
+                "user_id": str(e.user.id),
+                "user_email": e.user.email,
+                "user_name": f"{e.user.first_name} {e.user.last_name}".strip(),
+                "event_type": e.event_type,
+                "title": e.title,
+                "message": e.message,
+                "severity": e.severity,
+                "contact_id": str(e.contact.id) if e.contact else None,
+                "contact_name": e.contact.full_name if e.contact else None,
+                "created_at": e.created_at.isoformat(),
             }
             for e in recent_events
         ],
-        'total_count': total_count,
+        "total_count": total_count,
     }
 
 
@@ -795,60 +820,64 @@ def get_team_trends(weeks=12, date_from=None, date_to=None):
         start_date = current_week_monday - timedelta(weeks=weeks - 1)
 
     # Query decisions by week
-    decisions_by_week = Decision.objects.filter(
-        created_at__gte=start_date
-    ).annotate(
-        week=TruncWeek('created_at')
-    ).values('week').annotate(
-        count=Count('id')
-    ).order_by('week')
+    decisions_by_week = (
+        Decision.objects.filter(created_at__gte=start_date)
+        .annotate(week=TruncWeek("created_at"))
+        .values("week")
+        .annotate(count=Count("id"))
+        .order_by("week")
+    )
 
     # Query gifts by week
-    gifts_by_week = Gift.objects.filter(
-        gift_date__gte=start_date
-    ).annotate(
-        week=TruncWeek('gift_date')
-    ).values('week').annotate(
-        count=Count('id')
-    ).order_by('week')
+    gifts_by_week = (
+        Gift.objects.filter(gift_date__gte=start_date)
+        .annotate(week=TruncWeek("gift_date"))
+        .values("week")
+        .annotate(count=Count("id"))
+        .order_by("week")
+    )
 
     # Query stage progressions by week
-    stage_events_by_week = JournalStageEvent.objects.filter(
-        created_at__gte=start_date
-    ).annotate(
-        week=TruncWeek('created_at')
-    ).values('week').annotate(
-        count=Count('id')
-    ).order_by('week')
+    stage_events_by_week = (
+        JournalStageEvent.objects.filter(created_at__gte=start_date)
+        .annotate(week=TruncWeek("created_at"))
+        .values("week")
+        .annotate(count=Count("id"))
+        .order_by("week")
+    )
 
     # Build maps for quick lookup
     # Note: TruncWeek on DateTimeField returns datetime, on DateField returns date
     def normalize_to_date(dt):
         """Convert datetime or date to date object."""
-        return dt.date() if hasattr(dt, 'date') and callable(dt.date) else dt
+        return dt.date() if hasattr(dt, "date") and callable(dt.date) else dt
 
-    decisions_map = {normalize_to_date(item['week']): item['count'] for item in decisions_by_week}
-    gifts_map = {normalize_to_date(item['week']): item['count'] for item in gifts_by_week}
-    stage_events_map = {normalize_to_date(item['week']): item['count'] for item in stage_events_by_week}
+    decisions_map = {normalize_to_date(item["week"]): item["count"] for item in decisions_by_week}
+    gifts_map = {normalize_to_date(item["week"]): item["count"] for item in gifts_by_week}
+    stage_events_map = {
+        normalize_to_date(item["week"]): item["count"] for item in stage_events_by_week
+    }
 
     # Build complete week list (fill gaps with 0)
     result = []
     for week_num in range(weeks):
         week_start = start_date + timedelta(weeks=week_num)
         # Format label (e.g., "Feb 3")
-        week_label = week_start.strftime('%b %-d')
+        week_label = week_start.strftime("%b %-d")
 
-        result.append({
-            'week_start': week_start.isoformat(),
-            'week_label': week_label,
-            'decisions_logged': decisions_map.get(week_start, 0),
-            'donations_received': gifts_map.get(week_start, 0),
-            'stage_progressions': stage_events_map.get(week_start, 0),
-        })
+        result.append(
+            {
+                "week_start": week_start.isoformat(),
+                "week_label": week_label,
+                "decisions_logged": decisions_map.get(week_start, 0),
+                "donations_received": gifts_map.get(week_start, 0),
+                "stage_progressions": stage_events_map.get(week_start, 0),
+            }
+        )
 
     return {
-        'trends': result,
-        'weeks': weeks,
+        "trends": result,
+        "weeks": weeks,
     }
 
 
@@ -874,63 +903,68 @@ def get_user_trends(user_id, weeks=12):
     start_date = current_week_monday - timedelta(weeks=weeks - 1)
 
     # Query decisions by week for this user
-    decisions_by_week = Decision.objects.filter(
-        journal_contact__journal__owner_id=user_id,
-        created_at__gte=start_date
-    ).annotate(
-        week=TruncWeek('created_at')
-    ).values('week').annotate(
-        count=Count('id')
-    ).order_by('week')
+    decisions_by_week = (
+        Decision.objects.filter(
+            journal_contact__journal__owner_id=user_id, created_at__gte=start_date
+        )
+        .annotate(week=TruncWeek("created_at"))
+        .values("week")
+        .annotate(count=Count("id"))
+        .order_by("week")
+    )
 
     # Query gifts by week for this user
-    gifts_by_week = Gift.objects.filter(
-        donor_contact__owner_id=user_id,
-        gift_date__gte=start_date
-    ).annotate(
-        week=TruncWeek('gift_date')
-    ).values('week').annotate(
-        count=Count('id')
-    ).order_by('week')
+    gifts_by_week = (
+        Gift.objects.filter(donor_contact__owner_id=user_id, gift_date__gte=start_date)
+        .annotate(week=TruncWeek("gift_date"))
+        .values("week")
+        .annotate(count=Count("id"))
+        .order_by("week")
+    )
 
     # Query stage progressions by week for this user
-    stage_events_by_week = JournalStageEvent.objects.filter(
-        journal_contact__journal__owner_id=user_id,
-        created_at__gte=start_date
-    ).annotate(
-        week=TruncWeek('created_at')
-    ).values('week').annotate(
-        count=Count('id')
-    ).order_by('week')
+    stage_events_by_week = (
+        JournalStageEvent.objects.filter(
+            journal_contact__journal__owner_id=user_id, created_at__gte=start_date
+        )
+        .annotate(week=TruncWeek("created_at"))
+        .values("week")
+        .annotate(count=Count("id"))
+        .order_by("week")
+    )
 
     # Build maps for quick lookup
     # Note: TruncWeek on DateTimeField returns datetime, on DateField returns date
     def normalize_to_date(dt):
         """Convert datetime or date to date object."""
-        return dt.date() if hasattr(dt, 'date') and callable(dt.date) else dt
+        return dt.date() if hasattr(dt, "date") and callable(dt.date) else dt
 
-    decisions_map = {normalize_to_date(item['week']): item['count'] for item in decisions_by_week}
-    gifts_map = {normalize_to_date(item['week']): item['count'] for item in gifts_by_week}
-    stage_events_map = {normalize_to_date(item['week']): item['count'] for item in stage_events_by_week}
+    decisions_map = {normalize_to_date(item["week"]): item["count"] for item in decisions_by_week}
+    gifts_map = {normalize_to_date(item["week"]): item["count"] for item in gifts_by_week}
+    stage_events_map = {
+        normalize_to_date(item["week"]): item["count"] for item in stage_events_by_week
+    }
 
     # Build complete week list (fill gaps with 0)
     result = []
     for week_num in range(weeks):
         week_start = start_date + timedelta(weeks=week_num)
         # Format label (e.g., "Feb 3")
-        week_label = week_start.strftime('%b %-d')
+        week_label = week_start.strftime("%b %-d")
 
-        result.append({
-            'week_start': week_start.isoformat(),
-            'week_label': week_label,
-            'decisions_logged': decisions_map.get(week_start, 0),
-            'donations_received': gifts_map.get(week_start, 0),
-            'stage_progressions': stage_events_map.get(week_start, 0),
-        })
+        result.append(
+            {
+                "week_start": week_start.isoformat(),
+                "week_label": week_label,
+                "decisions_logged": decisions_map.get(week_start, 0),
+                "donations_received": gifts_map.get(week_start, 0),
+                "stage_progressions": stage_events_map.get(week_start, 0),
+            }
+        )
 
     return {
-        'trends': result,
-        'weeks': weeks,
+        "trends": result,
+        "weeks": weeks,
     }
 
 
@@ -947,28 +981,29 @@ def get_user_journals(user_id):
     Returns:
         Dictionary with 'journals' list
     """
-    journals = Journal.objects.filter(
-        owner_id=user_id,
-        is_archived=False
-    ).annotate(
-        member_count=Count('journal_contacts', distinct=True),
-        decision_count=Count('journal_contacts__decisions', distinct=True),
-        active_member_count=Count(
-            'journal_contacts',
-            filter=Q(journal_contacts__decisions__isnull=False),
-            distinct=True
+    journals = (
+        Journal.objects.filter(owner_id=user_id, is_archived=False)
+        .annotate(
+            member_count=Count("journal_contacts", distinct=True),
+            decision_count=Count("journal_contacts__decisions", distinct=True),
+            active_member_count=Count(
+                "journal_contacts",
+                filter=Q(journal_contacts__decisions__isnull=False),
+                distinct=True,
+            ),
         )
-    ).order_by('-created_at')
+        .order_by("-created_at")
+    )
 
     return {
-        'journals': [
+        "journals": [
             {
-                'id': str(j.id),
-                'name': j.name,
-                'member_count': j.member_count,
-                'decision_count': j.decision_count,
-                'active_member_count': j.active_member_count,
-                'created_at': j.created_at.isoformat(),
+                "id": str(j.id),
+                "name": j.name,
+                "member_count": j.member_count,
+                "decision_count": j.decision_count,
+                "active_member_count": j.active_member_count,
+                "created_at": j.created_at.isoformat(),
             }
             for j in journals
         ]
@@ -990,14 +1025,18 @@ def get_stage_contacts(stage, limit=100):
         Dictionary with 'contacts' list and 'total_count'
     """
     # Subquery to get most recent stage per journal_contact
-    latest_stage = JournalStageEvent.objects.filter(
-        journal_contact=OuterRef('pk')
-    ).order_by('-created_at').values('stage')[:1]
+    latest_stage = (
+        JournalStageEvent.objects.filter(journal_contact=OuterRef("pk"))
+        .order_by("-created_at")
+        .values("stage")[:1]
+    )
 
     # Subquery for last activity date (most recent stage event)
-    last_activity = JournalStageEvent.objects.filter(
-        journal_contact__contact=OuterRef('pk')
-    ).order_by('-created_at').values('created_at')[:1]
+    last_activity = (
+        JournalStageEvent.objects.filter(journal_contact__contact=OuterRef("pk"))
+        .order_by("-created_at")
+        .values("created_at")[:1]
+    )
 
     # Get JournalContacts with current stage annotation
     journal_contacts_qs = JournalContact.objects.annotate(
@@ -1005,7 +1044,7 @@ def get_stage_contacts(stage, limit=100):
     )
 
     # Filter by stage (handle None for "No Activity")
-    if stage is None or stage == 'none':
+    if stage is None or stage == "none":
         # Contacts with no stage events
         journal_contacts_qs = journal_contacts_qs.filter(current_stage__isnull=True)
     else:
@@ -1013,31 +1052,33 @@ def get_stage_contacts(stage, limit=100):
         journal_contacts_qs = journal_contacts_qs.filter(current_stage=stage)
 
     # Get distinct contact IDs from matching JournalContacts
-    contact_ids = journal_contacts_qs.values_list('contact_id', flat=True).distinct()
+    contact_ids = journal_contacts_qs.values_list("contact_id", flat=True).distinct()
 
     # Count total before applying limit
     total_count = contact_ids.count()
 
     # Get Contact objects with owner and last activity
-    contacts = Contact.active.filter(
-        id__in=contact_ids[:limit]
-    ).annotate(
-        last_activity_date=Subquery(last_activity)
-    ).select_related('owner')
+    contacts = (
+        Contact.active.filter(id__in=contact_ids[:limit])
+        .annotate(last_activity_date=Subquery(last_activity))
+        .select_related("owner")
+    )
 
     return {
-        'contacts': [
+        "contacts": [
             {
-                'id': str(c.id),
-                'full_name': c.full_name,
-                'email': c.email,
-                'owner_name': f'{c.owner.first_name} {c.owner.last_name}'.strip(),
-                'last_activity_date': c.last_activity_date.isoformat() if c.last_activity_date else None,
+                "id": str(c.id),
+                "full_name": c.full_name,
+                "email": c.email,
+                "owner_name": f"{c.owner.first_name} {c.owner.last_name}".strip(),
+                "last_activity_date": c.last_activity_date.isoformat()
+                if c.last_activity_date
+                else None,
             }
             for c in contacts
         ],
-        'total_count': total_count,
-        'stage': stage or 'none',
+        "total_count": total_count,
+        "stage": stage or "none",
     }
 
 
@@ -1059,69 +1100,74 @@ def get_user_drilldown(user_id):
     # to keep metric definitions (conversion rate, decisions_logged, etc.) in
     # lockstep between the dashboard table and the drilldown panel.
     user = _annotate_user_performance(
-        User.objects.filter(id=user_id, role__in=['missionary', 'admin', 'supervisor'])
+        User.objects.filter(id=user_id, role__in=["missionary", "admin", "supervisor"])
     ).first()
     if user is None:
-        return {'detail': 'User not found'}
+        return {"detail": "User not found"}
 
     performance = _serialize_user_performance(user)
 
     # Stalled contact count for this user (last journal activity >14 days ago)
     cutoff_date = timezone.now() - timedelta(days=14)
-    last_activity = JournalStageEvent.objects.filter(
-        journal_contact__contact=OuterRef('pk')
-    ).order_by('-created_at').values('created_at')[:1]
+    last_activity = (
+        JournalStageEvent.objects.filter(journal_contact__contact=OuterRef("pk"))
+        .order_by("-created_at")
+        .values("created_at")[:1]
+    )
 
-    stalled_count = Contact.active.filter(
-        owner_id=user_id
-    ).annotate(
-        last_activity_date=Subquery(last_activity)
-    ).filter(
-        Q(last_activity_date__lt=cutoff_date) | Q(last_activity_date__isnull=True),
-        journal_memberships__isnull=False
-    ).distinct().count()
+    stalled_count = (
+        Contact.active.filter(owner_id=user_id)
+        .annotate(last_activity_date=Subquery(last_activity))
+        .filter(
+            Q(last_activity_date__lt=cutoff_date) | Q(last_activity_date__isnull=True),
+            journal_memberships__isnull=False,
+        )
+        .distinct()
+        .count()
+    )
 
     # Recent journals (top 5, non-archived) with annotations
-    recent_journals = Journal.objects.filter(
-        owner_id=user_id,
-        is_archived=False
-    ).annotate(
-        member_count=Count('journal_contacts', distinct=True),
-        decision_count=Count('journal_contacts__decisions', distinct=True),
-        active_member_count=Count(
-            'journal_contacts',
-            filter=Q(journal_contacts__decisions__isnull=False),
-            distinct=True
+    recent_journals = (
+        Journal.objects.filter(owner_id=user_id, is_archived=False)
+        .annotate(
+            member_count=Count("journal_contacts", distinct=True),
+            decision_count=Count("journal_contacts__decisions", distinct=True),
+            active_member_count=Count(
+                "journal_contacts",
+                filter=Q(journal_contacts__decisions__isnull=False),
+                distinct=True,
+            ),
         )
-    ).order_by('-created_at')[:5]
+        .order_by("-created_at")[:5]
+    )
 
     return {
-        'user': {
-            'id': performance['id'],
-            'name': performance['name'],
-            'email': performance['email'],
-            'role': performance['role'],
+        "user": {
+            "id": performance["id"],
+            "name": performance["name"],
+            "email": performance["email"],
+            "role": performance["role"],
         },
-        'stats': {
-            'total_contacts': performance['total_contacts'],
-            'active_journals': performance['active_journals'],
-            'decisions_logged': performance['decisions_logged'],
-            'conversion_rate': performance['conversion_rate'],
-            'total_donations': performance['total_donations'],
-            'donation_count': performance['donation_count'],
-            'stalled_contacts': stalled_count,
+        "stats": {
+            "total_contacts": performance["total_contacts"],
+            "active_journals": performance["active_journals"],
+            "decisions_logged": performance["decisions_logged"],
+            "conversion_rate": performance["conversion_rate"],
+            "total_donations": performance["total_donations"],
+            "donation_count": performance["donation_count"],
+            "stalled_contacts": stalled_count,
         },
-        'journals': [
+        "journals": [
             {
-                'id': str(j.id),
-                'name': j.name,
-                'member_count': j.member_count,
-                'decision_count': j.decision_count,
-                'active_member_count': j.active_member_count,
-                'created_at': j.created_at.isoformat(),
+                "id": str(j.id),
+                "name": j.name,
+                "member_count": j.member_count,
+                "decision_count": j.decision_count,
+                "active_member_count": j.active_member_count,
+                "created_at": j.created_at.isoformat(),
             }
             for j in recent_journals
-        ]
+        ],
     }
 
 
@@ -1148,9 +1194,9 @@ def get_pace_calculation(date_from=None, date_to=None):
         stage_events_qs = stage_events_qs.filter(created_at__lt=dt_to)
 
     # Get all stage events ordered by journal_contact and created_at
-    stage_events = stage_events_qs.order_by(
-        'journal_contact_id', 'created_at'
-    ).values('journal_contact_id', 'created_at')
+    stage_events = stage_events_qs.order_by("journal_contact_id", "created_at").values(
+        "journal_contact_id", "created_at"
+    )
 
     # Calculate intervals between consecutive events for each contact
     intervals = []
@@ -1158,8 +1204,8 @@ def get_pace_calculation(date_from=None, date_to=None):
     prev_time = None
 
     for event in stage_events:
-        contact_id = event['journal_contact_id']
-        created_at = event['created_at']
+        contact_id = event["journal_contact_id"]
+        created_at = event["created_at"]
 
         if contact_id == prev_contact_id and prev_time:
             # Calculate interval in days
@@ -1174,11 +1220,11 @@ def get_pace_calculation(date_from=None, date_to=None):
     if intervals:
         average_pace = sum(intervals) / len(intervals)
         return {
-            'average_days_between_stages': round(average_pace, 1),
-            'total_intervals': len(intervals),
+            "average_days_between_stages": round(average_pace, 1),
+            "total_intervals": len(intervals),
         }
     else:
         return {
-            'average_days_between_stages': None,
-            'total_intervals': 0,
+            "average_days_between_stages": None,
+            "total_intervals": 0,
         }

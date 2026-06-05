@@ -11,12 +11,12 @@ from apps.events.views import (
     UnreadEventCountView,
 )
 
-app_name = 'events'
+app_name = "events"
 
 urlpatterns = [
-    path('', EventListView.as_view(), name='event-list'),
-    path('unread-count/', UnreadEventCountView.as_view(), name='event-unread-count'),
-    path('read-all/', EventMarkAllReadView.as_view(), name='event-read-all'),
-    path('<uuid:pk>/', EventDetailView.as_view(), name='event-detail'),
-    path('<uuid:pk>/read/', EventMarkReadView.as_view(), name='event-read'),
+    path("", EventListView.as_view(), name="event-list"),
+    path("unread-count/", UnreadEventCountView.as_view(), name="event-unread-count"),
+    path("read-all/", EventMarkAllReadView.as_view(), name="event-read-all"),
+    path("<uuid:pk>/", EventDetailView.as_view(), name="event-detail"),
+    path("<uuid:pk>/read/", EventMarkReadView.as_view(), name="event-read"),
 ]

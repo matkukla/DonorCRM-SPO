@@ -1,9 +1,10 @@
 """
 Tests for Event API views.
 """
-import pytest
 from rest_framework import status
 from rest_framework.test import APIClient
+
+import pytest
 
 from apps.events.models import Event
 from apps.events.tests.factories import EventFactory
@@ -16,37 +17,37 @@ class TestEventListView:
 
     def test_list_events_authenticated(self):
         """Test listing events for authenticated user."""
-        user = UserFactory(role='missionary')
+        user = UserFactory(role="missionary")
         EventFactory.create_batch(3, user=user)
 
         client = APIClient()
         client.force_authenticate(user=user)
 
-        response = client.get('/api/v1/events/')
+        response = client.get("/api/v1/events/")
 
         assert response.status_code == status.HTTP_200_OK
-        assert response.data['count'] == 3
+        assert response.data["count"] == 3
 
     def test_list_events_unauthenticated(self):
         """Test that unauthenticated requests are rejected."""
         client = APIClient()
-        response = client.get('/api/v1/events/')
+        response = client.get("/api/v1/events/")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_user_only_sees_own_events(self):
         """Test that users only see their own events."""
-        user1 = UserFactory(role='missionary')
-        user2 = UserFactory(role='missionary')
+        user1 = UserFactory(role="missionary")
+        user2 = UserFactory(role="missionary")
         EventFactory.create_batch(2, user=user1)
         EventFactory.create_batch(3, user=user2)
 
         client = APIClient()
         client.force_authenticate(user=user1)
 
-        response = client.get('/api/v1/events/')
+        response = client.get("/api/v1/events/")
 
         assert response.status_code == status.HTTP_200_OK
-        assert response.data['count'] == 2
+        assert response.data["count"] == 2
 
 
 @pytest.mark.django_db
@@ -55,16 +56,16 @@ class TestEventDetailView:
 
     def test_get_event_detail(self):
         """Test getting event detail."""
-        user = UserFactory(role='missionary')
-        event = EventFactory(user=user, title='Important event')
+        user = UserFactory(role="missionary")
+        event = EventFactory(user=user, title="Important event")
 
         client = APIClient()
         client.force_authenticate(user=user)
 
-        response = client.get(f'/api/v1/events/{event.id}/')
+        response = client.get(f"/api/v1/events/{event.id}/")
 
         assert response.status_code == status.HTTP_200_OK
-        assert response.data['title'] == 'Important event'
+        assert response.data["title"] == "Important event"
 
 
 @pytest.mark.django_db
@@ -73,13 +74,13 @@ class TestEventMarkReadView:
 
     def test_mark_event_read(self):
         """Test marking a single event as read."""
-        user = UserFactory(role='missionary')
+        user = UserFactory(role="missionary")
         event = EventFactory(user=user, is_read=False)
 
         client = APIClient()
         client.force_authenticate(user=user)
 
-        response = client.post(f'/api/v1/events/{event.id}/read/')
+        response = client.post(f"/api/v1/events/{event.id}/read/")
 
         assert response.status_code == status.HTTP_200_OK
         event.refresh_from_db()
@@ -92,13 +93,13 @@ class TestEventMarkAllReadView:
 
     def test_mark_all_events_read(self):
         """Test marking all events as read."""
-        user = UserFactory(role='missionary')
+        user = UserFactory(role="missionary")
         EventFactory.create_batch(5, user=user, is_read=False)
 
         client = APIClient()
         client.force_authenticate(user=user)
 
-        response = client.post('/api/v1/events/read-all/')
+        response = client.post("/api/v1/events/read-all/")
 
         assert response.status_code == status.HTTP_200_OK
 
@@ -113,14 +114,14 @@ class TestUnreadEventCountView:
 
     def test_get_unread_count(self):
         """Test getting unread event count."""
-        user = UserFactory(role='missionary')
+        user = UserFactory(role="missionary")
         EventFactory.create_batch(3, user=user, is_read=False)
         EventFactory.create_batch(2, user=user, is_read=True)
 
         client = APIClient()
         client.force_authenticate(user=user)
 
-        response = client.get('/api/v1/events/unread-count/')
+        response = client.get("/api/v1/events/unread-count/")
 
         assert response.status_code == status.HTTP_200_OK
-        assert response.data['unread_count'] == 3
+        assert response.data["unread_count"] == 3

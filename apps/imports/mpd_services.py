@@ -20,84 +20,85 @@ logger = logging.getLogger(__name__)
 # Fields prefixed with _ are matching keys, not stored on MPDSnapshot.
 # ---------------------------------------------------------------------------
 SMARTSHEET_COLUMN_MAP = {
-    'full name': None,                  # Skip - derived from First + Last
-    'first name': '_first_name',        # matching key, not stored on snapshot
-    'last name': '_last_name',          # matching key, not stored on snapshot
-    'active recurring gifts': 'active_recurring_gifts',
-    'annual gifts': 'annual_gifts',
-    'monthly average': 'monthly_average',
-    'annual mpd estimate': 'annual_mpd_estimate',
-    'mpd standard': 'mpd_standard',
-    '$ amount below mpd standard': 'amount_below_mpd_standard',
-    '% standard to max': 'pct_standard_to_max',
-    'met mpd standard': 'met_mpd_standard',
-    'mpd maximum': 'mpd_maximum',
-    'met maximum': 'met_maximum',
-    'amount above/below maximum': 'amount_above_below_maximum',
-    'match met': 'match_met',
-    'match met for rest of fiscal year (based on rfb)': 'match_met_rest_fy',
-    'latest roll forward balance': 'latest_roll_forward_balance',
-    'current mpd cap': 'current_mpd_cap',
-    'months remaining in rf': 'months_remaining_rf',
-    'proj. monthly deduction from rfb (cap - rec.gifts)': 'proj_monthly_deduction_rfb',
-    'pay forecast over 12 months': 'pay_forecast_12_months',
-    'pay forecast over fiscal year': 'pay_forecast_over_fy',
-    'total one-time gifts - april': 'total_one_time_gifts_april',
+    "full name": None,  # Skip - derived from First + Last
+    "first name": "_first_name",  # matching key, not stored on snapshot
+    "last name": "_last_name",  # matching key, not stored on snapshot
+    "active recurring gifts": "active_recurring_gifts",
+    "annual gifts": "annual_gifts",
+    "monthly average": "monthly_average",
+    "annual mpd estimate": "annual_mpd_estimate",
+    "mpd standard": "mpd_standard",
+    "$ amount below mpd standard": "amount_below_mpd_standard",
+    "% standard to max": "pct_standard_to_max",
+    "met mpd standard": "met_mpd_standard",
+    "mpd maximum": "mpd_maximum",
+    "met maximum": "met_maximum",
+    "amount above/below maximum": "amount_above_below_maximum",
+    "match met": "match_met",
+    "match met for rest of fiscal year (based on rfb)": "match_met_rest_fy",
+    "latest roll forward balance": "latest_roll_forward_balance",
+    "current mpd cap": "current_mpd_cap",
+    "months remaining in rf": "months_remaining_rf",
+    "proj. monthly deduction from rfb (cap - rec.gifts)": "proj_monthly_deduction_rfb",
+    "pay forecast over 12 months": "pay_forecast_12_months",
+    "pay forecast over fiscal year": "pay_forecast_over_fy",
+    "total one-time gifts - april": "total_one_time_gifts_april",
 }
 
 # Columns to skip entirely (coaching-related, not stored)
 SKIP_COLUMNS = {
-    'will be a coach in 2022 mpd season?',
-    'do you understand the coaching contract?',
-    'have you made these decisions w/ your supervisor?',
+    "will be a coach in 2022 mpd season?",
+    "do you understand the coaching contract?",
+    "have you made these decisions w/ your supervisor?",
 }
 
 # Field classification for type-specific parsing
 CURRENCY_FIELDS = {
-    'active_recurring_gifts',
-    'annual_gifts',
-    'monthly_average',
-    'annual_mpd_estimate',
-    'mpd_standard',
-    'amount_below_mpd_standard',
-    'mpd_maximum',
-    'amount_above_below_maximum',
-    'latest_roll_forward_balance',
-    'current_mpd_cap',
-    'proj_monthly_deduction_rfb',
-    'pay_forecast_12_months',
-    'pay_forecast_over_fy',
-    'total_one_time_gifts_april',
+    "active_recurring_gifts",
+    "annual_gifts",
+    "monthly_average",
+    "annual_mpd_estimate",
+    "mpd_standard",
+    "amount_below_mpd_standard",
+    "mpd_maximum",
+    "amount_above_below_maximum",
+    "latest_roll_forward_balance",
+    "current_mpd_cap",
+    "proj_monthly_deduction_rfb",
+    "pay_forecast_12_months",
+    "pay_forecast_over_fy",
+    "total_one_time_gifts_april",
 }
 
 BOOLEAN_FIELDS = {
-    'met_mpd_standard',
-    'met_maximum',
-    'match_met',
-    'match_met_rest_fy',
+    "met_mpd_standard",
+    "met_maximum",
+    "match_met",
+    "match_met_rest_fy",
 }
 
-PERCENTAGE_FIELDS = {'pct_standard_to_max'}
+PERCENTAGE_FIELDS = {"pct_standard_to_max"}
 
-MONTHS_REMAINING_FIELD = 'months_remaining_rf'
+MONTHS_REMAINING_FIELD = "months_remaining_rf"
 
 # Formula injection characters to strip from start of cell values.
 # Note: '-' is intentionally NOT stripped (negative currency like -$468.33).
-FORMULA_INJECTION_CHARS = {'=', '+', '@', '\t', '\r'}
+FORMULA_INJECTION_CHARS = {"=", "+", "@", "\t", "\r"}
 
 
 # ---------------------------------------------------------------------------
 # Parsing helpers
 # ---------------------------------------------------------------------------
 
+
 def detect_file_format(file_bytes: bytes) -> str:
     """Detect whether file is XLSX or CSV from magic bytes.
 
     XLSX/ZIP files start with PK\\x03\\x04. Everything else treated as CSV.
     """
-    if file_bytes[:4] == b'PK\x03\x04':
-        return 'xlsx'
-    return 'csv'
+    if file_bytes[:4] == b"PK\x03\x04":
+        return "xlsx"
+    return "csv"
 
 
 def sanitize_cell_value(value):
@@ -136,20 +137,20 @@ def parse_currency(value) -> Decimal | None:
 
     # Handle parenthetical negatives: ($468.33) -> -468.33
     negative = False
-    if value.startswith('(') and value.endswith(')'):
+    if value.startswith("(") and value.endswith(")"):
         negative = True
         value = value[1:-1]
 
     # Handle leading negative sign before or after dollar sign
-    if value.startswith('-'):
+    if value.startswith("-"):
         negative = True
         value = value[1:]
 
     # Strip dollar sign, commas, spaces
-    value = value.replace('$', '').replace(',', '').replace(' ', '')
+    value = value.replace("$", "").replace(",", "").replace(" ", "")
 
     # Handle negative after dollar sign: $-468.33
-    if value.startswith('-'):
+    if value.startswith("-"):
         negative = True
         value = value[1:]
 
@@ -184,9 +185,9 @@ def parse_yes_no(value) -> bool | None:
     if not value:
         return None
 
-    if value in ('yes', 'true', '1'):
+    if value in ("yes", "true", "1"):
         return True
-    if value in ('no', 'false', '0'):
+    if value in ("no", "false", "0"):
         return False
 
     return None
@@ -219,7 +220,7 @@ def parse_percentage(value) -> int | None:
         return None
 
     # Strip % sign
-    value = value.replace('%', '').strip()
+    value = value.replace("%", "").strip()
 
     try:
         num = float(value)
@@ -239,31 +240,31 @@ def parse_months_remaining(value) -> str:
     Returns empty string for None/empty.
     """
     if value is None:
-        return ''
+        return ""
 
     if isinstance(value, (int, float)):
         if isinstance(value, int):
             return str(value)
         # Format float with up to 6 decimal places, strip trailing zeros
-        formatted = f'{value:.6f}'.rstrip('0').rstrip('.')
+        formatted = f"{value:.6f}".rstrip("0").rstrip(".")
         return formatted
 
     if not isinstance(value, str):
-        return ''
+        return ""
 
     value = value.strip()
     if not value:
-        return ''
+        return ""
 
-    if value.lower() == 'infinite':
-        return 'infinite'
+    if value.lower() == "infinite":
+        return "infinite"
 
     # Try to parse as numeric
     try:
         num = float(value)
         if num == int(num):
             return str(int(num))
-        formatted = f'{num:.6f}'.rstrip('0').rstrip('.')
+        formatted = f"{num:.6f}".rstrip("0").rstrip(".")
         return formatted
     except (ValueError, TypeError):
         return value
@@ -272,6 +273,7 @@ def parse_months_remaining(value) -> str:
 # ---------------------------------------------------------------------------
 # Column mapping and row parsing
 # ---------------------------------------------------------------------------
+
 
 def build_column_index(headers: list[str]) -> tuple[dict, list[str]]:
     """Map header positions to field names using SMARTSHEET_COLUMN_MAP.
@@ -328,12 +330,12 @@ def parse_row(row_values: list, column_index: dict) -> dict:
             value = sanitize_cell_value(value)
 
         # Type-specific parsing
-        if field_name.startswith('_'):
+        if field_name.startswith("_"):
             # Matching keys: just sanitize and strip as string
             if isinstance(value, str):
                 result[field_name] = value.strip()
             else:
-                result[field_name] = str(value).strip() if value is not None else ''
+                result[field_name] = str(value).strip() if value is not None else ""
         elif field_name in CURRENCY_FIELDS:
             result[field_name] = parse_currency(value)
         elif field_name in BOOLEAN_FIELDS:
@@ -351,6 +353,7 @@ def parse_row(row_values: list, column_index: dict) -> dict:
 # ---------------------------------------------------------------------------
 # File parsing (XLSX and CSV)
 # ---------------------------------------------------------------------------
+
 
 def parse_xlsx(file_bytes: bytes) -> tuple[list[str], list[list]]:
     """Parse XLSX file into headers and data rows.
@@ -370,7 +373,7 @@ def parse_xlsx(file_bytes: bytes) -> tuple[list[str], list[list]]:
         return [], []
 
     # First row is headers
-    headers = [str(cell) if cell is not None else '' for cell in rows[0]]
+    headers = [str(cell) if cell is not None else "" for cell in rows[0]]
     data_rows = [list(row) for row in rows[1:]]
 
     return headers, data_rows
@@ -382,7 +385,7 @@ def parse_csv(file_bytes: bytes) -> tuple[list[str], list[list]]:
     Decodes with utf-8-sig to handle BOM.
     Returns (headers, data_rows).
     """
-    text = file_bytes.decode('utf-8-sig')
+    text = file_bytes.decode("utf-8-sig")
     reader = csv.reader(StringIO(text))
 
     rows = list(reader)
@@ -398,6 +401,7 @@ def parse_csv(file_bytes: bytes) -> tuple[list[str], list[list]]:
 # ---------------------------------------------------------------------------
 # User matching
 # ---------------------------------------------------------------------------
+
 
 def match_users(parsed_rows: list[dict]) -> tuple[list[tuple], list[dict]]:
     """Match parsed rows to DonorCRM users by first + last name.
@@ -424,14 +428,17 @@ def match_users(parsed_rows: list[dict]) -> tuple[list[tuple], list[dict]]:
         if key in user_lookup:
             duplicates.add(key)
             logger.warning(
-                'Duplicate user name key: %s %s (IDs: %s, %s)',
-                key[0], key[1], user_lookup[key].id, user.id
+                "Duplicate user name key: %s %s (IDs: %s, %s)",
+                key[0],
+                key[1],
+                user_lookup[key].id,
+                user.id,
             )
         else:
             user_lookup[key] = user
 
     if duplicates:
-        logger.warning('Found %d duplicate name keys in users', len(duplicates))
+        logger.warning("Found %d duplicate name keys in users", len(duplicates))
 
     matched = []
     unmatched = []
@@ -439,45 +446,60 @@ def match_users(parsed_rows: list[dict]) -> tuple[list[tuple], list[dict]]:
     for i, row_data in enumerate(parsed_rows):
         row_num = i + 2  # Header is row 1
 
-        first_name = row_data.get('_first_name', '').lower().strip()
-        last_name = row_data.get('_last_name', '').lower().strip()
+        first_name = row_data.get("_first_name", "").lower().strip()
+        last_name = row_data.get("_last_name", "").lower().strip()
         key = (first_name, last_name)
 
         # Skip rows with ambiguous (duplicate) name keys
         if key in duplicates:
             logger.warning(
-                'Row %d: ambiguous name match for %s %s (multiple users)',
-                row_num, first_name, last_name
+                "Row %d: ambiguous name match for %s %s (multiple users)",
+                row_num,
+                first_name,
+                last_name,
             )
-            unmatched.append({
-                'row': row_num,
-                'first_name': row_data.get('_first_name', ''),
-                'last_name': row_data.get('_last_name', ''),
-                # Financial fields for admin visibility in results dialog
-                'current_mpd_cap': str(row_data.get('current_mpd_cap', '')) if row_data.get('current_mpd_cap') is not None else None,
-                'latest_roll_forward_balance': str(row_data.get('latest_roll_forward_balance', '')) if row_data.get('latest_roll_forward_balance') is not None else None,
-                'months_remaining_rf': row_data.get('months_remaining_rf', ''),
-            })
+            unmatched.append(
+                {
+                    "row": row_num,
+                    "first_name": row_data.get("_first_name", ""),
+                    "last_name": row_data.get("_last_name", ""),
+                    # Financial fields for admin visibility in results dialog
+                    "current_mpd_cap": str(row_data.get("current_mpd_cap", ""))
+                    if row_data.get("current_mpd_cap") is not None
+                    else None,
+                    "latest_roll_forward_balance": str(
+                        row_data.get("latest_roll_forward_balance", "")
+                    )
+                    if row_data.get("latest_roll_forward_balance") is not None
+                    else None,
+                    "months_remaining_rf": row_data.get("months_remaining_rf", ""),
+                }
+            )
             continue
 
         user = user_lookup.get(key)
         if user:
             # Build snapshot kwargs (exclude keys starting with _)
-            snapshot_data = {
-                k: v for k, v in row_data.items()
-                if not k.startswith('_')
-            }
+            snapshot_data = {k: v for k, v in row_data.items() if not k.startswith("_")}
             matched.append((user, snapshot_data))
         else:
-            unmatched.append({
-                'row': row_num,
-                'first_name': row_data.get('_first_name', ''),
-                'last_name': row_data.get('_last_name', ''),
-                # Financial fields for admin visibility in results dialog
-                'current_mpd_cap': str(row_data.get('current_mpd_cap', '')) if row_data.get('current_mpd_cap') is not None else None,
-                'latest_roll_forward_balance': str(row_data.get('latest_roll_forward_balance', '')) if row_data.get('latest_roll_forward_balance') is not None else None,
-                'months_remaining_rf': row_data.get('months_remaining_rf', ''),
-            })
+            unmatched.append(
+                {
+                    "row": row_num,
+                    "first_name": row_data.get("_first_name", ""),
+                    "last_name": row_data.get("_last_name", ""),
+                    # Financial fields for admin visibility in results dialog
+                    "current_mpd_cap": str(row_data.get("current_mpd_cap", ""))
+                    if row_data.get("current_mpd_cap") is not None
+                    else None,
+                    "latest_roll_forward_balance": str(
+                        row_data.get("latest_roll_forward_balance", "")
+                    )
+                    if row_data.get("latest_roll_forward_balance") is not None
+                    else None,
+                    "months_remaining_rf": row_data.get("months_remaining_rf", ""),
+                }
+            )
 
     return matched, unmatched
 
@@ -485,6 +507,7 @@ def match_users(parsed_rows: list[dict]) -> tuple[list[tuple], list[dict]]:
 # ---------------------------------------------------------------------------
 # Main orchestrator
 # ---------------------------------------------------------------------------
+
 
 def process_mpd_upload(file_bytes: bytes, filename: str, uploaded_by) -> MPDUpload:
     """Process an MPD Smartsheet report upload end-to-end.
@@ -504,49 +527,46 @@ def process_mpd_upload(file_bytes: bytes, filename: str, uploaded_by) -> MPDUplo
     """
     # Step 1: Detect format
     file_format = detect_file_format(file_bytes)
-    logger.info('MPD upload started: %s (format: %s)', filename, file_format)
+    logger.info("MPD upload started: %s (format: %s)", filename, file_format)
 
     # Step 2: Create upload record
     upload = MPDUpload.objects.create(
         uploaded_by=uploaded_by,
         filename=filename,
         file_format=file_format,
-        status='processing',
+        status="processing",
     )
 
     try:
         # Step 3: Parse file
-        if file_format == 'xlsx':
+        if file_format == "xlsx":
             headers, data_rows = parse_xlsx(file_bytes)
         else:
             headers, data_rows = parse_csv(file_bytes)
 
-        logger.info('Parsed %d data rows from %s', len(data_rows), filename)
+        logger.info("Parsed %d data rows from %s", len(data_rows), filename)
 
         # Step 4: Build column index
         column_index, unrecognized = build_column_index(headers)
 
         if unrecognized:
-            logger.warning('Unrecognized columns in %s: %s', filename, unrecognized)
+            logger.warning("Unrecognized columns in %s: %s", filename, unrecognized)
 
         if not column_index:
-            upload.status = 'failed'
-            upload.error_message = 'No recognized columns found in file headers.'
+            upload.status = "failed"
+            upload.error_message = "No recognized columns found in file headers."
             upload.save()
             return upload
 
-        logger.info('Mapped %d columns from headers', len(column_index))
+        logger.info("Mapped %d columns from headers", len(column_index))
 
         # Step 5: Parse all data rows
         parsed_rows = [parse_row(row, column_index) for row in data_rows]
-        logger.info('Parsed %d rows', len(parsed_rows))
+        logger.info("Parsed %d rows", len(parsed_rows))
 
         # Step 6: Match users
         matched, unmatched = match_users(parsed_rows)
-        logger.info(
-            'User matching: %d matched, %d unmatched',
-            len(matched), len(unmatched)
-        )
+        logger.info("User matching: %d matched, %d unmatched", len(matched), len(unmatched))
 
         # Step 7: Bulk create MPDSnapshot records
         snapshots = [
@@ -567,8 +587,7 @@ def process_mpd_upload(file_bytes: bytes, filename: str, uploaded_by) -> MPDUplo
                 # Fall back to one-by-one creation if bulk fails
                 # (e.g., same user appears twice in file)
                 logger.warning(
-                    'Bulk create failed for %s, falling back to individual creates',
-                    filename
+                    "Bulk create failed for %s, falling back to individual creates", filename
                 )
                 for snapshot in snapshots:
                     try:
@@ -576,25 +595,26 @@ def process_mpd_upload(file_bytes: bytes, filename: str, uploaded_by) -> MPDUplo
                         snapshot_count += 1
                     except IntegrityError:
                         logger.warning(
-                            'Duplicate snapshot skipped: user=%s upload=%s',
-                            snapshot.user_id, upload.id
+                            "Duplicate snapshot skipped: user=%s upload=%s",
+                            snapshot.user_id,
+                            upload.id,
                         )
 
-        logger.info('Created %d MPDSnapshot records', snapshot_count)
+        logger.info("Created %d MPDSnapshot records", snapshot_count)
 
         # Step 8: Update upload with counts
         upload.total_rows = len(data_rows)
         upload.matched_count = len(matched)
         upload.unmatched_count = len(unmatched)
         upload.unmatched_rows = unmatched
-        upload.status = 'completed'
+        upload.status = "completed"
         upload.save()
 
         return upload
 
     except Exception as e:
-        logger.error('MPD upload failed for %s: %s', filename, e)
-        upload.status = 'failed'
+        logger.error("MPD upload failed for %s: %s", filename, e)
+        upload.status = "failed"
         upload.error_message = str(e)
         upload.save()
         raise

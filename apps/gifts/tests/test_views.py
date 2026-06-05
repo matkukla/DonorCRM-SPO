@@ -15,10 +15,7 @@ import pytest
 
 from apps.contacts.tests.factories import ContactFactory
 from apps.gifts.models import Gift, RecurringGift, RecurringGiftFrequency, RecurringGiftStatus
-from apps.users.tests.factories import (
-    AdminUserFactory,
-    UserFactory,
-)
+from apps.users.tests.factories import AdminUserFactory, UserFactory
 
 
 @pytest.fixture
@@ -150,7 +147,11 @@ class TestGiftPermissionScoping:
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_admin_sees_own_gifts_only(
-        self, admin_user, admin_gift, user1_gift, user2_gift,
+        self,
+        admin_user,
+        admin_gift,
+        user1_gift,
+        user2_gift,
     ):
         """Admin sees only own data by default; cross-user access is via View As."""
         client = _client_for(admin_user)
@@ -162,7 +163,9 @@ class TestGiftPermissionScoping:
         assert str(user2_gift.id) not in gift_ids
 
     def test_admin_cannot_access_other_users_gift_detail(
-        self, admin_user, user2_gift,
+        self,
+        admin_user,
+        user2_gift,
     ):
         client = _client_for(admin_user)
         response = client.get(f"/api/v1/gifts/{user2_gift.id}/")
@@ -207,7 +210,11 @@ class TestRecurringGiftPermissionScoping:
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_admin_sees_own_recurring_gifts_only(
-        self, admin_user, admin_recurring, user1_recurring, user2_recurring,
+        self,
+        admin_user,
+        admin_recurring,
+        user1_recurring,
+        user2_recurring,
     ):
         """Admin sees only own data by default; cross-user access is via View As."""
         client = _client_for(admin_user)
@@ -219,7 +226,9 @@ class TestRecurringGiftPermissionScoping:
         assert str(user2_recurring.id) not in rg_ids
 
     def test_admin_cannot_access_other_users_recurring_gift_detail(
-        self, admin_user, user2_recurring,
+        self,
+        admin_user,
+        user2_recurring,
     ):
         client = _client_for(admin_user)
         response = client.get(f"/api/v1/gifts/recurring/{user2_recurring.id}/")

@@ -10,16 +10,17 @@ GREEN state: all tests pass after Plan 04 implements ViewableUsersView.
 Test coverage:
   - VIEWAS-12: Viewable users endpoint (admin sees all missionaries, supervisor sees assigned only)
 """
-import pytest
 from rest_framework.test import APIClient
 
+import pytest
 
 # --- ROLE ACCESS ---
+
 
 @pytest.mark.django_db
 def test_admin_sees_missionaries_and_supervisors():
     """Admin GET /api/users/viewable/ returns all active missionaries and supervisors."""
-    from apps.users.tests.factories import AdminUserFactory, UserFactory, SupervisorUserFactory
+    from apps.users.tests.factories import AdminUserFactory, SupervisorUserFactory, UserFactory
 
     admin = AdminUserFactory()
     missionary1 = UserFactory()
@@ -28,10 +29,10 @@ def test_admin_sees_missionaries_and_supervisors():
 
     client = APIClient()
     client.force_authenticate(user=admin)
-    response = client.get('/api/v1/users/viewable/')
+    response = client.get("/api/v1/users/viewable/")
 
     assert response.status_code == 200
-    ids = [item['id'] for item in response.data]
+    ids = [item["id"] for item in response.data]
     assert str(missionary1.id) in ids
     assert str(missionary2.id) in ids
     # Supervisor should appear (admin can view supervisors)
@@ -52,10 +53,10 @@ def test_supervisor_sees_assigned_only():
 
     client = APIClient()
     client.force_authenticate(user=supervisor)
-    response = client.get('/api/v1/users/viewable/')
+    response = client.get("/api/v1/users/viewable/")
 
     assert response.status_code == 200
-    ids = [item['id'] for item in response.data]
+    ids = [item["id"] for item in response.data]
     assert str(assigned_missionary.id) in ids
     assert str(unassigned_missionary.id) not in ids
 
@@ -69,7 +70,7 @@ def test_missionary_gets_403():
 
     client = APIClient()
     client.force_authenticate(user=missionary)
-    response = client.get('/api/v1/users/viewable/')
+    response = client.get("/api/v1/users/viewable/")
 
     assert response.status_code == 403
 
@@ -78,12 +79,13 @@ def test_missionary_gets_403():
 def test_unauthenticated_gets_401():
     """Unauthenticated GET /api/users/viewable/ returns 401."""
     client = APIClient()
-    response = client.get('/api/v1/users/viewable/')
+    response = client.get("/api/v1/users/viewable/")
 
     assert response.status_code == 401
 
 
 # --- FILTERING ---
+
 
 @pytest.mark.django_db
 def test_inactive_missionaries_excluded():
@@ -96,10 +98,10 @@ def test_inactive_missionaries_excluded():
 
     client = APIClient()
     client.force_authenticate(user=admin)
-    response = client.get('/api/v1/users/viewable/')
+    response = client.get("/api/v1/users/viewable/")
 
     assert response.status_code == 200
-    ids = [item['id'] for item in response.data]
+    ids = [item["id"] for item in response.data]
     assert str(active_missionary.id) in ids
     assert str(inactive_missionary.id) not in ids
 
@@ -116,10 +118,10 @@ def test_admin_roles_excluded():
 
     client = APIClient()
     client.force_authenticate(user=admin)
-    response = client.get('/api/v1/users/viewable/')
+    response = client.get("/api/v1/users/viewable/")
 
     assert response.status_code == 200
-    ids = [item['id'] for item in response.data]
+    ids = [item["id"] for item in response.data]
     assert str(missionary.id) in ids
     assert str(supervisor.id) in ids
     # Other admins should not appear
@@ -129,6 +131,7 @@ def test_admin_roles_excluded():
 
 
 # --- RESPONSE SHAPE ---
+
 
 @pytest.mark.django_db
 def test_response_shape():
@@ -140,9 +143,9 @@ def test_response_shape():
 
     client = APIClient()
     client.force_authenticate(user=admin)
-    response = client.get('/api/v1/users/viewable/')
+    response = client.get("/api/v1/users/viewable/")
 
     assert response.status_code == 200
     assert len(response.data) > 0
     for item in response.data:
-        assert set(item.keys()) == {'id', 'full_name'}
+        assert set(item.keys()) == {"id", "full_name"}

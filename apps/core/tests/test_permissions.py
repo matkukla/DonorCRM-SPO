@@ -17,12 +17,13 @@ from apps.users.tests.factories import (
     UserFactory,
 )
 
-
 # --- ADMIN ---
+
 
 def test_admin_sees_only_own_data():
     """Admin defaults to own data, returns {admin.id}."""
     from apps.core.permissions import get_visible_user_ids
+
     admin = AdminUserFactory.build()
     result = get_visible_user_ids(admin)
     assert result == {admin.id}
@@ -31,10 +32,12 @@ def test_admin_sees_only_own_data():
 
 # --- SUPERVISOR ---
 
+
 @pytest.mark.django_db
 def test_supervisor_sees_only_own_data():
     """Supervisor defaults to own data, returns {sup.id}."""
     from apps.core.permissions import get_visible_user_ids
+
     sup = SupervisorUserFactory()
     missionary = UserFactory()
     missionary.supervisors.add(sup)
@@ -45,10 +48,12 @@ def test_supervisor_sees_only_own_data():
 
 # --- COACH ---
 
+
 @pytest.mark.django_db
 def test_coach_sees_own_and_coached():
     """Coach role returns {coach.id} union {coached user IDs}."""
     from apps.core.permissions import get_visible_user_ids
+
     coach = CoachUserFactory()
     coached = UserFactory()
     coached.coaches.add(coach)
@@ -60,9 +65,11 @@ def test_coach_sees_own_and_coached():
 
 # --- MISSIONARY ---
 
+
 def test_missionary_sees_only_own_data():
     """Missionary role returns {missionary.id}."""
     from apps.core.permissions import get_visible_user_ids
+
     missionary = UserFactory.build()
     result = get_visible_user_ids(missionary)
     assert result == {missionary.id}
@@ -71,10 +78,12 @@ def test_missionary_sees_only_own_data():
 
 # --- VIEW AS OVERRIDE ---
 
+
 def test_view_as_overrides_scoping():
     """When request.view_as_user is set, returns {view_as_user.id} regardless of viewer role."""
-    from apps.core.permissions import get_visible_user_ids
     import types
+
+    from apps.core.permissions import get_visible_user_ids
 
     admin = AdminUserFactory.build()
     view_as_user = UserFactory.build()

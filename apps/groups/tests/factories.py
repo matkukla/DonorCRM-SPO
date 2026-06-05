@@ -16,7 +16,7 @@ class GroupFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Group
 
-    name = factory.LazyFunction(lambda: fake.word().title() + ' Group')
+    name = factory.LazyFunction(lambda: fake.word().title() + " Group")
     description = factory.LazyFunction(fake.sentence)
     color = factory.LazyFunction(fake.hex_color)
     owner = factory.SubFactory(UserFactory)
@@ -25,9 +25,11 @@ class GroupFactory(factory.django.DjangoModelFactory):
 
 class SharedGroupFactory(GroupFactory):
     """Factory for organization-wide shared groups."""
+
     owner = None
 
 
 class SystemGroupFactory(GroupFactory):
     """Factory for system-managed groups."""
+
     is_system = True

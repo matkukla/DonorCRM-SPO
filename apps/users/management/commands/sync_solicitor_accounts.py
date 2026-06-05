@@ -4,8 +4,8 @@ exist with @spo.org emails and a consistent password.
 """
 import os
 
-from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
+from django.core.management.base import BaseCommand
 
 User = get_user_model()
 
@@ -37,7 +37,7 @@ SOLICITORS = [
     ("Andrew", "Anderson"),
 ]
 
-SOLICITOR_PASSWORD = os.environ.get('DEMO_USER_PASSWORD', 'changeme')
+SOLICITOR_PASSWORD = os.environ.get("DEMO_USER_PASSWORD", "changeme")
 
 
 def solicitor_email(first, last):
@@ -109,4 +109,6 @@ class Command(BaseCommand):
         except User.DoesNotExist:
             pass
 
-        self.stdout.write(self.style.SUCCESS("\nDone. Password set from DEMO_USER_PASSWORD env var."))
+        self.stdout.write(
+            self.style.SUCCESS("\nDone. Password set from DEMO_USER_PASSWORD env var.")
+        )

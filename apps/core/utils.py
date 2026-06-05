@@ -17,7 +17,7 @@ def get_safe_int_param(request, key, default, min_val=1, max_val=1000):
     return max(min_val, min(value, max_val))
 
 
-def validate_date_params(request, param_names=('date_from', 'date_to')):
+def validate_date_params(request, param_names=("date_from", "date_to")):
     """Validate and parse date query params in YYYY-MM-DD format.
 
     Returns a tuple of (values_dict, error_response).
@@ -41,10 +41,10 @@ def validate_date_params(request, param_names=('date_from', 'date_to')):
         raw = request.query_params.get(name)
         if raw:
             try:
-                values[name] = datetime.strptime(raw, '%Y-%m-%d').date()
+                values[name] = datetime.strptime(raw, "%Y-%m-%d").date()
             except ValueError:
                 return values, Response(
-                    {'detail': f'Invalid {name} format. Use YYYY-MM-DD.'},
+                    {"detail": f"Invalid {name} format. Use YYYY-MM-DD."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
         else:
@@ -52,7 +52,7 @@ def validate_date_params(request, param_names=('date_from', 'date_to')):
     return values, None
 
 
-def get_safe_year_param(request, key='year', default=None):
+def get_safe_year_param(request, key="year", default=None):
     """Safely parse a year query parameter.
 
     Returns None (or the given default) if the parameter is missing or
@@ -66,5 +66,3 @@ def get_safe_year_param(request, key='year', default=None):
     except (ValueError, TypeError):
         return default
     return max(2000, min(value, 2100))
-
-

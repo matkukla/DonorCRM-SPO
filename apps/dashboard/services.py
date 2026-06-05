@@ -5,17 +5,18 @@ import logging
 from datetime import date, timedelta
 from decimal import Decimal
 
-from dateutil.relativedelta import relativedelta
 from django.db.models import Count, DecimalField, ExpressionWrapper, F, Q, Sum, Value
 from django.db.models.functions import TruncMonth
+
+from dateutil.relativedelta import relativedelta
 
 from apps.contacts.models import Contact
 from apps.core.fiscal_year import fiscal_year_end, fiscal_year_start, months_elapsed_in_fiscal_year
 from apps.core.gift_utils import _monthly_equivalent_aggregate
 from apps.core.permissions import get_visible_user_ids
 from apps.events.models import Event
-from apps.imports.models import ImportBatch, ImportBatchStatus, ImportBatchType, MPDSnapshot
 from apps.gifts.models import Gift, RecurringGift, RecurringGiftStatus
+from apps.imports.models import ImportBatch, ImportBatchStatus, ImportBatchType, MPDSnapshot
 from apps.tasks.models import Task, TaskStatus
 
 logger = logging.getLogger(__name__)

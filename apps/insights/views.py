@@ -47,12 +47,12 @@ from apps.insights.services import (
     get_follow_ups,
     get_late_donations,
     get_monthly_commitments,
+    get_single_user_performance,
     get_stage_contacts,
     get_stalled_contacts,
     get_team_activity,
     get_team_trends,
     get_transactions,
-    get_single_user_performance,
     get_user_drilldown,
     get_user_journals,
     get_user_performance,
@@ -613,9 +613,7 @@ class OrgSettingsView(APIView):
         # update; the lock cost is bounded by how long the write takes.
         with transaction.atomic():
             OrgSettings.get_solo()  # ensure row exists before locking it
-            instance = OrgSettings.objects.select_for_update().get(
-                pk=OrgSettings._solo_uuid()
-            )
+            instance = OrgSettings.objects.select_for_update().get(pk=OrgSettings._solo_uuid())
             if "annual_goal_cents" in serializer.validated_data:
                 instance.annual_goal_cents = serializer.validated_data["annual_goal_cents"]
                 instance.save(update_fields=["annual_goal_cents", "updated_at"])

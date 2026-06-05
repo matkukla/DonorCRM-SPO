@@ -29,23 +29,27 @@ class EventFactory(factory.django.DjangoModelFactory):
 
 class DonationEventFactory(EventFactory):
     """Factory for donation received events."""
+
     event_type = EventType.DONATION_RECEIVED
     severity = EventSeverity.SUCCESS
 
 
 class PledgeLateEventFactory(EventFactory):
     """Factory for late pledge events."""
+
     event_type = EventType.PLEDGE_LATE
     severity = EventSeverity.WARNING
 
 
 class AtRiskEventFactory(EventFactory):
     """Factory for at-risk donor events."""
+
     event_type = EventType.AT_RISK
     severity = EventSeverity.WARNING
 
 
 class AlertEventFactory(EventFactory):
     """Factory for alert events."""
+
     event_type = EventType.DONOR_LAPSED
     severity = EventSeverity.ALERT

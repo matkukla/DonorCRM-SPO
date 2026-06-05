@@ -4,30 +4,28 @@ Celery tasks for asynchronous CSV imports.
 import logging
 import uuid
 
-from celery import shared_task
 from django.core.cache import cache
+
+from celery import shared_task
 
 logger = logging.getLogger(__name__)
 
 # Cache key prefix for import progress
-IMPORT_PROGRESS_PREFIX = 'import_progress_'
+IMPORT_PROGRESS_PREFIX = "import_progress_"
 IMPORT_PROGRESS_TTL = 3600  # 1 hour
 
 
 def get_import_progress(import_id: str) -> dict:
     """Get progress for an import task."""
-    return cache.get(f'{IMPORT_PROGRESS_PREFIX}{import_id}', {
-        'status': 'unknown',
-        'progress': 0,
-        'total': 0,
-        'imported': 0,
-        'errors': []
-    })
+    return cache.get(
+        f"{IMPORT_PROGRESS_PREFIX}{import_id}",
+        {"status": "unknown", "progress": 0, "total": 0, "imported": 0, "errors": []},
+    )
 
 
 def set_import_progress(import_id: str, data: dict):
     """Update progress for an import task."""
-    cache.set(f'{IMPORT_PROGRESS_PREFIX}{import_id}', data, IMPORT_PROGRESS_TTL)
+    cache.set(f"{IMPORT_PROGRESS_PREFIX}{import_id}", data, IMPORT_PROGRESS_TTL)
 
 
 @shared_task(bind=True)
@@ -47,45 +45,37 @@ def import_contacts_async(self, file_content: str, user_id: int, import_id: str 
     if not import_id:
         import_id = uuid.uuid4().hex[:12]
 
-    logger.info(f'Starting async contact import {import_id} for user {user_id}')
+    logger.info(f"Starting async contact import {import_id} for user {user_id}")
 
     try:
         user = User.objects.get(pk=user_id)
     except User.DoesNotExist:
-        logger.error(f'Import {import_id} failed: User {user_id} not found')
-        set_import_progress(import_id, {
-            'status': 'failed',
-            'error': 'User not found'
-        })
-        return {'status': 'failed', 'error': 'User not found'}
+        logger.error(f"Import {import_id} failed: User {user_id} not found")
+        set_import_progress(import_id, {"status": "failed", "error": "User not found"})
+        return {"status": "failed", "error": "User not found"}
 
     # Parse CSV
-    set_import_progress(import_id, {
-        'status': 'parsing',
-        'progress': 0,
-        'total': 0,
-        'imported': 0,
-        'errors': []
-    })
+    set_import_progress(
+        import_id, {"status": "parsing", "progress": 0, "total": 0, "imported": 0, "errors": []}
+    )
 
     valid_records, errors = parse_contacts_csv(file_content, user)
     total = len(valid_records)
 
-    logger.info(f'Import {import_id}: {total} valid records, {len(errors)} errors')
+    logger.info(f"Import {import_id}: {total} valid records, {len(errors)} errors")
 
     if not valid_records:
-        set_import_progress(import_id, {
-            'status': 'completed',
-            'progress': 100,
-            'total': 0,
-            'imported': 0,
-            'errors': errors[:50]  # Limit stored errors
-        })
-        return {
-            'status': 'completed',
-            'imported': 0,
-            'errors': errors
-        }
+        set_import_progress(
+            import_id,
+            {
+                "status": "completed",
+                "progress": 100,
+                "total": 0,
+                "imported": 0,
+                "errors": errors[:50],  # Limit stored errors
+            },
+        )
+        return {"status": "completed", "imported": 0, "errors": errors}
 
     # Import in batches
     batch_size = 100
@@ -103,33 +93,39 @@ def import_contacts_async(self, file_content: str, user_id: int, import_id: str 
 
             # Update progress
             progress = int((i + 1) / total * 100)
-            set_import_progress(import_id, {
-                'status': 'importing',
-                'progress': progress,
-                'total': total,
-                'imported': imported,
-                'errors': errors[:50]
-            })
+            set_import_progress(
+                import_id,
+                {
+                    "status": "importing",
+                    "progress": progress,
+                    "total": total,
+                    "imported": imported,
+                    "errors": errors[:50],
+                },
+            )
 
-            logger.debug(f'Import {import_id}: {imported}/{total} contacts created')
+            logger.debug(f"Import {import_id}: {imported}/{total} contacts created")
 
     # Final progress update
-    set_import_progress(import_id, {
-        'status': 'completed',
-        'progress': 100,
-        'total': total,
-        'imported': imported,
-        'errors': errors[:50]
-    })
+    set_import_progress(
+        import_id,
+        {
+            "status": "completed",
+            "progress": 100,
+            "total": total,
+            "imported": imported,
+            "errors": errors[:50],
+        },
+    )
 
-    logger.info(f'Import {import_id} completed: {imported} contacts imported')
+    logger.info(f"Import {import_id} completed: {imported} contacts imported")
 
     return {
-        'status': 'completed',
-        'import_id': import_id,
-        'imported': imported,
-        'error_count': len(errors),
-        'errors': errors[:50]
+        "status": "completed",
+        "import_id": import_id,
+        "imported": imported,
+        "error_count": len(errors),
+        "errors": errors[:50],
     }
 
 

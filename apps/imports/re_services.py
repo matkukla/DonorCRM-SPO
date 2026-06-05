@@ -944,8 +944,7 @@ def import_re_constituents(
                         {
                             "row": row_number,
                             "error": (
-                                f"Row {row_number}: Unexpected error: "
-                                f"{type(e).__name__}"
+                                f"Row {row_number}: Unexpected error: " f"{type(e).__name__}"
                             ),
                         }
                     )
@@ -1565,9 +1564,7 @@ def import_re_gifts(
                 except Exception as e:
                     transaction.savepoint_rollback(sp)
                     row_nums = ", ".join(r.get("_row_number", "?") for r in rows)
-                    logger.exception(
-                        "Gift group %s failed in import_re_gifts", gift_id
-                    )
+                    logger.exception("Gift group %s failed in import_re_gifts", gift_id)
                     errors.append(
                         {
                             "row": int(rows[0].get("_row_number", 0)),
@@ -2161,8 +2158,7 @@ def import_re_recurring_gifts(
                     transaction.savepoint_rollback(sp)
                     row_nums = ", ".join(r.get("_row_number", "?") for r in rows)
                     logger.exception(
-                        "Recurring gift group %s failed in "
-                        "import_re_recurring_gifts",
+                        "Recurring gift group %s failed in " "import_re_recurring_gifts",
                         gift_id,
                     )
                     errors.append(

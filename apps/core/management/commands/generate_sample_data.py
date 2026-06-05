@@ -6,6 +6,7 @@ from datetime import timedelta
 
 from django.core.management.base import BaseCommand
 from django.utils import timezone
+
 from faker import Faker
 
 from apps.contacts.models import Contact, ContactStatus
@@ -19,37 +20,32 @@ fake = Faker()
 
 
 class Command(BaseCommand):
-    help = 'Generate sample data for testing the API'
+    help = "Generate sample data for testing the API"
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--contacts',
-            type=int,
-            default=25,
-            help='Number of contacts to create (default: 25)'
+            "--contacts", type=int, default=25, help="Number of contacts to create (default: 25)"
         )
         parser.add_argument(
-            '--clear',
-            action='store_true',
-            help='Clear existing data before generating new data'
+            "--clear", action="store_true", help="Clear existing data before generating new data"
         )
 
     def handle(self, *args, **options):
-        if options['clear']:
-            self.stdout.write('Clearing existing data...')
+        if options["clear"]:
+            self.stdout.write("Clearing existing data...")
             self._clear_data()
 
-        self.stdout.write('Generating sample data...')
+        self.stdout.write("Generating sample data...")
 
         # Create users
         users = self._create_users()
-        staff_user = users['staff']
+        staff_user = users["staff"]
 
         # Create groups
         groups = self._create_groups(staff_user)
 
         # Create contacts
-        contacts = self._create_contacts(staff_user, options['contacts'], groups)
+        contacts = self._create_contacts(staff_user, options["contacts"], groups)
 
         # Create donations and pledges
         self._create_donations_and_pledges(contacts)
@@ -57,20 +53,20 @@ class Command(BaseCommand):
         # Create tasks
         self._create_tasks(staff_user, contacts)
 
-        self.stdout.write(self.style.SUCCESS('Sample data generated successfully!'))
-        self.stdout.write('')
-        self.stdout.write('Login credentials:')
-        self.stdout.write(f'  Staff: staff@example.com / testpass123')
-        self.stdout.write(f'  Admin: admin@example.com / testpass123')
-        self.stdout.write('')
-        self.stdout.write(f'Created:')
-        self.stdout.write(f'  - 2 users (staff, admin)')
-        self.stdout.write(f'  - {len(groups)} groups')
-        self.stdout.write(f'  - {len(contacts)} contacts')
-        self.stdout.write(f'  - {Gift.objects.count()} gifts')
-        self.stdout.write(f'  - {RecurringGift.objects.count()} recurring gifts')
-        self.stdout.write(f'  - {Task.objects.count()} tasks')
-        self.stdout.write(f'  - {Event.objects.count()} events')
+        self.stdout.write(self.style.SUCCESS("Sample data generated successfully!"))
+        self.stdout.write("")
+        self.stdout.write("Login credentials:")
+        self.stdout.write(f"  Staff: staff@example.com / testpass123")
+        self.stdout.write(f"  Admin: admin@example.com / testpass123")
+        self.stdout.write("")
+        self.stdout.write(f"Created:")
+        self.stdout.write(f"  - 2 users (staff, admin)")
+        self.stdout.write(f"  - {len(groups)} groups")
+        self.stdout.write(f"  - {len(contacts)} contacts")
+        self.stdout.write(f"  - {Gift.objects.count()} gifts")
+        self.stdout.write(f"  - {RecurringGift.objects.count()} recurring gifts")
+        self.stdout.write(f"  - {Task.objects.count()} tasks")
+        self.stdout.write(f"  - {Event.objects.count()} events")
 
     def _clear_data(self):
         """Clear all existing data."""
@@ -88,61 +84,65 @@ class Command(BaseCommand):
 
         # Staff user
         staff_user, _ = User.objects.get_or_create(
-            email='staff@example.com',
+            email="staff@example.com",
             defaults={
-                'first_name': 'Sarah',
-                'last_name': 'Smith',
-                'role': UserRole.MISSIONARY,
-                'monthly_support_goal_cents': 500000,
-                'is_active': True,
-            }
+                "first_name": "Sarah",
+                "last_name": "Smith",
+                "role": UserRole.MISSIONARY,
+                "monthly_support_goal_cents": 500000,
+                "is_active": True,
+            },
         )
-        staff_user.set_password('testpass123')
+        staff_user.set_password("testpass123")
         staff_user.save()
-        users['staff'] = staff_user
+        users["staff"] = staff_user
 
         # Admin user
         admin, _ = User.objects.get_or_create(
-            email='admin@example.com',
+            email="admin@example.com",
             defaults={
-                'first_name': 'Admin',
-                'last_name': 'User',
-                'role': UserRole.ADMIN,
-                'is_staff': True,
-                'is_active': True,
-            }
+                "first_name": "Admin",
+                "last_name": "User",
+                "role": UserRole.ADMIN,
+                "is_staff": True,
+                "is_active": True,
+            },
         )
-        admin.set_password('testpass123')
+        admin.set_password("testpass123")
         admin.save()
-        users['admin'] = admin
+        users["admin"] = admin
 
-        self.stdout.write(f'  Created/updated 2 users')
+        self.stdout.write(f"  Created/updated 2 users")
         return users
 
     def _create_groups(self, owner):
         """Create sample groups."""
         group_data = [
-            {'name': 'Monthly Supporters', 'color': '#22c55e', 'description': 'Active monthly donors'},
-            {'name': 'Church Partners', 'color': '#3b82f6', 'description': 'Church congregations'},
-            {'name': 'Family & Friends', 'color': '#f97316', 'description': 'Personal connections'},
-            {'name': 'Major Donors', 'color': '#a855f7', 'description': 'Donors giving $500+'},
-            {'name': 'Prayer Partners', 'color': '#06b6d4', 'description': 'Committed to praying'},
-            {'name': 'Prospects', 'color': '#6366f1', 'description': 'Potential new supporters'},
+            {
+                "name": "Monthly Supporters",
+                "color": "#22c55e",
+                "description": "Active monthly donors",
+            },
+            {"name": "Church Partners", "color": "#3b82f6", "description": "Church congregations"},
+            {"name": "Family & Friends", "color": "#f97316", "description": "Personal connections"},
+            {"name": "Major Donors", "color": "#a855f7", "description": "Donors giving $500+"},
+            {"name": "Prayer Partners", "color": "#06b6d4", "description": "Committed to praying"},
+            {"name": "Prospects", "color": "#6366f1", "description": "Potential new supporters"},
         ]
 
         groups = []
         for data in group_data:
             group, _ = Group.objects.get_or_create(
-                name=data['name'],
+                name=data["name"],
                 owner=owner,
                 defaults={
-                    'color': data['color'],
-                    'description': data['description'],
-                }
+                    "color": data["color"],
+                    "description": data["description"],
+                },
             )
             groups.append(group)
 
-        self.stdout.write(f'  Created {len(groups)} groups')
+        self.stdout.write(f"  Created {len(groups)} groups")
         return groups
 
     def _create_contacts(self, owner, count, groups):
@@ -158,24 +158,21 @@ class Command(BaseCommand):
 
         for i in range(count):
             # Choose status based on distribution
-            status = random.choices(
-                [s[0] for s in statuses],
-                weights=[s[1] for s in statuses]
-            )[0]
+            status = random.choices([s[0] for s in statuses], weights=[s[1] for s in statuses])[0]
 
             contact = Contact.objects.create(
                 owner=owner,
                 first_name=fake.first_name(),
                 last_name=fake.last_name(),
-                email=fake.email() if random.random() > 0.1 else '',
-                phone=fake.numerify('###-###-####'),
+                email=fake.email() if random.random() > 0.1 else "",
+                phone=fake.numerify("###-###-####"),
                 street_address=fake.street_address(),
                 city=fake.city(),
                 state=fake.state_abbr(),
                 postal_code=fake.zipcode(),
-                country='USA',
+                country="USA",
                 status=status,
-                notes=fake.paragraph() if random.random() > 0.6 else '',
+                notes=fake.paragraph() if random.random() > 0.6 else "",
             )
 
             # Assign to random groups
@@ -186,7 +183,7 @@ class Command(BaseCommand):
 
             contacts.append(contact)
 
-        self.stdout.write(f'  Created {len(contacts)} contacts')
+        self.stdout.write(f"  Created {len(contacts)} contacts")
         return contacts
 
     def _create_donations_and_pledges(self, contacts):
@@ -224,11 +221,13 @@ class Command(BaseCommand):
 
                 # Create recurring gift for some donors (40% chance)
                 if random.random() > 0.6:
-                    frequency = random.choice([
-                        RecurringGiftFrequency.MONTHLY,
-                        RecurringGiftFrequency.QUARTERLY,
-                        RecurringGiftFrequency.ANNUALLY,
-                    ])
+                    frequency = random.choice(
+                        [
+                            RecurringGiftFrequency.MONTHLY,
+                            RecurringGiftFrequency.QUARTERLY,
+                            RecurringGiftFrequency.ANNUALLY,
+                        ]
+                    )
                     amount = random.choice([50, 100, 150, 200, 250])
                     start_date = today - timedelta(days=random.randint(30, 180))
 
@@ -243,8 +242,8 @@ class Command(BaseCommand):
         finally:
             enable_gift_signals()
 
-        self.stdout.write(f'  Created {gift_count} gifts')
-        self.stdout.write(f'  Created {rg_count} recurring gifts')
+        self.stdout.write(f"  Created {gift_count} gifts")
+        self.stdout.write(f"  Created {rg_count} recurring gifts")
 
     def _create_tasks(self, owner, contacts):
         """Create sample tasks."""
@@ -252,12 +251,12 @@ class Command(BaseCommand):
         task_count = 0
 
         task_templates = [
-            ('Call to thank for donation', TaskType.THANK_YOU, TaskPriority.HIGH),
-            ('Follow up on support request', TaskType.FOLLOW_UP, TaskPriority.MEDIUM),
-            ('Send monthly newsletter', TaskType.EMAIL, TaskPriority.LOW),
-            ('Schedule visit', TaskType.MEETING, TaskPriority.MEDIUM),
-            ('Check on prayer request', TaskType.CALL, TaskPriority.MEDIUM),
-            ('Send birthday card', TaskType.OTHER, TaskPriority.LOW),
+            ("Call to thank for donation", TaskType.THANK_YOU, TaskPriority.HIGH),
+            ("Follow up on support request", TaskType.FOLLOW_UP, TaskPriority.MEDIUM),
+            ("Send monthly newsletter", TaskType.EMAIL, TaskPriority.LOW),
+            ("Schedule visit", TaskType.MEETING, TaskPriority.MEDIUM),
+            ("Check on prayer request", TaskType.CALL, TaskPriority.MEDIUM),
+            ("Send birthday card", TaskType.OTHER, TaskPriority.LOW),
         ]
 
         # Create some tasks with contacts
@@ -268,14 +267,14 @@ class Command(BaseCommand):
             Task.objects.create(
                 owner=owner,
                 contact=contact,
-                title=f'{template[0]} - {contact.full_name}',
+                title=f"{template[0]} - {contact.full_name}",
                 task_type=template[1],
                 priority=template[2],
-                status=TaskStatus.PENDING if due_offset >= 0 else random.choice([
-                    TaskStatus.PENDING, TaskStatus.IN_PROGRESS
-                ]),
+                status=TaskStatus.PENDING
+                if due_offset >= 0
+                else random.choice([TaskStatus.PENDING, TaskStatus.IN_PROGRESS]),
                 due_date=today + timedelta(days=due_offset),
-                description=fake.sentence() if random.random() > 0.5 else '',
+                description=fake.sentence() if random.random() > 0.5 else "",
             )
             task_count += 1
 
@@ -291,8 +290,8 @@ class Command(BaseCommand):
                 priority=template[2],
                 status=TaskStatus.PENDING,
                 due_date=today + timedelta(days=due_offset),
-                description=fake.sentence() if random.random() > 0.5 else '',
+                description=fake.sentence() if random.random() > 0.5 else "",
             )
             task_count += 1
 
-        self.stdout.write(f'  Created {task_count} tasks')
+        self.stdout.write(f"  Created {task_count} tasks")
