@@ -77,7 +77,7 @@ export default function DonationsByMonthYear() {
                         <YAxis fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
                         <Tooltip
                           isAnimationActive={false}
-                          formatter={(value: number | undefined) => [formatCurrency(value ?? 0), "Total"]}
+                          formatter={(value) => [formatCurrency(Number(value) || 0), "Total"]}
                           labelFormatter={(label) => label}
                         />
                         <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
