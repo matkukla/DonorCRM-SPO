@@ -1,6 +1,7 @@
 """
 Tests for Task model.
 """
+
 from datetime import timedelta
 
 from django.utils import timezone

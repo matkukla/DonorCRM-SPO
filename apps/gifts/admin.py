@@ -1,6 +1,7 @@
 """
 Admin configuration for gift tracking models.
 """
+
 from django.contrib import admin
 
 from apps.gifts.models import Gift, GiftCredit, RecurringGift, RecurringGiftCredit, Solicitor

@@ -1,6 +1,7 @@
 """
 Custom manager for User model.
 """
+
 from django.contrib.auth.models import BaseUserManager
 
 

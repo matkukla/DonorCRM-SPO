@@ -1,6 +1,7 @@
 """
 Tests for CSV export endpoints in insights app.
 """
+
 import csv
 from datetime import timedelta
 from decimal import Decimal

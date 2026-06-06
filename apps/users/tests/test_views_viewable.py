@@ -10,6 +10,7 @@ GREEN state: all tests pass after Plan 04 implements ViewableUsersView.
 Test coverage:
   - VIEWAS-12: Viewable users endpoint (admin sees all missionaries, supervisor sees assigned only)
 """
+
 from rest_framework.test import APIClient
 
 import pytest

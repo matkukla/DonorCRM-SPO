@@ -1,6 +1,7 @@
 """
 Tests for Entity CSV import functionality.
 """
+
 import io
 
 from django.contrib.auth import get_user_model

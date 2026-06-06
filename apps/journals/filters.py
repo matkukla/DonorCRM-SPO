@@ -1,4 +1,5 @@
 """FilterSet for Journal list filtering."""
+
 import django_filters
 
 from apps.journals.models import Journal

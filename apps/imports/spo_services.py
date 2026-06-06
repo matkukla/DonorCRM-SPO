@@ -8,6 +8,7 @@ Implements the three-step SPO data pipeline:
 
 Both management commands and API endpoints call these service functions.
 """
+
 import csv
 import hashlib
 import io

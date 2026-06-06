@@ -1,6 +1,7 @@
 """
 Tests for user drilldown endpoint (Phase 18).
 """
+
 from datetime import timedelta
 from decimal import Decimal
 

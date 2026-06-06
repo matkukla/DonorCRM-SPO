@@ -12,6 +12,7 @@ They specify all behaviors that Wave 1 tasks must implement:
 6. GET /contacts/search/?q=<org> finds org contacts (search Q filter)
 7. CSV export Name column shows organization_name for org contacts
 """
+
 from rest_framework.test import APIClient
 
 import pytest

@@ -3,6 +3,7 @@
 Verifies the path-pattern classifier, that PII reads are recorded with
 the right resource_type / resource_id, and that non-PII paths are skipped.
 """
+
 from __future__ import annotations
 
 from django.urls import reverse

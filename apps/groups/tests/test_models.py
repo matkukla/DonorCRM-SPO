@@ -1,6 +1,7 @@
 """
 Tests for Group model.
 """
+
 import pytest
 
 from apps.contacts.tests.factories import ContactFactory

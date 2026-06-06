@@ -1,6 +1,7 @@
 """
 Models for user-submitted feedback (bug reports, feature requests, etc.).
 """
+
 from django.conf import settings
 from django.db import models
 

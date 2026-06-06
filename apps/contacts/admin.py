@@ -1,6 +1,7 @@
 """
 Admin configuration for Contact model.
 """
+
 from django.contrib import admin
 
 from apps.contacts.models import Contact

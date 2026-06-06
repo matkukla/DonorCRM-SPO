@@ -1,6 +1,7 @@
 """
 Tests for stage contacts endpoint.
 """
+
 from django.test import TestCase
 from django.urls import reverse
 

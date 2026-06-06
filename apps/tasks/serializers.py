@@ -1,6 +1,7 @@
 """
 Serializers for Task model.
 """
+
 from rest_framework import serializers
 
 from apps.journals.models import Journal

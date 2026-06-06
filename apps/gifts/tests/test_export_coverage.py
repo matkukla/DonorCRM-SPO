@@ -6,6 +6,7 @@ export can still return 200 with a header row but NO data rows. These tests
 parse the streamed body and assert the header AND at least one correct data
 row (dollars formatted from cents), which catches that class of bug.
 """
+
 import csv
 import io
 from datetime import date
@@ -176,17 +177,15 @@ class TestGiftExportCSV:
         response = APIClient().get(GIFT_EXPORT_URL)
         assert response.status_code == 401
 
-    def test_admin_owner_filter_scopes_to_selected_user(self):
+    def test_owner_query_param_is_ignored_and_does_not_break_export(self):
+        # The ?owner= query param was removed (issue #63): it was a NumberFilter
+        # on a UUID FK, so passing a UUID invalidated the whole FilterSet and
+        # silently returned ZERO rows. Now ?owner= is ignored entirely, so the
+        # admin still gets their OWN data back — proving the param no longer
+        # nukes the export.
         admin = AdminUserFactory(email="export-admin@test.com")
         target = UserFactory(role="missionary", email="export-target@test.com")
-        target_contact = ContactFactory(owner=target, first_name="Target", last_name="User")
-        Gift.objects.create(
-            donor_contact=target_contact,
-            amount_cents=30000,
-            gift_date=date(2026, 6, 1),
-        )
-        # Admin's own gift should NOT appear when filtering by owner=target.
-        admin_contact = ContactFactory(owner=admin)
+        admin_contact = ContactFactory(owner=admin, first_name="Admin", last_name="Own")
         Gift.objects.create(
             donor_contact=admin_contact,
             amount_cents=70000,
@@ -194,16 +193,44 @@ class TestGiftExportCSV:
         )
         response = _client(admin).get(GIFT_EXPORT_URL, {"owner": str(target.id)})
         rows = _parse_csv(response)
-        # Access-control guard: a plain ?owner= query param must NOT grant an
-        # admin cross-user export access. Cross-user data is reached only via
-        # View As (X-View-As-User-Id header -> get_visible_user_ids), so the
-        # export stays scoped to the admin's own data and the target user's
-        # $300 gift is NOT leaked. (Header only here because ?owner=target
-        # intersected with the admin's own-data scope is empty.)
         assert response.status_code == 200
         assert rows[0][0] == "Donor Name"
+        # ?owner=target is ignored: the admin's own $700 gift IS still exported.
+        assert any(row[0] == "Admin Own" and row[1] == "700.00" for row in rows[1:])
+
+    def test_owner_query_param_does_not_grant_cross_user_export(self):
+        # Access-control guard: a plain ?owner= must NOT let an admin export
+        # another user's data. Cross-user access is reached only via View As.
+        admin = AdminUserFactory(email="export-admin-guard@test.com")
+        target = UserFactory(role="missionary", email="export-target-guard@test.com")
+        target_contact = ContactFactory(owner=target, first_name="Target", last_name="User")
+        Gift.objects.create(
+            donor_contact=target_contact,
+            amount_cents=30000,
+            gift_date=date(2026, 6, 1),
+        )
+        response = _client(admin).get(GIFT_EXPORT_URL, {"owner": str(target.id)})
+        rows = _parse_csv(response)
+        assert response.status_code == 200
         assert all("Target User" not in row for row in rows[1:])
-        assert "300" not in [row[1] for row in rows[1:]]
+        assert all(row[1] != "300.00" for row in rows[1:])
+
+    def test_view_as_header_grants_cross_user_export(self):
+        # Cross-user export IS reached via View As (X-View-As-User-Id header),
+        # which scopes get_visible_user_ids to the target user.
+        admin = AdminUserFactory(email="export-admin-viewas@test.com")
+        target = UserFactory(role="missionary", email="export-target-viewas@test.com")
+        target_contact = ContactFactory(owner=target, first_name="Viewed", last_name="Missionary")
+        Gift.objects.create(
+            donor_contact=target_contact,
+            amount_cents=30000,
+            gift_date=date(2026, 6, 1),
+        )
+        response = _client(admin).get(GIFT_EXPORT_URL, HTTP_X_VIEW_AS_USER_ID=str(target.id))
+        rows = _parse_csv(response)
+        assert response.status_code == 200
+        # The target missionary's $300 gift IS exported under View As.
+        assert any(row[0] == "Viewed Missionary" and row[1] == "300.00" for row in rows[1:])
 
 
 @pytest.mark.django_db
@@ -293,7 +320,10 @@ class TestRecurringGiftExportCSV:
         response = _client(coach).get(RECURRING_EXPORT_URL)
         assert response.status_code == 403
 
-    def test_supervisor_owner_filter(self):
+    def test_owner_query_param_does_not_grant_cross_user_recurring_export(self):
+        # Access-control guard (same as the gift export above): a ?owner= param
+        # must NOT let a supervisor export an unrelated user's pledges. Cross-user
+        # access requires View As, so the target's $450 pledge is not leaked.
         supervisor = SupervisorUserFactory()
         target = UserFactory(role="missionary", email="recur-target@test.com")
         target_contact = ContactFactory(owner=target, first_name="Recur", last_name="Target")
@@ -306,10 +336,27 @@ class TestRecurringGiftExportCSV:
         )
         response = _client(supervisor).get(RECURRING_EXPORT_URL, {"owner": str(target.id)})
         rows = _parse_csv(response)
-        # Access-control guard (same as the gift export above): a ?owner= param
-        # must NOT let a supervisor export an unrelated user's pledges. Cross-user
-        # access requires View As, so the target's $450 pledge is not leaked.
         assert response.status_code == 200
         assert rows[0][0] == "Donor Name"
         assert all("Recur Target" not in row for row in rows[1:])
+
+    def test_view_as_header_grants_cross_user_recurring_export(self):
+        # A supervisor reaches an assigned missionary's pledges via View As.
+        supervisor = SupervisorUserFactory()
+        target = UserFactory(role="missionary", email="recur-viewas-target@test.com")
+        target.supervisors.add(supervisor)
+        target_contact = ContactFactory(owner=target, first_name="Seen", last_name="Pledger")
+        RecurringGift.objects.create(
+            donor_contact=target_contact,
+            amount_cents=45000,
+            frequency=RecurringGiftFrequency.MONTHLY,
+            status=RecurringGiftStatus.ACTIVE,
+            start_date=date(2026, 4, 1),
+        )
+        response = _client(supervisor).get(
+            RECURRING_EXPORT_URL, HTTP_X_VIEW_AS_USER_ID=str(target.id)
+        )
+        rows = _parse_csv(response)
+        assert response.status_code == 200
+        assert any(row[0] == "Seen Pledger" and row[1] == "450.00" for row in rows[1:])
         assert "450" not in [row[1] for row in rows[1:]]

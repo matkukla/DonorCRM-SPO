@@ -1,6 +1,7 @@
 """
 Serializers for Journal models.
 """
+
 from decimal import Decimal
 
 from django.db import IntegrityError, transaction

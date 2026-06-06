@@ -40,6 +40,7 @@ Threat model
   hold the keys). For that, KMS-backed envelope encryption is required —
   tracked as Phase 5 in ``docs/security/encryption-rollout.md``.
 """
+
 from __future__ import annotations
 
 import base64

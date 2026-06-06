@@ -1,6 +1,7 @@
 """
 Views for Prayer Intention API endpoints.
 """
+
 import hashlib
 
 from django.db.models import Case, Value, When

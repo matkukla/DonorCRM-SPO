@@ -10,6 +10,7 @@ yet created — current model has ForeignKey `supervisor` not ManyToManyField
 
 Run: pytest apps/users/tests/test_m2m_assignments.py -q
 """
+
 from rest_framework.test import APIClient
 
 import pytest

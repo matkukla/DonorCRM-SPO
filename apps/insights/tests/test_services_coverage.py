@@ -13,6 +13,7 @@ These exercise service functions that are reachable but previously untested:
 Time is pinned mid-fiscal-year so gifts/events dated near boundaries stay in
 the past, matching the convention in test_admin_analytics_services.py.
 """
+
 from datetime import date, timedelta
 
 from django.utils import timezone

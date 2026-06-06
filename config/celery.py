@@ -1,6 +1,7 @@
 """
 Celery configuration for DonorCRM.
 """
+
 import os
 
 from celery import Celery

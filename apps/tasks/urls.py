@@ -1,6 +1,7 @@
 """
 URL patterns for tasks endpoints.
 """
+
 from django.urls import path
 
 from apps.tasks.broadcast_views import (

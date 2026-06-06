@@ -13,6 +13,7 @@ Failures behavior:
 Logged via ``apps.core.audit.audit_event`` so the result is grep-able next to
 auth and crypto events.
 """
+
 from __future__ import annotations
 
 from typing import Optional

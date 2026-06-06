@@ -5,6 +5,7 @@ Regression: this endpoint previously returned an empty stub even when there
 were active recurring pledges that had missed their expected payment window.
 Now delegates to apps.core.late_donations.compute_late_donations.
 """
+
 from datetime import date, timedelta
 
 import pytest

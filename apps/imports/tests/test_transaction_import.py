@@ -6,6 +6,7 @@ import_transactions, update_contact_stats_for_import) were removed in
 Phase 30-02 and replaced by the RE Gift import pipeline. This test file
 verifies the legacy endpoint returns 410 Gone.
 """
+
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 

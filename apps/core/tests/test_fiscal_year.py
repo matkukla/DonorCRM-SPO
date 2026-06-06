@@ -6,6 +6,7 @@ FISC-02: months_remaining returns months from current month to end of fiscal yea
 Imports are deferred inside each test so pytest can collect all items even before
 apps/core/fiscal_year.py exists. Tests fail at runtime with ImportError (correct RED state).
 """
+
 from datetime import date
 
 # FISC-01: fiscal_year_start boundary cases

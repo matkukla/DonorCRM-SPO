@@ -5,6 +5,7 @@ For each RecurringGift, generates a Gift record per payment period from
 start_date through min(end_date, today). Uses deterministic external_gift_id
 for idempotency.
 """
+
 from django.core.management.base import BaseCommand
 
 from apps.gifts.models import Gift, RecurringGift, RecurringGiftFrequency

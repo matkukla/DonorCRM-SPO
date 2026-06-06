@@ -2,6 +2,7 @@
 Custom User model for DonorCRM.
 Uses email as primary identifier with role-based access control.
 """
+
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.db import models
 from django.utils import timezone

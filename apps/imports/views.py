@@ -1,6 +1,7 @@
 """
 Views for CSV import/export.
 """
+
 import csv
 import io
 import logging
@@ -779,9 +780,11 @@ class MPDOverviewView(APIView):
                 entry = {
                     "user_id": str(user.id),
                     "user_name": user.full_name,
-                    "monthly_average_snapshot": str(snapshot.monthly_average)
-                    if snapshot and snapshot.monthly_average
-                    else None,
+                    "monthly_average_snapshot": (
+                        str(snapshot.monthly_average)
+                        if snapshot and snapshot.monthly_average
+                        else None
+                    ),
                 }
                 entry.update({k: v for k, v in computed.items() if k != "has_data"})
                 missionaries.append(entry)

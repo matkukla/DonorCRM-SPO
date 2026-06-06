@@ -1,6 +1,7 @@
 """
 FilterSet for Task list filtering.
 """
+
 import django_filters
 
 from apps.tasks.models import Task

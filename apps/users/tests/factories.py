@@ -1,6 +1,7 @@
 """
 Factories for User model tests.
 """
+
 import factory
 from faker import Faker
 

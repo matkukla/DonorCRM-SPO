@@ -10,6 +10,7 @@ Tests verify:
 - Monthly equivalent calculation for all cadences
 - Paginated history retrieval
 """
+
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model

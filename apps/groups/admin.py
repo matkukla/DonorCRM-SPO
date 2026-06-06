@@ -1,6 +1,7 @@
 """
 Admin configuration for Group model.
 """
+
 from django.contrib import admin
 
 from apps.groups.models import Group

@@ -1,6 +1,7 @@
 """
 Tests for date range filtering on admin analytics endpoints.
 """
+
 from datetime import date, timedelta
 from decimal import Decimal
 

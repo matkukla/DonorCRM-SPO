@@ -1,6 +1,7 @@
 """
 Celery tasks for dashboard/reporting.
 """
+
 import logging
 
 from celery import shared_task

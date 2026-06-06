@@ -4,6 +4,7 @@ Drives ``rotate_pii_encryption --all`` so a single command re-encrypts every
 PII column under the current write key. Add a tuple here whenever a field is
 migrated to ``EncryptedTextField``.
 """
+
 from __future__ import annotations
 
 from typing import List, Tuple

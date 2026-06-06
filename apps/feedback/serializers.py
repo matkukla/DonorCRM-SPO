@@ -7,6 +7,7 @@ Two serializers separate concerns:
 - FeedbackEntrySerializer: admin read/update view. All fields read-only
   except status.
 """
+
 from rest_framework import serializers
 
 from apps.feedback.models import FeedbackEntry

@@ -1,6 +1,7 @@
 """
 Tests for User API views.
 """
+
 from rest_framework import status
 
 import pytest

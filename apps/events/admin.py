@@ -1,6 +1,7 @@
 """
 Admin configuration for Event model.
 """
+
 from django.contrib import admin
 
 from apps.events.models import Event

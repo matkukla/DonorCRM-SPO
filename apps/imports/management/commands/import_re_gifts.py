@@ -4,6 +4,7 @@ Management command for importing RE Gift CSV files.
 Usage:
     python manage.py import_re_gifts <file> --owner admin@example.com [--force]
 """
+
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.imports.models import ImportBatchStatus

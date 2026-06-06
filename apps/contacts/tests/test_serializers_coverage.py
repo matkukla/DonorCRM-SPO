@@ -7,6 +7,7 @@ ContactJournalMembershipSerializer fallback branches (current_stage and
 decision computed without prefetch). Tests assert real persisted state and
 owner-scoped group visibility so they fail when the serializer logic breaks.
 """
+
 from rest_framework.test import APIClient
 
 import pytest

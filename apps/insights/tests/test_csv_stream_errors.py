@@ -3,6 +3,7 @@ Tests that the CSV export `_safe_csv_stream` wrapper surfaces a sentinel
 error row instead of silently truncating when the row generator raises
 mid-stream.
 """
+
 import csv
 import io
 

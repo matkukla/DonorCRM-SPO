@@ -1,6 +1,7 @@
 """
 Service functions for events.
 """
+
 from apps.events.models import Event
 
 

@@ -7,6 +7,7 @@ Targets the branches the existing test_views.py leaves uncovered:
   - admin-with-global-visibility removal branch
   - GroupContactEmailsView (entirely untested before)
 """
+
 from rest_framework import status
 from rest_framework.test import APIClient
 

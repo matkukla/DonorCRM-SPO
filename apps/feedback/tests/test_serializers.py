@@ -1,6 +1,7 @@
 """
 Tests for FeedbackEntry serializers.
 """
+
 import pytest
 
 from apps.feedback.models import FeedbackEntry, FeedbackType

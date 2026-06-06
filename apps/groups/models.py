@@ -1,6 +1,7 @@
 """
 Group model for organizing contacts with tags/segments.
 """
+
 from django.conf import settings
 from django.db import models
 

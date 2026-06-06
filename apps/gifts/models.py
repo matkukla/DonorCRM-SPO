@@ -5,6 +5,7 @@ Provides Solicitor, Gift, GiftCredit, RecurringGift, and RecurringGiftCredit
 models to replace the existing Donation/Pledge system with cents-based amounts
 and multi-solicitor credit attribution.
 """
+
 from decimal import Decimal
 
 from django.db import models

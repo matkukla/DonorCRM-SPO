@@ -19,6 +19,7 @@ Formula (single source of truth, agreed 2026-05-01):
 Callers pass a Q object describing how to filter Gift.donor_contact and
 RecurringGift.donor_contact (e.g. by owner=user, or by id__in=[...]).
 """
+
 from datetime import date
 from decimal import Decimal
 

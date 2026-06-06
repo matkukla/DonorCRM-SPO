@@ -10,6 +10,7 @@ owns a decision and the loser's is deleted.
 These run on SQLite; the PostgreSQL TrigramSimilarity name-matching path is
 skipped via ImportError in the service and is not exercised here.
 """
+
 import pytest
 
 from apps.contacts.services import find_duplicates_for_contact, merge_contacts

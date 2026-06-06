@@ -14,6 +14,7 @@ services compute org-wide aggregates (matching existing admin analytics
 endpoints such as get_dashboard_overview, which intentionally bypass user
 scoping for cross-tenant views).
 """
+
 from calendar import monthrange
 from datetime import date, timedelta
 

@@ -4,6 +4,7 @@ Management command for importing RE Solicitor CSV files.
 Usage:
     python manage.py import_re_solicitors <file> --owner admin@example.com [--force]
 """
+
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.imports.models import ImportBatchStatus

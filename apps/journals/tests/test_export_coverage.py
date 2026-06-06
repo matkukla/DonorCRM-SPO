@@ -9,6 +9,7 @@ Verifies:
 - FilterSet application (owner filter)
 - JournalContactSerializer stage_events/decision summary branches
 """
+
 import csv
 import io
 from decimal import Decimal

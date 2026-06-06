@@ -1,6 +1,7 @@
 """
 Filters for PrayerIntention model.
 """
+
 import django_filters
 
 from apps.prayers.models import PrayerIntention

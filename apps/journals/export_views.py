@@ -1,6 +1,7 @@
 """
 CSV export view for journals with FilterSet-based filtering.
 """
+
 import csv
 from datetime import datetime
 

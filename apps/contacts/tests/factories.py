@@ -1,6 +1,7 @@
 """
 Factories for Contact model tests.
 """
+
 import factory
 from faker import Faker
 

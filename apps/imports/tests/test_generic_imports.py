@@ -6,6 +6,7 @@ Covers:
 - Donation import: Gift creation, missing contact errors, stat recalculation
 - API views: endpoints, response shape, staff access, coach denied
 """
+
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 

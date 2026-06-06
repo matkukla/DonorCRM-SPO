@@ -1,6 +1,7 @@
 """
 Tests for dashboard service functions.
 """
+
 from datetime import date, timedelta
 from decimal import Decimal
 

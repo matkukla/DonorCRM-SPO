@@ -5,6 +5,7 @@ Exercises CRUD, owner-scoping, status-timestamp management, mark-prayed,
 and today's-focus rotation. Each test asserts real behavior so it fails
 when the feature breaks.
 """
+
 from datetime import timedelta
 
 from django.utils import timezone

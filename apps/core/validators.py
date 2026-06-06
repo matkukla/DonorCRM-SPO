@@ -1,6 +1,7 @@
 """
 Custom password validators for DonorCRM.
 """
+
 import re
 
 from django.core.exceptions import ValidationError

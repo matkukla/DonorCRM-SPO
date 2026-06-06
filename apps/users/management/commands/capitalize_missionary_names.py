@@ -1,4 +1,5 @@
 """Capitalize first and last name of all missionary users."""
+
 from django.core.management.base import BaseCommand
 
 from apps.users.models import User, UserRole

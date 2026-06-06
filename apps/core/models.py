@@ -1,6 +1,7 @@
 """
 Base models for DonorCRM.
 """
+
 import uuid
 
 from django.conf import settings

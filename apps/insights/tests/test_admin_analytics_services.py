@@ -8,6 +8,7 @@ Covers:
   - get_weekly_engagement
   - get_fiscal_year_donations
 """
+
 from calendar import monthrange
 from datetime import date, timedelta
 from unittest.mock import patch

@@ -2,6 +2,7 @@
 Management command to ensure all solicitor accounts from test_solicitors.csv
 exist with @spo.org emails and a consistent password.
 """
+
 import os
 
 from django.contrib.auth import get_user_model

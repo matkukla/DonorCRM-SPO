@@ -2,6 +2,7 @@
 Tests for /insights/monthly-commitments/ — specifically the last_fulfilled_date
 field that the frontend table renders.
 """
+
 from datetime import date, timedelta
 
 import pytest

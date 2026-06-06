@@ -1,6 +1,7 @@
 """
 Tests for Event model.
 """
+
 import pytest
 
 from apps.events.models import Event, EventSeverity, EventType

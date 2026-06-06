@@ -1,6 +1,7 @@
 """
 Contact model for donor and prospect management.
 """
+
 from decimal import Decimal
 
 from django.conf import settings

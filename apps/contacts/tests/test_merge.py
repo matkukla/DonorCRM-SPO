@@ -2,6 +2,7 @@
 Tests for contact merge functionality.
 All tests are SQLite-safe (no pg_trgm usage).
 """
+
 from datetime import date
 
 import pytest

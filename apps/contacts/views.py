@@ -1,6 +1,7 @@
 """
 Views for Contact management.
 """
+
 from django.db.models import Prefetch, Q
 
 from rest_framework import filters, generics, permissions, status

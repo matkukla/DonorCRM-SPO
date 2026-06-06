@@ -1,6 +1,7 @@
 """
 Signals for Journal event logging.
 """
+
 import logging
 
 from django.db.models.signals import post_save

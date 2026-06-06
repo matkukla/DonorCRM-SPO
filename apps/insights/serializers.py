@@ -1,6 +1,7 @@
 """
 DRF serializers for insights/analytics endpoints.
 """
+
 from rest_framework import serializers
 
 # Nested serializers

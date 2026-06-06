@@ -15,6 +15,7 @@ backend errors out we log it and allow the request rather than failing the
 whole endpoint. This is the standard "fail open" posture for rate limiting:
 a degraded limiter is preferable to a hard outage.
 """
+
 import logging
 
 from django.core.exceptions import ImproperlyConfigured

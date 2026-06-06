@@ -1,6 +1,7 @@
 """
 Celery tasks for contact management.
 """
+
 import logging
 
 from celery import shared_task

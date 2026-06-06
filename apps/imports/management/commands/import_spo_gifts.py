@@ -6,6 +6,7 @@ Imports SPO gifts and attributes them to missionaries via GiftCredit.
 Usage:
     python manage.py import_spo_gifts <file> --owner admin@example.com [--force]
 """
+
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.imports.models import ImportBatchStatus

@@ -1,6 +1,7 @@
 """
 Email service for DonorCRM notifications.
 """
+
 import logging
 from typing import Optional
 

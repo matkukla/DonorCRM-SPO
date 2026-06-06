@@ -8,6 +8,7 @@ Tests verify:
 - Ownership validation (only owner can access)
 - Cross-user protection
 """
+
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 

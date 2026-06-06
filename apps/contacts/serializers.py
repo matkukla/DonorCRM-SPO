@@ -1,6 +1,7 @@
 """
 Serializers for Contact model.
 """
+
 from rest_framework import serializers
 
 from apps.contacts.models import Contact

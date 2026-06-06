@@ -1,6 +1,7 @@
 """
 Views for user management.
 """
+
 from django.db.models import Count, Q
 
 from rest_framework import generics, permissions, status

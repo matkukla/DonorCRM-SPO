@@ -9,6 +9,7 @@ Covers the realistic scenarios:
   * ``--resume-from-id`` skips ahead.
   * Unknown app/model/field is a CommandError.
 """
+
 from __future__ import annotations
 
 from io import StringIO
@@ -86,8 +87,10 @@ class TestRotatePiiEncryption:
         from apps.contacts.models import Contact
 
         with connection.cursor() as cur:
+            # nosec B608: db_table is Django-internal metadata (not user input);
+            # values are bound via %s placeholders. Test helper only.
             cur.execute(
-                f'UPDATE "{Contact._meta.db_table}" SET notes = %s WHERE id = %s',
+                f'UPDATE "{Contact._meta.db_table}" SET notes = %s WHERE id = %s',  # nosec B608
                 [value, self._pk_param(pk)],
             )
 
@@ -97,8 +100,10 @@ class TestRotatePiiEncryption:
         from apps.contacts.models import Contact
 
         with connection.cursor() as cur:
+            # nosec B608: db_table is Django-internal metadata (not user input);
+            # the id is bound via a %s placeholder. Test helper only.
             cur.execute(
-                f'SELECT notes FROM "{Contact._meta.db_table}" WHERE id = %s',
+                f'SELECT notes FROM "{Contact._meta.db_table}" WHERE id = %s',  # nosec B608
                 [self._pk_param(pk)],
             )
             row = cur.fetchone()

@@ -1,6 +1,7 @@
 """
 Custom permission classes for feedback endpoints.
 """
+
 from rest_framework import permissions
 
 

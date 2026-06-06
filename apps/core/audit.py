@@ -19,6 +19,7 @@ Usage::
         ip=request.META.get("REMOTE_ADDR"),
     )
 """
+
 from __future__ import annotations
 
 import logging

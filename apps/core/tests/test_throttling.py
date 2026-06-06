@@ -4,6 +4,7 @@ These verify that a cache outage degrades rate limiting to "allow" instead of
 turning throttled endpoints into 500s, while normal throttling still works when
 the cache is healthy.
 """
+
 from unittest.mock import Mock
 
 from django.contrib.auth.models import AnonymousUser

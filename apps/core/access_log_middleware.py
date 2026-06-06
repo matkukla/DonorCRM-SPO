@@ -19,6 +19,7 @@ Design choices
 - **No request body inspection.** The path + method are enough; reading
   request bodies would risk ingesting PII into the audit log itself.
 """
+
 from __future__ import annotations
 
 import logging

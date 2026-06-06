@@ -1,6 +1,7 @@
 """
 Production settings for DonorCRM.
 """
+
 import os
 
 import dj_database_url

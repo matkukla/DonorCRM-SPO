@@ -6,6 +6,7 @@ Verifies:
   - Response shape matches serializer contract.
   - Query params (limit, weeks) are honored and validated.
 """
+
 from rest_framework import status
 from rest_framework.test import APIClient
 

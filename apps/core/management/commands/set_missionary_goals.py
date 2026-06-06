@@ -3,6 +3,7 @@
 One-shot command to update missionary goals so dashboard percentages
 show a natural distribution (67%–104% from recurring alone).
 """
+
 from django.core.management.base import BaseCommand
 
 from apps.users.models import User

@@ -1,6 +1,7 @@
 """
 Tests for recurring gift payment generation utilities.
 """
+
 from datetime import date
 
 import pytest

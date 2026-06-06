@@ -4,6 +4,7 @@ API integration tests for duplicate detection and merge endpoints.
 Tests mock TrigramSimilarity-dependent service functions for SQLite compatibility
 while still testing the full HTTP request/response cycle.
 """
+
 import uuid
 from unittest.mock import patch
 

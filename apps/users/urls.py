@@ -1,6 +1,7 @@
 """
 URL patterns for user management endpoints.
 """
+
 from django.urls import path
 
 from apps.users.views import (

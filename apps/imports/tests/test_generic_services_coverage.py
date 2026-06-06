@@ -14,6 +14,7 @@ import_generic_donations:
 These exercise real import behavior with realistic CSV rows and assert on the
 records actually written (money in cents) and the returned ImportBatch summary.
 """
+
 from unittest.mock import patch
 
 from django.test import TestCase

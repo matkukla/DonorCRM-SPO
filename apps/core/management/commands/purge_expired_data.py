@@ -6,6 +6,7 @@ every deletion class with counts via ``apps.core.audit.audit_event``.
 
 Defaults are conservative — pass ``--dry-run`` to count without deleting.
 """
+
 from __future__ import annotations
 
 from datetime import timedelta

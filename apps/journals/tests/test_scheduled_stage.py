@@ -11,6 +11,7 @@ Tests verify:
 - Goal services calls_count excludes meeting_scheduled events
 - Goal services meetings_count excludes meeting_scheduled events
 """
+
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model

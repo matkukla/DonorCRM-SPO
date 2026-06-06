@@ -6,6 +6,7 @@ selecting another user, missionary denial, invalid/missing user_id), the
 mark-seen endpoint, the per-user layout endpoint, and JSON payload values
 for the giving/monthly/recent-gift tiles (dollars derived from cents).
 """
+
 import uuid
 from datetime import date
 
