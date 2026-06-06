@@ -1,6 +1,7 @@
 """
 Serializers for Event model.
 """
+
 from rest_framework import serializers
 
 from apps.events.models import Event

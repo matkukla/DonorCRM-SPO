@@ -1,6 +1,7 @@
 """
 Views for Journal management.
 """
+
 from collections import defaultdict
 from datetime import timedelta
 

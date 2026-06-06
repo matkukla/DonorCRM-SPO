@@ -1,6 +1,7 @@
 """
 Admin configuration for import infrastructure models.
 """
+
 from django.contrib import admin
 
 from apps.imports.models import (

@@ -7,6 +7,7 @@ than the expected interval for the gift's frequency, with a 50% grace period.
 
 Grace period is intentionally hardcoded (locked 2026-05-01).
 """
+
 from datetime import timedelta
 
 from django.utils import timezone

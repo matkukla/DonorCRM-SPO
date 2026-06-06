@@ -6,6 +6,7 @@ Verifies that:
 - Admin users see only their own gifts (cross-user access via View As only)
 - Same patterns apply to RecurringGift views
 """
+
 from datetime import date, timedelta
 
 from rest_framework import status

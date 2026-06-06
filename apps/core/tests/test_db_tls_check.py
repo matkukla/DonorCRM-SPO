@@ -3,6 +3,7 @@
 Limited to backends-agnostic behavior because the test DB is SQLite. The
 Postgres TLS query is exercised in production by ``CoreConfig.ready()``.
 """
+
 from __future__ import annotations
 
 from unittest import mock

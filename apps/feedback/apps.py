@@ -1,6 +1,7 @@
 """
 App configuration for feedback submissions.
 """
+
 from django.apps import AppConfig
 
 

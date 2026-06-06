@@ -1,6 +1,7 @@
 """
 Service functions for dashboard aggregations.
 """
+
 import logging
 from datetime import date, timedelta
 from decimal import Decimal
@@ -237,9 +238,9 @@ def get_giving_summary(user, as_of_date=None):
         "expecting": expecting,
         "total": given_float + expecting,
         "recurring_pledges_annual": float(annualized_recurring),
-        "recurring_pledges_monthly": float(annualized_recurring / 12)
-        if annualized_recurring
-        else 0,
+        "recurring_pledges_monthly": (
+            float(annualized_recurring / 12) if annualized_recurring else 0
+        ),
         "annual_goal": annual_goal,
         "monthly_goal": monthly_goal,
         "percentage": ((given_float + expecting) / annual_goal * 100) if annual_goal > 0 else 0,

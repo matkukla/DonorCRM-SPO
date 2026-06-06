@@ -1,6 +1,7 @@
 """
 Admin configuration for User model.
 """
+
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 

@@ -1,6 +1,7 @@
 """
 Tests for team trends endpoint.
 """
+
 from datetime import timedelta
 from decimal import Decimal
 

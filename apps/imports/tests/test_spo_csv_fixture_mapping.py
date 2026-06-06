@@ -11,6 +11,7 @@ Fixture files:
   test_data/test_recurring_gifts.csv — type-label "Recurring Gift", 300 rows
   test_data/test_constituents.csv    — type-label "Constituent", 400 rows
 """
+
 import os
 
 from django.test import TestCase

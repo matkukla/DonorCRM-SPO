@@ -9,6 +9,7 @@ Exercises real HTTP request/response behavior through the DRF API:
 - Decision history list filtering
 - Analytics ViewSet endpoints (trends, activity, pipeline, queue, report, admin-summary)
 """
+
 from datetime import timedelta
 from decimal import Decimal
 

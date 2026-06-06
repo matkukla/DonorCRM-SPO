@@ -1,6 +1,7 @@
 """
 Factories for Event model tests.
 """
+
 import factory
 from faker import Faker
 

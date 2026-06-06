@@ -10,6 +10,7 @@ exercise the production paths the middleware was built for:
 SECURITY-RELEVANT: confirms only admin/supervisor can activate View As and that
 a forged/invalid bearer cannot.
 """
+
 from types import SimpleNamespace
 from unittest import mock
 

@@ -1,6 +1,7 @@
 """
 Tests for FeedbackEntry model.
 """
+
 import pytest
 
 from apps.feedback.models import FeedbackEntry, FeedbackStatus, FeedbackType

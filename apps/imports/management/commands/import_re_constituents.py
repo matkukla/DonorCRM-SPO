@@ -4,6 +4,7 @@ Management command for importing RE Constituent CSV files.
 Usage:
     python manage.py import_re_constituents <file> --owner admin@example.com [--force]
 """
+
 import os
 
 from django.core.management.base import BaseCommand, CommandError

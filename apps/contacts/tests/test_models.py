@@ -1,6 +1,7 @@
 """
 Tests for Contact model methods.
 """
+
 from decimal import Decimal
 
 import pytest

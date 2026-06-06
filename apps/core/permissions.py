@@ -10,6 +10,7 @@ Access Control Matrix:
 Owner scoping in views uses get_visible_user_ids() as the central choke point.
 Write operations are gated by IsStaffOrAbove (excludes coach from writes).
 """
+
 from rest_framework import permissions
 
 

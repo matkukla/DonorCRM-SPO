@@ -1,6 +1,7 @@
 """
 Integration tests for the complete donor workflow.
 """
+
 from decimal import Decimal
 
 from django.utils import timezone

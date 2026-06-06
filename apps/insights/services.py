@@ -1,6 +1,7 @@
 """
 Service functions for insights/reports data aggregations.
 """
+
 from datetime import date, timedelta
 
 from django.db.models import CharField, Count, IntegerField, OuterRef, Q, Subquery, Sum, Value
@@ -515,15 +516,17 @@ def get_stalled_contacts(
                 "email": c.email,
                 "owner_email": c.owner.email,
                 "owner_name": f"{c.owner.first_name} {c.owner.last_name}".strip(),
-                "last_activity_date": c.last_activity_date.isoformat()
-                if c.last_activity_date
-                else None,
+                "last_activity_date": (
+                    c.last_activity_date.isoformat() if c.last_activity_date else None
+                ),
                 "days_stalled": (
                     (reference_time - c.last_activity_date).days
                     if c.last_activity_date
-                    else (reference_time - c.journal_membership_date).days
-                    if c.journal_membership_date
-                    else None
+                    else (
+                        (reference_time - c.journal_membership_date).days
+                        if c.journal_membership_date
+                        else None
+                    )
                 ),
                 "status": c.status,
             }
@@ -623,9 +626,11 @@ def _annotate_user_performance(queryset):
 def _serialize_user_performance(user):
     """Turn an annotated user row (from _annotate_user_performance) into the API shape."""
     conversion_rate = round(
-        (user._contacts_with_decisions / user.contacts_in_journals * 100)
-        if user.contacts_in_journals > 0
-        else 0,
+        (
+            (user._contacts_with_decisions / user.contacts_in_journals * 100)
+            if user.contacts_in_journals > 0
+            else 0
+        ),
         1,
     )
     return {
@@ -1072,9 +1077,9 @@ def get_stage_contacts(stage, limit=100):
                 "full_name": c.full_name,
                 "email": c.email,
                 "owner_name": f"{c.owner.first_name} {c.owner.last_name}".strip(),
-                "last_activity_date": c.last_activity_date.isoformat()
-                if c.last_activity_date
-                else None,
+                "last_activity_date": (
+                    c.last_activity_date.isoformat() if c.last_activity_date else None
+                ),
             }
             for c in contacts
         ],

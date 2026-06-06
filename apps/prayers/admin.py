@@ -1,6 +1,7 @@
 """
 Admin configuration for prayer intention models.
 """
+
 from django.contrib import admin
 
 from apps.prayers.models import PrayerIntention

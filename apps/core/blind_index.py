@@ -38,6 +38,7 @@ Rotation procedure:
      new key.
   4. Remove the old key from the env var, redeploy.
 """
+
 from __future__ import annotations
 
 import base64

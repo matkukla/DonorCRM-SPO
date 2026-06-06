@@ -3,6 +3,7 @@ Tests for MPD API views: MPDMyDataView and MPDOverviewView.
 
 Covers monthly_average_snapshot field in both endpoints (MPD-01, MPD-02).
 """
+
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model

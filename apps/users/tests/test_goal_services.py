@@ -4,6 +4,7 @@ GOAL-04: get_goal_progress(user) computes effective_monthly_support from journal
 GH-26: get_decisions_progress(user) computes monthly-normalized decision amounts
 vs journal goal sums.
 """
+
 from datetime import date
 from decimal import Decimal
 

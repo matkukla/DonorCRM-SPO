@@ -5,6 +5,7 @@ Ghost rows are M2M entries in users_user_supervisors or users_user_coaches
 where the referenced user no longer holds the expected role (supervisor or coach).
 These were created by migration 0006 which copied FK data without role validation.
 """
+
 from django.core.management.base import BaseCommand
 
 from apps.users.models import User

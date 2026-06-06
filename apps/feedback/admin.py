@@ -2,6 +2,7 @@
 Admin registration for FeedbackEntry — secondary surface alongside the
 React /admin/feedback page. Feedback may contain PII; admin role only.
 """
+
 from django.contrib import admin
 
 from apps.feedback.models import FeedbackEntry

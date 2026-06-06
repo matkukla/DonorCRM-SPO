@@ -8,6 +8,7 @@ but going through Django's timezone helper means the math stays correct if
 TIME_ZONE is ever switched to a US zone (where the FY boundary at midnight
 local time would otherwise be off by one day around June 1 / May 31).
 """
+
 from datetime import date
 
 from django.utils import timezone

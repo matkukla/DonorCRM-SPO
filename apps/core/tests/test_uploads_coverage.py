@@ -4,6 +4,7 @@ Behavioral tests for apps.core.uploads.detect_upload_kind.
 These cover magic-byte detection (XLSX/XLS), the permissive CSV heuristic,
 the filename-assisted single-column CSV path, and the UNKNOWN fallbacks.
 """
+
 from apps.core.uploads import UploadKind, detect_upload_kind
 
 

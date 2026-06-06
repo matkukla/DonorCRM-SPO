@@ -3,6 +3,7 @@ Shared gift aggregation utilities for DonorCRM.
 Provides frequency multipliers and SQL aggregation helpers used by
 dashboard services and goal services.
 """
+
 from decimal import Decimal
 
 from django.db.models import Case, DecimalField, F, Sum, Value, When

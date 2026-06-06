@@ -1,6 +1,7 @@
 """
 URL patterns for events endpoints.
 """
+
 from django.urls import path
 
 from apps.events.views import (

@@ -1,6 +1,7 @@
 """
 Tests for user detail endpoints in insights app.
 """
+
 from decimal import Decimal
 
 from rest_framework import status

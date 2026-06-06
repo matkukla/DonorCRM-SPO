@@ -1,6 +1,7 @@
 """
 FilterSet for Contact list filtering.
 """
+
 import django_filters
 
 from apps.contacts.models import Contact

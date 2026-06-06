@@ -1,6 +1,7 @@
 """
 Tests for admin analytics endpoints in insights app.
 """
+
 from decimal import Decimal
 
 from rest_framework import status

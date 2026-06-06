@@ -5,6 +5,7 @@ TDD plan 02: TestReconcileMissionaries stubs filled in.
 TDD plan 03: TestImportSpoGifts stubs filled in
 (import_spo_gifts, import_spo_prayers, TestIdempotency).
 """
+
 import csv as csv_mod
 import io
 

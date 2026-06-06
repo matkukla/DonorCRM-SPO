@@ -11,6 +11,7 @@ Test coverage:
   - VIEWAS-07: Mutation blocking (POST/PUT/PATCH/DELETE blocked when header present)
   - VIEWAS-08: Permission validation (only admin/supervisor can use header; target must be valid)
 """
+
 from rest_framework.test import APIClient
 
 import pytest

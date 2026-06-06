@@ -1,6 +1,7 @@
 """
 Views for Dashboard data.
 """
+
 import uuid
 
 from rest_framework import permissions

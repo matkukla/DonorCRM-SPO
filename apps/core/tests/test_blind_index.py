@@ -1,4 +1,5 @@
 """Tests for apps.core.blind_index — HMAC-SHA256 blind-index for equality."""
+
 from __future__ import annotations
 
 import base64

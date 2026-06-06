@@ -6,6 +6,7 @@ get_pledges_template) were removed in Phase 30-02 and replaced by the RE
 Recurring Gift import pipeline. This test file verifies the legacy endpoint
 returns 410 Gone.
 """
+
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 

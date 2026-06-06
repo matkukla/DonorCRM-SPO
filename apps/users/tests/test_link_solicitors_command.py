@@ -4,6 +4,7 @@ Tests for the link_solicitors_and_reassign_owners management command.
 Verifies that contact ownership is reassigned based on both GiftCredit
 and RecurringGiftCredit records.
 """
+
 from datetime import date
 
 from django.core.management import call_command

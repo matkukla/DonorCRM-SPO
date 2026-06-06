@@ -1,6 +1,7 @@
 """
 Tests for User model.
 """
+
 from django.db import IntegrityError
 
 import pytest

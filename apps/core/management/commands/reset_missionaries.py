@@ -2,6 +2,7 @@
 Management command to wipe all data, remove non-kept users,
 and create fresh missionary accounts from test_solicitors.csv.
 """
+
 import os
 
 from django.core.management.base import BaseCommand
@@ -177,7 +178,12 @@ class Command(BaseCommand):
         with connection.cursor() as cursor:
             for table in allowed_tables:
                 if table in existing_tables:
-                    cursor.execute("DELETE FROM %s" % connection.ops.quote_name(table))
+                    # nosec B608: `table` is from the hardcoded allowed_tables
+                    # tuple above (not user input) and passed through
+                    # connection.ops.quote_name(); no injection vector.
+                    cursor.execute(
+                        "DELETE FROM %s" % connection.ops.quote_name(table)  # nosec B608
+                    )
                     self.stdout.write(f"  Deleted legacy {table}: {cursor.rowcount}")
 
         # --- Contact (PROTECT from User — must delete before user) ---

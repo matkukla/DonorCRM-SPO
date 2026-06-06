@@ -7,6 +7,7 @@ Tests verify:
 - Query optimization prevents N+1 queries
 - Ownership validation
 """
+
 import datetime
 from decimal import Decimal
 

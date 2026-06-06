@@ -1,6 +1,7 @@
 """
 Factories for Group model tests.
 """
+
 import factory
 from faker import Faker
 

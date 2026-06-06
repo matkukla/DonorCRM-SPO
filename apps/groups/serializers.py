@@ -1,6 +1,7 @@
 """
 Serializers for Group model.
 """
+
 from rest_framework import serializers
 
 from apps.groups.models import Group

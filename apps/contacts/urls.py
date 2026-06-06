@@ -1,6 +1,7 @@
 """
 URL patterns for contacts endpoints.
 """
+
 from django.urls import path
 
 from apps.contacts.export_views import ContactExportCSVView

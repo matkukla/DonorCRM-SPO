@@ -6,6 +6,7 @@ Extracts prayer intentions from SPO gifts CSV (prayer-only rerun pass).
 Usage:
     python manage.py import_spo_prayers <file> --owner admin@example.com [--force]
 """
+
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.imports.models import ImportBatchStatus

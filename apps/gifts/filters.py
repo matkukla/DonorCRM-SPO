@@ -1,6 +1,7 @@
 """
 Filters for Gift and RecurringGift models.
 """
+
 import django_filters
 
 from apps.gifts.models import Gift, RecurringGift

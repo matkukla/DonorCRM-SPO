@@ -1,6 +1,7 @@
 """
 Filters for FeedbackEntry list view.
 """
+
 import django_filters
 
 from apps.feedback.models import FeedbackEntry

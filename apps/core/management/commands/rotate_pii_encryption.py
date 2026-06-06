@@ -21,6 +21,7 @@ Usage
   python manage.py rotate_pii_encryption --all --batch-size 1000
   python manage.py rotate_pii_encryption --all --resume-from-id <uuid>
 """
+
 from __future__ import annotations
 
 from typing import Iterable, Tuple

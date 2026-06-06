@@ -1,6 +1,7 @@
 """
 Management command to generate sample data for testing.
 """
+
 import random
 from datetime import timedelta
 
@@ -270,9 +271,11 @@ class Command(BaseCommand):
                 title=f"{template[0]} - {contact.full_name}",
                 task_type=template[1],
                 priority=template[2],
-                status=TaskStatus.PENDING
-                if due_offset >= 0
-                else random.choice([TaskStatus.PENDING, TaskStatus.IN_PROGRESS]),
+                status=(
+                    TaskStatus.PENDING
+                    if due_offset >= 0
+                    else random.choice([TaskStatus.PENDING, TaskStatus.IN_PROGRESS])
+                ),
                 due_date=today + timedelta(days=due_offset),
                 description=fake.sentence() if random.random() > 0.5 else "",
             )

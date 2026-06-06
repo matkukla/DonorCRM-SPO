@@ -5,6 +5,7 @@ deleted Redis instance) deterministically, without depending on a real server
 or network timing. Point ``CACHES["default"]["BACKEND"]`` at this class via
 ``override_settings`` to reproduce the production failure mode.
 """
+
 from django.core.cache.backends.base import BaseCache
 
 

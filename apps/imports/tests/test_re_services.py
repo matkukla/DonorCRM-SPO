@@ -9,6 +9,7 @@ Covers all 4 RE import functions with minimal CSV inputs:
 
 Plus SHA256 dedup and malformed CSV handling.
 """
+
 import pytest
 
 from apps.contacts.models import Contact

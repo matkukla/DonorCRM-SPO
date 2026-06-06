@@ -8,6 +8,7 @@ Verifies that:
 - Updating a Gift amount triggers contact stat recalculation
 - Deleting a Gift triggers contact stat recalculation
 """
+
 from datetime import date, timedelta
 from decimal import Decimal
 

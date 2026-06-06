@@ -2,6 +2,7 @@
 Tests for the org-wide annual goal setting and its effect on the
 Fiscal Year Pace tile.
 """
+
 from rest_framework.test import APIClient
 
 import pytest

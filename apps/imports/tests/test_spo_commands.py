@@ -3,6 +3,7 @@ Tests for SPO management commands: reconcile_missionaries, import_spo_gifts, imp
 
 TDD plan 04: Stubs filled in.
 """
+
 import csv as csv_mod
 import io
 import os

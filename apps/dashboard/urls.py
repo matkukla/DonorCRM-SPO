@@ -1,6 +1,7 @@
 """
 URL patterns for dashboard endpoints.
 """
+
 from django.urls import path
 
 from apps.dashboard.views import (

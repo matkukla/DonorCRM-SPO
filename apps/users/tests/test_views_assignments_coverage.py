@@ -5,6 +5,7 @@ The existing test_m2m_assignments.py covers the happy paths and GET role-filteri
 These tests target the PATCH error/validation/coach branches and the 5+ supervisor
 warning that remain uncovered.
 """
+
 import uuid
 
 from rest_framework.test import APIClient

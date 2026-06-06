@@ -1,6 +1,7 @@
 """
 Django admin configuration for journals app.
 """
+
 from django.contrib import admin
 
 from apps.journals.models import Journal, JournalContact, JournalStageEvent

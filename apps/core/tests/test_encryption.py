@@ -8,6 +8,7 @@ Covers:
   * key rotation (aes256 → aes256, and Fernet → aes256 upgrade)
   * EncryptedTextField behavior + ORM round-trip
 """
+
 from __future__ import annotations
 
 import base64

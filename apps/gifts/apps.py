@@ -1,6 +1,7 @@
 """
 App configuration for the gifts app.
 """
+
 from django.apps import AppConfig
 
 

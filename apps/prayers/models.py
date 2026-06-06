@@ -4,6 +4,7 @@ Models for prayer intention tracking.
 Provides PrayerIntention model to track prayer requests per contact,
 with M2M gift linkage for auto-creation from RE gift descriptions.
 """
+
 from django.db import models
 
 from apps.core.encryption import EncryptedTextField

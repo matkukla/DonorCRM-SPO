@@ -4,6 +4,7 @@ Behavioral tests for apps.core.email send helpers.
 The test settings use the locmem email backend, so real sends land in
 django.core.mail.outbox. Failure paths are exercised with unittest.mock.
 """
+
 from unittest import mock
 
 from django.core import mail

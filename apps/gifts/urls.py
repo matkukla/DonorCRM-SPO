@@ -1,6 +1,7 @@
 """
 URL patterns for gift endpoints.
 """
+
 from django.urls import path
 
 from apps.gifts.export_views import GiftExportCSVView, RecurringGiftExportCSVView

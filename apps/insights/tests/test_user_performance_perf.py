@@ -10,6 +10,7 @@ Covers:
   calculation yields, so the Subquery refactor did not silently change
   the conversion rate or decision counts exposed to the dashboard.
 """
+
 from decimal import Decimal
 
 from django.db import connection

@@ -1,6 +1,7 @@
 """
 App configuration for prayer intentions.
 """
+
 from django.apps import AppConfig
 
 

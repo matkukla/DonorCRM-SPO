@@ -1,6 +1,7 @@
 """
 URL patterns for prayer intention endpoints.
 """
+
 from django.urls import path
 
 from apps.prayers.views import (

@@ -13,6 +13,7 @@ Usage
     if kind not in (UploadKind.CSV, UploadKind.XLSX):
         return Response({"detail": "Unsupported file type."}, status=400)
 """
+
 from __future__ import annotations
 
 from enum import Enum

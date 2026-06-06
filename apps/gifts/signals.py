@@ -4,6 +4,7 @@ Signals for Gift model.
 Mirrors the Donation signal handlers for contact stat updates and event
 creation, adapted for the Gift model's field names (donor_contact, amount_dollars).
 """
+
 import threading
 
 from django.db.models.signals import post_delete, post_save, pre_delete

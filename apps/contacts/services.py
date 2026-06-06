@@ -5,6 +5,7 @@ Provides:
 - find_duplicates_for_contact: Find potential duplicates for a given contact's data
 - merge_contacts: Atomically merge two contacts (reassign FKs, union groups, soft-delete loser)
 """
+
 from collections import OrderedDict
 
 from django.db import OperationalError, models, transaction

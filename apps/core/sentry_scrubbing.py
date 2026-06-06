@@ -19,6 +19,7 @@ The patterns target obvious PII shapes:
 
 Tested by ``apps.core.tests.test_sentry_scrubbing``.
 """
+
 from __future__ import annotations
 
 import re

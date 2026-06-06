@@ -1,4 +1,5 @@
 """Tests for apps.core.sentry_scrubbing — PII scrubbing in Sentry payloads."""
+
 from __future__ import annotations
 
 from apps.core import sentry_scrubbing

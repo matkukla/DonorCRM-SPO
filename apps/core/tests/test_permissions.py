@@ -8,6 +8,7 @@ Verifies that:
   - missionary sees only own data (returns {missionary.id})
   - View As override scopes to target user
 """
+
 import pytest
 
 from apps.users.tests.factories import (

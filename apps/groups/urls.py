@@ -1,6 +1,7 @@
 """
 URL patterns for groups endpoints.
 """
+
 from django.urls import path
 
 from apps.groups.views import (

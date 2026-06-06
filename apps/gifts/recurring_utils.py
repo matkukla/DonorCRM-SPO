@@ -4,6 +4,7 @@ Utilities for generating Gift payment records from RecurringGift commitments.
 Provides date generation, external ID creation, and sync logic for keeping
 Gift records in sync with their source RecurringGift.
 """
+
 import logging
 from datetime import date
 

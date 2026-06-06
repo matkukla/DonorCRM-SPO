@@ -1,6 +1,7 @@
 """
 Views for Gift and RecurringGift CRUD API endpoints.
 """
+
 from rest_framework import generics, permissions
 from rest_framework.filters import OrderingFilter, SearchFilter
 

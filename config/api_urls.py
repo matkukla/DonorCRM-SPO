@@ -2,6 +2,7 @@
 API URL configuration for DonorCRM.
 All API endpoints are prefixed with /api/v1/
 """
+
 from django.conf import settings
 from django.db import OperationalError, connection
 from django.http import JsonResponse

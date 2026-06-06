@@ -1,6 +1,7 @@
 """
 Journal models for donor engagement tracking.
 """
+
 from decimal import Decimal
 
 from django.conf import settings

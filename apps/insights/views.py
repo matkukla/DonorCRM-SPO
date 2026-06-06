@@ -2,7 +2,6 @@
 Views for Insights/Reports data.
 """
 
-
 from django.db import transaction
 
 from rest_framework import permissions, status

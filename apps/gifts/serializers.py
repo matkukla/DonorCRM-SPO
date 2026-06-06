@@ -1,6 +1,7 @@
 """
 Serializers for Gift and RecurringGift models.
 """
+
 from rest_framework import serializers
 
 from apps.gifts.models import Gift, GiftCredit, RecurringGift

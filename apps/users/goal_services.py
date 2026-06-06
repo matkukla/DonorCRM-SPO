@@ -1,6 +1,7 @@
 """
 Service functions for Goal tracking calculations.
 """
+
 from decimal import Decimal
 
 from django.db.models import Q, Sum

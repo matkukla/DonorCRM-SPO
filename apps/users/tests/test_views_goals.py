@@ -3,6 +3,7 @@ Integration test stubs for Goals API endpoint.
 GOAL-02: PATCH /api/v1/goals/me/ saves monthly_support_goal_cents and goal_weeks.
 GOAL-03: PATCH /api/v1/goals/me/ with journal_ids replaces GoalJournalSelection set.
 """
+
 from rest_framework.test import APIClient
 
 import pytest

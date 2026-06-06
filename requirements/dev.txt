@@ -1,15 +1,21 @@
 -r base.txt
 
 # Testing
-pytest>=7.4,<8.0
-pytest-django>=4.5,<5.0
-pytest-cov>=4.1,<5.0
+# pytest floor raised to 9.0.3 (CVE-2025-71176, present in 7.4.4); pytest-cov
+# 7.x and pytest-django 4.12 are the pytest-9-compatible plugin lines.
+pytest>=9.0.3,<10.0
+pytest-django>=4.12,<5.0
+pytest-cov>=7.0,<8.0
 factory-boy>=3.3,<4.0
 faker>=19.0,<20.0
 freezegun>=1.5.5,<2.0  # deterministic clock for fiscal-year tests
 
 # Code quality
-black>=23.0,<24.0
+# black floor raised to 26.3.1: clears PYSEC-2024-48 (24.3.0) AND
+# CVE-2026-32274 (26.3.1), both present in 23.12.1. The 2024 stable style
+# (introduced in 24.x and unchanged through 26.x) reformats the codebase;
+# it's been applied so the `black --check` CI gate stays green.
+black>=26.3.1,<27.0
 isort>=5.12,<6.0
 flake8>=6.0,<7.0
 
