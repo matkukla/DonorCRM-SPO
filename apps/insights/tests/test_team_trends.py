@@ -139,10 +139,10 @@ class TestTeamTrendsView:
             cadence="one_time",
             status="pending",
         )
-        # Update created_at to current week
-        Decision.objects.filter(journal_contact=journal_contact2).update(
-            created_at=now - timedelta(days=1)
-        )
+        # Update created_at to current week. Use the same instant as the first
+        # decision so neither crosses the Monday week boundary when the test runs
+        # early in the week (see test_counts_donations_by_week for the same fix).
+        Decision.objects.filter(journal_contact=journal_contact2).update(created_at=now)
 
         response = client.get("/api/v1/insights/admin/team-trends/")
         assert response.status_code == status.HTTP_200_OK
