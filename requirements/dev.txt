@@ -15,7 +15,7 @@ freezegun>=1.5.5,<2.0  # deterministic clock for fiscal-year tests
 # CVE-2026-32274 (26.3.1), both present in 23.12.1. The 2024 stable style
 # (introduced in 24.x and unchanged through 26.x) reformats the codebase;
 # it's been applied so the `black --check` CI gate stays green.
-black>=26.3.1,<27.0
+black>=26.5.1,<27.0
 isort>=5.12,<6.0
 flake8>=6.0,<7.0
 
