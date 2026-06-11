@@ -95,3 +95,17 @@ Four roles: `admin`, `missionary`, `supervisor`, `coach`. Key permission classes
 ### The #1 Rule of E2E Tests
 
 A test MUST fail when the feature it tests is broken. No exceptions. If a real user would see something broken, the test must fail. No "fixing the app inside the test". A passing test that hides a broken feature is worse than no test at all.
+
+## Agent skills
+
+### Issue tracker
+
+Issues and PRDs live as GitHub issues in `matkukla/DonorCRM`, managed via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Canonical triage roles map 1:1 to label strings (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context layout — one `CONTEXT.md` + `docs/adr/` at the repo root, created lazily by `/grill-with-docs`. See `docs/agents/domain.md`.
