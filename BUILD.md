@@ -13,7 +13,7 @@ This guide covers how to build, test, and run the DonorCRM Django backend.
 
 ```bash
 git clone <repository-url>
-cd DonorCRM
+cd DonorCRM-SPO
 
 # Copy environment template
 cp .env.example .env
