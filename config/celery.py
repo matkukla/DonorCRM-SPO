@@ -31,6 +31,11 @@ app.conf.beat_schedule = {
         "schedule": crontab(hour=8, minute=0, day_of_week=1),  # Mondays at 8 AM UTC
         "options": {"expires": 7200},
     },
+    "check-pledge-followups-daily": {
+        "task": "apps.journals.tasks.check_pledge_followups",
+        "schedule": crontab(hour=7, minute=30),  # Daily at 7:30 AM UTC
+        "options": {"expires": 3600},
+    },
 }
 
 

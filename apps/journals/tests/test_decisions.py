@@ -190,6 +190,37 @@ class DecisionAPITests(APITestCase):
         self.assertEqual(response.data["cadence"], "monthly")
         self.assertEqual(response.data["status"], "pending")
 
+    def test_create_decision_rejects_zero_amount(self):
+        """A pledge requires a positive amount; zero is rejected (acceptance criterion #1)."""
+        url = reverse("journals:decision-list")
+        data = {
+            "journal_contact": str(self.jc1.id),
+            "amount": "0.00",
+            "cadence": "monthly",
+            "status": "active",
+        }
+
+        response = self.client.post(url, data, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("amount", response.data)
+        self.assertEqual(Decision.objects.count(), 0)
+
+    def test_create_decision_rejects_missing_amount(self):
+        """A pledge requires an amount; omitting it is rejected (acceptance criterion #1)."""
+        url = reverse("journals:decision-list")
+        data = {
+            "journal_contact": str(self.jc1.id),
+            "cadence": "monthly",
+            "status": "active",
+        }
+
+        response = self.client.post(url, data, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("amount", response.data)
+        self.assertEqual(Decision.objects.count(), 0)
+
     # Success Criterion 5: Unique constraint
 
     def test_duplicate_decision_returns_400(self):
