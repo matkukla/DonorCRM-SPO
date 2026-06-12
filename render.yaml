@@ -172,6 +172,41 @@ services:
   #         name: donorcrm-web
   #         envVarKey: BLIND_INDEX_KEYS
 
+  # Pledge follow-up sweep. Celery beat is disabled on Render to save cost, so the
+  # daily 10-day-pledge check runs as a cron instead (same logic, see
+  # apps/journals/pledge_followup.py). Wire the block below as a `cron` service to
+  # activate it; until then run manually from the Render shell:
+  #   python manage.py check_pledge_followups
+  #
+  # - type: cron
+  #   name: donorcrm-pledge-followups
+  #   env: python
+  #   schedule: "30 7 * * *"  # Daily at 7:30 AM UTC
+  #   buildCommand: pip install -r requirements/prod.txt
+  #   startCommand: python manage.py check_pledge_followups
+  #   envVars:
+  #     - key: DJANGO_SETTINGS_MODULE
+  #       value: config.settings.prod
+  #     - key: SECRET_KEY
+  #       fromService:
+  #         type: web
+  #         name: donorcrm-web
+  #         envVarKey: SECRET_KEY
+  #     - key: DATABASE_URL
+  #       fromDatabase:
+  #         name: donorcrm-db
+  #         property: connectionString
+  #     - key: PII_ENCRYPTION_KEYS
+  #       fromService:
+  #         type: web
+  #         name: donorcrm-web
+  #         envVarKey: PII_ENCRYPTION_KEYS
+  #     - key: BLIND_INDEX_KEYS
+  #       fromService:
+  #         type: web
+  #         name: donorcrm-web
+  #         envVarKey: BLIND_INDEX_KEYS
+
 databases:
   # PostgreSQL Database
   - name: donorcrm-db
