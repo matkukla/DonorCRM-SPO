@@ -236,7 +236,7 @@ REST_FRAMEWORK = {
 
 # API Documentation (drf-spectacular)
 SPECTACULAR_SETTINGS = {
-    "TITLE": "DonorCRM API",
+    "TITLE": "DonorCRM-SPO API",
     "DESCRIPTION": (
         "A missionary support management CRM API for tracking donors, gifts, "
         "recurring gifts, and tasks."

@@ -1,4 +1,4 @@
-# DonorCRM
+# DonorCRM-SPO
 
 A purpose-built CRM for missionaries and nonprofit fundraisers at Saint Paul's Outreach (SPO). Simple, motivating, and actually used.
 
@@ -115,8 +115,8 @@ User → React SPA → Axios (JWT + View As header) → Django DRF View
 ### Backend Setup
 
 ```bash
-git clone https://github.com/matkukla/DonorCRM.git
-cd DonorCRM
+git clone https://github.com/matkukla/DonorCRM-SPO.git
+cd DonorCRM-SPO
 
 python3 -m venv venv
 source venv/bin/activate
