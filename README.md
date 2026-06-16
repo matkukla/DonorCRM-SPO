@@ -1,6 +1,6 @@
 # DonorCRM-SPO
 
-A purpose-built CRM for missionaries and nonprofit fundraisers at Saint Paul's Outreach (SPO). It strips donor relationship management down to what a fundraiser actually needs day-to-day — who gave, who stopped, who needs a thank-you, and how close they are to goal — without the bloat that drives low adoption. Currently serves 100+ fundraising staff at SPO.
+A purpose-built CRM for missionaries and nonprofit fundraisers at Saint Paul's Outreach (SPO). It cuts through the CRM bloat to focus on daily fundraising essentials: who gave, who stopped, who needs a thank-you, and progress toward the goal. Currently serves 100+ fundraising staff at SPO.
 
 - **Frontend**: [donorcrm-frontend.onrender.com](https://donorcrm-frontend.onrender.com)
 - **Backend API**: [donorcrm-web.onrender.com](https://donorcrm-web.onrender.com)
