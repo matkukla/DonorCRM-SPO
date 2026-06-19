@@ -145,3 +145,6 @@ e2e/test-results/
 frontend/e2e/.auth/
 frontend/playwright-report/
 frontend/test-results/
+
+# understand-anything knowledge-graph cache (regenerable, ~12MB)
+.understand-anything/
