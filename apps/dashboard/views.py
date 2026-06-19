@@ -11,7 +11,7 @@ from rest_framework.views import APIView
 
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 
-from apps.core.permissions import get_visible_user_ids
+from apps.core.permissions import get_visible_user_ids, is_financial_role
 from apps.core.utils import get_safe_int_param
 from apps.dashboard.services import (
     get_dashboard_summary,
@@ -88,7 +88,11 @@ class DashboardView(APIView):
     @extend_schema(tags=["dashboard"], summary="Get complete dashboard data")
     def get(self, request):
         target = _resolve_target_user(request)
-        data = get_dashboard_summary(target)
+        # Financial detail is gated on the REQUESTER's role, not the target's — a
+        # coach viewing a coached missionary still gets no individual gift detail.
+        data = get_dashboard_summary(
+            target, include_financial_detail=is_financial_role(request.user)
+        )
         return Response(data)
 
 
@@ -116,7 +120,7 @@ class WhatChangedView(APIView):
     @extend_schema(tags=["dashboard"], summary="Get changes since last login")
     def get(self, request):
         target = _resolve_target_user(request)
-        data = get_what_changed(target)
+        data = get_what_changed(target, include_financial_detail=is_financial_role(request.user))
 
         # Serialize events
         from apps.events.serializers import EventSerializer
@@ -231,6 +235,11 @@ class RecentGiftsView(APIView):
         target = _resolve_target_user(request)
         days = get_safe_int_param(request, "days", default=30, min_val=1, max_val=365)
         limit = get_safe_int_param(request, "limit", default=10, min_val=1, max_val=100)
+
+        # Individual gift rows are financial detail — withheld from non-financial
+        # requesters (coach), PRD fix #2.
+        if not is_financial_role(request.user):
+            return Response({"recent_gifts": [], "days": days})
 
         gifts = get_recent_gifts(target, days=days, limit=limit)
 
