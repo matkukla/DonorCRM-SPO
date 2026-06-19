@@ -39,3 +39,59 @@ The single auto-generated Task created when a [[Pledge]] is **not** [[Fulfilled]
 its check date — titled "Donation still not received — follow up", assigned to the
 donor's owning missionary and linked to the donor. Exactly one follow-up is ever
 created per pledge.
+
+### Owner
+The `User` a piece of donor data belongs to. Most owner-scoped models carry a direct
+`owner` FK; others derive it transitively (a [[Gift]] is owned via its
+`donor_contact.owner`; a journal stage event via its journal-contact's journal owner).
+The owner is the missionary whose donor relationship the record represents.
+
+### Visible Set
+The set of user IDs whose data a requester may read, computed by
+`get_visible_user_ids(user, request)` in `apps/core/permissions.py`. It is the central
+data-scoping choke point. Returns `{self}` for admin / supervisor / missionary, and
+`{self} ∪ coached` for a [[Coach]]. When [[View-As]] is active it collapses to
+`{view_as_user}` regardless of role. (The PRD also names a `visible_queryset` helper;
+on this codebase no such helper exists — scoping is done per-view by filtering on
+`owner__in=get_visible_user_ids(...)`.)
+
+### Financial Role
+A role permitted to see individual transaction amounts ([[Gift]] amounts, [[Pledge]]
+amounts). `is_financial_role(user)` is True for admin / supervisor / missionary and
+**False for [[Coach]]**. A coach may see aggregate/summary financials but never
+individual gift or pledge amounts.
+
+The boundary is **aggregate vs. individual**:
+- **Allowed to a coach (summaries):** cumulative `total_given`, `gift_count`, and
+  `last_gift_date` on the contact list, and aggregate dashboard tiles.
+- **Gated from a coach (individual transaction values):** a [[Gift]]'s `amount`, a
+  [[Pledge]]'s `amount` / `monthly_equivalent`, `last_gift_amount`, and individual
+  recent-gift rows on the dashboard. `last_gift_amount` counts as individual (the exact
+  value of one gift), not a summary, even though it sits beside the summary fields.
+
+### Coach
+A role that reads its coached missionaries' non-financial data to support them. A coach
+is **not** a [[Financial Role]]: gift detail, pledge amounts, and `last_gift_amount`
+are gated away. Coaches have no write access (read-only via `IsStaffOrAbove`).
+
+### View-As
+A mode (Phase 52+) in which an admin or supervisor scopes their session to one target
+user via the `X-View-As-User-Id` header, set on the request as `request.view_as_user`.
+While active the [[Visible Set]] collapses to that user and all mutating requests must
+be blocked server-side — View-As is **read-only**, not merely UI-hidden.
+
+### Solicitor
+The missionary credited for a [[Gift]] on import. Import rows may carry a solicitor
+name; the importer resolves it to a linked solicitor's `User` to set [[Owner]]. An
+unresolved solicitor name triggers [[Quarantine]] rather than defaulting ownership to
+the admin uploader.
+
+### Quarantine (import)
+The held-back state for an import gift group that carries solicitor attribution intent
+but whose solicitor name resolves to no linked user, while the matched contact is still
+owned by the admin uploader. Quarantined groups are **not created**; they are reported
+in a `quarantined` / `quarantined_count` field on the import summary for manual
+solicitor assignment and re-import. Chosen over silently creating the gift under admin
+[[Owner]]ship (today's fallback, which leaves the gift owned by the admin uploader).
+See `docs/adr/0002-import-quarantine-over-admin-owned-fallback.md`. The code change
+lands in the audit's fix phase, not before.
