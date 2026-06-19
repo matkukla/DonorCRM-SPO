@@ -8,6 +8,7 @@ from django.db import IntegrityError, transaction
 
 from rest_framework import serializers
 
+from apps.core.permissions import is_financial_role
 from apps.journals.models import (
     Decision,
     DecisionHistory,
@@ -173,15 +174,21 @@ class JournalContactSerializer(serializers.ModelSerializer):
         else:
             decision = decisions[0] if decisions else None
 
-        if decision:
-            return {
-                "id": str(decision.id),
-                "amount": str(decision.amount),
-                "cadence": decision.cadence,
-                "status": decision.status,
-                "monthly_equivalent": str(decision.monthly_equivalent),
-            }
-        return None
+        if not decision:
+            return None
+
+        summary = {
+            "id": str(decision.id),
+            "cadence": decision.cadence,
+            "status": decision.status,
+        }
+        # Pledge amount is individual financial detail — included only for financial
+        # roles. Coaches still see pipeline status + cadence (PRD fix #1).
+        request = self.context.get("request")
+        if request and is_financial_role(request.user):
+            summary["amount"] = str(decision.amount)
+            summary["monthly_equivalent"] = str(decision.monthly_equivalent)
+        return summary
 
     def validate(self, attrs):
         """
