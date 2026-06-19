@@ -28,12 +28,35 @@ from apps.events.services import mark_events_as_not_new
 from apps.users.models import User
 
 
+def _authorize_dashboard_target(user, target_uuid, request):
+    """Authorize ``user`` to view ``target_uuid``'s dashboard, or raise.
+
+    Runs BEFORE any existence lookup so an unauthorized id and a non-existent id are
+    indistinguishable to non-admins — no user enumeration (ADR 0001):
+      - Admin: may select any active user.
+      - Supervisor: only missionaries ASSIGNED to them — the same boundary the
+        View-As middleware enforces (``supervised_users``).
+      - Other roles: only users within their get_visible_user_ids() set.
+    """
+    if user.role == "admin":
+        return
+    if user.role == "supervisor":
+        # Assigned, active missionaries only. .exists() on the assignment set IS the
+        # authorization: a non-existent or unassigned id simply isn't in it -> 403.
+        if user.supervised_users.filter(pk=target_uuid, is_active=True).exists():
+            return
+        raise PermissionDenied("You do not have permission to view this user's dashboard.")
+    if target_uuid not in get_visible_user_ids(user, request=request):
+        raise PermissionDenied("You do not have permission to view this user's dashboard.")
+
+
 def _resolve_target_user(request):
     """Resolve the target user for dashboard data.
 
-    If ?user_id= is provided, return that user if the requester has permission:
-      - Admin and supervisor: may select any active user (dashboard dropdown).
-      - Other roles: only users within their get_visible_user_ids() set.
+    If ?user_id= is provided, return that user if the requester is authorized by
+    _authorize_dashboard_target() (admin: any; supervisor: assigned missionaries;
+    others: their get_visible_user_ids() set). The authorization check runs before
+    the existence lookup, so unauthorized ids return 403, not 404.
 
     Without ?user_id= (or when ?user_id= matches self), returns the requesting user.
     Default data scoping (what shows in list views) is governed separately by
@@ -47,14 +70,8 @@ def _resolve_target_user(request):
             target_uuid = uuid.UUID(target_user_id)
         except ValueError:
             raise NotFound("User not found.")
-        # Admin and supervisor may explicitly select any active user via the
-        # dashboard dropdown. This is distinct from default data scoping
-        # (get_visible_user_ids), which governs list views, not dashboard selection.
-        if user.role not in ["admin", "supervisor"]:
-            visible = get_visible_user_ids(user, request=request)
-            if target_uuid not in visible:
-                raise PermissionDenied("You do not have permission to view this user's dashboard.")
-        target_user = User.objects.filter(id=target_user_id, is_active=True).first()
+        _authorize_dashboard_target(user, target_uuid, request)
+        target_user = User.objects.filter(id=target_uuid, is_active=True).first()
         if not target_user:
             raise NotFound("User not found.")
         return target_user
@@ -271,10 +288,8 @@ class UserDashboardLayoutView(APIView):
             pk = uuid.UUID(pk) if not isinstance(pk, uuid.UUID) else pk
         except ValueError:
             raise NotFound("User not found.")
-        if request.user.role not in ["admin", "supervisor"]:
-            visible = get_visible_user_ids(request.user, request=request)
-            if pk not in visible:
-                raise PermissionDenied("You do not have permission to view this user's dashboard.")
+        if str(pk) != str(request.user.id):
+            _authorize_dashboard_target(request.user, pk, request)
         target = User.objects.filter(id=pk, is_active=True).first()
         if not target:
             raise NotFound("User not found.")

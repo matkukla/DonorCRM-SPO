@@ -39,11 +39,18 @@ class TestResolveTargetUserViaDashboard:
         assert response.status_code == status.HTTP_200_OK
         assert "support_progress" in response.data
 
-    def test_supervisor_can_select_another_user(self):
+    def test_supervisor_can_select_assigned_user(self):
         supervisor = SupervisorUserFactory()
         target = UserFactory(role="missionary", email="resolve-sup-target@test.com")
+        target.supervisors.add(supervisor)
         response = _client(supervisor).get(f"/api/v1/dashboard/?user_id={target.id}")
         assert response.status_code == status.HTTP_200_OK
+
+    def test_supervisor_cannot_select_unassigned_user(self):
+        supervisor = SupervisorUserFactory()
+        target = UserFactory(role="missionary", email="resolve-sup-unassigned@test.com")
+        response = _client(supervisor).get(f"/api/v1/dashboard/?user_id={target.id}")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_missionary_cannot_select_another_user(self):
         missionary = UserFactory(role="missionary", email="resolve-miss@test.com")
