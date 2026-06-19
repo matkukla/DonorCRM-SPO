@@ -308,7 +308,7 @@ def import_re_solicitors(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={"errors": [{"row": 0, "error": str(e)}]},
+            summary={"errors": [{"row": 0, "error": type(e).__name__}]},
         )
         return batch
 
@@ -323,7 +323,7 @@ def import_re_solicitors(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={"errors": [{"row": 0, "error": f"CSV parse error: {e}"}]},
+            summary={"errors": [{"row": 0, "error": f"CSV parse error: {type(e).__name__}"}]},
         )
         return batch
 
@@ -458,7 +458,7 @@ def import_re_solicitors(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={"errors": [{"row": 0, "error": f"Import error: {e}"}]},
+            summary={"errors": [{"row": 0, "error": f"Import error: {type(e).__name__}"}]},
         )
         return batch
 
@@ -741,7 +741,7 @@ def import_re_constituents(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={"errors": [{"row": 0, "error": str(e)}]},
+            summary={"errors": [{"row": 0, "error": type(e).__name__}]},
         )
         return batch
 
@@ -756,7 +756,7 @@ def import_re_constituents(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={"errors": [{"row": 0, "error": f"CSV parse error: {e}"}]},
+            summary={"errors": [{"row": 0, "error": f"CSV parse error: {type(e).__name__}"}]},
         )
         return batch
 
@@ -959,7 +959,7 @@ def import_re_constituents(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={"errors": [{"row": 0, "error": f"Import error: {e}"}]},
+            summary={"errors": [{"row": 0, "error": f"Import error: {type(e).__name__}"}]},
         )
         return batch
 
@@ -1321,7 +1321,7 @@ def import_re_gifts(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={"errors": [{"row": 0, "error": str(e)}]},
+            summary={"errors": [{"row": 0, "error": type(e).__name__}]},
         )
         return batch
 
@@ -1336,7 +1336,7 @@ def import_re_gifts(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={"errors": [{"row": 0, "error": f"CSV parse error: {e}"}]},
+            summary={"errors": [{"row": 0, "error": f"CSV parse error: {type(e).__name__}"}]},
         )
         return batch
 
@@ -1411,9 +1411,10 @@ def import_re_gifts(
                         errors.append(
                             {
                                 "row": int(first_row["_row_number"]),
+                                "field": "constituent_id",
                                 "error": (
-                                    f'Constituent ID "{constituent_id}" not found '
-                                    f"-- skipping gift group {gift_id} (rows {row_nums})"
+                                    "Constituent not found -- skipping gift group "
+                                    f"(rows {row_nums})"
                                 ),
                             }
                         )
@@ -1428,10 +1429,8 @@ def import_re_gifts(
                         errors.append(
                             {
                                 "row": int(first_row["_row_number"]),
-                                "error": (
-                                    f'Row {first_row["_row_number"]}: Invalid amount '
-                                    f'"{first_row.get("amount", "")}" for gift {gift_id}'
-                                ),
+                                "field": "amount",
+                                "error": f'Row {first_row["_row_number"]}: Invalid amount',
                             }
                         )
                         transaction.savepoint_rollback(sp)
@@ -1443,10 +1442,8 @@ def import_re_gifts(
                         errors.append(
                             {
                                 "row": int(first_row["_row_number"]),
-                                "error": (
-                                    f'Row {first_row["_row_number"]}: Invalid date '
-                                    f'"{first_row.get("gift_date", "")}" for gift {gift_id}'
-                                ),
+                                "field": "gift_date",
+                                "error": f'Row {first_row["_row_number"]}: Invalid date',
                             }
                         )
                         transaction.savepoint_rollback(sp)
@@ -1461,10 +1458,8 @@ def import_re_gifts(
                             warnings.append(
                                 {
                                     "row": int(first_row["_row_number"]),
-                                    "warning": (
-                                        f'Fund "{first_row.get("fund", "")}" not found '
-                                        f"for gift {gift_id}"
-                                    ),
+                                    "field": "fund",
+                                    "warning": "Fund not found",
                                 }
                             )
 
@@ -1511,8 +1506,7 @@ def import_re_gifts(
                                     "row": int(row["_row_number"]),
                                     "error": (
                                         f'Row {row["_row_number"]}: Solicitor '
-                                        f'"{solicitor_name}" not found -- credit '
-                                        f"skipped for gift {gift_id}"
+                                        f'"{solicitor_name}" not found -- credit skipped'
                                     ),
                                 }
                             )
@@ -1571,7 +1565,7 @@ def import_re_gifts(
                         {
                             "row": int(rows[0].get("_row_number", 0)),
                             "error": (
-                                f"Gift group {gift_id} (rows {row_nums}): "
+                                f"Gift group (rows {row_nums}): "
                                 f"Unexpected error: {type(e).__name__}"
                             ),
                         }
@@ -1585,7 +1579,7 @@ def import_re_gifts(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={"errors": [{"row": 0, "error": f"Import error: {e}"}]},
+            summary={"errors": [{"row": 0, "error": f"Import error: {type(e).__name__}"}]},
         )
         return batch
 
@@ -1786,7 +1780,7 @@ def import_re_recurring_gifts(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={"errors": [{"row": 0, "error": str(e)}]},
+            summary={"errors": [{"row": 0, "error": type(e).__name__}]},
         )
         return batch
 
@@ -1801,7 +1795,7 @@ def import_re_recurring_gifts(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={"errors": [{"row": 0, "error": f"CSV parse error: {e}"}]},
+            summary={"errors": [{"row": 0, "error": f"CSV parse error: {type(e).__name__}"}]},
         )
         return batch
 
@@ -1877,10 +1871,10 @@ def import_re_recurring_gifts(
                         errors.append(
                             {
                                 "row": int(first_row["_row_number"]),
+                                "field": "constituent_id",
                                 "error": (
-                                    f'Constituent ID "{constituent_id}" not found '
-                                    f"-- skipping recurring gift group {gift_id} "
-                                    f"(rows {row_nums})"
+                                    "Constituent not found -- skipping recurring gift "
+                                    f"group (rows {row_nums})"
                                 ),
                             }
                         )
@@ -1895,11 +1889,8 @@ def import_re_recurring_gifts(
                         errors.append(
                             {
                                 "row": int(first_row["_row_number"]),
-                                "error": (
-                                    f'Row {first_row["_row_number"]}: Invalid amount '
-                                    f'"{first_row.get("amount", "")}" for recurring '
-                                    f"gift {gift_id}"
-                                ),
+                                "field": "amount",
+                                "error": f'Row {first_row["_row_number"]}: Invalid amount',
                             }
                         )
                         transaction.savepoint_rollback(sp)
@@ -1911,11 +1902,10 @@ def import_re_recurring_gifts(
                         errors.append(
                             {
                                 "row": int(first_row["_row_number"]),
+                                "field": "start_date",
                                 "error": (
                                     f'Row {first_row["_row_number"]}: Invalid or '
-                                    f"missing start date "
-                                    f'"{first_row.get("start_date", "")}" for '
-                                    f"recurring gift {gift_id}"
+                                    "missing start date"
                                 ),
                             }
                         )
@@ -1935,11 +1925,8 @@ def import_re_recurring_gifts(
                             errors.append(
                                 {
                                     "row": int(first_row["_row_number"]),
-                                    "error": (
-                                        f'Row {first_row["_row_number"]}: Unknown '
-                                        f'frequency "{raw_frequency}" for recurring '
-                                        f"gift {gift_id}"
-                                    ),
+                                    "field": "frequency",
+                                    "error": f'Row {first_row["_row_number"]}: Unknown frequency',
                                 }
                             )
                             transaction.savepoint_rollback(sp)
@@ -1949,10 +1936,10 @@ def import_re_recurring_gifts(
                         warnings.append(
                             {
                                 "row": int(first_row["_row_number"]),
+                                "field": "frequency",
                                 "warning": (
-                                    f'Row {first_row["_row_number"]}: Empty '
-                                    f"frequency for recurring gift {gift_id} "
-                                    f"-- defaulting to Monthly"
+                                    f'Row {first_row["_row_number"]}: Empty frequency '
+                                    "-- defaulting to Monthly"
                                 ),
                             }
                         )
@@ -1965,11 +1952,8 @@ def import_re_recurring_gifts(
                             errors.append(
                                 {
                                     "row": int(first_row["_row_number"]),
-                                    "error": (
-                                        f'Row {first_row["_row_number"]}: Unknown '
-                                        f'status "{raw_status}" for recurring '
-                                        f"gift {gift_id}"
-                                    ),
+                                    "field": "status",
+                                    "error": f'Row {first_row["_row_number"]}: Unknown status',
                                 }
                             )
                             transaction.savepoint_rollback(sp)
@@ -1986,10 +1970,8 @@ def import_re_recurring_gifts(
                             warnings.append(
                                 {
                                     "row": int(first_row["_row_number"]),
-                                    "warning": (
-                                        f'Fund "{first_row.get("fund", "")}" not '
-                                        f"found for recurring gift {gift_id}"
-                                    ),
+                                    "field": "fund",
+                                    "warning": "Fund not found for recurring gift",
                                 }
                             )
 
@@ -2043,8 +2025,7 @@ def import_re_recurring_gifts(
                                     "row": int(row["_row_number"]),
                                     "error": (
                                         f'Row {row["_row_number"]}: Solicitor '
-                                        f'"{solicitor_name}" not found -- credit '
-                                        f"skipped for recurring gift {gift_id}"
+                                        f'"{solicitor_name}" not found -- credit skipped'
                                     ),
                                 }
                             )
@@ -2167,7 +2148,7 @@ def import_re_recurring_gifts(
                         {
                             "row": int(rows[0].get("_row_number", 0)),
                             "error": (
-                                f"Recurring gift group {gift_id} (rows {row_nums}): "
+                                f"Recurring gift group (rows {row_nums}): "
                                 f"Unexpected error: {type(e).__name__}"
                             ),
                         }
@@ -2181,7 +2162,7 @@ def import_re_recurring_gifts(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={"errors": [{"row": 0, "error": f"Import error: {e}"}]},
+            summary={"errors": [{"row": 0, "error": f"Import error: {type(e).__name__}"}]},
         )
         return batch
 

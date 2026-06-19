@@ -217,6 +217,20 @@ class TestImportREGifts:
         assert batch.created_count == 0
         assert batch.error_count >= 1
 
+    def test_gift_import_summary_has_no_raw_donor_pii(self, admin_user, staff_user, setup_contact):
+        """Error messages must not echo raw values, constituent IDs, or gift IDs (PRD fix #5)."""
+        csv_data = _to_bytes(
+            "Gift_ID,Constituent_ID,GF_Amount,GF_Date\n"
+            "G-PII-AMT,C001,BADAMOUNT999,2025-06-15\n"  # invalid amount for existing contact
+            "G-PII-MISS,C-PII-555,100.00,2025-06-15\n"  # missing constituent
+        )
+        batch = import_re_gifts(csv_data, "gifts.csv", admin_user, staff_user)
+        blob = str(batch.summary)
+        assert "BADAMOUNT999" not in blob  # raw amount value
+        assert "C-PII-555" not in blob  # constituent id
+        assert "G-PII-AMT" not in blob  # external gift id
+        assert "G-PII-MISS" not in blob
+
 
 # ---------------------------------------------------------------------------
 # import_re_recurring_gifts tests
