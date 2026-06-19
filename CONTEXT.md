@@ -87,11 +87,12 @@ unresolved solicitor name triggers [[Quarantine]] rather than defaulting ownersh
 the admin uploader.
 
 ### Quarantine (import)
-The held-back state for an import gift group that carries solicitor attribution intent
-but whose solicitor name resolves to no linked user, while the matched contact is still
-owned by the admin uploader. Quarantined groups are **not created**; they are reported
-in a `quarantined` / `quarantined_count` field on the import summary for manual
-solicitor assignment and re-import. Chosen over silently creating the gift under admin
-[[Owner]]ship (today's fallback, which leaves the gift owned by the admin uploader).
-See `docs/adr/0002-import-quarantine-over-admin-owned-fallback.md`. The code change
-lands in the audit's fix phase, not before.
+The held-back state for an RE gift / recurring-gift import group that carries solicitor
+attribution intent but whose solicitor name resolves to no linked user, while the matched
+contact is still owned by an **admin** (the uploader). Quarantined groups are **not
+created**; they are reported in a `quarantined` / `quarantined_count` field on the import
+summary for manual solicitor assignment and re-import. Chosen over silently creating the
+gift under admin [[Owner]]ship. Implemented in `apps/imports/re_services.py` for both
+`import_re_gifts` and `import_re_recurring_gifts`; the trigger is an **admin-role owner**
+(a missionary-owned contact whose solicitors merely lack a user link still imports). See
+`docs/adr/0002-import-quarantine-over-admin-owned-fallback.md`.

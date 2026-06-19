@@ -570,6 +570,79 @@ class TestImportREGiftsOwnerReassignment:
         assert contact.owner == admin1, f"Expected owner to remain {admin1}, got {contact.owner}"
 
 
+@pytest.mark.django_db
+class TestImportREGiftsQuarantine:
+    """ADR 0002 / PRD fix #4: hold back gifts whose solicitor doesn't resolve."""
+
+    @pytest.fixture
+    def admin1(self):
+        return AdminUserFactory(email="qadmin@test.com")
+
+    def test_quarantines_unresolved_solicitor_gift(self, admin1):
+        """Admin-owned contact + solicitor name present + no resolving user => quarantined,
+        gift NOT created."""
+        Contact.objects.create(
+            owner=admin1,
+            external_constituent_id="C-QUAR-01",
+            first_name="Quar",
+            last_name="Antine",
+        )
+        csv_data = _to_bytes(
+            "Gift_ID,Constituent_ID,GF_Amount,GF_Date,Solicitor_Name,Credit_Amount\n"
+            'G-QUAR-01,C-QUAR-01,500.00,2025-06-15,"Ghost, Person",500.00\n'
+        )
+        batch = import_re_gifts(csv_data, "gifts_quar.csv", admin1, admin1)
+        assert batch.status == ImportBatchStatus.COMPLETED
+        assert batch.created_count == 0
+        assert not Gift.objects.filter(external_gift_id="G-QUAR-01").exists()
+        assert batch.summary["quarantined_count"] >= 1
+
+    def test_resolvable_solicitor_not_quarantined_and_reassigns(self, admin1):
+        """A resolvable solicitor still creates the gift and reassigns ownership."""
+        from apps.imports.re_services import normalize_solicitor_name
+
+        missionary = UserFactory(email="resolve.sol@test.com")
+        Solicitor.objects.create(
+            normalized_name=normalize_solicitor_name("Real Person"),
+            external_solicitor_id="SOL-QUAR-OK",
+            user=missionary,
+        )
+        contact = Contact.objects.create(
+            owner=admin1,
+            external_constituent_id="C-QUAR-OK",
+            first_name="Ok",
+            last_name="Donor",
+        )
+        csv_data = _to_bytes(
+            "Gift_ID,Constituent_ID,GF_Amount,GF_Date,Solicitor_Name,Credit_Amount\n"
+            'G-QUAR-OK,C-QUAR-OK,300.00,2025-06-15,"Real Person",300.00\n'
+        )
+        batch = import_re_gifts(csv_data, "gifts_quar_ok.csv", admin1, admin1)
+        assert batch.created_count == 1
+        assert batch.summary["quarantined_count"] == 0
+        contact.refresh_from_db()
+        assert contact.owner == missionary
+
+    def test_recurring_quarantines_unresolved_solicitor(self, admin1):
+        """Recurring-gift import mirrors the quarantine rule (ADR 0002)."""
+        Contact.objects.create(
+            owner=admin1,
+            external_constituent_id="C-RQUAR-01",
+            first_name="Rec",
+            last_name="Quar",
+        )
+        csv_data = _to_bytes(
+            "Gift_ID,Constituent_ID,Amount,Frequency,Start_Date,Status,"
+            "Solicitor_Name,Credit_Amount\n"
+            'RG-QUAR-01,C-RQUAR-01,200.00,Monthly,2025-01-01,Active,"Ghost, Person",200.00\n'
+        )
+        batch = import_re_recurring_gifts(csv_data, "rg_quar.csv", admin1, admin1)
+        assert batch.status == ImportBatchStatus.COMPLETED
+        assert batch.created_count == 0
+        assert not RecurringGift.objects.filter(external_gift_id="RG-QUAR-01").exists()
+        assert batch.summary["quarantined_count"] >= 1
+
+
 # ---------------------------------------------------------------------------
 # Recurring gift owner reassignment tests
 # ---------------------------------------------------------------------------

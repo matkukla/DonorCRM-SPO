@@ -1388,6 +1388,7 @@ def import_re_gifts(
     skipped_count = 0
     prayer_count = 0
     unmatched_solicitors: list[str] = []
+    quarantined: list = []
     seen_prayers: dict = {}
 
     try:
@@ -1482,6 +1483,37 @@ def import_re_gifts(
                         transaction.savepoint_commit(sp)
                         continue
 
+                    # Quarantine (ADR 0002 / PRD fix #4): hold the gift group back when
+                    # the matched contact is still owned by the admin uploader (its owner
+                    # is an admin), the rows carry solicitor names (attribution intent),
+                    # AND none of those names resolve to a linked solicitor's user.
+                    # Creating it here would silently misroute the donor to the admin.
+                    owner_is_linked_missionary = Solicitor.objects.filter(
+                        user=contact.owner,
+                    ).exists()
+                    owner_is_admin = bool(
+                        contact.owner and getattr(contact.owner, "role", None) == "admin"
+                    )
+                    present_solicitor_names = [
+                        r.get("solicitor_name", "").strip()
+                        for r in rows
+                        if r.get("solicitor_name", "").strip()
+                    ]
+                    any_solicitor_resolves = any(
+                        (sol := solicitor_lookup.get(normalize_solicitor_name(name)))
+                        and sol.user_id
+                        for name in present_solicitor_names
+                    )
+                    if owner_is_admin and present_solicitor_names and not any_solicitor_resolves:
+                        quarantined.append(
+                            {
+                                "row": int(first_row["_row_number"]),
+                                "reason": "unresolved_solicitor",
+                            }
+                        )
+                        transaction.savepoint_rollback(sp)
+                        continue
+
                     # Create Gift
                     gift = Gift.objects.create(
                         external_gift_id=gift_id,
@@ -1528,10 +1560,7 @@ def import_re_gifts(
                     # Only skip if the contact is already owned by a linked missionary
                     # (i.e. the owner has a Solicitor record). This handles the case where
                     # constituents and gifts are imported by different admin users.
-                    contact_owner_is_missionary = Solicitor.objects.filter(
-                        user=contact.owner,
-                    ).exists()
-                    if not contact_owner_is_missionary:
+                    if not owner_is_linked_missionary:
                         for credit_row in rows:
                             sol_name = credit_row.get("solicitor_name", "")
                             if not sol_name:
@@ -1600,6 +1629,8 @@ def import_re_gifts(
             "warnings": warnings,
             "prayer_count": prayer_count,
             "unmatched_solicitors": unmatched_solicitors,
+            "quarantined": quarantined,
+            "quarantined_count": len(quarantined),
         },
     )
 
@@ -1848,6 +1879,7 @@ def import_re_recurring_gifts(
     updated_count = 0
     skipped_count = 0
     unmatched_solicitors: list[str] = []
+    quarantined: list = []
     seen_prayers: dict = {}
 
     try:
@@ -1998,6 +2030,35 @@ def import_re_recurring_gifts(
                         transaction.savepoint_commit(sp)
                         continue
 
+                    # Quarantine (ADR 0002 / PRD fix #4): mirror of import_re_gifts().
+                    # Hold the recurring gift back when the contact is still owned by an
+                    # admin, solicitor names are present, and none resolve to a user.
+                    owner_is_linked_missionary = Solicitor.objects.filter(
+                        user=contact.owner,
+                    ).exists()
+                    owner_is_admin = bool(
+                        contact.owner and getattr(contact.owner, "role", None) == "admin"
+                    )
+                    present_solicitor_names = [
+                        r.get("solicitor_name", "").strip()
+                        for r in rows
+                        if r.get("solicitor_name", "").strip()
+                    ]
+                    any_solicitor_resolves = any(
+                        (sol := solicitor_lookup.get(normalize_solicitor_name(name)))
+                        and sol.user_id
+                        for name in present_solicitor_names
+                    )
+                    if owner_is_admin and present_solicitor_names and not any_solicitor_resolves:
+                        quarantined.append(
+                            {
+                                "row": int(first_row["_row_number"]),
+                                "reason": "unresolved_solicitor",
+                            }
+                        )
+                        transaction.savepoint_rollback(sp)
+                        continue
+
                     # Create RecurringGift
                     rg = RecurringGift.objects.create(
                         external_gift_id=gift_id,
@@ -2047,10 +2108,7 @@ def import_re_recurring_gifts(
                     # Mirror of the same logic in import_re_gifts() (one-time gifts).
                     # Only reassign if the contact is not already owned by a
                     # linked missionary (i.e. the owner has a Solicitor record).
-                    contact_owner_is_missionary = Solicitor.objects.filter(
-                        user=contact.owner,
-                    ).exists()
-                    if not contact_owner_is_missionary:
+                    if not owner_is_linked_missionary:
                         for row in rows:
                             sol_name = row.get("solicitor_name", "")
                             if not sol_name:
@@ -2182,6 +2240,8 @@ def import_re_recurring_gifts(
             "errors": errors,
             "warnings": warnings,
             "unmatched_solicitors": unmatched_solicitors,
+            "quarantined": quarantined,
+            "quarantined_count": len(quarantined),
         },
     )
 
