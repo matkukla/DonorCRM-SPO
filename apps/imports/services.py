@@ -17,6 +17,12 @@ from apps.imports.models import Fund, ImportStatus
 logger = logging.getLogger(__name__)
 
 
+# Hard cap on rows materialized by the in-memory legacy CSV exporters (issue
+# #119). These build the whole CSV in memory, so an unbounded queryset could
+# pull the entire donor base into one string. Matches the 10k cap on the
+# dedicated streaming export views.
+MAX_EXPORT_ROWS = 10_000
+
 # Valid enum values for validation
 VALID_FUND_STATUSES = ["active", "inactive", "closed"]
 
@@ -244,7 +250,12 @@ def export_contacts_csv(queryset) -> str:
     writer = csv.DictWriter(output, fieldnames=fieldnames)
     writer.writeheader()
 
-    for contact in queryset:
+    rows = list(queryset[: MAX_EXPORT_ROWS + 1])
+    if len(rows) > MAX_EXPORT_ROWS:
+        logger.warning("Contact export truncated to %d rows (more were available)", MAX_EXPORT_ROWS)
+        rows = rows[:MAX_EXPORT_ROWS]
+
+    for contact in rows:
         writer.writerow(
             {
                 "first_name": sanitize_csv_value(contact.first_name),
@@ -291,7 +302,12 @@ def export_gifts_csv(queryset) -> str:
     writer = csv.DictWriter(output, fieldnames=fieldnames)
     writer.writeheader()
 
-    for gift in queryset.select_related("donor_contact"):
+    rows = list(queryset.select_related("donor_contact")[: MAX_EXPORT_ROWS + 1])
+    if len(rows) > MAX_EXPORT_ROWS:
+        logger.warning("Gift export truncated to %d rows (more were available)", MAX_EXPORT_ROWS)
+        rows = rows[:MAX_EXPORT_ROWS]
+
+    for gift in rows:
         writer.writerow(
             {
                 "contact_first_name": sanitize_csv_value(gift.donor_contact.first_name),
