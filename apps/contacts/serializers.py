@@ -293,9 +293,16 @@ class ContactJournalMembershipSerializer(serializers.ModelSerializer):
         if not decision:
             return None
 
-        return {
+        summary = {
             "id": str(decision.id),
-            "amount": str(decision.amount),
             "cadence": decision.cadence,
             "status": decision.status,
         }
+        # Pledge amount is gated from non-financial roles (coach); pipeline
+        # status + cadence remain visible (PRD fix #1).
+        from apps.core.permissions import is_financial_role
+
+        request = self.context.get("request")
+        if request and is_financial_role(request.user):
+            summary["amount"] = str(decision.amount)
+        return summary

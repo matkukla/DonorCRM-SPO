@@ -2,7 +2,6 @@
 CSV export view for journals with FilterSet-based filtering.
 """
 
-import csv
 from datetime import datetime
 
 from django.http import StreamingHttpResponse
@@ -10,17 +9,11 @@ from django.http import StreamingHttpResponse
 from rest_framework import permissions
 from rest_framework.views import APIView
 
+from apps.core.csv_export import safe_csv_stream
 from apps.core.permissions import get_visible_user_ids
 from apps.imports.services import sanitize_csv_value
 from apps.journals.filters import JournalFilterSet
 from apps.journals.models import Journal
-
-
-class Echo:
-    """Pseudo-buffer for csv.writer to write to StreamingHttpResponse."""
-
-    def write(self, value):
-        return value
 
 
 class JournalExportCSVView(APIView):
@@ -48,10 +41,7 @@ class JournalExportCSVView(APIView):
 
         filename = f"journals_{datetime.now().date().isoformat()}.csv"
 
-        def generate_csv():
-            pseudo_buffer = Echo()
-            writer = csv.writer(pseudo_buffer)
-
+        def generate_rows(writer):
             # Header
             yield writer.writerow(
                 [
@@ -81,6 +71,8 @@ class JournalExportCSVView(APIView):
                     ]
                 )
 
-        response = StreamingHttpResponse(generate_csv(), content_type="text/csv")
+        response = StreamingHttpResponse(
+            safe_csv_stream(generate_rows, export_name="journals"), content_type="text/csv"
+        )
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response

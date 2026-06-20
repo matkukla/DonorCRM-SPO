@@ -15,7 +15,7 @@ from apps.contacts.models import Contact
 from apps.core.fiscal_year import fiscal_year_end, fiscal_year_start, months_elapsed_in_fiscal_year
 from apps.core.gift_utils import _monthly_equivalent_aggregate
 from apps.core.permissions import get_visible_user_ids
-from apps.events.models import Event
+from apps.events.models import Event, EventType
 from apps.gifts.models import Gift, RecurringGift, RecurringGiftStatus
 from apps.imports.models import ImportBatch, ImportBatchStatus, ImportBatchType, MPDSnapshot
 from apps.tasks.models import Task, TaskStatus
@@ -26,9 +26,18 @@ logger = logging.getLogger(__name__)
 DEFAULT_MPD_CAP = 3600.0
 
 
-def get_what_changed(user, since=None):
+# Event types whose message carries an individual transaction amount. These are
+# withheld from non-financial roles (coach) in the event feed (PRD fix #2).
+FINANCIAL_EVENT_TYPES = (EventType.DONATION_RECEIVED, EventType.FIRST_DONATION)
+
+
+def get_what_changed(user, since=None, include_financial_detail=True):
     """
     Get events/changes since the user's last login.
+
+    When ``include_financial_detail`` is False (non-financial requester such as a
+    coach), events whose message carries an individual gift amount are excluded from
+    the recent-events feed so the amount cannot leak via a notification message.
     """
     if since is None:
         since = user.last_login_at or (date.today() - timedelta(days=7))
@@ -39,8 +48,11 @@ def get_what_changed(user, since=None):
     # Get counts by type
     event_counts = events.values("event_type").annotate(count=Count("id"))
 
-    # Get recent events (limit to 10)
-    recent_events = events.order_by("-created_at")[:10]
+    # Get recent events (limit to 10), dropping amount-bearing events for coaches.
+    recent_events_qs = events
+    if not include_financial_detail:
+        recent_events_qs = recent_events_qs.exclude(event_type__in=FINANCIAL_EVENT_TYPES)
+    recent_events = recent_events_qs.order_by("-created_at")[:10]
 
     return {
         "event_counts": {e["event_type"]: e["count"] for e in event_counts},
@@ -296,14 +308,27 @@ def get_monthly_gifts(user, months=12):
     }
 
 
-def get_dashboard_summary(user):
+def get_dashboard_summary(user, include_financial_detail=True):
     """
     Get complete dashboard data in one call.
     Caches querysets to avoid duplicate database queries.
+
+    ``include_financial_detail`` defaults to True for self-summary callers (e.g. the
+    weekly email). The dashboard view passes the *requester's* is_financial_role
+    status. When False (coach), individual gift detail is withheld: recent-gift rows
+    and their total are dropped, and last_gift_amount is stripped from the thank-you
+    lists. Aggregate tiles (support progress, giving summary, counts) remain (PRD fix #2).
     """
     logger.info("Fetching dashboard summary for user %s", user.id)
 
-    what_changed = get_what_changed(user)
+    # Field lists for the thank-you summaries — drop last_gift_amount for non-financial.
+    thank_you_needed_fields = ["id", "first_name", "last_name"]
+    thank_you_queue_fields = ["id", "first_name", "last_name", "last_gift_date"]
+    if include_financial_detail:
+        thank_you_needed_fields.append("last_gift_amount")
+        thank_you_queue_fields.append("last_gift_amount")
+
+    what_changed = get_what_changed(user, include_financial_detail=include_financial_detail)
     # Convert querysets to lists of dicts
     what_changed["recent_events"] = list(
         what_changed["recent_events"].values(
@@ -323,9 +348,7 @@ def get_dashboard_summary(user):
         needs_attention["broadcast_tasks"].values("id", "title", "due_date", "priority")
     )
     needs_attention["thank_you_needed"] = list(
-        needs_attention["thank_you_needed"].values(
-            "id", "first_name", "last_name", "last_gift_amount"
-        )
+        needs_attention["thank_you_needed"].values(*thank_you_needed_fields)
     )
 
     # Late donations — limit the displayed list to 10 and compute the total
@@ -337,11 +360,7 @@ def get_dashboard_summary(user):
     late_donations_count = count_late_donations(base_recurring_for_owner(user))
 
     thank_you_qs = get_thank_you_queue(user)
-    thank_you_list = list(
-        thank_you_qs[:5].values(
-            "id", "first_name", "last_name", "last_gift_amount", "last_gift_date"
-        )
-    )
+    thank_you_list = list(thank_you_qs[:5].values(*thank_you_queue_fields))
     thank_you_count = thank_you_qs.count()
 
     logger.debug(
@@ -350,29 +369,20 @@ def get_dashboard_summary(user):
         thank_you_count,
     )
 
-    # Pre-aggregate total of ALL recent gifts (not just the limited list)
-    thirty_days_ago = date.today() - timedelta(days=30)
-    recent_total_cents = (
-        Gift.objects.filter(
-            donor_contact__owner=user,
-            gift_date__gte=thirty_days_ago,
-        ).aggregate(
-            total=Sum("amount_cents")
-        )["total"]
-        or 0
-    )
-    recent_gifts_total = float(Decimal(recent_total_cents) / Decimal(100))
-
-    return {
-        "what_changed": what_changed,
-        "needs_attention": needs_attention,
-        "late_donations": late_donations,
-        "late_donations_count": late_donations_count,
-        "thank_you_queue": thank_you_list,
-        "thank_you_count": thank_you_count,
-        "support_progress": get_support_progress(user),
-        "recent_gifts_total": recent_gifts_total,
-        "recent_gifts": list(
+    # Individual recent-gift rows + their total are financial detail — withheld from
+    # non-financial requesters (coach); aggregate tiles remain (PRD fix #2).
+    if include_financial_detail:
+        # Pre-aggregate total of ALL recent gifts (not just the limited list)
+        thirty_days_ago = date.today() - timedelta(days=30)
+        recent_total_cents = (
+            Gift.objects.filter(
+                donor_contact__owner=user,
+                gift_date__gte=thirty_days_ago,
+            ).aggregate(total=Sum("amount_cents"))["total"]
+            or 0
+        )
+        recent_gifts_total = float(Decimal(recent_total_cents) / Decimal(100))
+        recent_gifts = list(
             get_recent_gifts(user)
             .annotate(
                 amount=ExpressionWrapper(
@@ -387,7 +397,21 @@ def get_dashboard_summary(user):
             .values(
                 "id", "amount", "date", "contact_id", "contact__first_name", "contact__last_name"
             )
-        ),
+        )
+    else:
+        recent_gifts_total = None
+        recent_gifts = []
+
+    return {
+        "what_changed": what_changed,
+        "needs_attention": needs_attention,
+        "late_donations": late_donations,
+        "late_donations_count": late_donations_count,
+        "thank_you_queue": thank_you_list,
+        "thank_you_count": thank_you_count,
+        "support_progress": get_support_progress(user),
+        "recent_gifts_total": recent_gifts_total,
+        "recent_gifts": recent_gifts,
     }
 
 

@@ -127,10 +127,11 @@ class TestSupportProgressView:
 class TestResolveTargetUser:
     """Tests for _resolve_target_user() dashboard selection permissions."""
 
-    def test_supervisor_can_view_missionary_dashboard(self):
-        """Supervisor may select any missionary via ?user_id= (dashboard dropdown)."""
+    def test_supervisor_can_view_assigned_missionary_dashboard(self):
+        """Supervisor may select a missionary ASSIGNED to them (ADR 0001)."""
         supervisor = SupervisorUserFactory()
         missionary = UserFactory(role="missionary")
+        missionary.supervisors.add(supervisor)
 
         client = APIClient()
         client.force_authenticate(user=supervisor)
@@ -138,6 +139,31 @@ class TestResolveTargetUser:
         response = client.get(f"/api/v1/dashboard/?user_id={missionary.id}")
 
         assert response.status_code == status.HTTP_200_OK
+
+    def test_supervisor_cannot_view_unassigned_missionary_dashboard(self):
+        """Supervisor may NOT select a missionary not assigned to them — 403 (ADR 0001)."""
+        supervisor = SupervisorUserFactory()
+        missionary = UserFactory(role="missionary")  # not assigned
+
+        client = APIClient()
+        client.force_authenticate(user=supervisor)
+
+        response = client.get(f"/api/v1/dashboard/?user_id={missionary.id}")
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_supervisor_cannot_view_other_supervisor_or_admin_dashboard(self):
+        """Supervisor may not select another supervisor or an admin — 403 (ADR 0001)."""
+        supervisor = SupervisorUserFactory()
+        other_supervisor = SupervisorUserFactory()
+        admin = AdminUserFactory()
+
+        client = APIClient()
+        client.force_authenticate(user=supervisor)
+
+        for target in (other_supervisor, admin):
+            response = client.get(f"/api/v1/dashboard/?user_id={target.id}")
+            assert response.status_code == status.HTTP_403_FORBIDDEN, target.role
 
     def test_admin_can_view_missionary_dashboard(self):
         """Admin may select any missionary via ?user_id= (dashboard dropdown)."""
@@ -163,8 +189,12 @@ class TestResolveTargetUser:
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_supervisor_with_nonexistent_user_id_returns_404(self):
-        """Supervisor passing a non-existent user_id receives 404 (not 403)."""
+    def test_supervisor_with_nonexistent_user_id_returns_403_not_404(self):
+        """Supervisor passing an unauthorized/non-existent user_id receives 403, not 404.
+
+        The permission check runs BEFORE the existence lookup, so a forbidden id and a
+        non-existent id are indistinguishable — no user enumeration (ADR 0001).
+        """
         import uuid
 
         supervisor = SupervisorUserFactory()
@@ -174,5 +204,18 @@ class TestResolveTargetUser:
 
         nonexistent_id = uuid.uuid4()
         response = client.get(f"/api/v1/dashboard/?user_id={nonexistent_id}")
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_admin_with_nonexistent_user_id_returns_404(self):
+        """Admin may select any user, so a non-existent id is a genuine 404."""
+        import uuid
+
+        admin = AdminUserFactory()
+
+        client = APIClient()
+        client.force_authenticate(user=admin)
+
+        response = client.get(f"/api/v1/dashboard/?user_id={uuid.uuid4()}")
 
         assert response.status_code == status.HTTP_404_NOT_FOUND

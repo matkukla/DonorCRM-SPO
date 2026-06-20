@@ -2,7 +2,6 @@
 CSV export views for Gift and RecurringGift with FilterSet-based filtering.
 """
 
-import csv
 from datetime import datetime
 
 from django.http import HttpResponseForbidden, StreamingHttpResponse
@@ -10,17 +9,11 @@ from django.http import HttpResponseForbidden, StreamingHttpResponse
 from rest_framework import permissions
 from rest_framework.views import APIView
 
+from apps.core.csv_export import safe_csv_stream
 from apps.core.permissions import get_visible_user_ids
 from apps.gifts.filters import GiftFilterSet, RecurringGiftFilterSet
 from apps.gifts.models import Gift, RecurringGift
 from apps.imports.services import sanitize_csv_value
-
-
-class Echo:
-    """Pseudo-buffer for csv.writer to write to StreamingHttpResponse."""
-
-    def write(self, value):
-        return value
 
 
 class GiftExportCSVView(APIView):
@@ -49,10 +42,7 @@ class GiftExportCSVView(APIView):
 
         filename = f"donations_{datetime.now().date().isoformat()}.csv"
 
-        def generate_csv():
-            pseudo_buffer = Echo()
-            writer = csv.writer(pseudo_buffer)
-
+        def generate_rows(writer):
             # Header
             yield writer.writerow(
                 [
@@ -78,7 +68,9 @@ class GiftExportCSVView(APIView):
                     ]
                 )
 
-        response = StreamingHttpResponse(generate_csv(), content_type="text/csv")
+        response = StreamingHttpResponse(
+            safe_csv_stream(generate_rows, export_name="gifts"), content_type="text/csv"
+        )
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response
 
@@ -109,10 +101,7 @@ class RecurringGiftExportCSVView(APIView):
 
         filename = f"pledges_{datetime.now().date().isoformat()}.csv"
 
-        def generate_csv():
-            pseudo_buffer = Echo()
-            writer = csv.writer(pseudo_buffer)
-
+        def generate_rows(writer):
             # Header
             yield writer.writerow(
                 [
@@ -138,6 +127,9 @@ class RecurringGiftExportCSVView(APIView):
                     ]
                 )
 
-        response = StreamingHttpResponse(generate_csv(), content_type="text/csv")
+        response = StreamingHttpResponse(
+            safe_csv_stream(generate_rows, export_name="recurring_gifts"),
+            content_type="text/csv",
+        )
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response

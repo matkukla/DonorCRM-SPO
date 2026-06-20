@@ -734,7 +734,7 @@ def import_spo_gifts(
                             gift_id,
                             constituent_id,
                         )
-                        contact_not_found.append(constituent_id)
+                        contact_not_found.append(row_num)
                         skipped_count += 1
                         transaction.savepoint_rollback(sp)
                         continue
@@ -752,7 +752,8 @@ def import_spo_gifts(
                     errors.append(
                         {
                             "row": row_num,
-                            "error": f"Unparseable or zero amount: {gift_amount_raw!r}",
+                            "field": "gift_amount",
+                            "error": "Unparseable or zero gift amount",
                         }
                     )
                     error_count += 1
@@ -761,7 +762,9 @@ def import_spo_gifts(
 
                 gift_date = _parse_date(gift_date_raw)
                 if gift_date is None:
-                    errors.append({"row": row_num, "error": f"Invalid date: {gift_date_raw!r}"})
+                    errors.append(
+                        {"row": row_num, "field": "gift_date", "error": "Invalid gift date"}
+                    )
                     error_count += 1
                     transaction.savepoint_rollback(sp)
                     continue
@@ -797,13 +800,13 @@ def import_spo_gifts(
                     _maybe_create_prayer_intention(gift, prayer_description, contact, seen_prayers)
 
                 created_count += 1
+                # Record the missionary attribution by row only — no per-donor giving
+                # record (constituent id + amount) in the persisted summary (PRD fix #5).
                 per_missionary.append(
                     {
-                        "gift_id": gift_id,
+                        "row": row_num,
                         "missionary": solicitor_name_raw,
                         "match_type": match_type,
-                        "constituent_id": constituent_id,
-                        "amount_cents": amount_cents,
                     }
                 )
                 transaction.savepoint_commit(sp)
@@ -812,7 +815,7 @@ def import_spo_gifts(
                 logger.exception(
                     "Error processing gift row %d (gift_id=%s): %s", row_num, gift_id, exc
                 )
-                errors.append({"row": row_num, "error": str(exc)})
+                errors.append({"row": row_num, "error": type(exc).__name__})
                 error_count += 1
                 transaction.savepoint_rollback(sp)
 
