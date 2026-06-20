@@ -130,7 +130,6 @@ test_data/transactions.csv
 test_data/pledges.csv
 test_data/funds.csv
 test_data/entities.csv
-SYSTEM_README.md
 bug_list.csv
 bug_lists/
 
@@ -146,3 +145,6 @@ e2e/test-results/
 frontend/e2e/.auth/
 frontend/playwright-report/
 frontend/test-results/
+
+# understand-anything knowledge-graph cache (regenerable, ~12MB)
+.understand-anything/

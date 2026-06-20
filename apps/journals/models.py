@@ -251,6 +251,13 @@ class Decision(TimeStampedModel):
         db_index=True,
     )
 
+    follow_up_created_at = models.DateTimeField(
+        "follow-up created at",
+        null=True,
+        blank=True,
+        help_text="When the unfulfilled-pledge follow-up Task was created (idempotency guard).",
+    )
+
     class Meta:
         db_table = "journal_decisions"
         verbose_name = "decision"
@@ -263,6 +270,8 @@ class Decision(TimeStampedModel):
         indexes = [
             # Supports admin analytics weekly-trend scans (TruncWeek on created_at).
             models.Index(fields=["created_at"]),
+            # Supports the pledge follow-up sweep (active, not-yet-followed-up).
+            models.Index(fields=["status", "follow_up_created_at"]),
         ]
 
     def __str__(self):

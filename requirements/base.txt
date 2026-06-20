@@ -23,10 +23,10 @@ django-csp>=4.0,<5.0
 # Per-account lockout to defend credential stuffing across IP rotation.
 django-axes>=6.4,<7.0
 # Field-level encryption for donor PII (apps/core/encryption.py).
-# Floor raised to 46.0.7: fixes CVE-2026-26007, PYSEC-2026-35, PYSEC-2026-36
-# (all present in 45.0.7). 46.x uses the same Fernet/AESGCM APIs this code
-# relies on; the major only dropped Python <3.8 and bumped OpenSSL/Rust.
-cryptography>=46.0.7,<47.0
+# Floor raised to 48.0.1: fixes GHSA-537c-gmf6-5ccf (present through 46.x/47.x).
+# 47.x/48.x keep the same Fernet/MultiFernet/AESGCM/InvalidTag/InvalidToken APIs
+# this code relies on; the majors only dropped old OpenSSL/Python support.
+cryptography>=48.0.1,<49.0
 
 # Utilities
 python-dateutil>=2.8,<3.0

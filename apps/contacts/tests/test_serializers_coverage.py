@@ -221,11 +221,18 @@ class TestJournalMembershipSerializerFallbacks:
     """ContactJournalMembershipSerializer get_current_stage/get_decision fallbacks
     when events/decisions are NOT prefetched (direct serialization)."""
 
-    def _serialize(self, jc):
+    def _serialize(self, jc, request_user=None):
         # Re-fetch without the prefetch attributes the view sets, so the
         # serializer hits its query-based fallback branches.
         fresh = JournalContact.objects.get(pk=jc.pk)
-        return ContactJournalMembershipSerializer(fresh).data
+        context = {}
+        if request_user is not None:
+            from rest_framework.test import APIRequestFactory
+
+            request = APIRequestFactory().get("/api/v1/contacts/")
+            request.user = request_user
+            context["request"] = request
+        return ContactJournalMembershipSerializer(fresh, context=context).data
 
     def test_current_stage_fallback_from_latest_event(self, user):
         contact = ContactFactory(owner=user)
@@ -255,7 +262,8 @@ class TestJournalMembershipSerializerFallbacks:
         decision = Decision.objects.create(
             journal_contact=jc, amount="125.00", cadence="monthly", status="active"
         )
-        data = self._serialize(jc)
+        # Financial role (missionary) sees the pledge amount.
+        data = self._serialize(jc, request_user=user)
         assert data["decision"] is not None
         assert data["decision"]["id"] == str(decision.id)
         assert data["decision"]["amount"] == "125.00"

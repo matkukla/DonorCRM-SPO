@@ -25,7 +25,7 @@ DonorCRM/
 
 ## Architecture Principles — MUST FOLLOW
 
-- Treat this document and SYSTEM_README.md as the primary context source
+- Treat this document and README.md as the primary context source
 - Preserve existing architecture unless a redesign is explicitly requested
 - Prefer incremental, safe changes over broad refactors
 - Do not make up implementation details — if uncertain, read the code first
