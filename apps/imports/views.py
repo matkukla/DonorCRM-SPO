@@ -22,6 +22,7 @@ from apps.imports.generic_services import (
 from apps.imports.models import Fund, ImportBatchStatus, MPDSnapshot, MPDUpload
 from apps.imports.mpd_services import process_mpd_upload
 from apps.imports.re_services import (
+    decode_csv_bytes,
     import_re_constituents,
     import_re_gifts,
     import_re_recurring_gifts,
@@ -52,6 +53,61 @@ MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10 MB
 # Threshold for using async import (number of rows).
 # Set high to keep imports on the sync path while Celery/Redis are disabled in production.
 ASYNC_THRESHOLD = 100_000
+
+# Hard per-upload row cap for the gift importers (issue #118). Gift rows fire
+# the encryption write path plus a GiftCredit insert; even with the per-gift
+# stat-signal cascade suppressed, a synchronous import must finish inside the
+# gunicorn timeout. This cap rejects oversized web uploads up front with an
+# actionable message instead of letting them time out and roll back. The
+# one-time bulk migration runs via a management command (no request timeout)
+# and is intentionally NOT subject to this cap.
+MAX_GIFT_IMPORT_ROWS = 25_000
+
+
+def _count_csv_data_rows(file_bytes: bytes):
+    """Count CSV data rows (excluding the header) for an up-front size guard.
+
+    A conservative approximation: for RE/SPO exports that prepend a type-label
+    row, this overcounts by one (the label is discarded as the header and the
+    real header is counted as a data row). That only ever rejects 1 row early at
+    the cap boundary, never admits an oversized file, so it is intentionally not
+    corrected here -- stripping an RE-specific prefix would risk dropping a real
+    first row from a generic CSV.
+
+    Returns the row count, or None if the file cannot be decoded/parsed -- in
+    which case the caller lets the importer surface the parse error instead of
+    rejecting on a guess.
+    """
+    try:
+        content = decode_csv_bytes(file_bytes)
+        reader = csv.reader(io.StringIO(content))
+        next(reader, None)  # discard header row
+        return sum(1 for _ in reader)
+    except Exception:
+        return None
+
+
+def _gift_row_cap_response(file_bytes: bytes):
+    """Return a 400 Response if the upload exceeds MAX_GIFT_IMPORT_ROWS, else None."""
+    row_count = _count_csv_data_rows(file_bytes)
+    if row_count is not None and row_count > MAX_GIFT_IMPORT_ROWS:
+        logger.warning(
+            "Gift import refused — file too large (rows=%d, limit=%d)",
+            row_count,
+            MAX_GIFT_IMPORT_ROWS,
+        )
+        return Response(
+            {
+                "detail": (
+                    f"This file has {row_count:,} gift rows, which exceeds the "
+                    f"{MAX_GIFT_IMPORT_ROWS:,}-row limit for a single web upload. "
+                    "Split it into smaller files and upload each separately, or "
+                    "ask an admin to run the bulk import command."
+                )
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    return None
 
 
 class ContactImportView(APIView):
@@ -1034,6 +1090,10 @@ class GenericDonationImportView(APIView):
 
         file_bytes = file.read()
 
+        oversized = _gift_row_cap_response(file_bytes)
+        if oversized is not None:
+            return oversized
+
         batch = import_generic_donations(
             file_bytes=file_bytes,
             filename=file.name,
@@ -1137,6 +1197,10 @@ class REGiftImportView(APIView):
             )
 
         file_bytes = file.read()
+
+        oversized = _gift_row_cap_response(file_bytes)
+        if oversized is not None:
+            return oversized
 
         force = str(request.data.get("force", "false")).lower() == "true"
 
@@ -1302,6 +1366,10 @@ class SPOGiftImportView(APIView):
             )
 
         file_bytes = file.read()
+
+        oversized = _gift_row_cap_response(file_bytes)
+        if oversized is not None:
+            return oversized
 
         batch = import_spo_gifts(
             file_bytes=file_bytes,
