@@ -90,7 +90,7 @@ class GenericContactHeaderValidationTests(TestCase):
         # decode failure and assert the FAILED branch is taken.
         with patch(
             "apps.imports.generic_services.decode_csv_bytes",
-            side_effect=ValueError("Unable to decode file"),
+            side_effect=ValueError("Unable to decode file: donor@example.com"),
         ):
             batch = import_generic_contacts(
                 _bytes("first_name,last_name\nJohn,Smith"),
@@ -101,7 +101,10 @@ class GenericContactHeaderValidationTests(TestCase):
             )
         self.assertEqual(batch.status, ImportBatchStatus.FAILED)
         self.assertEqual(batch.summary["errors"][0]["row"], 0)
-        self.assertIn("Unable to decode", batch.summary["errors"][0]["error"])
+        # The raw exception text (which can carry PII) is scrubbed to the class
+        # name only -- see ADR 0003. Never echo str(e) into the summary.
+        self.assertEqual(batch.summary["errors"][0]["error"], "ValueError")
+        self.assertNotIn("donor@example.com", batch.summary["errors"][0]["error"])
 
 
 class GenericContactExternalIdMatchingTests(TestCase):
