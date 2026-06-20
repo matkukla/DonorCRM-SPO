@@ -21,7 +21,7 @@ drf-spectacular>=0.27,<1.0
 # Security
 django-csp>=4.0,<5.0
 # Per-account lockout to defend credential stuffing across IP rotation.
-django-axes>=6.4,<7.0
+django-axes>=8.3.1,<9.0
 # Field-level encryption for donor PII (apps/core/encryption.py).
 # Floor raised to 48.0.1: fixes GHSA-537c-gmf6-5ccf (present through 46.x/47.x).
 # 47.x/48.x keep the same Fernet/MultiFernet/AESGCM/InvalidTag/InvalidToken APIs
