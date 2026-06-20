@@ -14,7 +14,7 @@ import hashlib
 import io
 import logging
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 
 from apps.contacts.models import Contact
 from apps.gifts.models import Gift
@@ -145,9 +145,74 @@ GENERIC_DONATION_HEADER_ALIASES: dict[str, str] = {
     "fund_name": "fund_name",
     "campaign": "fund_name",
     "account": "fund_name",
+    # external_gift_id -- per-gift idempotency key (NOT the contact's external id)
+    "external_gift_id": "external_gift_id",
+    "gift_id": "external_gift_id",
+    "gift_external_id": "external_gift_id",
+    "transaction_id": "external_gift_id",
+    "donation_id": "external_gift_id",
+    "reference": "external_gift_id",
+    "reference_number": "external_gift_id",
 }
 
 VALID_MATCH_BY = ("name", "email", "external_id")
+
+
+def _generic_gift_identity(
+    *,
+    explicit_id: str,
+    owner_id,
+    contact_id,
+    amount_cents: int,
+    gift_date,
+    fund_id,
+    description: str,
+) -> str:
+    """Return a stable per-gift idempotency key for a generic donation row.
+
+    Both forms are namespaced so generic identities never collide with the raw
+    ``external_gift_id`` values that the RE/SPO importers write into the same
+    globally-unique column. Without a namespace, a generic ``gift_id`` of "100"
+    would dedup against an unrelated RE gift "100" and silently drop a real
+    donation -- under-counting a donor.
+
+    - Explicit CSV gift ID -> ``genid:<id>`` (idempotent across generic
+      re-uploads regardless of changed fund/amount/memo). Source IDs too long
+      to fit the 100-char column once prefixed are hashed to ``genidh:<sha256>``
+      instead -- deterministic, so re-uploads still dedup, with no truncation
+      collision between two distinct long IDs sharing a prefix.
+    - No ID -> deterministic ``gen:<sha256>`` over the gift's *normalized*
+      identity (owner, donor, amount in cents, parsed date (ISO), fund,
+      description). Normalizing before hashing means a re-export with reordered
+      columns or a reformatted date yields the same key, so re-uploads dedup
+      via the ``unique_external_gift_id`` constraint instead of double-counting.
+
+    Funds and descriptions are part of the hashed identity so that two genuinely
+    distinct gifts (same donor/amount/date, different fund or memo) are not
+    collapsed on first import. The trade-off: with no explicit ID, a later
+    correction to the fund or memo looks like a new gift -- still far better
+    than the old whole-file hash, which re-created *every* row.
+    """
+    if explicit_id:
+        namespaced = "genid:" + explicit_id
+        # external_gift_id is CharField(max_length=100); _sanitize_field only
+        # caps at 10k, so an overlong source ID would raise DataError on
+        # Postgres (and store silently on SQLite). Hash those to a fixed,
+        # collision-free key that stays within budget.
+        if len(namespaced) <= 100:
+            return namespaced
+        return "genidh:" + hashlib.sha256(explicit_id.encode("utf-8")).hexdigest()
+    parts = "|".join(
+        [
+            str(owner_id),
+            str(contact_id),
+            str(amount_cents),
+            gift_date.isoformat(),
+            str(fund_id) if fund_id is not None else "",
+            description,
+        ]
+    )
+    return "gen:" + hashlib.sha256(parts.encode("utf-8")).hexdigest()
 
 
 # ---------------------------------------------------------------------------
@@ -601,13 +666,27 @@ def import_generic_donations(
         )
         return batch
 
-    # Step 5: Iterate rows with error collection
+    # Step 5: Iterate rows with error collection.
+    #
+    # The ImportBatch row carries the unique (import_type, sha256_hash)
+    # constraint. It is created FIRST, inside the same transaction as the
+    # gifts, so two concurrent identical uploads collide on that constraint and
+    # the loser rolls back its gifts instead of double-committing them.
     errors: list[dict] = []
     created_count = 0
+    skipped_count = 0
     total_rows = 0
 
     try:
         with transaction.atomic():
+            batch = ImportBatch.objects.create(
+                import_type=ImportBatchType.GENERIC_DONATIONS,
+                status=ImportBatchStatus.PROCESSING,
+                filename=filename,
+                sha256_hash=sha256_hash,
+                uploaded_by=uploaded_by,
+            )
+
             for row_number, row in enumerate(reader, start=2):
                 total_rows += 1
 
@@ -772,8 +851,32 @@ def import_generic_donations(
                         if matched_fund:
                             gift_kwargs["fund"] = matched_fund
 
-                    Gift.objects.create(**gift_kwargs)
-                    created_count += 1
+                    # Per-gift idempotency: dedup on a stable identity key so a
+                    # re-export (reordered columns, reformatted date) does not
+                    # re-create gifts. Skip if this gift already exists.
+                    identity = _generic_gift_identity(
+                        explicit_id=row_data.get("external_gift_id", ""),
+                        owner_id=owner.id,
+                        contact_id=contact.id,
+                        amount_cents=amount_cents,
+                        gift_date=parsed_date,
+                        fund_id=gift_kwargs.get("fund").id if gift_kwargs.get("fund") else None,
+                        description=gift_kwargs["description"],
+                    )
+
+                    if Gift.objects.filter(external_gift_id=identity).exists():
+                        skipped_count += 1
+                        continue
+
+                    # Savepoint so a lost race on the unique constraint (a
+                    # concurrent upload created this exact gift first) is treated
+                    # as a dedup instead of poisoning the whole batch.
+                    try:
+                        with transaction.atomic():
+                            Gift.objects.create(external_gift_id=identity, **gift_kwargs)
+                        created_count += 1
+                    except IntegrityError:
+                        skipped_count += 1
 
                 except Exception as e:
                     logger.exception(
@@ -787,9 +890,48 @@ def import_generic_donations(
                         }
                     )
 
+            # Step 6: Finalize the batch inside the same transaction. A run is
+            # only FAILED when every row errored -- an all-skipped re-upload is
+            # a successful idempotent no-op.
+            all_errored = total_rows > 0 and created_count == 0 and skipped_count == 0
+            batch.status = ImportBatchStatus.FAILED if all_errored else ImportBatchStatus.COMPLETED
+            batch.total_rows = total_rows
+            batch.created_count = created_count
+            batch.skipped_count = skipped_count
+            batch.error_count = len(errors)
+            batch.summary = {"errors": errors}
+            batch.save(
+                update_fields=[
+                    "status",
+                    "total_rows",
+                    "created_count",
+                    "skipped_count",
+                    "error_count",
+                    "summary",
+                    "updated_at",
+                ]
+            )
+
+    except IntegrityError:
+        # A concurrent identical upload claimed this (type, sha256) first; our
+        # batch insert collided and the whole transaction -- including any
+        # gifts -- rolled back. Report the winning batch as a duplicate.
+        logger.info("Concurrent duplicate generic donation import for %s", filename)
+        existing = ImportBatch.objects.filter(
+            import_type=ImportBatchType.GENERIC_DONATIONS,
+            sha256_hash=sha256_hash,
+        ).first()
+        if existing:
+            existing.status = ImportBatchStatus.DUPLICATE
+            existing.save(update_fields=["status"])
+            return existing
+        # Constraint fired but no committed row found -- re-raise so the
+        # anomaly surfaces rather than masquerading as success.
+        raise
+
     except Exception as e:
         logger.exception("Generic donation import failed for %s", filename)
-        batch = ImportBatch.objects.create(
+        return ImportBatch.objects.create(
             import_type=ImportBatchType.GENERIC_DONATIONS,
             status=ImportBatchStatus.FAILED,
             filename=filename,
@@ -797,28 +939,12 @@ def import_generic_donations(
             uploaded_by=uploaded_by,
             summary={"errors": [{"row": 0, "error": f"Import error: {e}"}]},
         )
-        return batch
-
-    # Step 6: Create ImportBatch record
-    all_errored = total_rows > 0 and created_count == 0
-    batch = ImportBatch.objects.create(
-        import_type=ImportBatchType.GENERIC_DONATIONS,
-        status=ImportBatchStatus.FAILED if all_errored else ImportBatchStatus.COMPLETED,
-        filename=filename,
-        sha256_hash=sha256_hash,
-        uploaded_by=uploaded_by,
-        total_rows=total_rows,
-        created_count=created_count,
-        updated_count=0,
-        skipped_count=0,
-        error_count=len(errors),
-        summary={"errors": errors},
-    )
 
     logger.info(
-        "Generic donation import complete for %s: %d created, %d errors",
+        "Generic donation import complete for %s: %d created, %d skipped, %d errors",
         filename,
         created_count,
+        skipped_count,
         len(errors),
     )
 
