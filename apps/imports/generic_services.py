@@ -676,7 +676,14 @@ def import_generic_donations(
     created_count = 0
     skipped_count = 0
     total_rows = 0
+    affected_contact_ids: set = set()
 
+    # Bulk-import fast path (issue #118): suppress the per-gift stat/notification
+    # signal cascade and recompute each affected contact exactly once at the end,
+    # so a large synchronous import stays inside the request timeout.
+    from apps.gifts.signals import disable_gift_signals, enable_gift_signals, recompute_giving_stats
+
+    disable_gift_signals()
     try:
         with transaction.atomic():
             batch = ImportBatch.objects.create(
@@ -875,6 +882,7 @@ def import_generic_donations(
                         with transaction.atomic():
                             Gift.objects.create(external_gift_id=identity, **gift_kwargs)
                         created_count += 1
+                        affected_contact_ids.add(contact.id)
                     except IntegrityError:
                         skipped_count += 1
 
@@ -889,6 +897,11 @@ def import_generic_donations(
                             "error": f"Row {row_number}: {type(e).__name__}",
                         }
                     )
+
+            # Recompute giving stats once per affected contact (signals were
+            # suppressed during creation). Inside the atomic block so it sees the
+            # just-created gifts and commits with them.
+            recompute_giving_stats(affected_contact_ids)
 
             # Step 6: Finalize the batch inside the same transaction. A run is
             # only FAILED when every row errored -- an all-skipped re-upload is
@@ -939,6 +952,9 @@ def import_generic_donations(
             uploaded_by=uploaded_by,
             summary={"errors": [{"row": 0, "error": f"Import error: {type(e).__name__}"}]},
         )
+
+    finally:
+        enable_gift_signals()
 
     logger.info(
         "Generic donation import complete for %s: %d created, %d skipped, %d errors",
