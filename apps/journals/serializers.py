@@ -8,6 +8,7 @@ from django.db import IntegrityError, transaction
 
 from rest_framework import serializers
 
+from apps.core.permissions import is_financial_role
 from apps.journals.models import (
     Decision,
     DecisionHistory,
@@ -173,15 +174,21 @@ class JournalContactSerializer(serializers.ModelSerializer):
         else:
             decision = decisions[0] if decisions else None
 
-        if decision:
-            return {
-                "id": str(decision.id),
-                "amount": str(decision.amount),
-                "cadence": decision.cadence,
-                "status": decision.status,
-                "monthly_equivalent": str(decision.monthly_equivalent),
-            }
-        return None
+        if not decision:
+            return None
+
+        summary = {
+            "id": str(decision.id),
+            "cadence": decision.cadence,
+            "status": decision.status,
+        }
+        # Pledge amount is individual financial detail — included only for financial
+        # roles. Coaches still see pipeline status + cadence (PRD fix #1).
+        request = self.context.get("request")
+        if request and is_financial_role(request.user):
+            summary["amount"] = str(decision.amount)
+            summary["monthly_equivalent"] = str(decision.monthly_equivalent)
+        return summary
 
     def validate(self, attrs):
         """
@@ -237,6 +244,23 @@ class JournalStageEventSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             "journal_contact": {"required": False},
         }
+
+    def validate_journal_contact(self, value):
+        """Validate the requester owns the journal_contact's journal (unless admin).
+
+        Mirrors DecisionSerializer/NextStepSerializer so a missionary cannot write a
+        stage event onto another owner's pipeline (PRD fix #6).
+        """
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            raise serializers.ValidationError("Authentication required")
+
+        user = request.user
+        if user.role != "admin" and value.journal.owner != user:
+            raise serializers.ValidationError(
+                "You do not have permission to log events for this journal contact."
+            )
+        return value
 
     def validate(self, attrs):
         if not attrs.get("journal_contact") and not attrs.get("contact_id"):

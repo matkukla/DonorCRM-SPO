@@ -2,8 +2,6 @@
 CSV export views for admin analytics endpoints.
 """
 
-import csv
-import logging
 from datetime import datetime
 
 from django.http import StreamingHttpResponse
@@ -13,47 +11,11 @@ from rest_framework.views import APIView
 
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 
+from apps.core.csv_export import safe_csv_stream as _safe_csv_stream
 from apps.core.permissions import IsAdmin
 from apps.core.utils import get_safe_int_param, validate_date_params
 from apps.imports.services import sanitize_csv_value
 from apps.insights.services import get_stalled_contacts, get_team_activity
-
-logger = logging.getLogger(__name__)
-
-
-class Echo:
-    """Pseudo-buffer for csv.writer to write to StreamingHttpResponse."""
-
-    def write(self, value):
-        return value
-
-
-def _safe_csv_stream(generator_fn, *, export_name):
-    """Wrap a CSV-row generator so any exception mid-stream surfaces a sentinel
-    error row in the file and gets logged.
-
-    StreamingHttpResponse has already sent HTTP headers by the time the
-    generator yields its first row, so we cannot turn a downstream failure
-    back into a 500. The next-best signal is to append a clearly-labelled
-    error line to the CSV the user is downloading.
-
-    The sentinel row deliberately does NOT include the exception message —
-    raw exception strings can leak SQL fragments, file paths, or other
-    internal detail. The full traceback goes to the server log via
-    `logger.exception` for engineering follow-up.
-    """
-    pseudo_buffer = Echo()
-    writer = csv.writer(pseudo_buffer)
-    try:
-        yield from generator_fn(writer)
-    except Exception:  # noqa: BLE001 — we want to keep the stream alive
-        logger.exception("CSV export %s failed mid-stream", export_name)
-        yield writer.writerow(
-            [
-                "__ERROR__",
-                "Export failed; this row is incomplete. Engineering has been notified.",
-            ]
-        )
 
 
 class StalledContactsCSVView(APIView):

@@ -553,6 +553,82 @@ class TestGetOrCreateAnonymousContact(TestCase):
 class TestImportSpoGifts(TestCase):
     """Tests for import_spo_gifts() service."""
 
+    def test_summary_has_no_raw_donor_pii(self):
+        """The persisted/served import summary must not echo donor PII (PRD fix #5).
+
+        A successfully-imported gift previously recorded constituent_id + amount_cents
+        in summary['per_missionary'] — a per-donor giving record. Assert the distinctive
+        constituent id and amount do not appear anywhere in the summary.
+        """
+        from apps.contacts.models import Contact
+        from apps.gifts.models import Solicitor
+        from apps.imports.re_services import normalize_solicitor_name
+        from apps.imports.spo_services import import_spo_gifts
+
+        admin = _make_admin()
+        missionary = _make_user("pii.sol@test.com", "Pat", "Solicitor")
+        Solicitor.objects.create(
+            user=missionary,
+            normalized_name=normalize_solicitor_name(missionary.full_name),
+        )
+        Contact.objects.create(
+            owner=missionary,
+            first_name="Quentin",
+            last_name="Quankwick",
+            external_constituent_id="CONST-PII-90909",
+            status="donor",
+        )
+        csv_bytes = _make_gifts_csv(
+            {
+                "gift_id": "G-PII-01",
+                "constituent_id": "CONST-PII-90909",
+                "solicitor_name": "Pat Solicitor",
+                "solicitor_amount": "3141.59",
+                "gift_amount": "3141.59",
+            }
+        )
+        batch = import_spo_gifts(csv_bytes, "gifts.csv", admin)
+
+        self.assertEqual(batch.created_count, 1)
+        blob = str(batch.summary)
+        self.assertNotIn("CONST-PII-90909", blob)  # constituent id
+        self.assertNotIn("314159", blob)  # amount in cents
+        self.assertNotIn("3141.59", blob)  # amount in dollars
+
+    def test_summary_error_has_no_raw_exception_or_value(self):
+        """An unparseable amount must not echo the raw value or raw exception text."""
+        from apps.contacts.models import Contact
+        from apps.gifts.models import Solicitor
+        from apps.imports.re_services import normalize_solicitor_name
+        from apps.imports.spo_services import import_spo_gifts
+
+        admin = _make_admin()
+        missionary = _make_user("pii.err@test.com", "Erin", "Err")
+        Solicitor.objects.create(
+            user=missionary,
+            normalized_name=normalize_solicitor_name(missionary.full_name),
+        )
+        Contact.objects.create(
+            owner=missionary,
+            first_name="Zed",
+            last_name="Zonk",
+            external_constituent_id="CONST-ERR-77",
+            status="donor",
+        )
+        csv_bytes = _make_gifts_csv(
+            {
+                "gift_id": "G-ERR-01",
+                "constituent_id": "CONST-ERR-77",
+                "solicitor_name": "Erin Err",
+                "solicitor_amount": "NOPE-9999",
+                "gift_amount": "NOPE-9999",
+            }
+        )
+        batch = import_spo_gifts(csv_bytes, "gifts.csv", admin)
+        blob = str(batch.summary)
+        self.assertNotIn("NOPE-9999", blob)  # raw bad value
+        self.assertNotIn("CONST-ERR-77", blob)  # constituent id
+
     def test_anonymous_contact_created_on_first_anonymous_gift(self):
         """First anonymous gift for missionary creates 'Anonymous Donor' contact."""
         from apps.contacts.models import Contact
