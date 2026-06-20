@@ -678,10 +678,17 @@ def import_spo_gifts(
     errors: list[dict] = []
     per_missionary: list[dict] = []
     seen_prayers: dict = {}
+    affected_contact_ids: set = set()
 
     rows = list(reader)
 
-    with transaction.atomic():
+    # Bulk-import fast path (issue #118): suppress the per-gift stat/notification
+    # signal cascade and recompute each affected contact exactly once at the end,
+    # so a large synchronous import stays inside the request timeout. The
+    # context manager guarantees signals are re-enabled even on error.
+    from apps.gifts.signals import gift_signals_disabled, recompute_giving_stats
+
+    with gift_signals_disabled(), transaction.atomic():
         for row_num, row in enumerate(rows, start=2):  # row 1 = headers
             gift_id = _get(row, "gift_id")
             if not gift_id:
@@ -800,6 +807,7 @@ def import_spo_gifts(
                     _maybe_create_prayer_intention(gift, prayer_description, contact, seen_prayers)
 
                 created_count += 1
+                affected_contact_ids.add(contact.id)
                 # Record the missionary attribution by row only — no per-donor giving
                 # record (constituent id + amount) in the persisted summary (PRD fix #5).
                 per_missionary.append(
@@ -818,6 +826,11 @@ def import_spo_gifts(
                 errors.append({"row": row_num, "error": type(exc).__name__})
                 error_count += 1
                 transaction.savepoint_rollback(sp)
+
+        # Recompute giving stats once per affected contact (signals were
+        # suppressed during creation). Inside the atomic block so it sees the
+        # just-created gifts and commits with them.
+        recompute_giving_stats(affected_contact_ids)
 
     summary = {
         "created": created_count,
