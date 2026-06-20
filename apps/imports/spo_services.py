@@ -678,10 +678,17 @@ def import_spo_gifts(
     errors: list[dict] = []
     per_missionary: list[dict] = []
     seen_prayers: dict = {}
+    affected_contact_ids: set = set()
 
     rows = list(reader)
 
-    with transaction.atomic():
+    # Bulk-import fast path (issue #118): suppress the per-gift stat/notification
+    # signal cascade and recompute each affected contact exactly once at the end,
+    # so a large synchronous import stays inside the request timeout. The
+    # context manager guarantees signals are re-enabled even on error.
+    from apps.gifts.signals import gift_signals_disabled, recompute_giving_stats
+
+    with gift_signals_disabled(), transaction.atomic():
         for row_num, row in enumerate(rows, start=2):  # row 1 = headers
             gift_id = _get(row, "gift_id")
             if not gift_id:
@@ -734,7 +741,7 @@ def import_spo_gifts(
                             gift_id,
                             constituent_id,
                         )
-                        contact_not_found.append(constituent_id)
+                        contact_not_found.append(row_num)
                         skipped_count += 1
                         transaction.savepoint_rollback(sp)
                         continue
@@ -752,7 +759,8 @@ def import_spo_gifts(
                     errors.append(
                         {
                             "row": row_num,
-                            "error": f"Unparseable or zero amount: {gift_amount_raw!r}",
+                            "field": "gift_amount",
+                            "error": "Unparseable or zero gift amount",
                         }
                     )
                     error_count += 1
@@ -761,7 +769,9 @@ def import_spo_gifts(
 
                 gift_date = _parse_date(gift_date_raw)
                 if gift_date is None:
-                    errors.append({"row": row_num, "error": f"Invalid date: {gift_date_raw!r}"})
+                    errors.append(
+                        {"row": row_num, "field": "gift_date", "error": "Invalid gift date"}
+                    )
                     error_count += 1
                     transaction.savepoint_rollback(sp)
                     continue
@@ -797,13 +807,14 @@ def import_spo_gifts(
                     _maybe_create_prayer_intention(gift, prayer_description, contact, seen_prayers)
 
                 created_count += 1
+                affected_contact_ids.add(contact.id)
+                # Record the missionary attribution by row only — no per-donor giving
+                # record (constituent id + amount) in the persisted summary (PRD fix #5).
                 per_missionary.append(
                     {
-                        "gift_id": gift_id,
+                        "row": row_num,
                         "missionary": solicitor_name_raw,
                         "match_type": match_type,
-                        "constituent_id": constituent_id,
-                        "amount_cents": amount_cents,
                     }
                 )
                 transaction.savepoint_commit(sp)
@@ -812,9 +823,14 @@ def import_spo_gifts(
                 logger.exception(
                     "Error processing gift row %d (gift_id=%s): %s", row_num, gift_id, exc
                 )
-                errors.append({"row": row_num, "error": str(exc)})
+                errors.append({"row": row_num, "error": type(exc).__name__})
                 error_count += 1
                 transaction.savepoint_rollback(sp)
+
+        # Recompute giving stats once per affected contact (signals were
+        # suppressed during creation). Inside the atomic block so it sees the
+        # just-created gifts and commits with them.
+        recompute_giving_stats(affected_contact_ids)
 
     summary = {
         "created": created_count,

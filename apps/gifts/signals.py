@@ -6,6 +6,7 @@ creation, adapted for the Gift model's field names (donor_contact, amount_dollar
 """
 
 import threading
+from contextlib import contextmanager
 
 from django.db.models.signals import post_delete, post_save, pre_delete
 from django.dispatch import receiver
@@ -28,6 +29,40 @@ def enable_gift_signals():
 def _signals_disabled():
     """Check if signals are currently disabled."""
     return getattr(_signal_state, "_skip_count", 0) > 0
+
+
+@contextmanager
+def gift_signals_disabled():
+    """Context-manager form of :func:`disable_gift_signals`.
+
+    Guarantees re-enable on every exit path (including exceptions), so a bulk
+    importer that suppresses signals can never leak the disabled state into the
+    thread-local counter for the next request handled by this worker thread.
+    """
+    disable_gift_signals()
+    try:
+        yield
+    finally:
+        enable_gift_signals()
+
+
+def recompute_giving_stats(contact_ids):
+    """Recompute giving stats once per contact after a bulk gift import.
+
+    Bulk gift importers call :func:`disable_gift_signals`, create all gifts,
+    then call this once. That collapses the per-save signal cascade
+    (``update_giving_stats`` ~5-7 queries on *every* ``Gift.objects.create``)
+    down to a single recompute per affected contact, which keeps a large
+    synchronous import inside the request timeout. ``update_giving_stats`` is a
+    from-scratch aggregate, so one call reflects every gift just created.
+
+    Must be called inside the importer's ``transaction.atomic()`` so the
+    recompute sees the uncommitted gifts and commits atomically with them.
+    """
+    from apps.contacts.models import Contact
+
+    for contact in Contact.objects.filter(id__in=contact_ids):
+        contact.update_giving_stats()
 
 
 @receiver(post_save, sender=Gift)

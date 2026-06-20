@@ -24,6 +24,7 @@ from apps.core.permissions import (
     IsOwnerOrAdmin,
     IsSupervisorWriteRestricted,
     get_visible_user_ids,
+    is_financial_role,
 )
 from apps.journals.filters import JournalFilterSet
 from apps.journals.models import (
@@ -337,6 +338,11 @@ class DecisionListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         user = self.request.user
 
+        # Decisions carry pledge amounts (financial detail). Non-financial roles
+        # (coach) get nothing — mirrors the gift list endpoints (PRD fix #1).
+        if not is_financial_role(user):
+            return Decision.objects.none()
+
         # Base queryset with optimized joins
         queryset = Decision.objects.select_related(
             "journal_contact", "journal_contact__journal", "journal_contact__contact"
@@ -388,6 +394,10 @@ class DecisionDetailView(generics.RetrieveUpdateAPIView):
     def get_queryset(self):
         user = self.request.user
 
+        # Pledge detail is gated from non-financial roles (coach) — PRD fix #1.
+        if not is_financial_role(user):
+            return Decision.objects.none()
+
         # Base queryset with optimized joins
         queryset = Decision.objects.select_related(
             "journal_contact", "journal_contact__journal", "journal_contact__contact"
@@ -411,6 +421,11 @@ class DecisionHistoryListView(generics.ListAPIView):
 
     def get_queryset(self):
         user = self.request.user
+
+        # Decision history exposes prior pledge amounts — gated from non-financial
+        # roles (coach), PRD fix #1.
+        if not is_financial_role(user):
+            return DecisionHistory.objects.none()
 
         # Base queryset with optimized joins
         queryset = DecisionHistory.objects.select_related(
