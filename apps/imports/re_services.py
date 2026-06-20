@@ -308,7 +308,7 @@ def import_re_solicitors(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={"errors": [{"row": 0, "error": str(e)}]},
+            summary={"errors": [{"row": 0, "error": type(e).__name__}]},
         )
         return batch
 
@@ -323,7 +323,7 @@ def import_re_solicitors(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={"errors": [{"row": 0, "error": f"CSV parse error: {e}"}]},
+            summary={"errors": [{"row": 0, "error": f"CSV parse error: {type(e).__name__}"}]},
         )
         return batch
 
@@ -458,7 +458,7 @@ def import_re_solicitors(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={"errors": [{"row": 0, "error": f"Import error: {e}"}]},
+            summary={"errors": [{"row": 0, "error": f"Import error: {type(e).__name__}"}]},
         )
         return batch
 
@@ -741,7 +741,7 @@ def import_re_constituents(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={"errors": [{"row": 0, "error": str(e)}]},
+            summary={"errors": [{"row": 0, "error": type(e).__name__}]},
         )
         return batch
 
@@ -756,7 +756,7 @@ def import_re_constituents(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={"errors": [{"row": 0, "error": f"CSV parse error: {e}"}]},
+            summary={"errors": [{"row": 0, "error": f"CSV parse error: {type(e).__name__}"}]},
         )
         return batch
 
@@ -959,7 +959,7 @@ def import_re_constituents(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={"errors": [{"row": 0, "error": f"Import error: {e}"}]},
+            summary={"errors": [{"row": 0, "error": f"Import error: {type(e).__name__}"}]},
         )
         return batch
 
@@ -1321,7 +1321,7 @@ def import_re_gifts(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={"errors": [{"row": 0, "error": str(e)}]},
+            summary={"errors": [{"row": 0, "error": type(e).__name__}]},
         )
         return batch
 
@@ -1336,7 +1336,7 @@ def import_re_gifts(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={"errors": [{"row": 0, "error": f"CSV parse error: {e}"}]},
+            summary={"errors": [{"row": 0, "error": f"CSV parse error: {type(e).__name__}"}]},
         )
         return batch
 
@@ -1388,8 +1388,16 @@ def import_re_gifts(
     skipped_count = 0
     prayer_count = 0
     unmatched_solicitors: list[str] = []
+    quarantined: list = []
     seen_prayers: dict = {}
+    affected_contact_ids: set = set()
 
+    # Bulk-import fast path (issue #118): suppress the per-gift stat/notification
+    # signal cascade and recompute each affected contact exactly once at the end,
+    # so a large synchronous import stays inside the request timeout.
+    from apps.gifts.signals import disable_gift_signals, enable_gift_signals, recompute_giving_stats
+
+    disable_gift_signals()
     try:
         with transaction.atomic():
             for gift_id, rows in groups.items():
@@ -1411,9 +1419,10 @@ def import_re_gifts(
                         errors.append(
                             {
                                 "row": int(first_row["_row_number"]),
+                                "field": "constituent_id",
                                 "error": (
-                                    f'Constituent ID "{constituent_id}" not found '
-                                    f"-- skipping gift group {gift_id} (rows {row_nums})"
+                                    "Constituent not found -- skipping gift group "
+                                    f"(rows {row_nums})"
                                 ),
                             }
                         )
@@ -1428,10 +1437,8 @@ def import_re_gifts(
                         errors.append(
                             {
                                 "row": int(first_row["_row_number"]),
-                                "error": (
-                                    f'Row {first_row["_row_number"]}: Invalid amount '
-                                    f'"{first_row.get("amount", "")}" for gift {gift_id}'
-                                ),
+                                "field": "amount",
+                                "error": f'Row {first_row["_row_number"]}: Invalid amount',
                             }
                         )
                         transaction.savepoint_rollback(sp)
@@ -1443,10 +1450,8 @@ def import_re_gifts(
                         errors.append(
                             {
                                 "row": int(first_row["_row_number"]),
-                                "error": (
-                                    f'Row {first_row["_row_number"]}: Invalid date '
-                                    f'"{first_row.get("gift_date", "")}" for gift {gift_id}'
-                                ),
+                                "field": "gift_date",
+                                "error": f'Row {first_row["_row_number"]}: Invalid date',
                             }
                         )
                         transaction.savepoint_rollback(sp)
@@ -1461,10 +1466,8 @@ def import_re_gifts(
                             warnings.append(
                                 {
                                     "row": int(first_row["_row_number"]),
-                                    "warning": (
-                                        f'Fund "{first_row.get("fund", "")}" not found '
-                                        f"for gift {gift_id}"
-                                    ),
+                                    "field": "fund",
+                                    "warning": "Fund not found",
                                 }
                             )
 
@@ -1482,9 +1485,41 @@ def import_re_gifts(
                             existing_gift.payment_type = parsed_payment_type
                             existing_gift.save()
                             updated_count += 1
+                            affected_contact_ids.add(contact.id)
                         else:
                             skipped_count += 1
                         transaction.savepoint_commit(sp)
+                        continue
+
+                    # Quarantine (ADR 0002 / PRD fix #4): hold the gift group back when
+                    # the matched contact is still owned by the admin uploader (its owner
+                    # is an admin), the rows carry solicitor names (attribution intent),
+                    # AND none of those names resolve to a linked solicitor's user.
+                    # Creating it here would silently misroute the donor to the admin.
+                    owner_is_linked_missionary = Solicitor.objects.filter(
+                        user=contact.owner,
+                    ).exists()
+                    owner_is_admin = bool(
+                        contact.owner and getattr(contact.owner, "role", None) == "admin"
+                    )
+                    present_solicitor_names = [
+                        r.get("solicitor_name", "").strip()
+                        for r in rows
+                        if r.get("solicitor_name", "").strip()
+                    ]
+                    any_solicitor_resolves = any(
+                        (sol := solicitor_lookup.get(normalize_solicitor_name(name)))
+                        and sol.user_id
+                        for name in present_solicitor_names
+                    )
+                    if owner_is_admin and present_solicitor_names and not any_solicitor_resolves:
+                        quarantined.append(
+                            {
+                                "row": int(first_row["_row_number"]),
+                                "reason": "unresolved_solicitor",
+                            }
+                        )
+                        transaction.savepoint_rollback(sp)
                         continue
 
                     # Create Gift
@@ -1511,8 +1546,7 @@ def import_re_gifts(
                                     "row": int(row["_row_number"]),
                                     "error": (
                                         f'Row {row["_row_number"]}: Solicitor '
-                                        f'"{solicitor_name}" not found -- credit '
-                                        f"skipped for gift {gift_id}"
+                                        f'"{solicitor_name}" not found -- credit skipped'
                                     ),
                                 }
                             )
@@ -1534,10 +1568,7 @@ def import_re_gifts(
                     # Only skip if the contact is already owned by a linked missionary
                     # (i.e. the owner has a Solicitor record). This handles the case where
                     # constituents and gifts are imported by different admin users.
-                    contact_owner_is_missionary = Solicitor.objects.filter(
-                        user=contact.owner,
-                    ).exists()
-                    if not contact_owner_is_missionary:
+                    if not owner_is_linked_missionary:
                         for credit_row in rows:
                             sol_name = credit_row.get("solicitor_name", "")
                             if not sol_name:
@@ -1562,6 +1593,7 @@ def import_re_gifts(
 
                     transaction.savepoint_commit(sp)
                     created_count += 1
+                    affected_contact_ids.add(contact.id)
 
                 except Exception as e:
                     transaction.savepoint_rollback(sp)
@@ -1571,11 +1603,16 @@ def import_re_gifts(
                         {
                             "row": int(rows[0].get("_row_number", 0)),
                             "error": (
-                                f"Gift group {gift_id} (rows {row_nums}): "
+                                f"Gift group (rows {row_nums}): "
                                 f"Unexpected error: {type(e).__name__}"
                             ),
                         }
                     )
+
+            # Recompute giving stats once per affected contact (signals were
+            # suppressed during creation). Inside the atomic block so it sees the
+            # just-created gifts and commits with them.
+            recompute_giving_stats(affected_contact_ids)
 
     except Exception as e:
         logger.exception("Gift import failed for %s", filename)
@@ -1585,9 +1622,12 @@ def import_re_gifts(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={"errors": [{"row": 0, "error": f"Import error: {e}"}]},
+            summary={"errors": [{"row": 0, "error": f"Import error: {type(e).__name__}"}]},
         )
         return batch
+
+    finally:
+        enable_gift_signals()
 
     # Step 7: Create ImportBatch record
     batch = ImportBatch.objects.create(
@@ -1606,6 +1646,8 @@ def import_re_gifts(
             "warnings": warnings,
             "prayer_count": prayer_count,
             "unmatched_solicitors": unmatched_solicitors,
+            "quarantined": quarantined,
+            "quarantined_count": len(quarantined),
         },
     )
 
@@ -1786,7 +1828,7 @@ def import_re_recurring_gifts(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={"errors": [{"row": 0, "error": str(e)}]},
+            summary={"errors": [{"row": 0, "error": type(e).__name__}]},
         )
         return batch
 
@@ -1801,7 +1843,7 @@ def import_re_recurring_gifts(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={"errors": [{"row": 0, "error": f"CSV parse error: {e}"}]},
+            summary={"errors": [{"row": 0, "error": f"CSV parse error: {type(e).__name__}"}]},
         )
         return batch
 
@@ -1854,6 +1896,7 @@ def import_re_recurring_gifts(
     updated_count = 0
     skipped_count = 0
     unmatched_solicitors: list[str] = []
+    quarantined: list = []
     seen_prayers: dict = {}
 
     try:
@@ -1877,10 +1920,10 @@ def import_re_recurring_gifts(
                         errors.append(
                             {
                                 "row": int(first_row["_row_number"]),
+                                "field": "constituent_id",
                                 "error": (
-                                    f'Constituent ID "{constituent_id}" not found '
-                                    f"-- skipping recurring gift group {gift_id} "
-                                    f"(rows {row_nums})"
+                                    "Constituent not found -- skipping recurring gift "
+                                    f"group (rows {row_nums})"
                                 ),
                             }
                         )
@@ -1895,11 +1938,8 @@ def import_re_recurring_gifts(
                         errors.append(
                             {
                                 "row": int(first_row["_row_number"]),
-                                "error": (
-                                    f'Row {first_row["_row_number"]}: Invalid amount '
-                                    f'"{first_row.get("amount", "")}" for recurring '
-                                    f"gift {gift_id}"
-                                ),
+                                "field": "amount",
+                                "error": f'Row {first_row["_row_number"]}: Invalid amount',
                             }
                         )
                         transaction.savepoint_rollback(sp)
@@ -1911,11 +1951,10 @@ def import_re_recurring_gifts(
                         errors.append(
                             {
                                 "row": int(first_row["_row_number"]),
+                                "field": "start_date",
                                 "error": (
                                     f'Row {first_row["_row_number"]}: Invalid or '
-                                    f"missing start date "
-                                    f'"{first_row.get("start_date", "")}" for '
-                                    f"recurring gift {gift_id}"
+                                    "missing start date"
                                 ),
                             }
                         )
@@ -1935,11 +1974,8 @@ def import_re_recurring_gifts(
                             errors.append(
                                 {
                                     "row": int(first_row["_row_number"]),
-                                    "error": (
-                                        f'Row {first_row["_row_number"]}: Unknown '
-                                        f'frequency "{raw_frequency}" for recurring '
-                                        f"gift {gift_id}"
-                                    ),
+                                    "field": "frequency",
+                                    "error": f'Row {first_row["_row_number"]}: Unknown frequency',
                                 }
                             )
                             transaction.savepoint_rollback(sp)
@@ -1949,10 +1985,10 @@ def import_re_recurring_gifts(
                         warnings.append(
                             {
                                 "row": int(first_row["_row_number"]),
+                                "field": "frequency",
                                 "warning": (
-                                    f'Row {first_row["_row_number"]}: Empty '
-                                    f"frequency for recurring gift {gift_id} "
-                                    f"-- defaulting to Monthly"
+                                    f'Row {first_row["_row_number"]}: Empty frequency '
+                                    "-- defaulting to Monthly"
                                 ),
                             }
                         )
@@ -1965,11 +2001,8 @@ def import_re_recurring_gifts(
                             errors.append(
                                 {
                                     "row": int(first_row["_row_number"]),
-                                    "error": (
-                                        f'Row {first_row["_row_number"]}: Unknown '
-                                        f'status "{raw_status}" for recurring '
-                                        f"gift {gift_id}"
-                                    ),
+                                    "field": "status",
+                                    "error": f'Row {first_row["_row_number"]}: Unknown status',
                                 }
                             )
                             transaction.savepoint_rollback(sp)
@@ -1986,10 +2019,8 @@ def import_re_recurring_gifts(
                             warnings.append(
                                 {
                                     "row": int(first_row["_row_number"]),
-                                    "warning": (
-                                        f'Fund "{first_row.get("fund", "")}" not '
-                                        f"found for recurring gift {gift_id}"
-                                    ),
+                                    "field": "fund",
+                                    "warning": "Fund not found for recurring gift",
                                 }
                             )
 
@@ -2014,6 +2045,35 @@ def import_re_recurring_gifts(
                         else:
                             skipped_count += 1
                         transaction.savepoint_commit(sp)
+                        continue
+
+                    # Quarantine (ADR 0002 / PRD fix #4): mirror of import_re_gifts().
+                    # Hold the recurring gift back when the contact is still owned by an
+                    # admin, solicitor names are present, and none resolve to a user.
+                    owner_is_linked_missionary = Solicitor.objects.filter(
+                        user=contact.owner,
+                    ).exists()
+                    owner_is_admin = bool(
+                        contact.owner and getattr(contact.owner, "role", None) == "admin"
+                    )
+                    present_solicitor_names = [
+                        r.get("solicitor_name", "").strip()
+                        for r in rows
+                        if r.get("solicitor_name", "").strip()
+                    ]
+                    any_solicitor_resolves = any(
+                        (sol := solicitor_lookup.get(normalize_solicitor_name(name)))
+                        and sol.user_id
+                        for name in present_solicitor_names
+                    )
+                    if owner_is_admin and present_solicitor_names and not any_solicitor_resolves:
+                        quarantined.append(
+                            {
+                                "row": int(first_row["_row_number"]),
+                                "reason": "unresolved_solicitor",
+                            }
+                        )
+                        transaction.savepoint_rollback(sp)
                         continue
 
                     # Create RecurringGift
@@ -2043,8 +2103,7 @@ def import_re_recurring_gifts(
                                     "row": int(row["_row_number"]),
                                     "error": (
                                         f'Row {row["_row_number"]}: Solicitor '
-                                        f'"{solicitor_name}" not found -- credit '
-                                        f"skipped for recurring gift {gift_id}"
+                                        f'"{solicitor_name}" not found -- credit skipped'
                                     ),
                                 }
                             )
@@ -2066,10 +2125,7 @@ def import_re_recurring_gifts(
                     # Mirror of the same logic in import_re_gifts() (one-time gifts).
                     # Only reassign if the contact is not already owned by a
                     # linked missionary (i.e. the owner has a Solicitor record).
-                    contact_owner_is_missionary = Solicitor.objects.filter(
-                        user=contact.owner,
-                    ).exists()
-                    if not contact_owner_is_missionary:
+                    if not owner_is_linked_missionary:
                         for row in rows:
                             sol_name = row.get("solicitor_name", "")
                             if not sol_name:
@@ -2167,7 +2223,7 @@ def import_re_recurring_gifts(
                         {
                             "row": int(rows[0].get("_row_number", 0)),
                             "error": (
-                                f"Recurring gift group {gift_id} (rows {row_nums}): "
+                                f"Recurring gift group (rows {row_nums}): "
                                 f"Unexpected error: {type(e).__name__}"
                             ),
                         }
@@ -2181,7 +2237,7 @@ def import_re_recurring_gifts(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={"errors": [{"row": 0, "error": f"Import error: {e}"}]},
+            summary={"errors": [{"row": 0, "error": f"Import error: {type(e).__name__}"}]},
         )
         return batch
 
@@ -2201,6 +2257,8 @@ def import_re_recurring_gifts(
             "errors": errors,
             "warnings": warnings,
             "unmatched_solicitors": unmatched_solicitors,
+            "quarantined": quarantined,
+            "quarantined_count": len(quarantined),
         },
     )
 
