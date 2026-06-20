@@ -2,7 +2,6 @@
 CSV export view for contacts with FilterSet-based filtering.
 """
 
-import csv
 from datetime import datetime
 
 from django.http import StreamingHttpResponse
@@ -12,15 +11,9 @@ from rest_framework.views import APIView
 
 from apps.contacts.filters import ContactFilterSet
 from apps.contacts.models import Contact
+from apps.core.csv_export import safe_csv_stream
 from apps.core.permissions import get_visible_user_ids
 from apps.imports.services import sanitize_csv_value
-
-
-class Echo:
-    """Pseudo-buffer for csv.writer to write to StreamingHttpResponse."""
-
-    def write(self, value):
-        return value
 
 
 class ContactExportCSVView(APIView):
@@ -30,6 +23,9 @@ class ContactExportCSVView(APIView):
     """
 
     permission_classes = [permissions.IsAuthenticated]
+    # Rate-limit bulk exports so a stolen token cannot pull the donor base
+    # repeatedly (issue #119). Matches the legacy imports/views.py exporters.
+    throttle_scope = "export"
 
     def get(self, request):
         user = request.user
@@ -49,10 +45,7 @@ class ContactExportCSVView(APIView):
 
         filename = f"contacts_{datetime.now().date().isoformat()}.csv"
 
-        def generate_csv():
-            pseudo_buffer = Echo()
-            writer = csv.writer(pseudo_buffer)
-
+        def generate_rows(writer):
             # Header
             yield writer.writerow(
                 [
@@ -80,6 +73,8 @@ class ContactExportCSVView(APIView):
                     ]
                 )
 
-        response = StreamingHttpResponse(generate_csv(), content_type="text/csv")
+        response = StreamingHttpResponse(
+            safe_csv_stream(generate_rows, export_name="contacts"), content_type="text/csv"
+        )
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response
