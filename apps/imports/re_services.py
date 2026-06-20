@@ -1390,7 +1390,14 @@ def import_re_gifts(
     unmatched_solicitors: list[str] = []
     quarantined: list = []
     seen_prayers: dict = {}
+    affected_contact_ids: set = set()
 
+    # Bulk-import fast path (issue #118): suppress the per-gift stat/notification
+    # signal cascade and recompute each affected contact exactly once at the end,
+    # so a large synchronous import stays inside the request timeout.
+    from apps.gifts.signals import disable_gift_signals, enable_gift_signals, recompute_giving_stats
+
+    disable_gift_signals()
     try:
         with transaction.atomic():
             for gift_id, rows in groups.items():
@@ -1478,6 +1485,7 @@ def import_re_gifts(
                             existing_gift.payment_type = parsed_payment_type
                             existing_gift.save()
                             updated_count += 1
+                            affected_contact_ids.add(contact.id)
                         else:
                             skipped_count += 1
                         transaction.savepoint_commit(sp)
@@ -1585,6 +1593,7 @@ def import_re_gifts(
 
                     transaction.savepoint_commit(sp)
                     created_count += 1
+                    affected_contact_ids.add(contact.id)
 
                 except Exception as e:
                     transaction.savepoint_rollback(sp)
@@ -1600,6 +1609,11 @@ def import_re_gifts(
                         }
                     )
 
+            # Recompute giving stats once per affected contact (signals were
+            # suppressed during creation). Inside the atomic block so it sees the
+            # just-created gifts and commits with them.
+            recompute_giving_stats(affected_contact_ids)
+
     except Exception as e:
         logger.exception("Gift import failed for %s", filename)
         batch = ImportBatch.objects.create(
@@ -1611,6 +1625,9 @@ def import_re_gifts(
             summary={"errors": [{"row": 0, "error": f"Import error: {type(e).__name__}"}]},
         )
         return batch
+
+    finally:
+        enable_gift_signals()
 
     # Step 7: Create ImportBatch record
     batch = ImportBatch.objects.create(
