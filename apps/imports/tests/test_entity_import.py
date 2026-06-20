@@ -141,7 +141,10 @@ ENT001,Jane Doe,jane@example.com"""
         assert len(errors) == 1  # Second one errors
         assert errors[0]["row"] == 3
         assert "Duplicate entity_id" in errors[0]["errors"][0]
-        assert "ENT001" in errors[0]["errors"][0]
+        # ADR 0003: the raw value lives in the structured data row, not the
+        # message string.
+        assert "ENT001" not in errors[0]["errors"][0]
+        assert errors[0]["data"]["entity_id"] == "ENT001"
 
     def test_entity_id_exceeds_max_length_returns_error(self, test_user):
         """entity_id exceeding 100 characters should return error."""

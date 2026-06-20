@@ -23,6 +23,9 @@ class ContactExportCSVView(APIView):
     """
 
     permission_classes = [permissions.IsAuthenticated]
+    # Rate-limit bulk exports so a stolen token cannot pull the donor base
+    # repeatedly (issue #119). Matches the legacy imports/views.py exporters.
+    throttle_scope = "export"
 
     def get(self, request):
         user = request.user

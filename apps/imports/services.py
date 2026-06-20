@@ -17,6 +17,12 @@ from apps.imports.models import Fund, ImportStatus
 logger = logging.getLogger(__name__)
 
 
+# Hard cap on rows materialized by the in-memory legacy CSV exporters (issue
+# #119). These build the whole CSV in memory, so an unbounded queryset could
+# pull the entire donor base into one string. Matches the 10k cap on the
+# dedicated streaming export views.
+MAX_EXPORT_ROWS = 10_000
+
 # Valid enum values for validation
 VALID_FUND_STATUSES = ["active", "inactive", "closed"]
 
@@ -115,7 +121,7 @@ def parse_contacts_csv(file_content: str, user) -> Tuple[List[dict], List[dict]]
     try:
         reader = csv.DictReader(io.StringIO(file_content))
     except csv.Error as e:
-        return [], [{"row": 1, "errors": [f"Invalid CSV format: {e}"], "data": {}}]
+        return [], [{"row": 1, "errors": [f"Invalid CSV format: {type(e).__name__}"], "data": {}}]
 
     valid_records = []
     errors = []
@@ -138,15 +144,15 @@ def parse_contacts_csv(file_content: str, user) -> Tuple[List[dict], List[dict]]
         email = row.get("email", "").strip().lower()
         if email:
             if not _validate_email(email):
-                row_errors.append(f'Invalid email format: "{email}"')
+                row_errors.append("Invalid email format")
             elif email in seen_emails:
-                row_errors.append(f"Duplicate email in file: {email}")
+                row_errors.append("Duplicate email in file")
             elif Contact.objects.filter(
                 owner=user,
                 email_hash__in=lookup_hashes(email),
                 is_merged=False,
             ).exists():
-                row_errors.append(f'Contact with email "{email}" already exists in your account')
+                row_errors.append("Contact with this email already exists in your account")
             else:
                 seen_emails.add(email)
 
@@ -161,6 +167,12 @@ def parse_contacts_csv(file_content: str, user) -> Tuple[List[dict], List[dict]]
             row_errors.append("Postal code exceeds maximum length of 20 characters")
 
         if row_errors:
+            # "data" echoes the uploader's own row back so they can fix and
+            # re-upload it. It is intentionally NOT redacted -- it is the
+            # caller's own data, the error-row export is admin-gated and
+            # re-sanitized for CSV injection, and redacting would break the
+            # fix-and-reupload workflow. Error *messages* never carry raw PII
+            # (see ADR 0003); only this structured row does. Keep it.
             errors.append({"row": row_num, "errors": row_errors, "data": dict(row)})
         else:
             valid_records.append(
@@ -238,7 +250,12 @@ def export_contacts_csv(queryset) -> str:
     writer = csv.DictWriter(output, fieldnames=fieldnames)
     writer.writeheader()
 
-    for contact in queryset:
+    rows = list(queryset[: MAX_EXPORT_ROWS + 1])
+    if len(rows) > MAX_EXPORT_ROWS:
+        logger.warning("Contact export truncated to %d rows (more were available)", MAX_EXPORT_ROWS)
+        rows = rows[:MAX_EXPORT_ROWS]
+
+    for contact in rows:
         writer.writerow(
             {
                 "first_name": sanitize_csv_value(contact.first_name),
@@ -285,7 +302,12 @@ def export_gifts_csv(queryset) -> str:
     writer = csv.DictWriter(output, fieldnames=fieldnames)
     writer.writeheader()
 
-    for gift in queryset.select_related("donor_contact"):
+    rows = list(queryset.select_related("donor_contact")[: MAX_EXPORT_ROWS + 1])
+    if len(rows) > MAX_EXPORT_ROWS:
+        logger.warning("Gift export truncated to %d rows (more were available)", MAX_EXPORT_ROWS)
+        rows = rows[:MAX_EXPORT_ROWS]
+
+    for gift in rows:
         writer.writerow(
             {
                 "contact_first_name": sanitize_csv_value(gift.donor_contact.first_name),
@@ -341,7 +363,7 @@ def parse_funds_csv(file_content: str) -> Tuple[List[dict], List[dict]]:
     try:
         reader = csv.DictReader(io.StringIO(file_content))
     except csv.Error as e:
-        return [], [{"row": 1, "errors": [f"Invalid CSV format: {e}"], "data": {}}]
+        return [], [{"row": 1, "errors": [f"Invalid CSV format: {type(e).__name__}"], "data": {}}]
 
     # Validate required column headers before processing rows
     if reader.fieldnames is None:
@@ -499,7 +521,7 @@ def parse_entities_csv(file_content: str, user) -> Tuple[List[dict], List[dict]]
     try:
         reader = csv.DictReader(io.StringIO(file_content))
     except csv.Error as e:
-        return [], [{"row": 1, "errors": [f"Invalid CSV format: {e}"], "data": {}}]
+        return [], [{"row": 1, "errors": [f"Invalid CSV format: {type(e).__name__}"], "data": {}}]
 
     # Validate required column headers before processing rows
     if reader.fieldnames is None:
@@ -539,7 +561,7 @@ def parse_entities_csv(file_content: str, user) -> Tuple[List[dict], List[dict]]
         elif entity_id.startswith(FORMULA_PREFIXES):
             row_errors.append(f"entity_id cannot start with formula character ({entity_id[0]})")
         elif entity_id in seen_entity_ids:
-            row_errors.append(f"Duplicate entity_id in file: {entity_id}")
+            row_errors.append("Duplicate entity_id in file")
         else:
             seen_entity_ids.add(entity_id)
 
@@ -569,7 +591,7 @@ def parse_entities_csv(file_content: str, user) -> Tuple[List[dict], List[dict]]
             if len(email) > 254:
                 row_errors.append("email exceeds maximum length of 254 characters")
             elif not _validate_email(email):
-                row_errors.append(f'Invalid email format: "{email}"')
+                row_errors.append("Invalid email format")
 
         # Validate phone (optional)
         if phone and len(phone) > 20:

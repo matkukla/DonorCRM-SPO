@@ -12,6 +12,21 @@ from django.template.loader import render_to_string
 logger = logging.getLogger(__name__)
 
 
+def _mask_email(email: str) -> str:
+    """Mask a recipient address for logging (issue #119).
+
+    Keeps only the first local-part character and the domain
+    ("jane.doe@example.com" -> "j***@example.com"), so logs stay debuggable
+    without writing raw donor addresses to disk. The domain is retained because
+    it is operationally useful and not personally identifying.
+    """
+    if not email or "@" not in email:
+        return "***"
+    local, _, domain = email.partition("@")
+    first = local[0] if local else ""
+    return f"{first}***@{domain}"
+
+
 def send_email(
     subject: str, to_email: str, template_name: str, context: dict, from_email: Optional[str] = None
 ) -> bool:
@@ -50,11 +65,13 @@ def send_email(
             email.attach_alternative(html_content, "text/html")
 
         email.send()
-        logger.info(f"Email sent to {to_email}: {subject}")
+        logger.info("Email sent to %s: %s", _mask_email(to_email), subject)
         return True
 
     except Exception as e:
-        logger.error(f"Failed to send email to {to_email}: {e}")
+        # Log the exception class, not str(e): SMTP errors (e.g.
+        # SMTPRecipientsRefused) embed the raw recipient address.
+        logger.error("Failed to send email to %s: %s", _mask_email(to_email), type(e).__name__)
         return False
 
 
