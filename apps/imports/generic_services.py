@@ -266,7 +266,7 @@ def import_generic_contacts(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={"errors": [{"row": 0, "error": str(e)}]},
+            summary={"errors": [{"row": 0, "error": type(e).__name__}]},
         )
         return batch
 
@@ -281,7 +281,7 @@ def import_generic_contacts(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={"errors": [{"row": 0, "error": f"CSV parse error: {e}"}]},
+            summary={"errors": [{"row": 0, "error": f"CSV parse error: {type(e).__name__}"}]},
         )
         return batch
 
@@ -521,7 +521,7 @@ def import_generic_contacts(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={"errors": [{"row": 0, "error": f"Import error: {e}"}]},
+            summary={"errors": [{"row": 0, "error": f"Import error: {type(e).__name__}"}]},
         )
         return batch
 
@@ -604,7 +604,7 @@ def import_generic_donations(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={"errors": [{"row": 0, "error": str(e)}]},
+            summary={"errors": [{"row": 0, "error": type(e).__name__}]},
         )
         return batch
 
@@ -619,7 +619,7 @@ def import_generic_donations(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={"errors": [{"row": 0, "error": f"CSV parse error: {e}"}]},
+            summary={"errors": [{"row": 0, "error": f"CSV parse error: {type(e).__name__}"}]},
         )
         return batch
 
@@ -758,7 +758,7 @@ def import_generic_donations(
                                     "row": row_number,
                                     "error": (
                                         f"Row {row_number}: No contact found "
-                                        f'matching "{first_name} {last_name}" '
+                                        f"matching the provided name "
                                         f"-- import contacts first"
                                     ),
                                 }
@@ -796,7 +796,7 @@ def import_generic_donations(
                                     "row": row_number,
                                     "error": (
                                         f"Row {row_number}: No contact found "
-                                        f'matching "{email}" '
+                                        f"matching the provided email "
                                         f"-- import contacts first"
                                     ),
                                 }
@@ -827,7 +827,7 @@ def import_generic_donations(
                                     "row": row_number,
                                     "error": (
                                         f"Row {row_number}: No contact found "
-                                        f'matching external_id "{ext_id}" '
+                                        f"matching the provided external_id "
                                         f"-- import contacts first"
                                     ),
                                 }
@@ -937,7 +937,7 @@ def import_generic_donations(
             filename=filename,
             sha256_hash=sha256_hash,
             uploaded_by=uploaded_by,
-            summary={"errors": [{"row": 0, "error": f"Import error: {e}"}]},
+            summary={"errors": [{"row": 0, "error": f"Import error: {type(e).__name__}"}]},
         )
 
     logger.info(
