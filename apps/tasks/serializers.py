@@ -80,6 +80,17 @@ class TaskSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Journal does not belong to you")
         return value
 
+    def validate_contact(self, value):
+        """Ensure the contact belongs to the request user.
+
+        Without this, the contact FK is globally writable and a user can bind a
+        task to another owner's contact (IDOR), leaking the contact name via
+        task views. Mirrors validate_journal (PRD fix #7).
+        """
+        if value and value.owner != self.context["request"].user:
+            raise serializers.ValidationError("Contact does not belong to you")
+        return value
+
 
 class TaskCreateSerializer(serializers.ModelSerializer):
     """
@@ -111,6 +122,13 @@ class TaskCreateSerializer(serializers.ModelSerializer):
         """Ensure journal belongs to the request user."""
         if value and value.owner != self.context["request"].user:
             raise serializers.ValidationError("Journal does not belong to you")
+        return value
+
+    def validate_contact(self, value):
+        """Ensure the contact belongs to the request user (prevents cross-owner
+        IDOR; the task is created with owner=request.user). PRD fix #7."""
+        if value and value.owner != self.context["request"].user:
+            raise serializers.ValidationError("Contact does not belong to you")
         return value
 
     def create(self, validated_data):
