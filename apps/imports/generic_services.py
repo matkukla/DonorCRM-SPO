@@ -249,7 +249,9 @@ def import_generic_contacts(
     sha256_hash = hashlib.sha256(file_bytes).hexdigest()
 
     # Step 1: Check for duplicate
-    existing = check_duplicate_import(file_bytes, ImportBatchType.GENERIC_CONTACTS)
+    existing = check_duplicate_import(
+        file_bytes, ImportBatchType.GENERIC_CONTACTS, uploaded_by=uploaded_by
+    )
     if existing:
         logger.info("Duplicate generic contact import detected for %s", filename)
         existing.status = ImportBatchStatus.DUPLICATE
@@ -587,7 +589,9 @@ def import_generic_donations(
     sha256_hash = hashlib.sha256(file_bytes).hexdigest()
 
     # Step 1: Check for duplicate
-    existing = check_duplicate_import(file_bytes, ImportBatchType.GENERIC_DONATIONS)
+    existing = check_duplicate_import(
+        file_bytes, ImportBatchType.GENERIC_DONATIONS, uploaded_by=uploaded_by
+    )
     if existing:
         logger.info("Duplicate generic donation import detected for %s", filename)
         existing.status = ImportBatchStatus.DUPLICATE
