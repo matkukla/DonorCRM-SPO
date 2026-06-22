@@ -26,7 +26,7 @@ django-axes>=8.3.1,<9.0
 # Floor raised to 48.0.1: fixes GHSA-537c-gmf6-5ccf (present through 46.x/47.x).
 # 47.x/48.x keep the same Fernet/MultiFernet/AESGCM/InvalidTag/InvalidToken APIs
 # this code relies on; the majors only dropped old OpenSSL/Python support.
-cryptography>=48.0.1,<49.0
+cryptography>=49.0.0,<50.0
 
 # Utilities
 python-dateutil>=2.8,<3.0
