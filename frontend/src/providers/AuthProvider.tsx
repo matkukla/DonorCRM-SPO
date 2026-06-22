@@ -64,7 +64,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     sessionStorage.removeItem("donorcrm_view_as_user_name")
     window.dispatchEvent(new CustomEvent("viewas:clear"))
     queryClient.clear()
-    apiLogout()
+    // Fire-and-forget: blacklist the refresh token server-side, then clear
+    // local tokens. UI state is reset immediately regardless of the result.
+    void apiLogout()
     setUser(null)
   }, [])
 

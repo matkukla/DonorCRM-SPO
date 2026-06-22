@@ -5,8 +5,34 @@ Serializers for Contact model.
 from rest_framework import serializers
 
 from apps.contacts.models import Contact
+from apps.core.permissions import is_financial_role
 from apps.groups.serializers import GroupSerializer
 from apps.journals.models import JournalContact, PipelineStage
+
+# Donor giving / money fields that must be hidden from non-financial roles
+# (coaches). Used to redact serializer output in to_representation().
+FINANCIAL_CONTACT_FIELDS = (
+    "total_given",
+    "gift_count",
+    "first_gift_date",
+    "last_gift_date",
+    "last_gift_amount",
+    "has_active_pledge",
+    "monthly_pledge_amount",
+)
+
+
+def _redact_financial_fields(data, request):
+    """Strip donor financial fields from ``data`` for non-financial roles.
+
+    Coaches may see coached users' non-financial contact data but must not
+    receive giving totals or gift amounts (CWE-200).
+    """
+    if request is None or is_financial_role(request.user):
+        return data
+    for field in FINANCIAL_CONTACT_FIELDS:
+        data.pop(field, None)
+    return data
 
 
 class ContactListSerializer(serializers.ModelSerializer):
@@ -35,6 +61,10 @@ class ContactListSerializer(serializers.ModelSerializer):
             "owner",
             "owner_name",
         ]
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        return _redact_financial_fields(data, self.context.get("request"))
 
 
 class ContactDetailSerializer(serializers.ModelSerializer):
@@ -126,6 +156,10 @@ class ContactDetailSerializer(serializers.ModelSerializer):
         return Group.objects.filter(id__in=group_ids).filter(
             Q(owner_id__in=visible) | Q(owner__isnull=True)
         )
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        return _redact_financial_fields(data, self.context.get("request"))
 
     def create(self, validated_data):
         group_ids = validated_data.pop("group_ids", [])
