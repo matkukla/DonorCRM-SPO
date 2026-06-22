@@ -54,6 +54,17 @@ class PrayerIntentionSerializer(serializers.ModelSerializer):
             return owner.full_name if owner else None
         return None
 
+    def validate_contact(self, value):
+        """Scope the contact FK to the requester's own contacts.
+
+        Without this the contact FK is globally writable and a user can attach a
+        prayer intention to another owner's contact (IDOR, PRD fix #9).
+        """
+        request = self.context.get("request")
+        if request and value and value.owner_id != request.user.id:
+            raise serializers.ValidationError("Contact does not belong to you")
+        return value
+
     def update(self, instance, validated_data):
         new_status = validated_data.get("status")
         if new_status and new_status != instance.status:

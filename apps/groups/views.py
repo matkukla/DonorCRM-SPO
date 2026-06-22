@@ -93,7 +93,13 @@ class GroupContactsView(APIView):
         if not group:
             return Response({"detail": "Group not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        contacts = group.contacts.filter(is_merged=False).select_related("owner")
+        # Scope to contacts the requester is allowed to see. A shared group can
+        # contain contacts owned by multiple users; group visibility must not
+        # leak contacts the requester does not own/cannot see (IDOR).
+        visible = get_visible_user_ids(request.user, request=request)
+        contacts = group.contacts.filter(is_merged=False, owner_id__in=visible).select_related(
+            "owner"
+        )
         serializer = ContactListSerializer(contacts, many=True)
         return Response(serializer.data)
 
@@ -167,11 +173,14 @@ class GroupContactEmailsView(APIView):
         except Group.DoesNotExist:
             return Response({"detail": "Group not found."}, status=status.HTTP_404_NOT_FOUND)
 
+        # Scope to contacts the requester is allowed to see so a shared group
+        # does not leak cross-owner donor emails (IDOR).
         # email is encrypted at rest with a random nonce, so a DB-level
         # .order_by("email") sorts by (effectively random) ciphertext. Pull the
         # decrypted plaintext via values_list and sort case-insensitively here.
         emails = sorted(
-            group.contacts.exclude(email__isnull=True)
+            group.contacts.filter(owner_id__in=visible)
+            .exclude(email__isnull=True)
             .exclude(email="")
             .values_list("email", flat=True),
             key=str.casefold,
