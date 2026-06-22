@@ -27,6 +27,7 @@ from apps.contacts.services import find_duplicates_for_contact, merge_contacts
 from apps.core.pagination import StandardPagination
 from apps.core.permissions import (
     IsContactOwnerOrReadAccess,
+    IsFinancialRole,
     IsStaffOrAbove,
     IsSupervisorWriteRestricted,
     get_visible_user_ids,
@@ -158,7 +159,9 @@ class ContactGiftsView(generics.ListAPIView):
     GET: List gifts for a specific contact
     """
 
-    permission_classes = [permissions.IsAuthenticated, IsContactOwnerOrReadAccess]
+    # IsFinancialRole blocks coaches: individual gift amounts/dates are
+    # financial data coaches must not see (CWE-200).
+    permission_classes = [permissions.IsAuthenticated, IsFinancialRole, IsContactOwnerOrReadAccess]
     pagination_class = None
 
     def get_queryset(self):
@@ -185,7 +188,9 @@ class ContactRecurringGiftsView(generics.ListAPIView):
     GET: List recurring gifts for a specific contact
     """
 
-    permission_classes = [permissions.IsAuthenticated, IsContactOwnerOrReadAccess]
+    # IsFinancialRole blocks coaches: recurring gift/pledge amounts are
+    # financial data coaches must not see (CWE-200).
+    permission_classes = [permissions.IsAuthenticated, IsFinancialRole, IsContactOwnerOrReadAccess]
     pagination_class = None
 
     def get_queryset(self):

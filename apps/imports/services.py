@@ -29,10 +29,27 @@ VALID_FUND_STATUSES = ["active", "inactive", "closed"]
 # Formula characters for CSV injection prevention
 FORMULA_PREFIXES = ("=", "+", "-", "@")
 
+# Control characters a spreadsheet may strip from the front of a cell before
+# evaluating it. A leading one can hide a formula (e.g. "\t=HYPERLINK(...)"),
+# so a value starting with one is neutralized too (CWE-1236).
+CONTROL_PREFIXES = ("\t", "\r", "\n")
+
+# Leading whitespace/control chars to trim before the formula-prefix check.
+_LEADING_WHITESPACE = "\t\r\n\f\v "
+
 
 def sanitize_csv_value(value):
-    """Prevent CSV formula injection by prefixing dangerous characters with single quote."""
-    if value and isinstance(value, str) and value.startswith(FORMULA_PREFIXES):
+    """Prevent CSV formula injection by prefixing dangerous values with a quote.
+
+    A leading formula character (= + - @) is neutralized even when hidden behind
+    whitespace or control characters (tab/CR/LF) that spreadsheet apps strip
+    before evaluating a cell, e.g. "\\t=HYPERLINK(...)" or " =cmd".
+    """
+    if not value or not isinstance(value, str):
+        return value
+    if value.startswith(CONTROL_PREFIXES) or value.lstrip(_LEADING_WHITESPACE).startswith(
+        FORMULA_PREFIXES
+    ):
         return "'" + value
     return value
 
