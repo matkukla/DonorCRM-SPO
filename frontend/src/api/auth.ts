@@ -1,4 +1,4 @@
-import { apiClient, setTokens, clearTokens } from "./client"
+import { apiClient, setTokens, clearTokens, getRefreshToken } from "./client"
 
 export interface LoginCredentials {
   email: string
@@ -37,10 +37,24 @@ export async function login(credentials: LoginCredentials): Promise<User> {
 }
 
 /**
- * Clear tokens and log out
+ * Log out: blacklist the refresh token server-side, then clear local tokens.
+ *
+ * Posting the refresh token to /auth/logout/ invalidates it so a token stolen
+ * before logout cannot be reused (security report #14). Local tokens are always
+ * cleared, even if the backend call fails (offline/expired), so the user is
+ * logged out client-side regardless.
  */
-export function logout(): void {
-  clearTokens()
+export async function logout(): Promise<void> {
+  const refreshToken = getRefreshToken()
+  try {
+    if (refreshToken) {
+      await apiClient.post("/auth/logout/", { refresh: refreshToken })
+    }
+  } catch {
+    // Best-effort revocation: fall back to local clearing below.
+  } finally {
+    clearTokens()
+  }
 }
 
 /**
