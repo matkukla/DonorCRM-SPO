@@ -23,6 +23,7 @@ wheels/
 MANIFEST
 report.md
 report_2.md
+report_3.md
 
 # Django
 *.log
