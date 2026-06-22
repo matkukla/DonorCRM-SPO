@@ -6,7 +6,7 @@
 pytest>=9.0.3,<10.0
 pytest-django>=4.12,<5.0
 pytest-cov>=7.1.0,<8.0
-factory-boy>=3.3,<4.0
+factory-boy>=3.3.3,<4.0
 faker>=40.23.0,<41.0
 freezegun>=1.5.5,<2.0  # deterministic clock for fiscal-year tests
 
