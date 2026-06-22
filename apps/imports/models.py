@@ -236,9 +236,30 @@ class ImportBatch(TimeStampedModel):
             models.Index(fields=["import_type", "status"]),
         ]
         constraints = [
+            # Generic (per-user) imports dedup per uploader so one user's upload
+            # cannot suppress another user's byte-identical file (PRD fix
+            # #10/#11 / CWE-639).
             models.UniqueConstraint(
-                fields=["import_type", "sha256_hash"], name="unique_import_batch_hash_per_type"
-            )
+                fields=["import_type", "sha256_hash", "uploaded_by"],
+                condition=models.Q(
+                    import_type__in=[
+                        ImportBatchType.GENERIC_CONTACTS,
+                        ImportBatchType.GENERIC_DONATIONS,
+                    ]
+                ),
+                name="unique_generic_import_hash_per_uploader",
+            ),
+            # Bulk RE/SPO admin imports keep intentional global (cross-user) dedup.
+            models.UniqueConstraint(
+                fields=["import_type", "sha256_hash"],
+                condition=~models.Q(
+                    import_type__in=[
+                        ImportBatchType.GENERIC_CONTACTS,
+                        ImportBatchType.GENERIC_DONATIONS,
+                    ]
+                ),
+                name="unique_import_batch_hash_per_type",
+            ),
         ]
 
     def __str__(self):

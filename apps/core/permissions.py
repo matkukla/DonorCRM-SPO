@@ -58,6 +58,21 @@ class IsAdmin(permissions.BasePermission):
         return request.user.is_authenticated and request.user.role == "admin"
 
 
+class IsFinancialRole(permissions.BasePermission):
+    """
+    Allow only roles permitted to see financial data.
+
+    Coaches may read coached users' non-financial data but must never reach
+    endpoints that disclose gift amounts, totals, or other money fields
+    (CWE-200). Apply to financial subresources and dashboard widgets.
+    """
+
+    message = "You do not have permission to view financial data."
+
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and is_financial_role(request.user)
+
+
 class IsStaffOrAbove(permissions.BasePermission):
     """
     Permission class that allows Missionary, Supervisor, or Admin users.
