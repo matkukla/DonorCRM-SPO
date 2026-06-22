@@ -2,7 +2,7 @@
 Django>=4.2.28,<5.0
 
 # Django REST Framework
-djangorestframework>=3.14,<4.0
+djangorestframework>=3.17.1,<4.0
 djangorestframework-simplejwt>=5.5.1,<6.0
 django-filter==24.3
 django-cors-headers>=4.9.0,<5.0
@@ -16,7 +16,7 @@ celery>=5.6.3,<6.0
 redis>=8.0.0,<9.0
 
 # API Documentation
-drf-spectacular>=0.27,<1.0
+drf-spectacular>=0.29.0,<1.0
 
 # Security
 django-csp>=4.0,<5.0
@@ -26,7 +26,7 @@ django-axes>=8.3.1,<9.0
 # Floor raised to 48.0.1: fixes GHSA-537c-gmf6-5ccf (present through 46.x/47.x).
 # 47.x/48.x keep the same Fernet/MultiFernet/AESGCM/InvalidTag/InvalidToken APIs
 # this code relies on; the majors only dropped old OpenSSL/Python support.
-cryptography>=48.0.1,<49.0
+cryptography>=49.0.0,<50.0
 
 # Utilities
 python-dateutil>=2.8,<3.0
