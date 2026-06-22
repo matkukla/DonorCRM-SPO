@@ -97,9 +97,15 @@ class TaskCompleteView(APIView):
 
     def post(self, request, pk):
         user = request.user
+        # Completion is a WRITE: read visibility must not grant write authority.
+        # Coaches can read coached users' tasks (get_visible_user_ids) but must
+        # not complete them (PRD fix #8 / CWE-862). Restrict to the task owner,
+        # with admin retaining full access as elsewhere (IsOwnerOrAdmin).
+        queryset = (
+            Task.objects.all() if user.role == "admin" else Task.objects.filter(owner_id=user.id)
+        )
         try:
-            visible = get_visible_user_ids(user, request=request)
-            task = Task.objects.get(pk=pk, owner_id__in=visible)
+            task = queryset.get(pk=pk)
         except Task.DoesNotExist:
             return Response({"detail": "Task not found."}, status=status.HTTP_404_NOT_FOUND)
 

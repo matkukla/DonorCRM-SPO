@@ -12,7 +12,7 @@ from rest_framework.views import APIView
 from apps.contacts.filters import ContactFilterSet
 from apps.contacts.models import Contact
 from apps.core.csv_export import safe_csv_stream
-from apps.core.permissions import get_visible_user_ids
+from apps.core.permissions import get_visible_user_ids, is_financial_role
 from apps.imports.services import sanitize_csv_value
 
 
@@ -45,33 +45,31 @@ class ContactExportCSVView(APIView):
 
         filename = f"contacts_{datetime.now().date().isoformat()}.csv"
 
+        # Coaches must not receive donor financial data in exports (CWE-200).
+        include_financial = is_financial_role(user)
+
         def generate_rows(writer):
             # Header
-            yield writer.writerow(
-                [
-                    "Name",
-                    "Email",
-                    "Phone",
-                    "Status",
-                    "Owner",
-                    "Last Gift Date",
-                    "Total Given",
-                ]
-            )
+            header = ["Name", "Email", "Phone", "Status", "Owner"]
+            if include_financial:
+                header += ["Last Gift Date", "Total Given"]
+            yield writer.writerow(header)
 
             # Data rows
             for contact in filtered_qs:
-                yield writer.writerow(
-                    [
-                        sanitize_csv_value(contact.full_name),
-                        sanitize_csv_value(contact.email or ""),
-                        sanitize_csv_value(contact.phone or ""),
-                        sanitize_csv_value(contact.status or ""),
-                        sanitize_csv_value(contact.owner.full_name if contact.owner else ""),
+                row = [
+                    sanitize_csv_value(contact.full_name),
+                    sanitize_csv_value(contact.email or ""),
+                    sanitize_csv_value(contact.phone or ""),
+                    sanitize_csv_value(contact.status or ""),
+                    sanitize_csv_value(contact.owner.full_name if contact.owner else ""),
+                ]
+                if include_financial:
+                    row += [
                         contact.last_gift_date or "",
                         str(contact.total_given or 0),
                     ]
-                )
+                yield writer.writerow(row)
 
         response = StreamingHttpResponse(
             safe_csv_stream(generate_rows, export_name="contacts"), content_type="text/csv"

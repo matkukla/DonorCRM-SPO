@@ -118,16 +118,22 @@ def _sanitize_field(value: str) -> str:
     return value
 
 
-def check_duplicate_import(file_bytes: bytes, import_type: str) -> ImportBatch | None:
-    """Check if file has already been imported. Returns existing batch if duplicate."""
+def check_duplicate_import(
+    file_bytes: bytes, import_type: str, uploaded_by=None
+) -> ImportBatch | None:
+    """Check if file has already been imported. Returns existing batch if duplicate.
+
+    When ``uploaded_by`` is provided the lookup is scoped to that uploader, so a
+    second user uploading byte-identical content is not collided with another
+    user's batch (PRD fix #10/#11 / CWE-639). Callers for per-user generic
+    imports MUST pass ``uploaded_by``; the bulk RE/SPO admin import types keep
+    intentional global (cross-user) dedup by omitting it.
+    """
     sha256_hash = hashlib.sha256(file_bytes).hexdigest()
-    try:
-        return ImportBatch.objects.get(
-            import_type=import_type,
-            sha256_hash=sha256_hash,
-        )
-    except ImportBatch.DoesNotExist:
-        return None
+    filters = {"import_type": import_type, "sha256_hash": sha256_hash}
+    if uploaded_by is not None:
+        filters["uploaded_by"] = uploaded_by
+    return ImportBatch.objects.filter(**filters).first()
 
 
 def validate_csv_headers(
