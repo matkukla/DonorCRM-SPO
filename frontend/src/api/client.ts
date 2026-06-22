@@ -1,7 +1,7 @@
 import axios from "axios"
 import type { AxiosError, InternalAxiosRequestConfig } from "axios"
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1"
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1"
 
 /**
  * Axios instance configured for the DonorCRM API

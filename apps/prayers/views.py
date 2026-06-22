@@ -14,7 +14,7 @@ from rest_framework.views import APIView
 
 from django_filters.rest_framework import DjangoFilterBackend
 
-from apps.core.permissions import get_visible_user_ids
+from apps.core.permissions import IsStaffOrAbove, get_visible_user_ids
 from apps.prayers.filters import PrayerIntentionFilterSet
 from apps.prayers.models import PrayerIntention
 from apps.prayers.serializers import PrayerIntentionSerializer
@@ -63,7 +63,11 @@ class PrayerIntentionDetailView(generics.RetrieveUpdateDestroyAPIView):
     DELETE: Delete prayer intention
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    # IsStaffOrAbove allows coaches to read (SAFE_METHODS) a coached user's
+    # prayer intention but blocks PATCH/PUT/DELETE: read visibility must not
+    # become a write capability (CWE-862). Ownership scoping in get_queryset
+    # still limits staff to their own (or viewed-as) records.
+    permission_classes = [permissions.IsAuthenticated, IsStaffOrAbove]
     serializer_class = PrayerIntentionSerializer
 
     def get_queryset(self):
@@ -75,7 +79,9 @@ class MarkPrayedView(APIView):
     POST: Mark a prayer intention as prayed (sets last_prayed_at to now).
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    # POST is a write; IsStaffOrAbove blocks coaches from mutating a coached
+    # user's prayer record (CWE-862).
+    permission_classes = [permissions.IsAuthenticated, IsStaffOrAbove]
 
     def post(self, request, pk):
         qs = _owner_scoped_queryset(request.user, request=request)

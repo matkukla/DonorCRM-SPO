@@ -173,6 +173,12 @@ class LateDonationsView(APIView):
         target = _resolve_target_user(request)
         limit = get_safe_int_param(request, "limit", default=10, min_val=1, max_val=100)
 
+        # Late-donation rows carry per-pledge amount and monthly_equivalent —
+        # individual financial detail withheld from non-financial requesters
+        # (coach), matching the gate on RecentGiftsView (CWE-200).
+        if not is_financial_role(request.user):
+            return Response({"late_donations": [], "total_count": 0})
+
         late_donations = get_late_donations(target, limit=limit)
 
         return Response(

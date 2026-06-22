@@ -13,7 +13,7 @@ from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.core.permissions import IsAdmin, IsStaffOrAbove, get_visible_user_ids
+from apps.core.permissions import IsAdmin, IsFinancialRole, IsStaffOrAbove, get_visible_user_ids
 from apps.imports.generic_services import (
     VALID_MATCH_BY,
     import_generic_contacts,
@@ -62,6 +62,14 @@ ASYNC_THRESHOLD = 100_000
 # one-time bulk migration runs via a management command (no request timeout)
 # and is intentionally NOT subject to this cap.
 MAX_GIFT_IMPORT_ROWS = 25_000
+
+# Hard per-upload row cap for the generic contact importer (issue from the
+# 2026-06-22 re-scan). The 10 MB byte limit does not bound row count, and
+# import_generic_contacts processes every row inside a single
+# transaction.atomic block. This cap rejects oversized uploads up front with
+# an actionable 400 instead of letting a dense CSV consume the request thread
+# and DB transaction synchronously (CWE-400).
+MAX_GENERIC_IMPORT_ROWS = 25_000
 
 
 def _count_csv_data_rows(file_bytes: bytes):
@@ -215,9 +223,14 @@ class DonationImportView(APIView):
 class ContactExportView(APIView):
     """
     GET: Export contacts to CSV
+
+    The contact export schema includes financial rollups (total_given,
+    gift_count, last_gift_date), so it is gated behind IsFinancialRole.
+    Coaches — who may read coached users' non-financial data — must not
+    download donor giving totals through this legacy route (CWE-200).
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsFinancialRole]
     throttle_scope = "export"
 
     def get(self, request):
@@ -244,9 +257,14 @@ class ContactExportView(APIView):
 class DonationExportView(APIView):
     """
     GET: Export gifts to CSV
+
+    Row-level gift data (amount, gift date, donor email, external id) is
+    financial, so this export is gated behind IsFinancialRole. Gift
+    list/detail endpoints already return nothing for coaches; this route
+    must enforce the same finance boundary (CWE-200).
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsFinancialRole]
     throttle_scope = "export"
 
     def get(self, request):
@@ -1030,6 +1048,26 @@ class GenericContactImportView(APIView):
             )
 
         file_bytes = file.read()
+
+        # Reject oversized uploads before the synchronous import transaction.
+        row_count = _count_csv_data_rows(file_bytes)
+        if row_count is not None and row_count > MAX_GENERIC_IMPORT_ROWS:
+            logger.warning(
+                "Generic contact import refused — file too large (rows=%d, limit=%d, user_id=%s)",
+                row_count,
+                MAX_GENERIC_IMPORT_ROWS,
+                request.user.id,
+            )
+            return Response(
+                {
+                    "detail": (
+                        f"This file has {row_count:,} rows, which exceeds the "
+                        f"{MAX_GENERIC_IMPORT_ROWS:,}-row limit for a single upload. "
+                        "Split it into smaller files and upload each separately."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         batch = import_generic_contacts(
             file_bytes=file_bytes,

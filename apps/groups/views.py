@@ -32,7 +32,15 @@ class GroupListCreateView(generics.ListCreateAPIView):
         user = self.request.user
         visible = get_visible_user_ids(user, request=self.request)
         queryset = Group.objects.filter(Q(owner_id__in=visible) | Q(owner__isnull=True))
-        return queryset.annotate(annotated_contact_count=Count("contacts")).order_by("name")
+        # Count only contacts the requester can see. A shared group may hold
+        # contacts owned by other users; an unfiltered Count would leak how
+        # many hidden contacts exist (CWE-200). Matches GroupContactsView.
+        return queryset.annotate(
+            annotated_contact_count=Count(
+                "contacts",
+                filter=Q(contacts__owner_id__in=visible, contacts__is_merged=False),
+            )
+        ).order_by("name")
 
     def get_serializer_class(self):
         if self.request.method == "POST":
@@ -54,7 +62,14 @@ class GroupDetailView(generics.RetrieveUpdateDestroyAPIView):
         user = self.request.user
         visible = get_visible_user_ids(user, request=self.request)
         queryset = Group.objects.filter(Q(owner_id__in=visible) | Q(owner__isnull=True))
-        return queryset.annotate(annotated_contact_count=Count("contacts"))
+        # See GroupListCreateView: count only contacts visible to the requester
+        # so a shared group does not leak hidden member counts (CWE-200).
+        return queryset.annotate(
+            annotated_contact_count=Count(
+                "contacts",
+                filter=Q(contacts__owner_id__in=visible, contacts__is_merged=False),
+            )
+        )
 
     def destroy(self, request, *args, **kwargs):
         group = self.get_object()
