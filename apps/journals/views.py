@@ -653,6 +653,9 @@ class JournalAnalyticsViewSet(viewsets.ViewSet):
         with_decisions = (
             decisions.exclude(status="declined").values("journal_contact").distinct().count()
         )
+        # Pledge/goal money is financial data — withheld from non-financial
+        # requesters (coach), matching the gates on gifts/dashboard (CWE-200).
+        show_financial = is_financial_role(request.user)
         confirmed_amount = (
             decisions.filter(status="active").aggregate(total=Sum("amount"))["total"] or 0
         )
@@ -692,10 +695,10 @@ class JournalAnalyticsViewSet(viewsets.ViewSet):
                 "metrics": {
                     "total_contacts": total_contacts,
                     "with_decisions": with_decisions,
-                    "confirmed_amount": str(confirmed_amount),
-                    "pending_amount": str(pending_amount),
+                    "confirmed_amount": str(confirmed_amount) if show_financial else None,
+                    "pending_amount": str(pending_amount) if show_financial else None,
                 },
-                "goal_amount": str(journal.goal_amount),
+                "goal_amount": str(journal.goal_amount) if show_financial else None,
                 "stage_distribution": stage_distribution,
                 "decision_status": decision_status,
                 "alerts": {

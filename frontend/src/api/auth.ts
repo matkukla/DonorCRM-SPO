@@ -1,4 +1,13 @@
-import { apiClient, setTokens, clearTokens, getRefreshToken } from "./client"
+import axios from "axios"
+
+import {
+  apiClient,
+  API_BASE_URL,
+  setTokens,
+  clearTokens,
+  getAccessToken,
+  getRefreshToken,
+} from "./client"
 
 export interface LoginCredentials {
   email: string
@@ -43,17 +52,57 @@ export async function login(credentials: LoginCredentials): Promise<User> {
  * before logout cannot be reused (security report #14). Local tokens are always
  * cleared, even if the backend call fails (offline/expired), so the user is
  * logged out client-side regardless.
+ *
+ * Logout deliberately uses a BARE axios instance (no apiClient interceptor).
+ * With apiClient, an expired access token would trigger the refresh
+ * interceptor, which rotates the refresh token, stores a new one, then retries
+ * logout with the STALE refresh token from the original request body. The
+ * server rejects the stale token while the freshly-rotated one is never
+ * blacklisted — leaving a valid refresh token alive after "logout" (security
+ * report #9). Here we instead refresh explicitly and blacklist the token we
+ * actually hold.
  */
 export async function logout(): Promise<void> {
-  const refreshToken = getRefreshToken()
   try {
-    if (refreshToken) {
-      await apiClient.post("/auth/logout/", { refresh: refreshToken })
-    }
+    await blacklistRefreshToken()
   } catch {
     // Best-effort revocation: fall back to local clearing below.
   } finally {
     clearTokens()
+  }
+}
+
+/**
+ * Blacklist the current refresh token using an interceptor-free axios call.
+ * If the access token is expired (401), refresh once and retry logout with the
+ * rotated refresh token so the token in storage is the one that gets revoked.
+ */
+async function blacklistRefreshToken(): Promise<void> {
+  const refreshToken = getRefreshToken()
+  if (!refreshToken) return
+
+  const access = getAccessToken()
+  try {
+    await axios.post(
+      `${API_BASE_URL}/auth/logout/`,
+      { refresh: refreshToken },
+      access ? { headers: { Authorization: `Bearer ${access}` } } : undefined
+    )
+  } catch (error) {
+    if (!axios.isAxiosError(error) || error.response?.status !== 401) {
+      throw error
+    }
+    // Access token expired: rotate once, persist, then blacklist the NEW token.
+    const refreshed = await axios.post(`${API_BASE_URL}/auth/refresh/`, {
+      refresh: refreshToken,
+    })
+    const { access: newAccess, refresh: newRefresh } = refreshed.data
+    setTokens(newAccess, newRefresh)
+    await axios.post(
+      `${API_BASE_URL}/auth/logout/`,
+      { refresh: newRefresh },
+      { headers: { Authorization: `Bearer ${newAccess}` } }
+    )
   }
 }
 

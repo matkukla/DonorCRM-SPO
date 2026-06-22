@@ -131,9 +131,14 @@ class ContactDetailView(generics.RetrieveUpdateDestroyAPIView):
 class ContactThankView(APIView):
     """
     POST: Mark contact as thanked
+
+    This is a workflow write, so IsStaffOrAbove blocks coaches: read
+    visibility of a coached contact must not allow mutating its thank-you
+    state (CWE-862). Ownership scoping still limits staff to their own
+    (or viewed-as) contacts.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsStaffOrAbove]
 
     @extend_schema(
         tags=["contacts"],

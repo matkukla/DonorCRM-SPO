@@ -3,10 +3,10 @@ Management command to ensure all solicitor accounts from test_solicitors.csv
 exist with @spo.org emails and a consistent password.
 """
 
-import os
-
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
+
+from apps.core.demo_accounts import assert_not_production, resolve_demo_password
 
 User = get_user_model()
 
@@ -38,8 +38,6 @@ SOLICITORS = [
     ("Andrew", "Anderson"),
 ]
 
-SOLICITOR_PASSWORD = os.environ.get("DEMO_USER_PASSWORD", "changeme")
-
 
 def solicitor_email(first, last):
     return f"{first.lower()}.{last.lower()}@spo.org"
@@ -49,6 +47,9 @@ class Command(BaseCommand):
     help = "Ensure all solicitor accounts exist with consistent @spo.org emails and password"
 
     def handle(self, *args, **options):
+        assert_not_production()
+        SOLICITOR_PASSWORD = resolve_demo_password()
+
         # 1. Migrate any non-@spo.org email accounts to @spo.org (based on first/last name)
         non_spo = User.objects.exclude(email__endswith="@spo.org")
         if non_spo.exists():
@@ -111,5 +112,8 @@ class Command(BaseCommand):
             pass
 
         self.stdout.write(
-            self.style.SUCCESS("\nDone. Password set from DEMO_USER_PASSWORD env var.")
+            self.style.SUCCESS(
+                f"\nDone. Password set for all accounts: {SOLICITOR_PASSWORD}\n"
+                "(Set DEMO_USER_PASSWORD to choose it; otherwise a random one was generated.)"
+            )
         )

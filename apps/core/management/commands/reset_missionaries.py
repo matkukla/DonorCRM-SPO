@@ -3,13 +3,12 @@ Management command to wipe all data, remove non-kept users,
 and create fresh missionary accounts from test_solicitors.csv.
 """
 
-import os
-
 from django.core.management.base import BaseCommand
 from django.db import connection, transaction
 from django.db.models import Q
 
 from apps.contacts.models import Contact
+from apps.core.demo_accounts import assert_not_production, resolve_demo_password
 from apps.events.models import Event
 from apps.gifts.models import Gift, GiftCredit, RecurringGift, RecurringGiftCredit, Solicitor
 from apps.groups.models import Group
@@ -34,7 +33,6 @@ from apps.prayers.models import PrayerIntention
 from apps.tasks.models import Task
 from apps.users.models import GoalJournalSelection, User, UserRole
 
-PASSWORD = os.environ.get("DEMO_USER_PASSWORD", "changeme")
 GOAL_CENTS = 220000
 
 MISSIONARIES = [
@@ -78,6 +76,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        assert_not_production()
         dry_run = not options["confirm"]
 
         # Build keep filter: superusers OR admins OR specific names
@@ -107,11 +106,17 @@ class Command(BaseCommand):
             )
             return
 
+        password = resolve_demo_password()
         with transaction.atomic():
             self._delete_data(users_to_delete, kept_users)
-            self._create_missionaries()
+            self._create_missionaries(password)
 
-        self.stdout.write(self.style.SUCCESS("\nDone."))
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"\nDone. Missionary password: {password}\n"
+                "(Set DEMO_USER_PASSWORD to choose it; otherwise a random one was generated.)"
+            )
+        )
 
     def _delete_data(self, users_to_delete, kept_users):
         """Delete all data for removed users, then orphan data, then the users."""
@@ -215,7 +220,7 @@ class Command(BaseCommand):
         User.objects.filter(pk__in=delete_ids).delete()
         self.stdout.write(f"\n  Deleted {count} user(s)")
 
-    def _create_missionaries(self):
+    def _create_missionaries(self, password):
         """Create the new missionary accounts."""
         self.stdout.write("\nCreating missionary accounts...")
         for first, last in MISSIONARIES:
@@ -224,7 +229,7 @@ class Command(BaseCommand):
                 email=email,
                 first_name=first,
                 last_name=last,
-                password=PASSWORD,
+                password=password,
                 role=UserRole.MISSIONARY,
                 monthly_support_goal_cents=GOAL_CENTS,
                 is_active=True,

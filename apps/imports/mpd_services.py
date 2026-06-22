@@ -16,6 +16,18 @@ from apps.imports.models import MPDSnapshot, MPDUpload
 
 logger = logging.getLogger(__name__)
 
+# Hard per-upload data-row cap. The view already enforces a 10 MB byte limit,
+# but a crafted dense CSV/XLSX can pack far more rows than a realistic MPD
+# export into that budget. Counting rows as we stream and rejecting early
+# bounds parser memory/CPU before materializing the whole sheet (CWE-400).
+# Real Smartsheet MPD reports are on the order of a few hundred rows.
+MAX_IMPORT_ROWS = 25_000
+
+
+class ImportTooLargeError(ValueError):
+    """Raised when an upload exceeds MAX_IMPORT_ROWS data rows."""
+
+
 # ---------------------------------------------------------------------------
 # Column mapping: Smartsheet header (lowercased) -> model field name
 # Fields prefixed with _ are matching keys, not stored on MPDSnapshot.
@@ -367,7 +379,17 @@ def parse_xlsx(file_bytes: bytes) -> tuple[list[str], list[list]]:
     wb = openpyxl.load_workbook(BytesIO(file_bytes), read_only=True, data_only=True)
     ws = wb.active
 
-    rows = list(ws.iter_rows(values_only=True))
+    # Stream rows and stop as soon as we exceed the cap (+1 for the header row)
+    # so a pathological workbook can't materialize an unbounded list first.
+    rows = []
+    for row in ws.iter_rows(values_only=True):
+        rows.append(row)
+        if len(rows) > MAX_IMPORT_ROWS + 1:
+            wb.close()
+            raise ImportTooLargeError(
+                f"This file has more than {MAX_IMPORT_ROWS:,} rows, which exceeds "
+                "the import limit. Split it into smaller files and upload each."
+            )
     wb.close()
 
     if not rows:
@@ -389,7 +411,16 @@ def parse_csv(file_bytes: bytes) -> tuple[list[str], list[list]]:
     text = file_bytes.decode("utf-8-sig")
     reader = csv.reader(StringIO(text))
 
-    rows = list(reader)
+    # Stream rows and reject early once past the cap (+1 for the header row)
+    # rather than building an unbounded list from a dense CSV.
+    rows = []
+    for row in reader:
+        rows.append(row)
+        if len(rows) > MAX_IMPORT_ROWS + 1:
+            raise ImportTooLargeError(
+                f"This file has more than {MAX_IMPORT_ROWS:,} rows, which exceeds "
+                "the import limit. Split it into smaller files and upload each."
+            )
     if not rows:
         return [], []
 

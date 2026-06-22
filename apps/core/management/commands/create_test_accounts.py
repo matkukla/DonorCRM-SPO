@@ -1,13 +1,15 @@
 from django.core.management.base import BaseCommand
 
+from apps.core.demo_accounts import assert_not_production, resolve_demo_password
 from apps.users.models import User, UserRole
 
 
 class Command(BaseCommand):
-    help = "Create test missionary accounts for Render DB"
+    help = "Create test missionary accounts for Render DB (local/dev only)"
 
     def handle(self, *args, **options):
-        PASSWORD = "Test1234"
+        assert_not_production()
+        PASSWORD = resolve_demo_password()
 
         # Tuples: (first, last, goal_cents)  — values are dollar amounts × 100
         missionaries = [

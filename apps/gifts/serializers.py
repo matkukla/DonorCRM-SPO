@@ -47,6 +47,22 @@ class GiftSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
 
+    def validate_donor_contact(self, value):
+        """Block retargeting a gift to a contact the requester does not own.
+
+        This serializer backs the update (PUT/PATCH) path, where donor_contact
+        is writable. Without this check a user could repoint an owned gift at
+        another user's contact (CWE-639). Mirrors GiftCreateSerializer.
+        """
+        request = self.context.get("request")
+        if request:
+            user = request.user
+            if user.role == "admin":
+                return value
+            if value.owner != user:
+                raise serializers.ValidationError("You can only add gifts to your own contacts.")
+        return value
+
     def get_donor_contact_name(self, obj):
         return obj.donor_contact.full_name if obj.donor_contact else None
 
@@ -167,6 +183,24 @@ class RecurringGiftSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+
+    def validate_donor_contact(self, value):
+        """Block retargeting a recurring gift to a contact the requester does not own.
+
+        This serializer backs the update (PUT/PATCH) path, where donor_contact
+        is writable. Without this check a user could repoint an owned pledge at
+        another user's contact (CWE-639). Mirrors RecurringGiftCreateSerializer.
+        """
+        request = self.context.get("request")
+        if request:
+            user = request.user
+            if user.role == "admin":
+                return value
+            if value.owner != user:
+                raise serializers.ValidationError(
+                    "You can only add recurring gifts to your own contacts."
+                )
+        return value
 
     def get_donor_contact_name(self, obj):
         return obj.donor_contact.full_name if obj.donor_contact else None
