@@ -15,7 +15,8 @@ from apps.contacts.models import Contact
 from apps.core.fiscal_year import fiscal_year_end, fiscal_year_start, months_elapsed_in_fiscal_year
 from apps.core.gift_utils import _monthly_equivalent_aggregate
 from apps.core.permissions import get_visible_user_ids
-from apps.events.models import Event, EventType
+from apps.events.models import Event
+from apps.events.policy import FINANCIAL_EVENT_TYPES
 from apps.gifts.models import Gift, RecurringGift, RecurringGiftStatus
 from apps.imports.models import ImportBatch, ImportBatchStatus, ImportBatchType, MPDSnapshot
 from apps.tasks.models import Task, TaskStatus
@@ -24,18 +25,6 @@ logger = logging.getLogger(__name__)
 
 # Default monthly MPD cap in dollars when no snapshot exists for a user.
 DEFAULT_MPD_CAP = 3600.0
-
-
-# Event types whose message/metadata carries a dollar figure. These are
-# withheld from non-financial roles (coach) in the event feed so the amount
-# cannot leak via a notification message (PRD fix #2; re-scan #1).
-#   - DONATION_RECEIVED / FIRST_DONATION: message "$<amount> received"
-#   - JOURNAL_CREATED: message "Goal: $<goal_amount>" + metadata.goal_amount
-FINANCIAL_EVENT_TYPES = (
-    EventType.DONATION_RECEIVED,
-    EventType.FIRST_DONATION,
-    EventType.JOURNAL_CREATED,
-)
 
 
 def get_what_changed(user, since=None, include_financial_detail=True):
