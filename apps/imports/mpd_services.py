@@ -97,6 +97,9 @@ MONTHS_REMAINING_FIELD = "months_remaining_rf"
 # Formula injection characters to strip from start of cell values.
 # Note: '-' is intentionally NOT stripped (negative currency like -$468.33).
 FORMULA_INJECTION_CHARS = {"=", "+", "@", "\t", "\r"}
+# Same chars as a string for str.lstrip — a single-pass C-level strip. Avoids
+# the O(n^2) cost of slicing one leading char at a time (re-scan #9, CWE-400).
+_FORMULA_INJECTION_PREFIX = "".join(FORMULA_INJECTION_CHARS)
 
 
 # ---------------------------------------------------------------------------
@@ -123,9 +126,9 @@ def sanitize_cell_value(value):
     """
     if not isinstance(value, str) or value is None:
         return value
-    while value and value[0] in FORMULA_INJECTION_CHARS:
-        value = value[1:]
-    return value
+    # Single-pass lstrip instead of repeated value[1:] slicing, which was
+    # O(n^2) on a long run of leading formula chars (re-scan #9, CWE-400).
+    return value.lstrip(_FORMULA_INJECTION_PREFIX)
 
 
 def parse_currency(value) -> Decimal | None:

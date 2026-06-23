@@ -26,9 +26,16 @@ logger = logging.getLogger(__name__)
 DEFAULT_MPD_CAP = 3600.0
 
 
-# Event types whose message carries an individual transaction amount. These are
-# withheld from non-financial roles (coach) in the event feed (PRD fix #2).
-FINANCIAL_EVENT_TYPES = (EventType.DONATION_RECEIVED, EventType.FIRST_DONATION)
+# Event types whose message/metadata carries a dollar figure. These are
+# withheld from non-financial roles (coach) in the event feed so the amount
+# cannot leak via a notification message (PRD fix #2; re-scan #1).
+#   - DONATION_RECEIVED / FIRST_DONATION: message "$<amount> received"
+#   - JOURNAL_CREATED: message "Goal: $<goal_amount>" + metadata.goal_amount
+FINANCIAL_EVENT_TYPES = (
+    EventType.DONATION_RECEIVED,
+    EventType.FIRST_DONATION,
+    EventType.JOURNAL_CREATED,
+)
 
 
 def get_what_changed(user, since=None, include_financial_detail=True):
@@ -356,8 +363,15 @@ def get_dashboard_summary(user, include_financial_detail=True):
     # tenants with thousands of stale recurring gifts.
     from apps.core.late_donations import base_recurring_for_owner, count_late_donations
 
-    late_donations = get_late_donations(user, limit=10)
-    late_donations_count = count_late_donations(base_recurring_for_owner(user))
+    # Late-donation rows carry per-pledge amount and monthly_equivalent —
+    # individual financial detail withheld from non-financial requesters
+    # (coach), matching LateDonationsView (CWE-200; re-scan #5).
+    if include_financial_detail:
+        late_donations = get_late_donations(user, limit=10)
+        late_donations_count = count_late_donations(base_recurring_for_owner(user))
+    else:
+        late_donations = []
+        late_donations_count = 0
 
     thank_you_qs = get_thank_you_queue(user)
     thank_you_list = list(thank_you_qs[:5].values(*thank_you_queue_fields))
