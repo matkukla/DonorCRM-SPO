@@ -3,20 +3,30 @@
 This document is the operational runbook for moving DonorCRM donor PII columns
 from plaintext to field-level encryption (`apps.core.encryption.EncryptedTextField`).
 
-## Current state (2026-05-07)
+## Current state (2026-06-22)
 
-- **Algorithm:** AES-256-GCM v1 (was Fernet/AES-128-CBC; algorithm rotation
-  shipped in [apps/core/encryption.py](../../apps/core/encryption.py)).
+- **Algorithm:** AES-256-GCM. Current write format is **v2** (per-field AAD
+  binding); v1 (no AAD) and legacy Fernet/AES-128-CBC remain readable for
+  backward compatibility. Implementation in
+  [apps/core/encryption.py](../../apps/core/encryption.py).
 - **Key custody:** `DJANGO_PII_ENCRYPTION_KEYS` env var, runbook in
   [key-management.md](key-management.md). KMS-backed (Phase 5) is a
   future upgrade.
-- **Encrypted columns:**
-  - `Contact.notes`
-  - `Contact.phone_secondary`
+- **Encrypted columns (9):**
+  - `Contact.email` (blind index `email_hash`)
+  - `Contact.phone` (blind index `phone_hash`)
+  - `Contact.phone_secondary` (blind index `phone_secondary_hash`)
   - `Contact.street_address`
+  - `Contact.notes`
   - `JournalStageEvent.notes`
+  - `PrayerIntention.description`
+  - `Gift.description`
+  - `RecurringGift.description`
+
+  Full classification (including fields intentionally left plaintext) is in
+  [data-classification.md](data-classification.md).
 - **Tooling:** `python manage.py rotate_pii_encryption --all` re-encrypts
-  every registered field under the current write key.
+  every registered field under the current write key (sweeps v1/Fernet → v2).
 
 See [crypto-architecture.md](crypto-architecture.md) for the design and
 [evidence-map.md](evidence-map.md) for the control-to-framework mapping.
