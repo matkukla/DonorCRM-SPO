@@ -3,8 +3,12 @@
 This document captures the live TLS posture of DonorCRM's production hosts
 and Postgres connection. Refresh quarterly or before any security review.
 
-**Last verified: 2026-05-07** (US-based donors only; no PCI / HIPAA / GDPR
-scope confirmed by product owner).
+**Last verified: 2026-06-22** (re-probed live; previous: 2026-05-07).
+US-based donors only; no PCI / HIPAA / GDPR scope confirmed by product owner.
+
+2026-06-22 live probe reproduced TLS 1.3 with `TLS_AES_256_GCM_SHA384` on both
+edge hosts, and HSTS present on both (web `max-age=31536000`, frontend
+`max-age=315360000`, both `includeSubDomains; preload`).
 
 ## Edge — `donorcrm-web.onrender.com` (Django API)
 
@@ -42,17 +46,21 @@ Connection enforced TLS via `dj_database_url(..., ssl_require=True)` in
 
 The application performs a startup self-check that queries
 `pg_stat_ssl` and refuses to start if the connection is not TLS 1.2+.
-See [apps/core/db_tls_check.py](../../apps/core/db_tls_check.py).
+See [apps/core/db_tls_check.py](../../apps/core/db_tls_check.py). Because the
+check is fail-closed, a running production web service is itself evidence that
+the app↔DB link negotiated TLS 1.2+.
 
-To upgrade from `sslmode=require` to `sslmode=verify-full` (recommended for
-audit-grade evidence):
+`DB_SSLMODE` now defaults to **`verify-full`** (cert chain + hostname
+verification) in [config/settings/prod.py](../../config/settings/prod.py).
+Operator notes:
 
-1. Confirm Render's Postgres certificate chains to a public CA, or download
-   the Render-provided CA bundle as a build asset.
-2. Set `DB_SSLMODE=verify-full` and `DB_SSLROOTCERT=/path/to/ca-bundle` in
-   the Render web service environment.
-3. Redeploy. The startup check logs `db.tls.check` with the negotiated
-   version; verify it appears in Render logs.
+1. If a deploy fails with "could not get server's host name from server
+   certificate", Render's internal Postgres cert chains to a private CA not in
+   the system bundle. Either set `DB_SSLROOTCERT` to a matching CA bundle, or
+   fall back to `DB_SSLMODE=verify-ca`. **Never** downgrade to `require`
+   (TLS without verification defeats the MITM protection).
+2. The startup check logs `db.tls.check` with the negotiated version; confirm
+   it appears in Render logs after each deploy.
 
 ## Application → External services
 

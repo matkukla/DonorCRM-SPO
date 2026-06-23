@@ -15,11 +15,12 @@ typical enterprise customer security questionnaires.
 
 | Control | Implementation | Evidence |
 |---------|----------------|----------|
-| AES-256 for sensitive data at rest | AES-256-GCM v1 envelope; 32-byte keys | [crypto-architecture.md](crypto-architecture.md), [apps/core/encryption.py](../../apps/core/encryption.py), tests in [test_encryption.py](../../apps/core/tests/test_encryption.py) |
+| AES-256 for sensitive data at rest | AES-256-GCM v2 envelope (per-field AAD); 32-byte keys | [crypto-architecture.md](crypto-architecture.md), [apps/core/encryption.py](../../apps/core/encryption.py), tests in [test_encryption.py](../../apps/core/tests/test_encryption.py) |
 | Authenticated encryption (tamper detection) | GCM mode; `InvalidTag` on flipped byte | `TestTamperDetection` tests in [test_encryption.py](../../apps/core/tests/test_encryption.py) |
+| Ciphertext context binding | v2 per-field AAD = `b"<app_label>.<Model>.<field>"`; a blob moved between columns/rows fails auth | `TestV2AssociatedData` in [test_encryption.py](../../apps/core/tests/test_encryption.py) |
 | Random nonces, no reuse | 96-bit nonce per write from `os.urandom`; tests assert two encryptions of identical plaintext differ | `test_two_encryptions_of_same_plaintext_differ` |
 | Key rotation procedure | Documented annual rotation | [key-management.md](key-management.md) |
-| Algorithm rotation supported | Versioned envelope (`v1:` prefix); `decrypt_str` handles legacy Fernet read path | `TestLegacyFernetReadPath` |
+| Algorithm rotation supported | Versioned envelope (`v1:` / `v2:` prefixes); `decrypt_str` handles v2, v1, and legacy Fernet read paths | `TestLegacyFernetReadPath`, `TestV2AssociatedData` |
 | Re-encryption tooling | `python manage.py rotate_pii_encryption --all` — idempotent, resumable | [rotate_pii_encryption.py](../../apps/core/management/commands/rotate_pii_encryption.py), [test_rotate_pii_encryption.py](../../apps/core/tests/test_rotate_pii_encryption.py) |
 | Key custody — current | Render env var `DJANGO_PII_ENCRYPTION_KEYS`; 1Password mirror | [key-management.md](key-management.md) |
 | Key custody — planned | KMS-backed envelope encryption (Phase 5) | Encryption-rollout doc |
@@ -32,7 +33,7 @@ typical enterprise customer security questionnaires.
 | TLS 1.2+ minimum | TLS 1.0/1.1 rejected by Render edge | [tls-evidence.md](tls-evidence.md) |
 | HSTS, 1-year+ | `SECURE_HSTS_*` in [config/settings/prod.py](../../config/settings/prod.py); Render edge sets 10-year HSTS on static site | [tls-evidence.md](tls-evidence.md), [render.yaml](../../render.yaml) |
 | HTTPS redirect | `SECURE_SSL_REDIRECT=True` | [config/settings/prod.py](../../config/settings/prod.py) |
-| App ↔ DB TLS | `ssl_require=True`, configurable `DB_SSLMODE` (default `require`, target `verify-full`) | [config/settings/prod.py](../../config/settings/prod.py) |
+| App ↔ DB TLS | `ssl_require=True`, `DB_SSLMODE` default `verify-full` (cert chain + hostname verification) | [config/settings/prod.py](../../config/settings/prod.py) |
 | App ↔ DB TLS startup verification | `pg_stat_ssl` query at boot; refuses to start if TLS missing or <1.2 | [apps/core/db_tls_check.py](../../apps/core/db_tls_check.py), [apps/core/apps.py](../../apps/core/apps.py) |
 | Strong cipher suite | Negotiated `TLS_AES_256_GCM_SHA384` | curl evidence in [tls-evidence.md](tls-evidence.md) |
 
