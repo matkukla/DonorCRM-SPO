@@ -41,6 +41,20 @@ class JournalListSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "owner", "created_at", "updated_at", "is_archived"]
 
+    def to_representation(self, instance):
+        """Null goal_amount for non-financial requesters (coach).
+
+        goal_amount is a fundraising figure (financial detail). A coach can
+        list a coached user's journals but must not receive the goal value
+        (CWE-200; re-scan #7). Financial roles keep the normal DecimalField
+        string output; the field stays present so the response shape is stable.
+        """
+        data = super().to_representation(instance)
+        request = self.context.get("request")
+        if request and not is_financial_role(request.user):
+            data["goal_amount"] = None
+        return data
+
 
 class JournalDetailSerializer(serializers.ModelSerializer):
     """

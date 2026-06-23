@@ -57,8 +57,6 @@ class GiftSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if request:
             user = request.user
-            if user.role == "admin":
-                return value
             if value.owner != user:
                 raise serializers.ValidationError("You can only add gifts to your own contacts.")
         return value
@@ -140,8 +138,6 @@ class GiftCreateSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if request:
             user = request.user
-            if user.role == "admin":
-                return value
             if value.owner != user:
                 raise serializers.ValidationError("You can only add gifts to your own contacts.")
         return value
@@ -194,8 +190,6 @@ class RecurringGiftSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if request:
             user = request.user
-            if user.role == "admin":
-                return value
             if value.owner != user:
                 raise serializers.ValidationError(
                     "You can only add recurring gifts to your own contacts."
@@ -243,8 +237,6 @@ class RecurringGiftCreateSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if request:
             user = request.user
-            if user.role == "admin":
-                return value
             if value.owner != user:
                 raise serializers.ValidationError(
                     "You can only add recurring gifts to your own contacts."
