@@ -13,6 +13,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 
 from apps.core.permissions import get_visible_user_ids
 from apps.events.models import Event
+from apps.events.policy import scope_events_for_requester
 from apps.events.serializers import EventSerializer
 
 
@@ -32,7 +33,11 @@ class EventListView(generics.ListAPIView):
         user = self.request.user
 
         visible = get_visible_user_ids(user, request=self.request)
-        return Event.objects.filter(user_id__in=visible).select_related("contact")
+        qs = Event.objects.filter(user_id__in=visible).select_related("contact")
+        # Withhold dollar-bearing events from non-financial requesters (coach)
+        # so the events API cannot leak amounts the dashboard already hides
+        # (CWE-200; report_3 #1 sibling path).
+        return scope_events_for_requester(qs, user)
 
 
 class EventDetailView(generics.RetrieveAPIView):
@@ -46,7 +51,9 @@ class EventDetailView(generics.RetrieveAPIView):
     def get_queryset(self):
         user = self.request.user
         visible = get_visible_user_ids(user, request=self.request)
-        return Event.objects.filter(user_id__in=visible)
+        qs = Event.objects.filter(user_id__in=visible)
+        # A coach fetching a financial event by id gets a 404, not the amount.
+        return scope_events_for_requester(qs, user)
 
 
 class EventMarkReadView(APIView):
