@@ -15,11 +15,10 @@
 --   3. Run this whole file (\i path/to/this.sql, or paste it).
 --   4. Repoint the runtime to donorcrm_app and verify (CRITICAL — the lockdown
 --      does NOTHING while the app connects as the owner, which bypasses the
---      REVOKE). Follow the ordered cutover runbook:
+--      REVOKE). Follow the ordered cutover runbook, which includes the required
+--      render.yaml changes (move migrate out of the build; point DATABASE_URL
+--      at a donorcrm_app secret), the deploy, and the verification below:
 --          docs/security/db-role-cutover.md
---      render.yaml is already wired for this (migrate removed from build;
---      DATABASE_URL is sync:false). You set the donorcrm_app DATABASE_URL
---      secret, deploy, run migrations as owner, and run the verification below.
 -- =====================================================================
 
 -- 1. Create the limited application role and the purge role.

@@ -16,8 +16,12 @@ a table owner bypasses the `REVOKE`, which would defeat the lockdown. So:
 
 - **Runtime (gunicorn)** → `donorcrm_app` (least privilege).
 - **Migrations** → the database **owner**, run manually (no longer in the
-  build). `render.yaml` reflects this: `migrate` is removed from `buildCommand`
-  and `DATABASE_URL` is `sync: false` (set as a dashboard secret).
+  build). When you do this cutover, apply two `render.yaml` edits to the
+  `donorcrm-web` service: remove `&& python manage.py migrate --noinput` from
+  `buildCommand`, and change `DATABASE_URL` from the `fromDatabase` block to
+  `sync: false` (so it uses the dashboard secret instead of the owner string).
+  These edits are **not** on the branch — R2 is deferred — so they are part of
+  this runbook, not pre-applied.
 
 ## Cutover steps — order matters (do in a low-traffic window)
 

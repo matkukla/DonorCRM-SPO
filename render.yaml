@@ -47,11 +47,7 @@ services:
   - type: web
     name: donorcrm-web
     env: python
-    # migrate is intentionally NOT here: the runtime connects as the
-    # least-privilege donorcrm_app role (R2 lockdown), which cannot run DDL.
-    # Migrations are run manually as the database owner.
-    # See docs/security/db-role-cutover.md.
-    buildCommand: pip install -r requirements/prod.txt && python manage.py collectstatic --noinput
+    buildCommand: pip install -r requirements/prod.txt && python manage.py collectstatic --noinput && python manage.py migrate --noinput
     # Long --timeout accommodates synchronous CSV imports up to ~80-100k
     # rows on the encryption-enabled write path. With 3 workers x 2 threads
     # there are 6 concurrent slots, so a long-running import does not block
@@ -74,14 +70,10 @@ services:
         value: https://donorcrm-frontend.onrender.com,https://donorcrm-web.onrender.com
       - key: JWT_ACCESS_LIFETIME_MINUTES
         value: "15"
-      # RUNTIME connection. Uses the least-privilege donorcrm_app role, which
-      # cannot UPDATE/DELETE the audit log (R2). Set as a dashboard secret built
-      # from the donorcrm_app credentials — see docs/security/db-role-cutover.md.
-      # sync:false means Render keeps the dashboard value; it MUST be set in the
-      # dashboard BEFORE this deploys, or boot fails (no DATABASE_URL).
-      # To roll back, set this to the owner's internal connection string.
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: donorcrm-db
+          property: connectionString
       # Redis not needed without Celery
       # - key: REDIS_URL
       #   fromService:
