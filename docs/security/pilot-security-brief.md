@@ -108,7 +108,8 @@ the US-only scope, documented in the data-classification policy.
   function governs whose records each user can see.
 - **JWT authentication** with short-lived access tokens and refresh-token
   revocation.
-- **Passwords** hashed with a modern algorithm (Argon2/PBKDF2).
+- **Passwords** hashed with PBKDF2-SHA256 (Django's default KDF, salted,
+  high iteration count).
 - **Brute-force protection** via account lockout after repeated failures.
 - **Administrative "view-as"** access is audit-logged.
 
@@ -121,8 +122,10 @@ the US-only scope, documented in the data-classification policy.
 - **PII scrubbing in error monitoring** — donor values are filtered before any
   error report leaves the system.
 - **Append-only PII access log** with retention-based purge tooling.
-- **Automated daily database backups**, plus quarterly restore tests against a
-  documented checklist.
+- **Automated daily database backups**, with a documented restore-test
+  procedure and checklist. *(First restore drill pending — see
+  `docs/security/restore-tests.md`; do not assert "restore-tested" until a
+  drill is recorded there.)*
 
 ---
 
