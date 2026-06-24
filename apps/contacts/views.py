@@ -338,7 +338,9 @@ class ContactSearchView(generics.ListAPIView):
                 | Q(organization_name__icontains=query)
             )
 
-        return queryset[:50]  # Limit search results
+        # select_related owner: ContactListSerializer.owner_name reads
+        # owner.full_name (a Python @property) — avoids a 1+N query per result.
+        return queryset.select_related("owner")[:50]  # Limit search results
 
 
 @extend_schema(tags=["contacts"], summary="List contact journal memberships")

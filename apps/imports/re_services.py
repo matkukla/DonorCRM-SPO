@@ -12,7 +12,7 @@ import io
 import logging
 from collections import defaultdict
 from datetime import datetime
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
@@ -1022,10 +1022,13 @@ def _normalize_payment_type(raw: str) -> str:
 
 
 def _parse_amount_to_cents(amount_str: str) -> int:
-    """Parse dollar amount string to cents integer.
+    """Parse dollar amount string to cents integer (rounded half-up).
 
-    Handles: "$1,234.56", "1234.56", "1,234", "$100"
-    Returns 0 for empty/unparseable values.
+    Handles: "$1,234.56", "1234.56", "1,234", "$100". Sub-cent values are
+    rounded half-up rather than truncated, so a 3-decimal or float-artifact
+    cell does not silently lose money. Returns 0 for empty, unparseable, or
+    negative values — callers treat 0 as an invalid-amount row error (a clean
+    per-row error instead of a PositiveBigIntegerField IntegrityError).
     """
     if not amount_str:
         return 0
@@ -1034,9 +1037,11 @@ def _parse_amount_to_cents(amount_str: str) -> int:
         return 0
     try:
         dollars = Decimal(cleaned)
-        return int(dollars * 100)
     except (InvalidOperation, ValueError):
         return 0
+    if dollars < 0:
+        return 0
+    return int((dollars * 100).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
 
 
 def _parse_date(date_str: str):

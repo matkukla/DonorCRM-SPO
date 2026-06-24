@@ -173,7 +173,12 @@ def get_recent_gifts(user, days=30, limit=10):
     visible = get_visible_user_ids(user)
     gifts = Gift.objects.filter(donor_contact__owner_id__in=visible)
 
-    return gifts.filter(gift_date__gte=start_date).select_related("donor_contact")[:limit]
+    # select_related donor_contact__owner: GiftSerializer.get_owner_name reads
+    # donor_contact.owner.full_name (a Python @property), so it can't be
+    # deferred — without this it's a 1+N query per recent gift.
+    return gifts.filter(gift_date__gte=start_date).select_related(
+        "donor_contact", "donor_contact__owner"
+    )[:limit]
 
 
 def get_giving_summary(user, as_of_date=None):
