@@ -123,7 +123,7 @@ contact/gift/journal/prayer isolation and View-As read-only enforcement.
 | # | Risk | Likelihood | Impact | Severity | Status / mitigation |
 |---|------|-----------|--------|----------|---------------------|
 | R1 | Backup recoverability | — | High | **Cleared** | ✅ Restore drill passed 2026-06-24 — restored snapshot matched production exactly. Re-run quarterly. |
-| R2 | Audit log erasable by an attacker with DB credentials (app-layer append-only only) | Low | Medium | High | Provisioning script staged at `docs/security/sql/dataaccesslog-role-lockdown.sql`; run it + repoint the app to the limited `donorcrm_app` role to close. Disclosed residual risk until then. |
+| R2 | Audit log erasable by an attacker with DB credentials (app-layer append-only only) | Low | Medium | High | **In progress:** `donorcrm_app`/`donorcrm_purge` roles provisioned + `core_dataaccesslog` UPDATE/DELETE revoked; `render.yaml` wired for the runtime cutover. Remaining: set the `donorcrm_app` `DATABASE_URL` secret + deploy + verify ([db-role-cutover.md](db-role-cutover.md)). Disclosed residual until the cutover deploys. |
 | R3 | Access token valid for up to ~15 min after logout/deactivation (stateless JWT) | Low | Low–Med | Medium | Accepted; short window; refresh tokens are revoked immediately |
 | R4 | Donor "delete on request" (DSAR / right-to-erasure) | — | Low | **Closed** | ✅ Admin endpoint shipped: `POST /contacts/<id>/erase/` hard-deletes the donor + cascades (gifts, recurring, journals, tasks, prayers), audit-logged. |
 | R5 | Privacy counsel / cyber-insurance not retained | n/a | Med | Medium | Accept for limited pilot; engage before scaling |

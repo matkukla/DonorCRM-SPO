@@ -13,16 +13,13 @@
 --   2. Replace the two '<from secrets manager>' passwords below with strong,
 --      unique values stored in your secrets manager (1Password / Render env).
 --   3. Run this whole file (\i path/to/this.sql, or paste it).
---   4. Repoint the web service to the limited role and redeploy (CRITICAL):
---        - Generate a connection string for donorcrm_app and set it as the
---          web service DATABASE_URL (Render env, as a secret), replacing the
---          default `fromDatabase` connectionString (which is the OWNER role).
---        - render.yaml note: the app currently uses the owner via
---          `fromDatabase ... property: connectionString`. The lockdown does
---          NOTHING while the app connects as the owner, because a table owner
---          bypasses GRANT/REVOKE.
---   5. Run the VERIFICATION block at the bottom (as donorcrm_app) and confirm
---      the DELETE is denied.
+--   4. Repoint the runtime to donorcrm_app and verify (CRITICAL — the lockdown
+--      does NOTHING while the app connects as the owner, which bypasses the
+--      REVOKE). Follow the ordered cutover runbook:
+--          docs/security/db-role-cutover.md
+--      render.yaml is already wired for this (migrate removed from build;
+--      DATABASE_URL is sync:false). You set the donorcrm_app DATABASE_URL
+--      secret, deploy, run migrations as owner, and run the verification below.
 -- =====================================================================
 
 -- 1. Create the limited application role and the purge role.
