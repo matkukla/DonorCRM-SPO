@@ -85,10 +85,15 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
         return UserSerializer
 
     def destroy(self, request, *args, **kwargs):
-        """Deactivate user instead of deleting."""
+        """Deactivate user instead of deleting, and revoke their tokens."""
         user = self.get_object()
         user.is_active = False
         user.save()
+        # Revoke the deactivated user's outstanding refresh tokens so a
+        # departed or compromised account cannot mint new access tokens via
+        # /auth/refresh/ — matching the password-change/reset paths (CWE-613).
+        for token in OutstandingToken.objects.filter(user=user):
+            BlacklistedToken.objects.get_or_create(token=token)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
