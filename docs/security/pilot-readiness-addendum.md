@@ -123,12 +123,12 @@ contact/gift/journal/prayer isolation and View-As read-only enforcement.
 | # | Risk | Likelihood | Impact | Severity | Status / mitigation |
 |---|------|-----------|--------|----------|---------------------|
 | R1 | Backup recoverability | — | High | **Cleared** | ✅ Restore drill passed 2026-06-24 — restored snapshot matched production exactly. Re-run quarterly. |
-| R2 | Audit log erasable by an attacker with DB credentials (app-layer append-only only) | Low | Medium | High | Run the documented two-role DB lockdown; until then, disclosed residual risk |
+| R2 | Audit log erasable by an attacker with DB credentials (app-layer append-only only) | Low | Medium | High | Provisioning script staged at `docs/security/sql/dataaccesslog-role-lockdown.sql`; run it + repoint the app to the limited `donorcrm_app` role to close. Disclosed residual risk until then. |
 | R3 | Access token valid for up to ~15 min after logout/deactivation (stateless JWT) | Low | Low–Med | Medium | Accepted; short window; refresh tokens are revoked immediately |
-| R4 | No tooling for donor "delete on request"; handled manually by an admin | Med | Low | Medium | Documented manual process; acceptable for US-donor pilot |
+| R4 | Donor "delete on request" (DSAR / right-to-erasure) | — | Low | **Closed** | ✅ Admin endpoint shipped: `POST /contacts/<id>/erase/` hard-deletes the donor + cascades (gifts, recurring, journals, tasks, prayers), audit-logged. |
 | R5 | Privacy counsel / cyber-insurance not retained | n/a | Med | Medium | Accept for limited pilot; engage before scaling |
 | R6 | Very large CSV import could approach the request timeout | Low | Med | Low–Med | Row caps (25k gifts) + 10-min server timeout; load-test before a big initial migration |
-| R7 | Departed user's contacts stay assigned to the inactive account (no bulk reassignment) | Med | Low | Low | Admin reassigns manually; reassignment tooling is post-pilot |
+| R7 | Departed user's contacts stranded on an inactive account | — | Low | **Closed** | ✅ Admin endpoint shipped: `POST /users/<id>/reassign-contacts/` bulk-reassigns a departed user's contacts to a new active owner, audit-logged. |
 | R8 | Database accepted public connections from any IP (`0.0.0.0/0`) | Low | Medium | Medium | ✅ **Closed 2026-06-24** — public IP allow-list removed (database is internal-only); `ipAllowList: []` set in `render.yaml` as the durable default. App unaffected (connects over Render's private network). |
 
 No unresolved **Critical** or **Blocker** items remain. R1 (restore) and R8
