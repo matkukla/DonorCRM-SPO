@@ -29,6 +29,26 @@ fill in Drill #1 below, and change this status line to ✅.
 
 ---
 
+## Production baseline (for smoke-test comparison)
+
+Captured from production `donorcrm-db` on **2026-06-24** (read-only aggregate
+query — no PII). A restored snapshot reflects the backup's point in time, so
+expect these or slightly fewer (whatever existed when the backup was taken):
+
+| Metric | Value |
+|--------|-------|
+| Contacts | 688 |
+| Gifts | 522 |
+| Recurring gifts | 301 |
+| Users | 43 |
+| Journals | 11 |
+| Sum of all gift amounts | 31,653,500 cents = **$316,535.00** |
+| Latest gift date | 2026-04-30 |
+
+A successful restore should return counts in this neighborhood and a gift-cents
+sum that matches the backup point-in-time. (Re-capture the baseline just before
+a drill if production has changed materially.)
+
 ## Drill #1 — Quarterly snapshot restore (PENDING)
 
 Copy the values in as you run it; leave `PENDING` until complete.
