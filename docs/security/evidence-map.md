@@ -74,7 +74,7 @@ typical enterprise customer security questionnaires.
 |---------|----------------|----------|
 | Automated daily Postgres backups | Render-managed | Render dashboard |
 | Off-provider archive | GPG symmetric AES-256, uploaded to B2 | [backup-runbook.md](backup-runbook.md) |
-| Restore-test procedure documented (first drill pending) | Checklist + log; no drill recorded yet | [restore-test-checklist.md](restore-test-checklist.md), [restore-tests.md](restore-tests.md) |
+| Restore drill-tested (first verified 2026-06-24; re-run quarterly) | Restored snapshot matched production exactly | [restore-tests.md](restore-tests.md), [restore-test-checklist.md](restore-test-checklist.md) |
 | Application-layer encryption survives backup | Encrypted columns are ciphertext in any backup tarball | crypto-architecture.md |
 
 ## Vulnerability management

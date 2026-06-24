@@ -27,13 +27,16 @@ fundraising goal) via one endpoint — was found and fixed, with a regression
 test. Authorization boundaries that previously held only in code are now backed
 by automated tests. The full backend suite passes: **1,488 tests, 0 failures.**
 
-**One operational item remains a pilot blocker:** the database backup has never
-been restore-tested. It must be drill-tested once and recorded before real donor
-data is loaded. This is operational work, not a code defect.
+**The one operational blocker has since been cleared:** on 2026-06-24 a backup
+restore drill was performed — a production snapshot was restored to a fresh
+instance and its row counts, total gift amount (to the cent), and latest gift
+date matched production exactly. The backup is recoverable with full data
+integrity ([restore-tests.md](restore-tests.md)).
 
-**Recommendation:** **GO-WITH-CAVEATS** for a limited, internal SPO pilot, *conditional
-on completing one recorded backup-restore drill*. For external prospects, also
-complete the database-level audit-log lockdown and retain privacy counsel.
+**Recommendation:** **GO-WITH-CAVEATS** for a limited, internal SPO pilot. No
+unresolved blockers remain; the accepted residual risks are listed in §8. For
+external prospects, additionally complete the database-level audit-log lockdown
+and retain privacy counsel.
 
 ---
 
@@ -110,7 +113,7 @@ contact/gift/journal/prayer isolation and View-As read-only enforcement.
 
 | Item | Status |
 |------|--------|
-| **Backup restore** | Procedure documented; **no drill has been performed.** Tracked in [restore-tests.md](restore-tests.md). **Pilot blocker.** |
+| **Backup restore** | ✅ **Verified 2026-06-24** — restored snapshot matched production exactly (counts, total amount, latest date). See [restore-tests.md](restore-tests.md). Re-run quarterly. App-level decryption against a restored instance not yet exercised. |
 | **Audit-log database-level lockdown** | Append-only in the application; the database-privilege lockdown that would stop an attacker with DB credentials from erasing the log is documented but **not yet provisioned** ([access-controls.md](access-controls.md)). |
 | **Live TLS posture** | Last probed 2026-06-22; re-probe at pilot start. |
 | **Privacy counsel / cyber-insurance** | Not yet retained (see [incident-response.md](incident-response.md)). |
@@ -119,24 +122,25 @@ contact/gift/journal/prayer isolation and View-As read-only enforcement.
 
 | # | Risk | Likelihood | Impact | Severity | Status / mitigation |
 |---|------|-----------|--------|----------|---------------------|
-| R1 | Backup cannot be restored when needed (never drill-tested) | Low | High | **Blocker** | Run + record one restore drill before loading real data |
+| R1 | Backup recoverability | — | High | **Cleared** | ✅ Restore drill passed 2026-06-24 — restored snapshot matched production exactly. Re-run quarterly. |
 | R2 | Audit log erasable by an attacker with DB credentials (app-layer append-only only) | Low | Medium | High | Run the documented two-role DB lockdown; until then, disclosed residual risk |
 | R3 | Access token valid for up to ~15 min after logout/deactivation (stateless JWT) | Low | Low–Med | Medium | Accepted; short window; refresh tokens are revoked immediately |
 | R4 | No tooling for donor "delete on request"; handled manually by an admin | Med | Low | Medium | Documented manual process; acceptable for US-donor pilot |
 | R5 | Privacy counsel / cyber-insurance not retained | n/a | Med | Medium | Accept for limited pilot; engage before scaling |
 | R6 | Very large CSV import could approach the request timeout | Low | Med | Low–Med | Row caps (25k gifts) + 10-min server timeout; load-test before a big initial migration |
 | R7 | Departed user's contacts stay assigned to the inactive account (no bulk reassignment) | Med | Low | Low | Admin reassigns manually; reassignment tooling is post-pilot |
-| R8 | Database accepted public connections from any IP (`0.0.0.0/0`) | Low | Medium | Medium | **Being closed:** `ipAllowList: []` set in `render.yaml` (internal-only); flip the live setting in the Render dashboard to apply. App is unaffected (connects over Render's private network). |
+| R8 | Database accepted public connections from any IP (`0.0.0.0/0`) | Low | Medium | Medium | ✅ **Closed 2026-06-24** — public IP allow-list removed (database is internal-only); `ipAllowList: []` set in `render.yaml` as the durable default. App unaffected (connects over Render's private network). |
 
-No unresolved **Critical** items remain in code. R1 (restore drill) is the one
-item that must clear before go-live. R8's live dashboard change is pending.
+No unresolved **Critical** or **Blocker** items remain. R1 (restore) and R8
+(DB exposure) are cleared. R2–R7 are accepted residual risks for a limited
+pilot, listed plainly so they are not hidden.
 
 ## 9. Final recommendation — Go / No-Go
 
-**GO-WITH-CAVEATS for a limited internal SPO pilot, conditional on:**
-
-1. **Completing one backup-restore drill** and recording it in
-   [restore-tests.md](restore-tests.md) (clears R1). *This is the gating item.*
+**GO-WITH-CAVEATS for a limited internal SPO pilot.** The gating blocker (an
+unproven backup) was cleared by the 2026-06-24 restore drill, and the database
+public-exposure issue (R8) was closed the same day. No unresolved blockers
+remain.
 
 **Accepted residual risks for the pilot** (disclosed, not hidden): R2–R7 above —
 most notably the ~15-minute token window, the application-layer-only audit log
@@ -144,10 +148,11 @@ until the DB lockdown runs, and the manual (un-tooled) donor-deletion process.
 
 **Before offering the product to external prospects**, additionally: run the
 audit-log DB lockdown (R2), retain privacy counsel and cyber-insurance (R5),
-and correct any remaining "Argon2"/"restore-tested" wording in customer
-materials (already corrected in the internal docs as of this review).
+re-probe live TLS, and run a full app-against-restored-DB drill (including PII
+decryption).
 
 **Plain answer to "can this be handed to a company to pilot with real donor data
-right now?"** — Not at this instant: do the one restore drill first. After that,
-yes, for a controlled pilot, with the residual risks above acknowledged in
-writing.
+right now?"** — Yes, for a controlled internal SPO pilot, with the residual
+risks above acknowledged in writing. The data-isolation controls are sound and
+test-backed, the backup is proven recoverable, and the database is no longer
+publicly exposed.

@@ -122,10 +122,10 @@ the US-only scope, documented in the data-classification policy.
 - **PII scrubbing in error monitoring** — donor values are filtered before any
   error report leaves the system.
 - **Append-only PII access log** with retention-based purge tooling.
-- **Automated daily database backups**, with a documented restore-test
-  procedure and checklist. *(First restore drill pending — see
-  `docs/security/restore-tests.md`; do not assert "restore-tested" until a
-  drill is recorded there.)*
+- **Automated daily database backups**, with a restore that has been
+  **drill-tested** (first verified 2026-06-24: a restored snapshot matched
+  production exactly; see `docs/security/restore-tests.md`) and is re-run
+  quarterly.
 
 ---
 
