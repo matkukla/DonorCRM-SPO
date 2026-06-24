@@ -306,6 +306,23 @@ class ContactJournalMembershipSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
+    def to_representation(self, instance):
+        """Null goal_amount for non-financial requesters (coach).
+
+        goal_amount is a fundraising figure (financial detail). A coach can
+        list a coached user's journal memberships via the contact Journals tab
+        but must not receive the goal value (CWE-200). This mirrors the gating
+        on JournalListSerializer (report_3 #7); the field stays present so the
+        response shape is stable.
+        """
+        from apps.core.permissions import is_financial_role
+
+        data = super().to_representation(instance)
+        request = self.context.get("request")
+        if request and not is_financial_role(request.user):
+            data["goal_amount"] = None
+        return data
+
     def get_current_stage(self, obj):
         """Get most recent stage from prefetched events."""
         # Events are prefetched and ordered by -created_at
