@@ -126,9 +126,10 @@ contact/gift/journal/prayer isolation and View-As read-only enforcement.
 | R5 | Privacy counsel / cyber-insurance not retained | n/a | Med | Medium | Accept for limited pilot; engage before scaling |
 | R6 | Very large CSV import could approach the request timeout | Low | Med | Low–Med | Row caps (25k gifts) + 10-min server timeout; load-test before a big initial migration |
 | R7 | Departed user's contacts stay assigned to the inactive account (no bulk reassignment) | Med | Low | Low | Admin reassigns manually; reassignment tooling is post-pilot |
+| R8 | Database accepted public connections from any IP (`0.0.0.0/0`) | Low | Medium | Medium | **Being closed:** `ipAllowList: []` set in `render.yaml` (internal-only); flip the live setting in the Render dashboard to apply. App is unaffected (connects over Render's private network). |
 
-No unresolved **Critical** items remain in code. R1 is the one item that must
-clear before go-live.
+No unresolved **Critical** items remain in code. R1 (restore drill) is the one
+item that must clear before go-live. R8's live dashboard change is pending.
 
 ## 9. Final recommendation — Go / No-Go
 
