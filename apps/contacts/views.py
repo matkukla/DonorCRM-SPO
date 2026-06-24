@@ -2,7 +2,9 @@
 Views for Contact management.
 """
 
+from django.db import transaction
 from django.db.models import Prefetch, Q
+from django.shortcuts import get_object_or_404
 
 from rest_framework import filters, generics, permissions, status
 from rest_framework.response import Response
@@ -24,8 +26,10 @@ from apps.contacts.serializers import (
     MergeRequestSerializer,
 )
 from apps.contacts.services import find_duplicates_for_contact, merge_contacts
+from apps.core.audit import audit_event
 from apps.core.pagination import StandardPagination
 from apps.core.permissions import (
+    IsAdmin,
     IsContactOwnerOrReadAccess,
     IsFinancialRole,
     IsStaffOrAbove,
@@ -126,6 +130,44 @@ class ContactDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_serializer_class(self):
         return ContactDetailSerializer
+
+
+@extend_schema_view(
+    post=extend_schema(tags=["contacts"], summary="Erase a donor (DSAR hard-delete)"),
+)
+class ContactEraseView(APIView):
+    """POST: Permanently delete a donor and all related data (right-to-erasure).
+
+    Admin-only and NOT owner-scoped: a deletion request may target a departed
+    user's donor, which an admin otherwise cannot reach. Cascades to gifts,
+    recurring gifts, journal memberships, tasks, and prayer intentions (all
+    on_delete=CASCADE). DataAccessLog rows are intentionally retained — they
+    reference the contact by internal ID only and hold no PII
+    (docs/security/data-retention.md). The deletion itself is audit-logged.
+    """
+
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    def post(self, request, pk):
+        contact = get_object_or_404(Contact.objects.all(), pk=pk)
+        owner_id = str(contact.owner_id)
+        deleted = {
+            "gifts": contact.gifts.count(),
+            "recurring_gifts": contact.recurring_gifts.count(),
+            "journal_memberships": contact.journal_memberships.count(),
+            "tasks": contact.tasks.count(),
+            "prayer_intentions": contact.prayer_intentions.count(),
+        }
+        with transaction.atomic():
+            contact.delete()
+        audit_event(
+            "contact.erased",
+            actor_id=str(request.user.id),
+            contact_id=str(pk),
+            owner_id=owner_id,
+            **deleted,
+        )
+        return Response({"detail": "Donor erased.", "deleted": deleted})
 
 
 class ContactThankView(APIView):
@@ -338,7 +380,9 @@ class ContactSearchView(generics.ListAPIView):
                 | Q(organization_name__icontains=query)
             )
 
-        return queryset[:50]  # Limit search results
+        # select_related owner: ContactListSerializer.owner_name reads
+        # owner.full_name (a Python @property) — avoids a 1+N query per result.
+        return queryset.select_related("owner")[:50]  # Limit search results
 
 
 @extend_schema(tags=["contacts"], summary="List contact journal memberships")

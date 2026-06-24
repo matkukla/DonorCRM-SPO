@@ -24,6 +24,11 @@ the gap is purely at the database privilege layer.
 
 ### Provisioning runbook (Render Postgres)
 
+> A ready-to-run version of the script below is staged at
+> [sql/dataaccesslog-role-lockdown.sql](sql/dataaccesslog-role-lockdown.sql)
+> (with the post-run "repoint the app to `donorcrm_app`" step and a
+> verification block). Run it via the Render PSQL shell as the owner role.
+
 Run as the database owner (the role created by Render) **after** initial
 migrations have created the table:
 

@@ -151,3 +151,4 @@ frontend/test-results/
 
 # understand-anything knowledge-graph cache (regenerable, ~12MB)
 .understand-anything/
+docs/security/last-security-audit.md

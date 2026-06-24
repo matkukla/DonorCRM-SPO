@@ -110,8 +110,10 @@ Required steps within the deadline (most states: 30-60 days):
 
 ### Communication templates
 
-Drafts of incident notification letters and AG cover letters live in
-`docs/security/incident-templates/` (TODO: write these before they're needed).
+Draft incident notification letters and AG cover letters live in
+[`docs/security/incident-templates/`](incident-templates/). They are
+fill-in scaffolds, **not legal advice** — privacy counsel must review any
+notification before it is sent.
 
 ## Phase 5 — Post-mortem
 
@@ -133,11 +135,18 @@ Within 7 days of resolution:
 
 | Role | Person | Channel |
 |------|--------|---------|
-| Engineering on-call | <fill in> | <fill in> |
-| Privacy counsel | <fill in> | <fill in> |
-| Cyber-insurance carrier | <fill in> | <fill in> |
-| Render support | <support@render.com> | https://render.com/support |
-| Sentry support | <support@sentry.io> | https://sentry.io/support |
+| Incident lead / engineering on-call | Matthew Kukla | mkukla1105@gmail.com (add a phone/SMS number reachable off-hours before pilot launch) |
+| Product / comms lead | JR | (add direct contact) |
+| Privacy counsel | **Not yet retained** | Engage a privacy attorney **before** scaling beyond the controlled pilot — do not wait for an incident. Until retained, SEV-0/1 notification decisions are made by the incident lead using Phase 4 below. |
+| Cyber-insurance carrier | **Not yet retained** | Obtain a cyber-liability policy before handling donor PII at scale; record carrier + claims hotline here once bound. |
+| Render support | support@render.com | https://render.com/support |
+| Sentry support | support@sentry.io | https://sentry.io/support |
+
+> **Pre-pilot action items on this table:** (1) add an off-hours phone/SMS for
+> the incident lead; (2) add JR's direct contact; (3) decide whether to retain
+> privacy counsel and cyber-insurance now or accept the documented residual
+> risk for a limited pilot. These are tracked in the Pilot Risk Register
+> ([pilot-readiness-addendum.md](pilot-readiness-addendum.md)).
 
 ## Drills
 

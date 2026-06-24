@@ -213,3 +213,9 @@ databases:
     plan: basic
     databaseName: donorcrm
     user: donorcrm
+    # Internal-only: the web service connects over Render's private network
+    # (DATABASE_URL from the internal connectionString above), so the database
+    # needs no public IP exposure. An empty allow-list blocks all external
+    # connections. Admin/dev DB access should use Render's PSQL shell/CLI, or
+    # add a specific /32 here temporarily — never 0.0.0.0/0.
+    ipAllowList: []

@@ -1,8 +1,9 @@
 """Hard-delete records past their retention window.
 
-Drives the retention policy in ``docs/security/data-retention.md``. Runs
-nightly via the ``donorcrm-purge`` Render cron (see render.yaml) and logs
-every deletion class with counts via ``apps.core.audit.audit_event``.
+Drives the retention policy in ``docs/security/data-retention.md``. Run
+manually (quarterly) from the Render shell while pre-revenue — the
+``donorcrm-purge`` cron block in ``render.yaml`` is currently commented out.
+Logs every deletion class with counts via ``apps.core.audit.audit_event``.
 
 Defaults are conservative — pass ``--dry-run`` to count without deleting.
 """

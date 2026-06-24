@@ -8,6 +8,7 @@ from apps.contacts.export_views import ContactExportCSVView
 from apps.contacts.views import (
     ContactDetailView,
     ContactEmailsView,
+    ContactEraseView,
     ContactGiftsView,
     ContactJournalEventsView,
     ContactJournalsView,
@@ -33,6 +34,7 @@ urlpatterns = [
     path("duplicates/merge/", MergeContactsView.as_view(), name="duplicate-merge"),
     path("duplicates/dismiss/", DismissDuplicateView.as_view(), name="duplicate-dismiss"),
     path("<uuid:pk>/", ContactDetailView.as_view(), name="contact-detail"),
+    path("<uuid:pk>/erase/", ContactEraseView.as_view(), name="contact-erase"),
     path("<uuid:pk>/thank/", ContactThankView.as_view(), name="contact-thank"),
     path("<uuid:pk>/donations/", ContactGiftsView.as_view(), name="contact-donations"),
     path("<uuid:pk>/pledges/", ContactRecurringGiftsView.as_view(), name="contact-pledges"),

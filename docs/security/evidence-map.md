@@ -55,7 +55,7 @@ typical enterprise customer security questionnaires.
 | Role-based authorization | 4 roles (admin, missionary, supervisor, coach) with object-level permissions | [apps/core/permissions.py](../../apps/core/permissions.py) |
 | Owner-scoped data | `get_visible_user_ids()` is the central scoping choke point | Same |
 | JWT auth | `simplejwt` with refresh token blacklist | [config/settings/base.py](../../config/settings/base.py) |
-| Password hashing | Django default (Argon2 fallback to PBKDF2) | Default config |
+| Password hashing | PBKDF2-SHA256 (Django default; argon2-cffi not installed, so Argon2 is not in use) | Default config |
 | View-As audit | Admin/supervisor view-as logged | [apps/core/middleware.py](../../apps/core/middleware.py), [apps/core/audit.py](../../apps/core/audit.py) |
 
 ## Logging & monitoring
@@ -74,7 +74,7 @@ typical enterprise customer security questionnaires.
 |---------|----------------|----------|
 | Automated daily Postgres backups | Render-managed | Render dashboard |
 | Off-provider archive | GPG symmetric AES-256, uploaded to B2 | [backup-runbook.md](backup-runbook.md) |
-| Quarterly restore-tested | Checklist + log | [restore-test-checklist.md](restore-test-checklist.md) |
+| Restore drill-tested (first verified 2026-06-24; re-run quarterly) | Restored snapshot matched production exactly | [restore-tests.md](restore-tests.md), [restore-test-checklist.md](restore-test-checklist.md) |
 | Application-layer encryption survives backup | Encrypted columns are ciphertext in any backup tarball | crypto-architecture.md |
 
 ## Vulnerability management

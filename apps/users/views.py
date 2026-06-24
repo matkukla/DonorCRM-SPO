@@ -2,7 +2,9 @@
 Views for user management.
 """
 
+from django.core.exceptions import ValidationError
 from django.db.models import Count, Q
+from django.shortcuts import get_object_or_404
 
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
@@ -10,6 +12,8 @@ from rest_framework.views import APIView
 
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 
+from apps.contacts.models import Contact
+from apps.core.audit import audit_event
 from apps.core.permissions import IsAdmin
 from apps.core.throttling import FailOpenSimpleRateThrottle
 from apps.users.models import User
@@ -85,11 +89,71 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
         return UserSerializer
 
     def destroy(self, request, *args, **kwargs):
-        """Deactivate user instead of deleting."""
+        """Deactivate user instead of deleting, and revoke their tokens."""
         user = self.get_object()
         user.is_active = False
         user.save()
+        # Revoke the deactivated user's outstanding refresh tokens so a
+        # departed or compromised account cannot mint new access tokens via
+        # /auth/refresh/ — matching the password-change/reset paths (CWE-613).
+        for token in OutstandingToken.objects.filter(user=user):
+            BlacklistedToken.objects.get_or_create(token=token)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class UserReassignContactsView(APIView):
+    """POST: Reassign all of a user's contacts to a new active owner.
+
+    Offboarding control (admin only): when a missionary departs, move their
+    donor relationships to a successor instead of stranding them on an inactive
+    account. Gifts, journals, and prayers follow their contact; the contact's
+    own giving stats derive from its gifts (not its owner), so a bulk owner
+    update is safe. The new owner must exist, be active, and differ from the
+    current owner. Audit-logged.
+    """
+
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    def post(self, request, pk):
+        from_user = get_object_or_404(User, pk=pk)
+        new_owner_id = request.data.get("new_owner_id")
+        if not new_owner_id:
+            return Response(
+                {"detail": "new_owner_id is required."}, status=status.HTTP_400_BAD_REQUEST
+            )
+        try:
+            to_user = User.objects.get(pk=new_owner_id)
+        except (User.DoesNotExist, ValidationError, ValueError, TypeError):
+            return Response(
+                {"detail": "new_owner_id is not a valid user."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if to_user.pk == from_user.pk:
+            return Response(
+                {"detail": "new_owner must differ from the current owner."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not to_user.is_active:
+            return Response(
+                {"detail": "new_owner must be an active user."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        count = Contact.objects.filter(owner=from_user).update(owner=to_user)
+        audit_event(
+            "contacts.reassigned",
+            actor_id=str(request.user.id),
+            from_user_id=str(from_user.id),
+            to_user_id=str(to_user.id),
+            count=count,
+        )
+        return Response(
+            {
+                "detail": "Contacts reassigned.",
+                "reassigned": count,
+                "from": str(from_user.id),
+                "to": str(to_user.id),
+            }
+        )
 
 
 class CurrentUserView(APIView):

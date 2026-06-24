@@ -10,6 +10,7 @@ from apps.users.views import (
     PasswordChangeView,
     UserDetailView,
     UserListCreateView,
+    UserReassignContactsView,
     ViewableUsersView,
 )
 from apps.users.views_assignments import AssignmentsView
@@ -23,5 +24,10 @@ urlpatterns = [
     path("admin/assignments/", AssignmentsView.as_view(), name="user-assignments"),
     path("viewable/", ViewableUsersView.as_view(), name="user-viewable"),
     path("<uuid:pk>/password/", AdminPasswordResetView.as_view(), name="admin-password-reset"),
+    path(
+        "<uuid:pk>/reassign-contacts/",
+        UserReassignContactsView.as_view(),
+        name="user-reassign-contacts",
+    ),
     path("<uuid:pk>/", UserDetailView.as_view(), name="user-detail"),
 ]

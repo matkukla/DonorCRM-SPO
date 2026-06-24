@@ -22,7 +22,7 @@
 | Prayer intentions (`PrayerIntention`) | Lifetime of the parent contact | n/a | Cascades on contact delete |
 | Auth audit log (`security.audit` channel, login events) | 1 year | event timestamp | Render log retention + log export rotation |
 | **PII access log (`DataAccessLog` — Phase 6)** | **1 year** | event timestamp | `purge_expired_data` |
-| `axes.AccessAttempt` rows | 90 days | `attempt_time` | `axes_reset` Django command, scheduled |
+| `axes.AccessAttempt` rows | 90 days | `attempt_time` | `axes_reset` Django command, run manually (not yet scheduled) |
 | Outstanding JWT tokens (`OutstandingToken`) | Until expiry | issuance | simplejwt blacklist cleanup |
 | Blacklisted JWT tokens (`BlacklistedToken`) | 30 days post-blacklist | `blacklisted_at` | simplejwt cleanup |
 | Sentry events | 90 days | Sentry-managed | Sentry retention setting |
@@ -84,8 +84,9 @@ immediately on the restored data.
   (`render.yaml`) that can be uncommented once traffic or a customer
   request justifies the ~$1-3/month cost. The command logs
   `event=retention.purge.complete` per data class with counts either way.
-- **Audit logs are retention-checked weekly** as a separate command so a
-  long-running purge doesn't block.
+- **`DataAccessLog` (the PII access log) is purged by the same
+  `purge_expired_data` run** — it is one of the deletion classes that command
+  handles, not a separate scheduled job.
 
 ## Review cadence
 
