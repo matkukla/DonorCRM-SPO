@@ -53,6 +53,19 @@ export interface RecentGift {
   contact__last_name: string
 }
 
+export interface ReconnectContact {
+  contact_id: string
+  contact_name: string
+  status: string
+  last_contacted: string | null
+  days_since_contact: number | null
+}
+
+export interface ReconnectResponse {
+  reconnect_contacts: ReconnectContact[]
+  total_count: number
+}
+
 export interface SupportProgress {
   current_monthly_support: number
   monthly_goal: number
@@ -139,6 +152,19 @@ export async function getRecentGifts(days = 30, limit = 10) {
   const response = await apiClient.get("/dashboard/recent-gifts/", {
     params: { days, limit },
   })
+  return response.data
+}
+
+/**
+ * Get donors not contacted recently (Reconnect card)
+ */
+export async function getReconnectContacts(
+  userId?: string,
+  limit = 10,
+): Promise<ReconnectResponse> {
+  const params: Record<string, string | number> = { limit }
+  if (userId) params.user_id = userId
+  const response = await apiClient.get("/dashboard/reconnect/", { params })
   return response.data
 }
 

@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
+import { useState, useEffect, useRef } from "react"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { useAuth } from "@/providers/AuthProvider"
 import { useViewAs } from "@/providers/ViewAsProvider"
 import { useUsers } from "@/hooks/useUsers"
+import { isAdmin } from "@/lib/roles"
 import { useContacts, useMarkContactThanked } from "@/hooks/useContacts"
 import { useFilterParams, contactFilterParsers } from "@/hooks/useFilterParams"
 import { contactPresets } from "@/lib/filter-presets"
@@ -21,11 +22,13 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { FilterCombobox } from "@/components/shared/FilterCombobox"
 import { formatLocalDate } from "@/lib/utils"
+import { formatLastContacted } from "@/lib/last-contacted"
 import { Plus, Search, Filter, MoreHorizontal, Heart, Mail, Phone, BookOpen, Copy, Users } from "lucide-react"
 import { toast } from "sonner"
 import { LogEventDialog } from "@/pages/journals/components/LogEventDialog"
 import { AddToGroupDialog } from "@/components/shared/AddToGroupDialog"
 import { getContactEmails } from "@/api/contacts"
+import { formatCopyEmailsToast } from "@/lib/copy-emails"
 import type { ColumnDef } from "@tanstack/react-table"
 import type { ContactListItem, ContactStatus } from "@/api/contacts"
 
@@ -73,6 +76,23 @@ export default function ContactList() {
 
   const [searchInput, setSearchInput] = useState(filters.search || "")
 
+  // Apply a preset named in ?preset=<id> on entry (e.g. the dashboard Reconnect
+  // card's "see all" → not-contacted-recently), then strip the param so it
+  // doesn't re-apply on later filter edits.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const presetApplied = useRef(false)
+  useEffect(() => {
+    if (presetApplied.current) return
+    const presetId = searchParams.get("preset")
+    if (!presetId) return
+    presetApplied.current = true
+    const preset = contactPresets.find((p) => p.id === presetId)
+    if (preset) setFilters({ ...preset.getParams(), page: 1 })
+    const next = new URLSearchParams(searchParams)
+    next.delete("preset")
+    setSearchParams(next, { replace: true })
+  }, [searchParams, setFilters, setSearchParams])
+
   // Sync search input when URL changes externally (e.g., browser back/forward)
   useEffect(() => {
     setSearchInput(filters.search || "")
@@ -81,13 +101,15 @@ export default function ContactList() {
   // Clear selection whenever filters change (excluding page navigation)
   useEffect(() => {
     setSelectedContacts(new Set())
-  }, [filters.search, filters.status, filters.needs_thank_you, filters.last_gift_after, filters.last_gift_before, filters.group, filters.ordering, filters.owner])
+  }, [filters.search, filters.status, filters.needs_thank_you, filters.last_gift_after, filters.last_gift_before, filters.last_contacted_before, filters.group, filters.ordering, filters.owner])
 
   const queryParams = { ...toQueryParams(), page_size: String(PAGE_SIZE) }
   const { data, isLoading } = useContacts(queryParams)
 
   const markThankedMutation = useMarkContactThanked()
-  const { data: usersData } = useUsers()
+  // The `/users/` list is admin-only on the backend; only admins consume it
+  // here for the owner dropdown, so gate the request to admins.
+  const { data: usersData } = useUsers({ enabled: isAdmin(user) })
   const ownerOptions = user?.role === "admin"
     ? (usersData || []).map((u) => ({ id: String(u.id), full_name: u.full_name }))
     : (user?.role === "supervisor" || user?.role === "coach")
@@ -113,7 +135,7 @@ export default function ContactList() {
         return
       }
       await navigator.clipboard.writeText(result.emails.join(", "))
-      toast.success(`Copied ${result.count} emails`)
+      toast.success(formatCopyEmailsToast(result))
     } catch {
       toast.error("Failed to copy emails")
     } finally {
@@ -193,6 +215,16 @@ export default function ContactList() {
       header: "Last Gift",
       meta: { serverSortKey: "last_gift_date" },
       cell: ({ row }) => formatLocalDate(row.original.last_gift_date),
+    },
+    {
+      accessorKey: "last_contacted",
+      header: "Last Contact",
+      meta: { serverSortKey: "last_contacted" },
+      cell: ({ row }) => (
+        <span className="text-muted-foreground">
+          {formatLastContacted(row.original.last_contacted)}
+        </span>
+      ),
     },
     {
       accessorKey: "needs_thank_you",

@@ -33,13 +33,19 @@ def get_goal_progress(user):
     )
 
     if not selected_journal_ids:
+        # No journals selected: the Goal page's Monthly Support reflects ALL the
+        # user's owned donors — the same scope and formula as the dashboard
+        # Monthly Support tile (get_support_progress) — instead of failing closed
+        # to $0. The Calls/Meetings rows are journal-based and have no all-donor
+        # equivalent; they stay 0 here and the frontend hides them. See ADR 0004.
+        support = compute_monthly_support(Q(donor_contact__owner=user))
         return {
             "monthly_support_goal_cents": user.monthly_support_goal_cents,
             "goal_weeks": user.goal_weeks,
             "selected_journal_ids": [],
-            "effective_monthly_support": 0.0,
-            "recurring_monthly": 0.0,
-            "one_time_monthly": 0.0,
+            "effective_monthly_support": support["effective_monthly_support"],
+            "recurring_monthly": support["recurring_monthly"],
+            "one_time_monthly": support["one_time_monthly"],
             "calls_count": 0,
             "meetings_count": 0,
         }

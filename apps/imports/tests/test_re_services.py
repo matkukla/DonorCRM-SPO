@@ -10,6 +10,8 @@ Covers all 4 RE import functions with minimal CSV inputs:
 Plus SHA256 dedup and malformed CSV handling.
 """
 
+from datetime import timedelta
+
 import pytest
 
 from apps.contacts.models import Contact
@@ -822,3 +824,54 @@ class TestConstituentSkipDetails:
         assert batch.created_count == 1
         assert batch.skipped_count == 0
         assert batch.summary["skipped_details"] == []
+
+
+# ---------------------------------------------------------------------------
+# F4 / ADR 0006: imported gifts enqueue thank-you only when recent
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+class TestImportGiftThankYouRecency:
+    """A recent non-recurring imported gift enqueues a thank-you; an old one
+    (historical backfill) does not. The importer disables gift signals, so this
+    must be handled explicitly in the import path (ADR 0006)."""
+
+    @pytest.fixture
+    def setup_contact(self, staff_user):
+        return Contact.objects.create(
+            owner=staff_user,
+            external_constituent_id="C001",
+            first_name="Alice",
+            last_name="Donor",
+        )
+
+    def _recent_date(self):
+        from django.utils import timezone
+
+        return (timezone.localdate() - timedelta(days=3)).isoformat()
+
+    def _old_date(self):
+        from django.utils import timezone
+
+        return (timezone.localdate() - timedelta(days=120)).isoformat()
+
+    def test_recent_gift_enqueues_thank_you(self, admin_user, staff_user, setup_contact):
+        csv_data = _to_bytes(
+            "Gift_ID,Constituent_ID,GF_Amount,GF_Date\n" f"G001,C001,100.00,{self._recent_date()}\n"
+        )
+        batch = import_re_gifts(csv_data, "gifts.csv", admin_user, staff_user)
+        assert batch.status == ImportBatchStatus.COMPLETED
+
+        setup_contact.refresh_from_db()
+        assert setup_contact.needs_thank_you is True
+
+    def test_old_gift_does_not_enqueue_thank_you(self, admin_user, staff_user, setup_contact):
+        csv_data = _to_bytes(
+            "Gift_ID,Constituent_ID,GF_Amount,GF_Date\n" f"G002,C001,100.00,{self._old_date()}\n"
+        )
+        batch = import_re_gifts(csv_data, "gifts.csv", admin_user, staff_user)
+        assert batch.status == ImportBatchStatus.COMPLETED
+
+        setup_contact.refresh_from_db()
+        assert setup_contact.needs_thank_you is False

@@ -1406,7 +1406,12 @@ def import_re_gifts(
     # Bulk-import fast path (issue #118): suppress the per-gift stat/notification
     # signal cascade and recompute each affected contact exactly once at the end,
     # so a large synchronous import stays inside the request timeout.
-    from apps.gifts.signals import disable_gift_signals, enable_gift_signals, recompute_giving_stats
+    from apps.gifts.signals import (
+        disable_gift_signals,
+        enable_gift_signals,
+        enqueue_thank_you_for_recent_imports,
+        recompute_giving_stats,
+    )
 
     disable_gift_signals()
     try:
@@ -1624,6 +1629,11 @@ def import_re_gifts(
             # suppressed during creation). Inside the atomic block so it sees the
             # just-created gifts and commits with them.
             recompute_giving_stats(affected_contact_ids)
+
+            # Enqueue thank-yous for recent non-recurring imports (F4, ADR 0006):
+            # signals were suppressed, so the UI's "fresh gift → thank-you" rule
+            # didn't fire. Historical backfill (>60 days) is intentionally skipped.
+            enqueue_thank_you_for_recent_imports(affected_contact_ids)
 
     except Exception as e:
         logger.exception("Gift import failed for %s", filename)

@@ -12,10 +12,11 @@ import {
 } from "@/api/users"
 import type { UserCreate, UserUpdate, AssignmentUpdate } from "@/api/users"
 
-export function useUsers() {
+export function useUsers(options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: ["users"],
     queryFn: () => getUsers(),
+    enabled: options.enabled ?? true,
   })
 }
 
@@ -86,9 +87,10 @@ export function useAdminResetPassword() {
   })
 }
 
-export function useViewableUsers() {
+export function useViewableUsers(options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: ["viewable-users"],
     queryFn: () => getViewableUsers(),
+    enabled: options.enabled ?? true,
   })
 }

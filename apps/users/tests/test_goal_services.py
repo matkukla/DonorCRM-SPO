@@ -39,13 +39,69 @@ def _select_journals(user, journals):
 
 @pytest.mark.django_db
 def test_goal_progress_no_journals():
-    """GOAL-04: When no GoalJournalSelections exist, effective_monthly_support == 0.0."""
+    """No journals and no gifts: effective_monthly_support is 0.0 (nothing raised)."""
     user = UserFactory()
     result = get_goal_progress(user)
     assert result["effective_monthly_support"] == 0.0
     assert result["recurring_monthly"] == 0.0
     assert result["one_time_monthly"] == 0.0
     assert result["selected_journal_ids"] == []
+
+
+@pytest.mark.django_db
+def test_goal_progress_no_journals_falls_back_to_all_donors():
+    """F10/F11 (ADR 0004): with gifts but no journals selected, the Goal page
+    shows the user's real all-donor Monthly Support, NOT $0."""
+    user = UserFactory()
+    contact = ContactFactory(owner=user)
+    RecurringGiftFactory(donor_contact=contact, amount_cents=10000, frequency="monthly")
+
+    result = get_goal_progress(user)
+
+    assert result["selected_journal_ids"] == []
+    assert result["effective_monthly_support"] == 100.0
+    assert result["recurring_monthly"] == 100.0
+    # Journal-based activity rows have no all-donor equivalent and stay zero.
+    assert result["calls_count"] == 0
+    assert result["meetings_count"] == 0
+
+
+@pytest.mark.django_db
+def test_goal_progress_no_journals_equals_dashboard_support_tile():
+    """F11 regression: with no journals, the Goal page Monthly Support number
+    equals the dashboard Monthly Support tile (same scope + formula)."""
+    from apps.dashboard.services import get_support_progress
+
+    user = UserFactory()
+    c1 = ContactFactory(owner=user)
+    c2 = ContactFactory(owner=user)
+    RecurringGiftFactory(donor_contact=c1, amount_cents=15000, frequency="monthly")
+    GiftFactory(donor_contact=c2, amount_cents=120000, gift_date=date.today())
+
+    goal = get_goal_progress(user)
+    dashboard = get_support_progress(user)
+
+    assert goal["selected_journal_ids"] == []
+    assert goal["effective_monthly_support"] == dashboard["current_monthly_support"]
+
+
+@pytest.mark.django_db
+def test_goal_progress_journal_selection_narrows_scope():
+    """F10/F11: selecting journals narrows the support number to journal
+    contacts only — gifts from donors outside the journal are excluded."""
+    user = UserFactory()
+    in_journal = ContactFactory(owner=user)
+    out_of_journal = ContactFactory(owner=user)
+    RecurringGiftFactory(donor_contact=in_journal, amount_cents=10000, frequency="monthly")
+    RecurringGiftFactory(donor_contact=out_of_journal, amount_cents=50000, frequency="monthly")
+
+    journal = _make_journal(user, contacts=[in_journal])
+    _select_journals(user, [journal])
+
+    result = get_goal_progress(user)
+
+    # Only the in-journal donor's $100/mo counts; the $500/mo donor is excluded.
+    assert result["effective_monthly_support"] == 100.0
 
 
 @pytest.mark.django_db

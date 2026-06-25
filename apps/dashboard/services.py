@@ -8,6 +8,7 @@ from decimal import Decimal
 
 from django.db.models import Count, DecimalField, ExpressionWrapper, F, Sum, Value
 from django.db.models.functions import TruncMonth
+from django.utils import timezone
 
 from dateutil.relativedelta import relativedelta
 
@@ -120,6 +121,43 @@ def get_late_donations(user, limit=10):
     from apps.core.late_donations import base_recurring_for_owner, compute_late_donations
 
     return compute_late_donations(base_recurring_for_owner(user), limit=limit)
+
+
+def get_reconnect_contacts(user, limit=10):
+    """Donors not contacted recently — the Reconnect card (F6, ADR 0005).
+
+    Scoped to the user's own donor/lapsed contacts past the 60-day
+    last-contacted threshold (plus never-contacted), never-contacted first.
+    Relational signal, not financial — no role gating.
+    """
+    from apps.contacts.last_contacted import not_contacted_recently
+    from apps.contacts.models import ContactStatus
+
+    visible = get_visible_user_ids(user)
+    base = Contact.active.filter(
+        owner_id__in=visible,
+        status__in=[ContactStatus.DONOR, ContactStatus.LAPSED],
+    )
+    rows = not_contacted_recently(base).select_related("owner")[:limit]
+
+    today = timezone.localdate()
+    current_tz = timezone.get_current_timezone()
+    result = []
+    for c in rows:
+        last = c.last_contacted
+        # last_contacted is tz-aware (stored UTC); convert to local before
+        # taking .date() so the day delta matches the user's calendar day.
+        days = (today - timezone.localtime(last, current_tz).date()).days if last else None
+        result.append(
+            {
+                "contact_id": str(c.id),
+                "contact_name": f"{c.first_name} {c.last_name}".strip(),
+                "status": c.status,
+                "last_contacted": last.isoformat() if last else None,
+                "days_since_contact": days,
+            }
+        )
+    return result
 
 
 def get_thank_you_queue(user):

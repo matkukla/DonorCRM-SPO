@@ -66,6 +66,7 @@ export const contactFilterParsers = {
   needs_thank_you: parseAsBoolean,
   last_gift_after: parseAsString,
   last_gift_before: parseAsString,
+  last_contacted_before: parseAsString,
   group: parseAsString,
   ordering: parseAsString,
   owner: parseAsString,

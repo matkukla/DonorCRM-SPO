@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { useTask, useCreateTask, useUpdateTask } from "@/hooks/useTasks"
-import { useSearchContacts } from "@/hooks/useContacts"
+import { useSearchContacts, useContact } from "@/hooks/useContacts"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
 import { Button } from "@/components/ui/button"
@@ -36,6 +36,13 @@ export default function TaskForm() {
 
   const { data: contactResults } = useSearchContacts(contactSearch)
 
+  // Fetch the pre-linked contact directly by ID so its name renders on load.
+  // (Scanning the empty-on-load search results never found it.) Only needed
+  // when creating from a contact; editing populates from the existing task.
+  const { data: preselectedContact } = useContact(
+    !isEditing && preselectedContactId ? preselectedContactId : ""
+  )
+
   const [formData, setFormData] = useState<TaskCreate>({
     contact: preselectedContactId || undefined,
     title: "",
@@ -69,14 +76,11 @@ export default function TaskForm() {
   }, [existingTask])
 
   useEffect(() => {
-    if (preselectedContactId && contactResults) {
-      const contact = contactResults.find((c) => c.id === preselectedContactId)
-      if (contact) {
-        setSelectedContact({ id: contact.id, name: contact.full_name })
-        setFormData((prev) => ({ ...prev, contact: contact.id }))
-      }
+    if (preselectedContact) {
+      setSelectedContact({ id: preselectedContact.id, name: preselectedContact.full_name })
+      setFormData((prev) => ({ ...prev, contact: preselectedContact.id }))
     }
-  }, [preselectedContactId, contactResults])
+  }, [preselectedContact])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target

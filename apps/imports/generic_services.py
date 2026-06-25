@@ -685,7 +685,12 @@ def import_generic_donations(
     # Bulk-import fast path (issue #118): suppress the per-gift stat/notification
     # signal cascade and recompute each affected contact exactly once at the end,
     # so a large synchronous import stays inside the request timeout.
-    from apps.gifts.signals import disable_gift_signals, enable_gift_signals, recompute_giving_stats
+    from apps.gifts.signals import (
+        disable_gift_signals,
+        enable_gift_signals,
+        enqueue_thank_you_for_recent_imports,
+        recompute_giving_stats,
+    )
 
     disable_gift_signals()
     try:
@@ -906,6 +911,9 @@ def import_generic_donations(
             # suppressed during creation). Inside the atomic block so it sees the
             # just-created gifts and commits with them.
             recompute_giving_stats(affected_contact_ids)
+
+            # Enqueue thank-yous for recent non-recurring imports (F4, ADR 0006).
+            enqueue_thank_you_for_recent_imports(affected_contact_ids)
 
             # Step 6: Finalize the batch inside the same transaction. A run is
             # only FAILED when every row errored -- an all-skipped re-upload is

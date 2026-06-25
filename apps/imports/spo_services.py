@@ -686,7 +686,11 @@ def import_spo_gifts(
     # signal cascade and recompute each affected contact exactly once at the end,
     # so a large synchronous import stays inside the request timeout. The
     # context manager guarantees signals are re-enabled even on error.
-    from apps.gifts.signals import gift_signals_disabled, recompute_giving_stats
+    from apps.gifts.signals import (
+        enqueue_thank_you_for_recent_imports,
+        gift_signals_disabled,
+        recompute_giving_stats,
+    )
 
     with gift_signals_disabled(), transaction.atomic():
         for row_num, row in enumerate(rows, start=2):  # row 1 = headers
@@ -831,6 +835,9 @@ def import_spo_gifts(
         # suppressed during creation). Inside the atomic block so it sees the
         # just-created gifts and commits with them.
         recompute_giving_stats(affected_contact_ids)
+
+        # Enqueue thank-yous for recent non-recurring imports (F4, ADR 0006).
+        enqueue_thank_you_for_recent_imports(affected_contact_ids)
 
     summary = {
         "created": created_count,

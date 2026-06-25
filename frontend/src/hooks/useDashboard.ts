@@ -1,12 +1,13 @@
 import { useQuery, useMutation } from "@tanstack/react-query"
 import { useState, useRef, useCallback } from "react"
 import { useAuth } from "@/providers/AuthProvider"
-import { getDashboardSummary, getGivingSummary, getMonthlyGifts, getUserDashboardLayout, saveDashboardLayout } from "@/api/dashboard"
+import { getDashboardSummary, getGivingSummary, getMonthlyGifts, getReconnectContacts, getUserDashboardLayout, saveDashboardLayout } from "@/api/dashboard"
 
 export const DEFAULT_TILE_ORDER = [
   "giving-summary", "monthly-gifts",
   "thank-you", "missed-donations", "active-pledges", "tasks-todo",
   "needs-attention", "support-progress", "recent-donations", "late-donations",
+  "reconnect",
   "mpd-financial-overview", "mpd-overview-table",
 ]
 
@@ -86,6 +87,14 @@ export function useDashboardSummary(userId?: string) {
   return useQuery({
     queryKey: ["dashboard", "summary", userId ?? "me"],
     queryFn: () => getDashboardSummary(userId),
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  })
+}
+
+export function useReconnect(userId?: string) {
+  return useQuery({
+    queryKey: ["dashboard", "reconnect", userId ?? "me"],
+    queryFn: () => getReconnectContacts(userId),
     staleTime: 2 * 60 * 1000, // 2 minutes
   })
 }

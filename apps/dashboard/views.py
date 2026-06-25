@@ -20,6 +20,7 @@ from apps.dashboard.services import (
     get_monthly_gifts,
     get_needs_attention,
     get_recent_gifts,
+    get_reconnect_contacts,
     get_support_progress,
     get_thank_you_queue,
     get_what_changed,
@@ -153,6 +154,38 @@ class NeedsAttentionView(APIView):
         data["thank_you_needed"] = ContactListSerializer(data["thank_you_needed"], many=True).data
 
         return Response(data)
+
+
+class ReconnectView(APIView):
+    """
+    GET: Donors not contacted recently (Reconnect card, F6/ADR 0005).
+
+    Relational signal (last logged call/meeting), not financial, so it is NOT
+    role-gated the way LateDonations/RecentGifts are — a coach can see who to
+    reconnect with without seeing any gift amounts.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        tags=["dashboard"],
+        summary="Get donors not contacted recently",
+        parameters=[
+            OpenApiParameter(name="limit", description="Max results (default: 10)", type=int)
+        ],
+    )
+    def get(self, request):
+        target = _resolve_target_user(request)
+        limit = get_safe_int_param(request, "limit", default=10, min_val=1, max_val=100)
+
+        contacts = get_reconnect_contacts(target, limit=limit)
+
+        return Response(
+            {
+                "reconnect_contacts": contacts,
+                "total_count": len(contacts),
+            }
+        )
 
 
 class LateDonationsView(APIView):

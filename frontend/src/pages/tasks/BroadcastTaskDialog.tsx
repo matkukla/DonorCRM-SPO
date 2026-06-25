@@ -57,7 +57,9 @@ export default function BroadcastTaskDialog({ open, onOpenChange }: BroadcastTas
 
   const targetOptions = isAdmin ? adminTargetOptions : supervisorTargetOptions
   const supervisedMembers = user?.supervised_users || []
-  const { data: viewableUsers } = useViewableUsers()
+  // Only admin consumes the viewable-users list here; gate the request so a
+  // supervisor (who uses supervised_users from auth) never fires the endpoint.
+  const { data: viewableUsers } = useViewableUsers({ enabled: isAdmin })
 
   // Admin uses viewable users from API; supervisor uses supervised_users from auth
   const selectableUsers = useMemo(() => {

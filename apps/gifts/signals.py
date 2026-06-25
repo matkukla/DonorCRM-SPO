@@ -65,6 +65,44 @@ def recompute_giving_stats(contact_ids):
         contact.update_giving_stats()
 
 
+def enqueue_thank_you_for_recent_imports(contact_ids, days=None):
+    """Flag imported contacts for the Thank You Queue when their gift is recent.
+
+    Bulk importers disable gift signals, so the UI signal's "new non-recurring
+    gift enqueues a thank-you" rule (update_contact_stats_on_gift_save) never
+    fires on import. Without this, every imported gift is silently excluded from
+    the Thank You Queue (F4, ADR 0006).
+
+    A contact is flagged when it has at least one **non-recurring** gift dated
+    within the last ``days`` (default: the shared 60-day window). Historical
+    backfill (older gifts) does NOT enqueue, so a multi-year history dump
+    doesn't flood the queue. Recurring auto-payments are never re-thanked.
+
+    Call AFTER recompute_giving_stats, inside the importer's atomic block.
+    """
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from apps.contacts.last_contacted import NOT_CONTACTED_RECENTLY_DAYS
+    from apps.contacts.models import Contact
+
+    if days is None:
+        days = NOT_CONTACTED_RECENTLY_DAYS
+
+    cutoff = timezone.localdate() - timedelta(days=days)
+    recent_contact_ids = (
+        Gift.objects.filter(
+            donor_contact_id__in=contact_ids,
+            recurring_gift__isnull=True,
+            gift_date__gte=cutoff,
+        )
+        .values_list("donor_contact_id", flat=True)
+        .distinct()
+    )
+    Contact.objects.filter(id__in=list(recent_contact_ids)).update(needs_thank_you=True)
+
+
 @receiver(post_save, sender=Gift)
 def update_contact_stats_on_gift_save(sender, instance, created, **kwargs):
     """Update contact's giving stats when a gift is saved (both create and edit)."""

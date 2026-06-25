@@ -51,6 +51,9 @@ class Command(BaseCommand):
         # Create donations and pledges
         self._create_donations_and_pledges(contacts)
 
+        # Guarantee demonstrable notes + thank-you-queue artifacts for dogfooding
+        self._seed_demo_artifacts(contacts)
+
         # Create tasks
         self._create_tasks(staff_user, contacts)
 
@@ -245,6 +248,60 @@ class Command(BaseCommand):
 
         self.stdout.write(f"  Created {gift_count} gifts")
         self.stdout.write(f"  Created {rg_count} recurring gifts")
+
+    def _seed_demo_artifacts(self, contacts):
+        """Guarantee demo-visible notes and Thank You Queue entries.
+
+        Random seeding can leave the notes feature and the thank-you queue
+        empty, which is what originally masked dogfood findings F4/F7. This
+        deterministically:
+          - writes free-text notes on a few contacts, including a lapsed one, so
+            the (already-built) notes feature is demonstrable; and
+          - flags a couple of recent-gift donors as needing a thank-you so the
+            dashboard Thank You Queue is non-empty.
+        """
+        today = timezone.now().date()
+
+        # Notes on a few contacts, guaranteeing at least one lapsed donor.
+        lapsed = [c for c in contacts if c.status == ContactStatus.LAPSED]
+        donors = [c for c in contacts if c.status == ContactStatus.DONOR]
+        noted = []
+        if lapsed:
+            c = lapsed[0]
+            c.notes = "Used to give monthly; went quiet after the spring move. Reconnect soon."
+            c.save(update_fields=["notes"])
+            noted.append(c)
+        for c in donors[:3]:
+            c.notes = (
+                "Met at the fall banquet; cares about campus ministry. Prefers a call to email."
+            )
+            c.save(update_fields=["notes"])
+            noted.append(c)
+
+        # Flag a couple of recent-gift donors for the Thank You Queue. Mirror the
+        # import rule: a recent (<=60 days) gift earns a thank-you. Give them a
+        # fresh gift if their seeded history happens to be all old.
+        from apps.gifts.signals import disable_gift_signals, enable_gift_signals
+
+        flagged = 0
+        disable_gift_signals()
+        try:
+            for c in donors[:2]:
+                Gift.objects.create(
+                    donor_contact=c,
+                    amount_cents=10000,
+                    gift_date=today - timedelta(days=3),
+                )
+                c.update_giving_stats()
+                c.needs_thank_you = True
+                c.save(update_fields=["needs_thank_you"])
+                flagged += 1
+        finally:
+            enable_gift_signals()
+
+        self.stdout.write(
+            f"  Seeded notes on {len(noted)} contacts and flagged {flagged} for thank-you"
+        )
 
     def _create_tasks(self, owner, contacts):
         """Create sample tasks."""

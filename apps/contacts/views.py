@@ -3,7 +3,7 @@ Views for Contact management.
 """
 
 from django.db import transaction
-from django.db.models import Prefetch, Q
+from django.db.models import F, Prefetch, Q
 from django.shortcuts import get_object_or_404
 
 from rest_framework import filters, generics, permissions, status
@@ -14,7 +14,8 @@ from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 
 from apps.contacts.filters import ContactFilterSet
-from apps.contacts.models import Contact, DismissedDuplicate
+from apps.contacts.last_contacted import annotate_last_contacted
+from apps.contacts.models import Contact, ContactStatus, DismissedDuplicate
 from apps.contacts.serializers import (
     ContactCreateSerializer,
     ContactDetailSerializer,
@@ -73,7 +74,14 @@ class ContactListCreateView(generics.ListCreateAPIView):
     # full-email blind-index lookup in ContactSearchView (or ?email=...
     # filter) for exact-email search.
     search_fields = ["first_name", "last_name", "organization_name"]
-    ordering_fields = ["last_name", "first_name", "created_at", "last_gift_date", "total_given"]
+    ordering_fields = [
+        "last_name",
+        "first_name",
+        "created_at",
+        "last_gift_date",
+        "total_given",
+        "last_contacted",
+    ]
     ordering = ["last_name", "first_name"]
     filterset_class = ContactFilterSet
 
@@ -91,12 +99,36 @@ class ContactListCreateView(generics.ListCreateAPIView):
         if owner_id and user.role in ["admin", "supervisor", "coach"]:
             queryset = queryset.filter(owner_id=owner_id)
 
+        # Annotate the "Last Contacted" signal so it can be serialized, filtered
+        # (last_contacted_before), and ordered. See ADR 0005.
+        queryset = annotate_last_contacted(queryset)
+
         return queryset.select_related("owner")
 
     def get_serializer_class(self):
         if self.request.method == "POST":
             return ContactCreateSerializer
         return ContactListSerializer
+
+    def filter_queryset(self, queryset):
+        queryset = super().filter_queryset(queryset)
+        # Order nulls explicitly for last_contacted so "never contacted" donors
+        # sort FIRST on the "Not Contacted Recently" surface, consistently
+        # across PostgreSQL and SQLite (their default null ordering differs).
+        # Other ordering fields are preserved so multi-field sorts still work.
+        ordering = self.request.query_params.get("ordering", "")
+        fields = [f.strip() for f in ordering.split(",") if f.strip()]
+        if "last_contacted" in fields or "-last_contacted" in fields:
+            order_args = []
+            for field in fields:
+                if field == "last_contacted":
+                    order_args.append(F("last_contacted").asc(nulls_first=True))
+                elif field == "-last_contacted":
+                    order_args.append(F("last_contacted").desc(nulls_last=True))
+                else:
+                    order_args.append(field)
+            queryset = queryset.order_by(*order_args)
+        return queryset
 
 
 @extend_schema_view(
@@ -306,6 +338,11 @@ class ContactEmailsView(APIView):
         if owner_id and user.role in ["admin", "supervisor", "coach"]:
             queryset = queryset.filter(owner_id=owner_id)
 
+        # ContactFilterSet's last_contacted_before filter references the
+        # `last_contacted` annotation, so annotate before applying the filterset
+        # (a manual ?last_contacted_before=... would otherwise raise FieldError).
+        queryset = annotate_last_contacted(queryset)
+
         # Apply ContactFilterSet (status, needs_thank_you, date range, group)
         filterset = ContactFilterSet(request.query_params, queryset=queryset)
         if filterset.is_valid():
@@ -327,13 +364,36 @@ class ContactEmailsView(APIView):
                 | Q(organization_name__icontains=search)
             )
 
-        emails = list(
-            queryset.exclude(email__isnull=True)
-            .exclude(email="")
-            .values_list("email", flat=True)
-            .order_by("email")
+        # A contact with no email has a NULL email_hash (hash_value("") -> None),
+        # so email presence is detectable without decrypting the ciphertext.
+        has_email = Q(email_hash__isnull=False)
+
+        # Exclude Declined supporters UNCONDITIONALLY, regardless of the active
+        # filter — a declined contact must never land in a copied email list
+        # (F9, ADR 0007). This is a hard rule, not a user-toggleable filter.
+        # The reported count is declined contacts that WOULD have been copied
+        # (i.e. have an email); no-email declined contacts were never copyable,
+        # so counting them would overstate the exclusion to the user.
+        declined_excluded_count = (
+            queryset.filter(status=ContactStatus.DECLINED).filter(has_email).count()
         )
-        return Response({"emails": emails, "count": len(emails)})
+
+        non_declined = queryset.exclude(status=ContactStatus.DECLINED)
+
+        # Skipped: non-declined contacts in scope that have no email address.
+        skipped_no_email_count = non_declined.exclude(has_email).count()
+
+        emails = list(
+            non_declined.filter(has_email).values_list("email", flat=True).order_by("email")
+        )
+        return Response(
+            {
+                "emails": emails,
+                "count": len(emails),
+                "skipped_no_email_count": skipped_no_email_count,
+                "declined_excluded_count": declined_excluded_count,
+            }
+        )
 
 
 @extend_schema(
