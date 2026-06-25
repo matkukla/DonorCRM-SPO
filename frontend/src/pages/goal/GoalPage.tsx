@@ -93,14 +93,18 @@ export default function GoalPage() {
     ? Math.round((goalData.decisions_current / goalData.decisions_goal) * 100)
     : 0
 
-  const emptyState = !goalData?.monthly_support_goal_cents
-    ? "no_goal"
-    : goalData.selected_journal_ids.length === 0
-      ? "no_journals"
-      : null
+  // The Monthly Support row is only empty when no goal amount is set. With a
+  // goal but no journals, it now shows real all-donor support (ADR 0004), so
+  // "no_journals" is no longer a support-row empty state.
+  const emptyState = !goalData?.monthly_support_goal_cents ? "no_goal" : null
+
+  // Calls/Meetings/Decisions are inherently journal-based. With no journals
+  // selected they have no all-donor equivalent, so the whole journal-activity
+  // section is hidden rather than shown as dead "select journals above" rows.
+  const hasJournalSelection = (goalData?.selected_journal_ids.length ?? 0) > 0
 
   // Decisions-specific empty state: has main goal + journals but no journal goals set
-  const noJournalGoals = !emptyState && goalData && goalData.decisions_goal === 0
+  const noJournalGoals = !emptyState && hasJournalSelection && goalData && goalData.decisions_goal === 0
 
   // ---------------------------------------------------------------------------
   // Save handler
@@ -281,18 +285,22 @@ export default function GoalPage() {
             {!emptyState && (
               <p className="text-xs text-muted-foreground">{getMilestoneMessage(supportPct)}</p>
             )}
+            {!emptyState && !hasJournalSelection && journals.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Showing all your donors. Select journals above to scope this to a campaign.
+              </p>
+            )}
             {emptyState === "no_goal" && (
               <p className="text-xs text-muted-foreground">
                 Set a goal amount above to see your support progress
               </p>
             )}
-            {emptyState === "no_journals" && (
-              <p className="text-xs text-muted-foreground">
-                Select journals above to see your support progress
-              </p>
-            )}
           </div>
 
+          {/* Rows 2–4 (Calls / Meetings / Decisions) are journal-based and only
+              render once journals are selected. See ADR 0004. */}
+          {hasJournalSelection && (
+          <>
           {/* Row 2 — Calls */}
           <div className="space-y-1">
             <div className="flex items-center justify-between text-sm font-medium">
@@ -309,11 +317,6 @@ export default function GoalPage() {
             {emptyState === "no_goal" && (
               <p className="text-xs text-muted-foreground">
                 Set a goal amount above to see your calls progress
-              </p>
-            )}
-            {emptyState === "no_journals" && (
-              <p className="text-xs text-muted-foreground">
-                Select journals above to see your calls progress
               </p>
             )}
           </div>
@@ -334,11 +337,6 @@ export default function GoalPage() {
             {emptyState === "no_goal" && (
               <p className="text-xs text-muted-foreground">
                 Set a goal amount above to see your meetings progress
-              </p>
-            )}
-            {emptyState === "no_journals" && (
-              <p className="text-xs text-muted-foreground">
-                Select journals above to see your meetings progress
               </p>
             )}
           </div>
@@ -363,17 +361,14 @@ export default function GoalPage() {
                 Set a goal amount above to see your decisions progress
               </p>
             )}
-            {emptyState === "no_journals" && (
-              <p className="text-xs text-muted-foreground">
-                Select journals above to see your decisions progress
-              </p>
-            )}
             {noJournalGoals && (
               <p className="text-xs text-muted-foreground">
                 Set goal amounts on your journals to track decision progress
               </p>
             )}
           </div>
+          </>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -14,6 +14,7 @@ export interface ContactListItem {
   total_given: string
   gift_count: number
   last_gift_date: string | null
+  last_contacted: string | null
   needs_thank_you: boolean
   owner: string
   owner_name: string
@@ -32,6 +33,8 @@ export interface ContactDetail extends ContactListItem {
   has_active_pledge: boolean
   monthly_pledge_amount: string | null
   last_thanked_at: string | null
+  // Last logged call/meeting (ADR 0005). `at` is null when none logged yet.
+  last_touch: { at: string | null; type: "call" | "meeting" | null }
   notes: string | null
   external_id: string | null
   external_constituent_id: string | null
@@ -239,9 +242,18 @@ export async function getContactJournals(contactId: string): Promise<ContactJour
   return response.data
 }
 
+export interface ContactEmailsResponse {
+  emails: string[]
+  count: number
+  skipped_no_email_count: number
+  declined_excluded_count: number
+}
+
 /** Get email addresses for contacts matching the given filters */
-export async function getContactEmails(params: Record<string, string> = {}): Promise<{ emails: string[]; count: number }> {
-  const response = await apiClient.get<{ emails: string[]; count: number }>("/contacts/emails/", { params })
+export async function getContactEmails(
+  params: Record<string, string> = {},
+): Promise<ContactEmailsResponse> {
+  const response = await apiClient.get<ContactEmailsResponse>("/contacts/emails/", { params })
   return response.data
 }
 

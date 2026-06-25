@@ -321,6 +321,71 @@ class TestContactEmailsView:
         # owner filter narrows to m1's contacts only
         assert resp.json()["emails"] == ["m1@example.com"]
 
+    def test_unfiltered_excludes_declined_unconditionally(self, auth_client, user):
+        """F9/ADR 0007: a declined supporter must never be copied, even with no
+        filter applied."""
+        from apps.contacts.models import ContactStatus
+
+        ContactFactory(owner=user, email="donor@example.com", status=ContactStatus.DONOR)
+        ContactFactory(owner=user, email="declined@example.com", status=ContactStatus.DECLINED)
+
+        resp = auth_client.get("/api/v1/contacts/emails/")
+        data = resp.json()
+
+        assert data["emails"] == ["donor@example.com"]
+        assert data["declined_excluded_count"] == 1
+
+    def test_reports_skipped_no_email_count(self, auth_client, user):
+        """F8/ADR 0007: contacts without an email are reported, not silently
+        dropped."""
+        ContactFactory(owner=user, email="has@example.com")
+        ContactFactory(owner=user, email="")  # no email
+
+        resp = auth_client.get("/api/v1/contacts/emails/")
+        data = resp.json()
+
+        assert data["emails"] == ["has@example.com"]
+        assert data["skipped_no_email_count"] == 1
+
+    def test_counts_zero_when_clean(self, auth_client, user):
+        ContactFactory(owner=user, email="a@example.com")
+
+        resp = auth_client.get("/api/v1/contacts/emails/")
+        data = resp.json()
+
+        assert data["skipped_no_email_count"] == 0
+        assert data["declined_excluded_count"] == 0
+
+    def test_last_contacted_before_filter_does_not_500(self, auth_client, user):
+        """Regression: the shared last_contacted_before filter must work on the
+        emails endpoint (it requires the last_contacted annotation)."""
+        from django.utils import timezone
+
+        ContactFactory(owner=user, email="a@example.com")
+        cutoff = timezone.now().isoformat()
+
+        resp = auth_client.get("/api/v1/contacts/emails/", {"last_contacted_before": cutoff})
+
+        assert resp.status_code == 200
+        # Never-contacted contact is included by the filter.
+        assert resp.json()["emails"] == ["a@example.com"]
+
+    def test_declined_excluded_even_when_filtered_to_donor(self, auth_client, user):
+        """The declined rule is unconditional; a no-email declined contact does
+        not inflate either count when out of the filtered scope."""
+        from apps.contacts.models import ContactStatus
+
+        ContactFactory(owner=user, email="donor@example.com", status=ContactStatus.DONOR)
+        ContactFactory(owner=user, email="declined@example.com", status=ContactStatus.DECLINED)
+
+        resp = auth_client.get("/api/v1/contacts/emails/?status=donor")
+        data = resp.json()
+
+        # status=donor scope excludes the declined contact from the queryset
+        # entirely, so it is neither copied nor counted as declined-excluded.
+        assert data["emails"] == ["donor@example.com"]
+        assert data["declined_excluded_count"] == 0
+
 
 @pytest.mark.django_db
 class TestContactListOwnerFilter:

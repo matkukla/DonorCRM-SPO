@@ -42,6 +42,9 @@ class ContactListSerializer(serializers.ModelSerializer):
 
     full_name = serializers.CharField(read_only=True)
     owner_name = serializers.CharField(source="owner.full_name", read_only=True)
+    # Populated by the `last_contacted` annotation (apps/contacts/last_contacted.py);
+    # null when the contact has no logged call/meeting. Read-only.
+    last_contacted = serializers.DateTimeField(read_only=True)
 
     class Meta:
         model = Contact
@@ -57,6 +60,7 @@ class ContactListSerializer(serializers.ModelSerializer):
             "total_given",
             "gift_count",
             "last_gift_date",
+            "last_contacted",
             "needs_thank_you",
             "owner",
             "owner_name",
@@ -85,6 +89,21 @@ class ContactDetailSerializer(serializers.ModelSerializer):
     group_ids = serializers.ListField(
         child=serializers.UUIDField(), write_only=True, required=False
     )
+    # Last logged call/meeting (F7b/ADR 0005): {"at": iso|null, "type": str|null}.
+    last_touch = serializers.SerializerMethodField()
+
+    def get_last_touch(self, obj):
+        # latest_touch() runs two queries per object — fine for this
+        # single-object detail serializer. Do NOT reuse this serializer for a
+        # list endpoint; use the annotated ContactListSerializer.last_contacted
+        # (apps/contacts/last_contacted.annotate_last_contacted) instead.
+        from apps.contacts.last_contacted import latest_touch
+
+        touch = latest_touch(obj)
+        return {
+            "at": touch["at"].isoformat() if touch["at"] else None,
+            "type": touch["type"],
+        }
 
     class Meta:
         model = Contact
@@ -115,6 +134,7 @@ class ContactDetailSerializer(serializers.ModelSerializer):
             "monthly_pledge_amount",
             "last_thanked_at",
             "needs_thank_you",
+            "last_touch",
             "notes",
             "external_id",
             "external_constituent_id",

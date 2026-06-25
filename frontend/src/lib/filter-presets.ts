@@ -23,6 +23,8 @@ export const contactPresets: FilterPreset[] = [
       status: null,
       last_gift_after: null,
       last_gift_before: null,
+      last_contacted_before: null,
+      ordering: null,
       owner: null,
     }),
   },
@@ -35,6 +37,24 @@ export const contactPresets: FilterPreset[] = [
       last_gift_before: fmt(endOfMonth(new Date())),
       status: null,
       needs_thank_you: null,
+      last_contacted_before: null,
+      ordering: null,
+      owner: null,
+    }),
+  },
+  {
+    id: "not-contacted-recently",
+    label: "Not Contacted Recently",
+    // 60-day threshold mirrors the backend default (ADR 0005). Never-contacted
+    // donors are included and sorted first via ordering=last_contacted.
+    description: "Donors with no logged call or meeting in 60+ days",
+    getParams: () => ({
+      last_contacted_before: subDays(new Date(), 60).toISOString(),
+      ordering: "last_contacted",
+      status: null,
+      needs_thank_you: null,
+      last_gift_after: null,
+      last_gift_before: null,
       owner: null,
     }),
   },

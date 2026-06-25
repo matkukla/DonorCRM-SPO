@@ -4,7 +4,9 @@ import { useViewAs } from "@/providers/ViewAsProvider"
 import { markEventsSeen } from "@/api/dashboard"
 import { useDashboardSummary } from "@/hooks/useDashboard"
 import { useDashboardLayout } from "@/hooks/useDashboard"
+import { useReconnect } from "@/hooks/useDashboard"
 import { useViewableUsers } from "@/hooks/useUsers"
+import { canViewOtherUsers } from "@/lib/roles"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
 import { StatCard } from "@/components/dashboard/StatCard"
@@ -12,6 +14,7 @@ import { RecentDonations } from "@/components/dashboard/RecentDonations"
 import { NeedsAttention } from "@/components/dashboard/NeedsAttention"
 import { SupportProgress } from "@/components/dashboard/SupportProgress"
 import { LateDonations } from "@/components/dashboard/LateDonations"
+import { Reconnect } from "@/components/dashboard/Reconnect"
 import { GivingSummaryCard } from "@/components/dashboard/GivingSummaryCard"
 import { MonthlyGiftsCard } from "@/components/dashboard/MonthlyGiftsCard"
 import { SortableDashboardTile } from "@/components/dashboard/SortableDashboardTile"
@@ -41,6 +44,7 @@ const TILE_SIZES: Record<string, number> = {
   "support-progress": 2,
   "recent-donations": 2,
   "late-donations": 2,
+  "reconnect": 2,
   "mpd-financial-overview": 4,
   "mpd-overview-table": 4,
 }
@@ -51,11 +55,14 @@ export default function Dashboard() {
   const { viewAsUserId, viewAsUserName, setViewAsUser, exitViewAs, isViewingAs } = useViewAs()
   const effectiveUserId = viewAsUserId || undefined
 
-  // Fetch viewable users for the dropdown (scoped by backend to role)
-  const { data: viewableUsers } = useViewableUsers()
+  // Fetch viewable users for the dropdown (scoped by backend to role).
+  // Only admin/supervisor may hit this endpoint; missionary/coach get a 403,
+  // so gate the request to avoid firing it for them.
+  const { data: viewableUsers } = useViewableUsers({ enabled: canViewOtherUsers(user) })
   const missionaryOptions = viewableUsers || []
 
   const { data, isLoading, error } = useDashboardSummary(effectiveUserId)
+  const { data: reconnectData, isLoading: reconnectLoading } = useReconnect(effectiveUserId)
   const { data: mpdData, isLoading: mpdLoading } = useMPDMyData()
   const [quickLogContactId, setQuickLogContactId] = useState<string | null>(null)
 
@@ -136,6 +143,8 @@ export default function Dashboard() {
         return <RecentDonations donations={data?.recent_gifts || []} isLoading={isLoading} />
       case "late-donations":
         return <LateDonations donations={data?.late_donations || []} totalCount={data?.late_donations_count || 0} isLoading={isLoading} onQuickLog={(contactId) => setQuickLogContactId(contactId)} />
+      case "reconnect":
+        return <Reconnect contacts={reconnectData?.reconnect_contacts || []} totalCount={reconnectData?.total_count || 0} isLoading={reconnectLoading} />
       case "mpd-financial-overview": {
         if (mpdLoading) return (
           <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">

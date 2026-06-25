@@ -7,6 +7,7 @@ import { giftPresets } from "@/lib/filter-presets"
 import { FilterBar } from "@/components/shared/FilterBar"
 import { useAuth } from "@/providers/AuthProvider"
 import { useUsers } from "@/hooks/useUsers"
+import { isAdmin } from "@/lib/roles"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
 import { DataTable } from "@/components/shared/DataTable"
@@ -64,8 +65,9 @@ export default function DonationList() {
   const queryParams = { ...toQueryParams(), page_size: String(PAGE_SIZE) }
   const { data, isLoading } = useGifts(queryParams)
 
-  // Fetch users for owner filter
-  const { data: usersData } = useUsers()
+  // Fetch users for owner filter. The `/users/` list is admin-only on the
+  // backend and only admins consume it here, so gate the request to admins.
+  const { data: usersData } = useUsers({ enabled: isAdmin(user) })
   const ownerOptions = user?.role === "admin"
     ? (usersData || []).map((u) => ({ id: String(u.id), full_name: u.full_name }))
     : (user?.role === "supervisor" || user?.role === "coach")

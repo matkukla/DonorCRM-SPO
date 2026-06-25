@@ -37,8 +37,10 @@ import {
   FileText,
   CheckSquare,
   Plus,
+  MessageCircle,
 } from "lucide-react"
 import type { ContactStatus } from "@/api/contacts"
+import { formatLastTouchLine } from "@/lib/last-contacted"
 import type { PrayerIntention, PrayerIntentionStatus } from "@/api/prayers"
 import { formatLocalDate } from "@/lib/utils"
 
@@ -250,6 +252,12 @@ export default function ContactDetail() {
                 </CardTitle>
               </CardHeader>
             </Card>
+          </div>
+
+          {/* Last touch — reason-for-the-call relationship context (ADR 0005) */}
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <MessageCircle className="h-4 w-4 shrink-0" />
+            <span>{formatLastTouchLine(contact.last_touch)}</span>
           </div>
 
           {/* Tabs */}

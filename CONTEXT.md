@@ -5,6 +5,44 @@ vocabulary — code, docs, and conversation should use these words to mean these
 
 ## Glossary
 
+### Last Contacted
+The most recent point at which the missionary actually had a logged conversation
+with a donor — the canonical "when did I last touch this relationship?" signal.
+Defined as the **maximum** of two timestamps for the contact:
+- a completed [[Task]] of type **Call** or **Meeting** (`completed_at`), and
+- a [[Journal]] stage event of type `call_logged` or `meeting_completed`
+  (`created_at`).
+Deliberately **excludes** money signals (`last_gift_date` is not contact) and noise
+like newsletter/other task types. Works whether or not the donor is in a journal.
+**Computed on the fly** (a query annotation), not stored on the contact — unlike the
+denormalized gift stats (`last_gift_date`, `total_given`). May be null (never
+contacted via a logged call/meeting). Powers the "not contacted recently" surface
+([[F6]]) and the contact Overview "last touch" line ([[F7]]).
+See `docs/adr/0005-last-contacted-signal.md`.
+
+### Not Contacted Recently
+A donor whose [[Last Contacted]] is older than a fixed **60-day** threshold, **or**
+who has never been contacted via a logged call/meeting at all (the latter sort to the
+top as most-neglected). The threshold is a hardcoded default for the pilot (tunable
+in code; not user-configurable and not per-donor cadence). Surfaced two ways, both
+reading the same `last_contacted` annotation: a Contacts **preset** ("Not Contacted
+Recently", a `last_contacted_before` filter) and a dashboard **Reconnect card** whose
+"see all" links into that preset — mirroring the Late Donations tile → Insights table
+pattern. This is the surface for the missionary's "who have I lost touch with?"
+question that [[F6]] found missing.
+
+### Monthly Support (effective)
+The canonical "how am I doing against goal?" number, in **actual money received**:
+`recurring_monthly + (fiscal-year one-time gifts / 12)`, computed by
+`compute_monthly_support` (`apps/core/support_math.py`). It is a **monthly** figure.
+Distinct from the dashboard's **Given & Expecting**, which is an **annual** figure
+(FY gifts + annualized recurring) — same underlying gifts, different time basis.
+Scope: by default **all the requesting user's owned donor contacts**. On the Goal
+page, selecting [[Journal]]s **narrows** the scope to those journals' contacts; with
+no journals selected the Goal page reflects all owned donors (matching the dashboard
+tile). Never includes [[Decision]] pipeline amounts — those are a separate forecast.
+See `docs/adr/0004-goal-page-falls-back-to-all-donors-when-no-journals-selected.md`.
+
 ### Pledge
 A donor's recorded commitment to give. In this codebase a pledge **is** a
 [[Decision]] in the `active` state — there is no separate "Pledged" status or table.

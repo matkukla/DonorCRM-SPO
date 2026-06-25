@@ -271,3 +271,90 @@ class TestRecurringGiftSignals:
         assert Gift.objects.filter(donor_contact=contact).count() == 0
         contact.refresh_from_db()
         assert contact.total_given == Decimal("0.00")
+
+
+@pytest.mark.django_db
+class TestEnqueueThankYouForRecentImports:
+    """F4 / ADR 0006: the import-path thank-you helper.
+
+    Importers disable gift signals, so the UI signal's "fresh gift enqueues a
+    thank-you" rule never fires on import. This helper restores that intent
+    only for recent, non-recurring gifts.
+    """
+
+    def _make_contact(self):
+        return ContactFactory(owner=UserFactory(), needs_thank_you=False)
+
+    def test_recent_non_recurring_gift_is_flagged(self):
+        from apps.gifts.signals import (
+            disable_gift_signals,
+            enable_gift_signals,
+            enqueue_thank_you_for_recent_imports,
+        )
+
+        contact = self._make_contact()
+        disable_gift_signals()
+        try:
+            Gift.objects.create(
+                donor_contact=contact,
+                amount_cents=10000,
+                gift_date=date.today() - timedelta(days=3),
+            )
+        finally:
+            enable_gift_signals()
+
+        enqueue_thank_you_for_recent_imports([contact.id])
+        contact.refresh_from_db()
+        assert contact.needs_thank_you is True
+
+    def test_old_gift_is_not_flagged(self):
+        from apps.gifts.signals import (
+            disable_gift_signals,
+            enable_gift_signals,
+            enqueue_thank_you_for_recent_imports,
+        )
+
+        contact = self._make_contact()
+        disable_gift_signals()
+        try:
+            Gift.objects.create(
+                donor_contact=contact,
+                amount_cents=10000,
+                gift_date=date.today() - timedelta(days=120),
+            )
+        finally:
+            enable_gift_signals()
+
+        enqueue_thank_you_for_recent_imports([contact.id])
+        contact.refresh_from_db()
+        assert contact.needs_thank_you is False
+
+    def test_recurring_sourced_gift_is_not_flagged(self):
+        from apps.gifts.signals import (
+            disable_gift_signals,
+            enable_gift_signals,
+            enqueue_thank_you_for_recent_imports,
+        )
+
+        contact = self._make_contact()
+        rg = RecurringGift.objects.create(
+            donor_contact=contact,
+            amount_cents=10000,
+            frequency=RecurringGiftFrequency.MONTHLY,
+            status=RecurringGiftStatus.ACTIVE,
+            start_date=date.today() - timedelta(days=90),
+        )
+        disable_gift_signals()
+        try:
+            Gift.objects.create(
+                donor_contact=contact,
+                amount_cents=10000,
+                gift_date=date.today() - timedelta(days=3),
+                recurring_gift=rg,
+            )
+        finally:
+            enable_gift_signals()
+
+        enqueue_thank_you_for_recent_imports([contact.id])
+        contact.refresh_from_db()
+        assert contact.needs_thank_you is False
