@@ -143,6 +143,7 @@ MULTI_TENANCY_PLAN.md
 docs/internal/
 
 # Playwright / E2E artifacts
+.playwright-mcp/
 e2e/node_modules/
 e2e/test-results/
 frontend/e2e/.auth/
