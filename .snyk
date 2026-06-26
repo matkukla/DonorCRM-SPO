@@ -1,17 +1,23 @@
-# Snyk policy file. Records reviewed, accepted findings so they stop showing
-# up as actionable. The CLI and `snyk code test` read this automatically.
+# Snyk policy file. The local `ignore:` block is honored by the CLI for
+# Open Source (SCA) findings only. Snyk CODE (SAST) findings are NOT ignored
+# from this file — they must be ignored in the Snyk dashboard (Project >
+# finding > Ignore), which the CLI reads back as server-side Project ignores.
 # See https://docs.snyk.io/snyk-cli/commands/ignore
 version: v1.5.0
 
-# Snyk Code (SAST) ignores. Scoped to a specific path + rule so the rule still
-# fires everywhere else.
-exclude: {}
+# Open Source (SCA) ignores go here, e.g.:
+#   ignore:
+#     SNYK-PYTHON-EXAMPLE-12345:
+#       - '*':
+#           reason: ...
+#           expires: 2026-12-31T00:00:00.000Z
+ignore: {}
 
-ignore:
-  javascript/HardcodedNonCryptoSecret:
-    - frontend/src/api/client.ts:
-        reason: >-
-          False positive. Line 18 is `ACCESS_TOKEN_KEY = "donorcrm_access_token"`,
-          a localStorage key NAME used for JWT storage — not a credential. No
-          secret value is hardcoded. Reviewed 2026-06-26.
-        # No expiry: this is a permanent false positive, not a deferred fix.
+# ── Known Snyk Code false positive (handled in the dashboard, recorded here) ──
+# Rule:   javascript/HardcodedNonCryptoSecret
+# Path:   frontend/src/api/client.ts:18
+# Status: FALSE POSITIVE. Line 18 is
+#         `ACCESS_TOKEN_KEY = "donorcrm_access_token"` — a localStorage key NAME
+#         used for JWT storage, not a credential. No secret value is hardcoded.
+#         Reviewed 2026-06-26. Ignore it via app.snyk.io (Code ignores are not
+#         read from this file).
