@@ -11,6 +11,9 @@ name: snyk
 # failing — so forks and pre-setup pushes stay green.
 
 on:
+  # Manual trigger from the Actions tab — re-run on demand without a commit
+  # (e.g. after rotating the token, tweaking thresholds, or triaging).
+  workflow_dispatch:
   push:
     branches: [main]
   pull_request:
