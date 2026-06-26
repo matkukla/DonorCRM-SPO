@@ -99,7 +99,7 @@ jobs:
       - name: Upload Python SARIF
         if: always()
         continue-on-error: true
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: snyk-py-base.sarif
           category: snyk-py-base
@@ -107,7 +107,7 @@ jobs:
       - name: Upload Python SARIF (prod)
         if: always()
         continue-on-error: true
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: snyk-py-prod.sarif
           category: snyk-py-prod
@@ -115,7 +115,7 @@ jobs:
       - name: Upload Python SARIF (dev)
         if: always()
         continue-on-error: true
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: snyk-py-dev.sarif
           category: snyk-py-dev
@@ -138,7 +138,7 @@ jobs:
       - name: Upload npm SARIF
         if: always()
         continue-on-error: true
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: snyk-npm.sarif
           category: snyk-npm
@@ -189,7 +189,7 @@ jobs:
       - name: Upload Code SARIF
         if: always()
         continue-on-error: true
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: snyk-code.sarif
           category: snyk-code
@@ -241,7 +241,7 @@ jobs:
       - name: Upload container SARIF (dev)
         if: always()
         continue-on-error: true
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: snyk-container-dev.sarif
           category: snyk-container-dev
@@ -265,7 +265,7 @@ jobs:
       - name: Upload container SARIF (prod)
         if: always()
         continue-on-error: true
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: snyk-container-prod.sarif
           category: snyk-container-prod
