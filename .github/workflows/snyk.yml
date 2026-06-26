@@ -54,8 +54,8 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Install Snyk CLI
-        run: npm install -g snyk
+      - name: Install Snyk CLI + snyk-to-html
+        run: npm install -g snyk snyk-to-html
 
       - name: Snyk test — Python (all requirements files)
         continue-on-error: true
@@ -63,11 +63,12 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
           if [ -z "$SNYK_TOKEN" ]; then echo "SNYK_TOKEN not set — skipping"; exit 0; fi
+          mkdir -p reports
           # Snyk's --file parse of raw requirements/*.txt fails with
           # SNYK-OS-PYTHON-0013 because transitive deps aren't pinned. Instead,
           # install each file into an isolated venv and let Snyk test the fully
           # resolved environment. Each manifest is scanned independently and
-          # writes its own SARIF for upload to the Security tab.
+          # writes its own SARIF (Security tab) + JSON (HTML report).
           for req in base prod dev; do
             echo "::group::Snyk test — requirements/${req}.txt"
             python -m venv "/tmp/venv-${req}"
@@ -76,11 +77,17 @@ jobs:
             pip install --quiet --upgrade pip
             pip install --quiet -r "requirements/${req}.txt"
             # `|| true` so a non-zero exit from findings still lets the loop
-            # continue and the SARIF file get written for every manifest.
+            # continue and the output files get written for every manifest.
             snyk test --command="/tmp/venv-${req}/bin/python" \
               --severity-threshold=high \
-              --sarif-file-output="snyk-py-${req}.sarif" || true
+              --sarif-file-output="snyk-py-${req}.sarif" \
+              --json-file-output="reports/snyk-py-${req}.json" || true
             deactivate
+            # Render the JSON to a styled HTML report when it exists.
+            if [ -s "reports/snyk-py-${req}.json" ]; then
+              snyk-to-html -i "reports/snyk-py-${req}.json" \
+                -o "reports/snyk-py-${req}.html"
+            fi
             echo "::endgroup::"
           done
 
@@ -114,9 +121,14 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
           if [ -z "$SNYK_TOKEN" ]; then echo "SNYK_TOKEN not set — skipping"; exit 0; fi
+          mkdir -p reports
           snyk test --file=frontend/package.json \
             --severity-threshold=high \
-            --sarif-file-output=snyk-npm.sarif || true
+            --sarif-file-output=snyk-npm.sarif \
+            --json-file-output=reports/snyk-npm.json || true
+          if [ -s reports/snyk-npm.json ]; then
+            snyk-to-html -i reports/snyk-npm.json -o reports/snyk-npm.html
+          fi
 
       - name: Upload npm SARIF
         if: always()
@@ -125,6 +137,18 @@ jobs:
         with:
           sarif_file: snyk-npm.sarif
           category: snyk-npm
+
+      - name: Upload SCA HTML reports
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: snyk-html-sca
+          path: reports/*.html
+          if-no-files-found: ignore
+          # HTML reports are disposable convenience copies — durable history
+          # lives in the Security tab (SARIF) and the Snyk dashboard (monitor).
+          retention-days: 14
 
   # ── Snyk Code (SAST): Python + TypeScript ────────────────────────────────
   # Overlaps bandit on Python but extends static analysis to the TS/React
@@ -140,8 +164,8 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Install Snyk CLI
-        run: npm install -g snyk
+      - name: Install Snyk CLI + snyk-to-html
+        run: npm install -g snyk snyk-to-html
 
       - name: Snyk Code test
         continue-on-error: true
@@ -149,8 +173,13 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
           if [ -z "$SNYK_TOKEN" ]; then echo "SNYK_TOKEN not set — skipping"; exit 0; fi
+          mkdir -p reports
           snyk code test --severity-threshold=high \
-            --sarif-file-output=snyk-code.sarif || true
+            --sarif-file-output=snyk-code.sarif \
+            --json-file-output=reports/snyk-code.json || true
+          if [ -s reports/snyk-code.json ]; then
+            snyk-to-html -i reports/snyk-code.json -o reports/snyk-code.html
+          fi
 
       - name: Upload Code SARIF
         if: always()
@@ -160,6 +189,18 @@ jobs:
           sarif_file: snyk-code.sarif
           category: snyk-code
 
+      - name: Upload Code HTML report
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: snyk-html-code
+          path: reports/*.html
+          if-no-files-found: ignore
+          # HTML reports are disposable convenience copies — durable history
+          # lives in the Security tab (SARIF) and the Snyk dashboard (monitor).
+          retention-days: 14
+
   # ── Container: base-image OS CVEs for both Dockerfiles ───────────────────
   container:
     name: container
@@ -168,8 +209,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Install Snyk CLI
-        run: npm install -g snyk
+      - name: Install Snyk CLI + snyk-to-html
+        run: npm install -g snyk snyk-to-html
 
       - name: Build images
         run: |
@@ -182,9 +223,15 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
           if [ -z "$SNYK_TOKEN" ]; then echo "SNYK_TOKEN not set — skipping"; exit 0; fi
+          mkdir -p reports
           snyk container test donorcrm:dev --file=Dockerfile \
             --severity-threshold=high \
-            --sarif-file-output=snyk-container-dev.sarif || true
+            --sarif-file-output=snyk-container-dev.sarif \
+            --json-file-output=reports/snyk-container-dev.json || true
+          if [ -s reports/snyk-container-dev.json ]; then
+            snyk-to-html -i reports/snyk-container-dev.json \
+              -o reports/snyk-container-dev.html
+          fi
 
       - name: Upload container SARIF (dev)
         if: always()
@@ -200,9 +247,15 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
           if [ -z "$SNYK_TOKEN" ]; then echo "SNYK_TOKEN not set — skipping"; exit 0; fi
+          mkdir -p reports
           snyk container test donorcrm:prod --file=Dockerfile.prod \
             --severity-threshold=high \
-            --sarif-file-output=snyk-container-prod.sarif || true
+            --sarif-file-output=snyk-container-prod.sarif \
+            --json-file-output=reports/snyk-container-prod.json || true
+          if [ -s reports/snyk-container-prod.json ]; then
+            snyk-to-html -i reports/snyk-container-prod.json \
+              -o reports/snyk-container-prod.html
+          fi
 
       - name: Upload container SARIF (prod)
         if: always()
@@ -212,6 +265,18 @@ jobs:
           sarif_file: snyk-container-prod.sarif
           category: snyk-container-prod
 
+      - name: Upload container HTML reports
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: snyk-html-container
+          path: reports/*.html
+          if-no-files-found: ignore
+          # HTML reports are disposable convenience copies — durable history
+          # lives in the Security tab (SARIF) and the Snyk dashboard (monitor).
+          retention-days: 14
+
   # ── IaC: config misconfigurations (Dockerfiles, compose, render.yaml) ────
   iac:
     name: iac
@@ -220,8 +285,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Install Snyk CLI
-        run: npm install -g snyk
+      - name: Install Snyk CLI + snyk-to-html
+        run: npm install -g snyk snyk-to-html
 
       - name: Snyk IaC test
         continue-on-error: true
@@ -229,6 +294,7 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
           if [ -z "$SNYK_TOKEN" ]; then echo "SNYK_TOKEN not set — skipping"; exit 0; fi
+          mkdir -p reports
           # Scan only real infra files. Auto-discovery (bare `snyk iac test`)
           # walks the repo and tries to parse frontend/tsconfig.*.json as IaC,
           # failing with SNYK-CLI-0012 (those are JSONC with comments, not IaC).
@@ -239,7 +305,13 @@ jobs:
             docker-compose.yml \
             render.yaml \
             --severity-threshold=high \
-            --sarif-file-output=snyk-iac.sarif || true
+            --sarif-file-output=snyk-iac.sarif \
+            --json-file-output=reports/snyk-iac.json || true
+          # IaC JSON needs the --iac flag for snyk-to-html to use the right
+          # template.
+          if [ -s reports/snyk-iac.json ]; then
+            snyk-to-html --iac -i reports/snyk-iac.json -o reports/snyk-iac.html
+          fi
 
       - name: Upload IaC SARIF
         if: always()
@@ -248,6 +320,18 @@ jobs:
         with:
           sarif_file: snyk-iac.sarif
           category: snyk-iac
+
+      - name: Upload IaC HTML report
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: snyk-html-iac
+          path: reports/*.html
+          if-no-files-found: ignore
+          # HTML reports are disposable convenience copies — durable history
+          # lives in the Security tab (SARIF) and the Snyk dashboard (monitor).
+          retention-days: 14
 
   # ── Monitor: push a snapshot to the Snyk dashboard for continuous alerts ──
   # Runs only on push to main (NOT PRs or the cron) — a snapshot should reflect
