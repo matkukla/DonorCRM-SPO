@@ -23,6 +23,13 @@ on:
     # aligned with the pip-audit schedule in security.yml.
     - cron: "0 9 * * 1"
 
+# Each test job uploads SARIF to the GitHub Security > Code scanning tab, so
+# findings show up as native alerts (and inline PR annotations) instead of only
+# living in the Actions logs. security-events: write is required for the upload.
+permissions:
+  contents: read
+  security-events: write
+
 jobs:
   # ── Open Source (SCA): Python + npm dependency CVEs ──────────────────────
   # The npm/frontend dependency tree currently has no CVE scanner, so this is
@@ -59,7 +66,8 @@ jobs:
           # Snyk's --file parse of raw requirements/*.txt fails with
           # SNYK-OS-PYTHON-0013 because transitive deps aren't pinned. Instead,
           # install each file into an isolated venv and let Snyk test the fully
-          # resolved environment. Each manifest is scanned independently.
+          # resolved environment. Each manifest is scanned independently and
+          # writes its own SARIF for upload to the Security tab.
           for req in base prod dev; do
             echo "::group::Snyk test — requirements/${req}.txt"
             python -m venv "/tmp/venv-${req}"
@@ -67,10 +75,38 @@ jobs:
             . "/tmp/venv-${req}/bin/activate"
             pip install --quiet --upgrade pip
             pip install --quiet -r "requirements/${req}.txt"
-            snyk test --command="/tmp/venv-${req}/bin/python" --severity-threshold=high
+            # `|| true` so a non-zero exit from findings still lets the loop
+            # continue and the SARIF file get written for every manifest.
+            snyk test --command="/tmp/venv-${req}/bin/python" \
+              --severity-threshold=high \
+              --sarif-file-output="snyk-py-${req}.sarif" || true
             deactivate
             echo "::endgroup::"
           done
+
+      - name: Upload Python SARIF
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-py-base.sarif
+          category: snyk-py-base
+
+      - name: Upload Python SARIF (prod)
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-py-prod.sarif
+          category: snyk-py-prod
+
+      - name: Upload Python SARIF (dev)
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-py-dev.sarif
+          category: snyk-py-dev
 
       - name: Snyk test — npm (frontend)
         continue-on-error: true
@@ -78,7 +114,17 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
           if [ -z "$SNYK_TOKEN" ]; then echo "SNYK_TOKEN not set — skipping"; exit 0; fi
-          snyk test --file=frontend/package.json --severity-threshold=high
+          snyk test --file=frontend/package.json \
+            --severity-threshold=high \
+            --sarif-file-output=snyk-npm.sarif || true
+
+      - name: Upload npm SARIF
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-npm.sarif
+          category: snyk-npm
 
   # ── Snyk Code (SAST): Python + TypeScript ────────────────────────────────
   # Overlaps bandit on Python but extends static analysis to the TS/React
@@ -103,7 +149,16 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
           if [ -z "$SNYK_TOKEN" ]; then echo "SNYK_TOKEN not set — skipping"; exit 0; fi
-          snyk code test --severity-threshold=high
+          snyk code test --severity-threshold=high \
+            --sarif-file-output=snyk-code.sarif || true
+
+      - name: Upload Code SARIF
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-code.sarif
+          category: snyk-code
 
   # ── Container: base-image OS CVEs for both Dockerfiles ───────────────────
   container:
@@ -127,7 +182,17 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
           if [ -z "$SNYK_TOKEN" ]; then echo "SNYK_TOKEN not set — skipping"; exit 0; fi
-          snyk container test donorcrm:dev  --file=Dockerfile      --severity-threshold=high
+          snyk container test donorcrm:dev --file=Dockerfile \
+            --severity-threshold=high \
+            --sarif-file-output=snyk-container-dev.sarif || true
+
+      - name: Upload container SARIF (dev)
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-container-dev.sarif
+          category: snyk-container-dev
 
       - name: Snyk container test — prod
         continue-on-error: true
@@ -135,7 +200,17 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
           if [ -z "$SNYK_TOKEN" ]; then echo "SNYK_TOKEN not set — skipping"; exit 0; fi
-          snyk container test donorcrm:prod --file=Dockerfile.prod --severity-threshold=high
+          snyk container test donorcrm:prod --file=Dockerfile.prod \
+            --severity-threshold=high \
+            --sarif-file-output=snyk-container-prod.sarif || true
+
+      - name: Upload container SARIF (prod)
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-container-prod.sarif
+          category: snyk-container-prod
 
   # ── IaC: config misconfigurations (Dockerfiles, compose, render.yaml) ────
   iac:
@@ -163,7 +238,16 @@ jobs:
             Dockerfile.prod \
             docker-compose.yml \
             render.yaml \
-            --severity-threshold=high
+            --severity-threshold=high \
+            --sarif-file-output=snyk-iac.sarif || true
+
+      - name: Upload IaC SARIF
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-iac.sarif
+          category: snyk-iac
 
   # ── Monitor: push a snapshot to the Snyk dashboard for continuous alerts ──
   # Runs only on push to main (NOT PRs or the cron) — a snapshot should reflect
