@@ -56,9 +56,21 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
           if [ -z "$SNYK_TOKEN" ]; then echo "SNYK_TOKEN not set — skipping"; exit 0; fi
-          snyk test --file=requirements/base.txt --package-manager=pip --severity-threshold=high
-          snyk test --file=requirements/prod.txt --package-manager=pip --severity-threshold=high
-          snyk test --file=requirements/dev.txt  --package-manager=pip --severity-threshold=high
+          # Snyk's --file parse of raw requirements/*.txt fails with
+          # SNYK-OS-PYTHON-0013 because transitive deps aren't pinned. Instead,
+          # install each file into an isolated venv and let Snyk test the fully
+          # resolved environment. Each manifest is scanned independently.
+          for req in base prod dev; do
+            echo "::group::Snyk test — requirements/${req}.txt"
+            python -m venv "/tmp/venv-${req}"
+            # shellcheck disable=SC1090
+            . "/tmp/venv-${req}/bin/activate"
+            pip install --quiet --upgrade pip
+            pip install --quiet -r "requirements/${req}.txt"
+            snyk test --command="/tmp/venv-${req}/bin/python" --severity-threshold=high
+            deactivate
+            echo "::endgroup::"
+          done
 
       - name: Snyk test — npm (frontend)
         continue-on-error: true
@@ -142,7 +154,16 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
           if [ -z "$SNYK_TOKEN" ]; then echo "SNYK_TOKEN not set — skipping"; exit 0; fi
-          snyk iac test --severity-threshold=high
+          # Scan only real infra files. Auto-discovery (bare `snyk iac test`)
+          # walks the repo and tries to parse frontend/tsconfig.*.json as IaC,
+          # failing with SNYK-CLI-0012 (those are JSONC with comments, not IaC).
+          # Listing targets explicitly keeps the scan to actual infra config.
+          snyk iac test \
+            Dockerfile \
+            Dockerfile.prod \
+            docker-compose.yml \
+            render.yaml \
+            --severity-threshold=high
 
   # ── Monitor: push a snapshot to the Snyk dashboard for continuous alerts ──
   # Runs only on push to main (NOT PRs or the cron) — a snapshot should reflect
@@ -181,9 +202,20 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
           if [ -z "$SNYK_TOKEN" ]; then echo "SNYK_TOKEN not set — skipping"; exit 0; fi
-          snyk monitor --file=requirements/base.txt --package-manager=pip --project-name=donorcrm-py-base
-          snyk monitor --file=requirements/prod.txt --package-manager=pip --project-name=donorcrm-py-prod
-          snyk monitor --file=requirements/dev.txt  --package-manager=pip --project-name=donorcrm-py-dev
+          # Same approach as the SCA test job: install each manifest into an
+          # isolated venv so Snyk monitors the fully resolved tree rather than
+          # parsing raw requirements/*.txt (which fails SNYK-OS-PYTHON-0013).
+          for req in base prod dev; do
+            echo "::group::Snyk monitor — requirements/${req}.txt"
+            python -m venv "/tmp/venv-${req}"
+            # shellcheck disable=SC1090
+            . "/tmp/venv-${req}/bin/activate"
+            pip install --quiet --upgrade pip
+            pip install --quiet -r "requirements/${req}.txt"
+            snyk monitor --command="/tmp/venv-${req}/bin/python" --project-name="donorcrm-py-${req}"
+            deactivate
+            echo "::endgroup::"
+          done
 
       - name: Monitor — npm deps
         continue-on-error: true
