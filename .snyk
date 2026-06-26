@@ -1,0 +1,17 @@
+# Snyk policy file. Records reviewed, accepted findings so they stop showing
+# up as actionable. The CLI and `snyk code test` read this automatically.
+# See https://docs.snyk.io/snyk-cli/commands/ignore
+version: v1.5.0
+
+# Snyk Code (SAST) ignores. Scoped to a specific path + rule so the rule still
+# fires everywhere else.
+exclude: {}
+
+ignore:
+  javascript/HardcodedNonCryptoSecret:
+    - frontend/src/api/client.ts:
+        reason: >-
+          False positive. Line 18 is `ACCESS_TOKEN_KEY = "donorcrm_access_token"`,
+          a localStorage key NAME used for JWT storage — not a credential. No
+          secret value is hardcoded. Reviewed 2026-06-26.
+        # No expiry: this is a permanent false positive, not a deferred fix.

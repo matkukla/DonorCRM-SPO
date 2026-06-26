@@ -66,9 +66,12 @@ jobs:
           mkdir -p reports
           # Snyk's --file parse of raw requirements/*.txt fails with
           # SNYK-OS-PYTHON-0013 because transitive deps aren't pinned. Instead,
-          # install each file into an isolated venv and let Snyk test the fully
-          # resolved environment. Each manifest is scanned independently and
-          # writes its own SARIF (Security tab) + JSON (HTML report).
+          # install each file into an isolated venv and run `snyk test` WHILE
+          # THAT VENV IS ACTIVE so Snyk resolves the dependency tree from the
+          # installed environment. The --file points at the manifest for
+          # labelling; --package-manager=pip selects the Python resolver.
+          # (`--command` does not work here — it yields SNYK-CLI-0008 because
+          # there is no manifest in the repo root.)
           for req in base prod dev; do
             echo "::group::Snyk test — requirements/${req}.txt"
             python -m venv "/tmp/venv-${req}"
@@ -78,7 +81,9 @@ jobs:
             pip install --quiet -r "requirements/${req}.txt"
             # `|| true` so a non-zero exit from findings still lets the loop
             # continue and the output files get written for every manifest.
-            snyk test --command="/tmp/venv-${req}/bin/python" \
+            snyk test \
+              --file="requirements/${req}.txt" \
+              --package-manager=pip \
               --severity-threshold=high \
               --sarif-file-output="snyk-py-${req}.sarif" \
               --json-file-output="reports/snyk-py-${req}.json" || true
@@ -277,61 +282,12 @@ jobs:
           # lives in the Security tab (SARIF) and the Snyk dashboard (monitor).
           retention-days: 14
 
-  # ── IaC: config misconfigurations (Dockerfiles, compose, render.yaml) ────
-  iac:
-    name: iac
-    runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'schedule' || github.actor != 'dependabot[bot]' }}
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Install Snyk CLI + snyk-to-html
-        run: npm install -g snyk snyk-to-html
-
-      - name: Snyk IaC test
-        continue-on-error: true
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        run: |
-          if [ -z "$SNYK_TOKEN" ]; then echo "SNYK_TOKEN not set — skipping"; exit 0; fi
-          mkdir -p reports
-          # Scan only real infra files. Auto-discovery (bare `snyk iac test`)
-          # walks the repo and tries to parse frontend/tsconfig.*.json as IaC,
-          # failing with SNYK-CLI-0012 (those are JSONC with comments, not IaC).
-          # Listing targets explicitly keeps the scan to actual infra config.
-          snyk iac test \
-            Dockerfile \
-            Dockerfile.prod \
-            docker-compose.yml \
-            render.yaml \
-            --severity-threshold=high \
-            --sarif-file-output=snyk-iac.sarif \
-            --json-file-output=reports/snyk-iac.json || true
-          # IaC JSON needs the --iac flag for snyk-to-html to use the right
-          # template.
-          if [ -s reports/snyk-iac.json ]; then
-            snyk-to-html --iac -i reports/snyk-iac.json -o reports/snyk-iac.html
-          fi
-
-      - name: Upload IaC SARIF
-        if: always()
-        continue-on-error: true
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: snyk-iac.sarif
-          category: snyk-iac
-
-      - name: Upload IaC HTML report
-        if: always()
-        continue-on-error: true
-        uses: actions/upload-artifact@v4
-        with:
-          name: snyk-html-iac
-          path: reports/*.html
-          if-no-files-found: ignore
-          # HTML reports are disposable convenience copies — durable history
-          # lives in the Security tab (SARIF) and the Snyk dashboard (monitor).
-          retention-days: 14
+  # NOTE: No IaC job. Snyk IaC scans Terraform / Kubernetes / CloudFormation /
+  # ARM / Helm — none of which exist in this repo. Dockerfiles are covered by
+  # the `container` job; docker-compose.yml and render.yaml are not Snyk-IaC
+  # formats. An IaC job here only ever produced "Could not find any valid IaC
+  # files", so it was removed rather than left as permanent dead noise. Add it
+  # back if/when real IaC (e.g. Terraform) lands in the repo.
 
   # ── Monitor: push a snapshot to the Snyk dashboard for continuous alerts ──
   # Runs only on push to main (NOT PRs or the cron) — a snapshot should reflect
@@ -371,7 +327,8 @@ jobs:
         run: |
           if [ -z "$SNYK_TOKEN" ]; then echo "SNYK_TOKEN not set — skipping"; exit 0; fi
           # Same approach as the SCA test job: install each manifest into an
-          # isolated venv so Snyk monitors the fully resolved tree rather than
+          # isolated venv and run `snyk monitor` WHILE THE VENV IS ACTIVE so
+          # Snyk resolves the tree from the installed environment rather than
           # parsing raw requirements/*.txt (which fails SNYK-OS-PYTHON-0013).
           for req in base prod dev; do
             echo "::group::Snyk monitor — requirements/${req}.txt"
@@ -380,7 +337,10 @@ jobs:
             . "/tmp/venv-${req}/bin/activate"
             pip install --quiet --upgrade pip
             pip install --quiet -r "requirements/${req}.txt"
-            snyk monitor --command="/tmp/venv-${req}/bin/python" --project-name="donorcrm-py-${req}"
+            snyk monitor \
+              --file="requirements/${req}.txt" \
+              --package-manager=pip \
+              --project-name="donorcrm-py-${req}" || true
             deactivate
             echo "::endgroup::"
           done
