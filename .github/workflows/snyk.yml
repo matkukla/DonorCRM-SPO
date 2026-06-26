@@ -1,0 +1,213 @@
+name: snyk
+
+# Snyk security scanning across all four product surfaces. Advisory for now
+# (continue-on-error) so it reports without blocking PRs — mirrors the bandit
+# job in security.yml. Tighten to hard gates (drop continue-on-error, raise
+# --severity-threshold) once the baseline is triaged.
+#
+# Setup: add a repository secret SNYK_TOKEN (Settings > Secrets and variables >
+# Actions). Get the token from https://app.snyk.io > Account settings > API token.
+# Without the secret, every job is skipped (see the `if:` guard) rather than
+# failing — so forks and pre-setup pushes stay green.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly Monday 09:00 UTC — catches new advisories against pinned deps,
+    # aligned with the pip-audit schedule in security.yml.
+    - cron: "0 9 * * 1"
+
+jobs:
+  # ── Open Source (SCA): Python + npm dependency CVEs ──────────────────────
+  # The npm/frontend dependency tree currently has no CVE scanner, so this is
+  # the highest-value addition. Python overlaps pip-audit but feeds the same
+  # unified report.
+  sca:
+    name: open source (SCA)
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'schedule' || github.actor != 'dependabot[bot]' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Install frontend deps (for npm SCA)
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Snyk CLI
+        run: npm install -g snyk
+
+      - name: Snyk test — Python (all requirements files)
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          if [ -z "$SNYK_TOKEN" ]; then echo "SNYK_TOKEN not set — skipping"; exit 0; fi
+          snyk test --file=requirements/base.txt --package-manager=pip --severity-threshold=high
+          snyk test --file=requirements/prod.txt --package-manager=pip --severity-threshold=high
+          snyk test --file=requirements/dev.txt  --package-manager=pip --severity-threshold=high
+
+      - name: Snyk test — npm (frontend)
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          if [ -z "$SNYK_TOKEN" ]; then echo "SNYK_TOKEN not set — skipping"; exit 0; fi
+          snyk test --file=frontend/package.json --severity-threshold=high
+
+  # ── Snyk Code (SAST): Python + TypeScript ────────────────────────────────
+  # Overlaps bandit on Python but extends static analysis to the TS/React
+  # frontend, which bandit cannot see.
+  code:
+    name: code (SAST)
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'schedule' || github.actor != 'dependabot[bot]' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Install Snyk CLI
+        run: npm install -g snyk
+
+      - name: Snyk Code test
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          if [ -z "$SNYK_TOKEN" ]; then echo "SNYK_TOKEN not set — skipping"; exit 0; fi
+          snyk code test --severity-threshold=high
+
+  # ── Container: base-image OS CVEs for both Dockerfiles ───────────────────
+  container:
+    name: container
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'schedule' || github.actor != 'dependabot[bot]' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Snyk CLI
+        run: npm install -g snyk
+
+      - name: Build images
+        run: |
+          docker build -t donorcrm:dev  -f Dockerfile .
+          docker build -t donorcrm:prod -f Dockerfile.prod .
+
+      - name: Snyk container test — dev
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          if [ -z "$SNYK_TOKEN" ]; then echo "SNYK_TOKEN not set — skipping"; exit 0; fi
+          snyk container test donorcrm:dev  --file=Dockerfile      --severity-threshold=high
+
+      - name: Snyk container test — prod
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          if [ -z "$SNYK_TOKEN" ]; then echo "SNYK_TOKEN not set — skipping"; exit 0; fi
+          snyk container test donorcrm:prod --file=Dockerfile.prod --severity-threshold=high
+
+  # ── IaC: config misconfigurations (Dockerfiles, compose, render.yaml) ────
+  iac:
+    name: iac
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'schedule' || github.actor != 'dependabot[bot]' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Snyk CLI
+        run: npm install -g snyk
+
+      - name: Snyk IaC test
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          if [ -z "$SNYK_TOKEN" ]; then echo "SNYK_TOKEN not set — skipping"; exit 0; fi
+          snyk iac test --severity-threshold=high
+
+  # ── Monitor: push a snapshot to the Snyk dashboard for continuous alerts ──
+  # Runs only on push to main (NOT PRs or the cron) — a snapshot should reflect
+  # what is actually merged, and running on PRs would spam the dashboard with
+  # throwaway projects. Once uploaded, Snyk re-checks these snapshots server-
+  # side as new CVEs are disclosed and alerts/opens fix PRs without waiting for
+  # the next CI run. The main gap this closes vs. the weekly cron + Dependabot
+  # is container base-image drift (python:3.11-slim OS CVEs over time).
+  # `snyk monitor` reports upload status, not findings, so failures here should
+  # never break a merge — hence continue-on-error.
+  monitor:
+    name: monitor (dashboard snapshot)
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Install frontend deps (for npm snapshot)
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Snyk CLI
+        run: npm install -g snyk
+
+      - name: Monitor — Python deps
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          if [ -z "$SNYK_TOKEN" ]; then echo "SNYK_TOKEN not set — skipping"; exit 0; fi
+          snyk monitor --file=requirements/base.txt --package-manager=pip --project-name=donorcrm-py-base
+          snyk monitor --file=requirements/prod.txt --package-manager=pip --project-name=donorcrm-py-prod
+          snyk monitor --file=requirements/dev.txt  --package-manager=pip --project-name=donorcrm-py-dev
+
+      - name: Monitor — npm deps
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          if [ -z "$SNYK_TOKEN" ]; then echo "SNYK_TOKEN not set — skipping"; exit 0; fi
+          snyk monitor --file=frontend/package.json --project-name=donorcrm-frontend
+
+      - name: Monitor — code (SAST)
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          if [ -z "$SNYK_TOKEN" ]; then echo "SNYK_TOKEN not set — skipping"; exit 0; fi
+          snyk code test --report --project-name=donorcrm-code || true
+
+      - name: Build images
+        run: |
+          docker build -t donorcrm:dev  -f Dockerfile .
+          docker build -t donorcrm:prod -f Dockerfile.prod .
+
+      - name: Monitor — containers
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          if [ -z "$SNYK_TOKEN" ]; then echo "SNYK_TOKEN not set — skipping"; exit 0; fi
+          snyk container monitor donorcrm:dev  --file=Dockerfile      --project-name=donorcrm-container-dev
+          snyk container monitor donorcrm:prod --file=Dockerfile.prod --project-name=donorcrm-container-prod
