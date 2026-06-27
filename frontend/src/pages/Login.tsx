@@ -18,8 +18,14 @@ export default function Login() {
   const navigate = useNavigate()
   const location = useLocation()
 
-  // Get redirect path from location state, default to dashboard
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || "/"
+  // Get redirect path from location state, default to dashboard. Guard against
+  // open redirects: only honor internal absolute paths, never protocol-relative
+  // ("//evil.com") or external URLs.
+  const requestedPath = (location.state as { from?: { pathname: string } })?.from?.pathname
+  const from =
+    requestedPath && requestedPath.startsWith("/") && !requestedPath.startsWith("//")
+      ? requestedPath
+      : "/"
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
