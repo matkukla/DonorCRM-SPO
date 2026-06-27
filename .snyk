@@ -21,3 +21,14 @@ ignore: {}
 #         used for JWT storage, not a credential. No secret value is hardcoded.
 #         Reviewed 2026-06-26. Ignore it via app.snyk.io (Code ignores are not
 #         read from this file).
+
+# ── Known Snyk Code false positive (handled in the dashboard, recorded here) ──
+# Rule:   javascript/OpenRedirect (CWE-601)
+# Path:   frontend/src/pages/Login.tsx — navigate(from, ...)
+# Status: FALSE POSITIVE / MITIGATED. `from` is derived from React Router
+#         location.state and guarded: only internal absolute paths are honored
+#         ("/..."), protocol-relative ("//evil.com") and external URLs are
+#         rejected, falling back to "/". See Login.tsx:24-28 (commit e97ff54).
+#         Snyk's taint engine does not credit the startsWith("/") sanitizer.
+#         Reviewed 2026-06-27. Ignore it via app.snyk.io (Code ignores are not
+#         read from this file).
