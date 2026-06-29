@@ -112,7 +112,24 @@ export default function GoalPage() {
 
   function handleSaveSettings() {
     setValidationError(null)
-    const cents = Math.round(parseFloat(goalDollars) * 100)
+
+    // When journals are checked, the Monthly Goal is derived from them: sum the
+    // checked journals' monthly goal_amounts and overwrite whatever was typed.
+    // With no journals checked, keep the manually entered value (all-donor mode,
+    // ADR 0004). goal_amount is a monthly figure (ADR 0008).
+    const checkedJournals = journals.filter((j) => selectedIds.has(j.id))
+    const hasCheckedJournals = checkedJournals.length > 0
+
+    // Sum exactly in integer cents to avoid float drift: convert each journal's
+    // dollar amount to cents first, then add the integers.
+    const summedCents = checkedJournals.reduce((total, j) => {
+      const journalCents = Math.round(parseFloat(j.goal_amount) * 100)
+      return Number.isNaN(journalCents) ? total : total + journalCents
+    }, 0)
+
+    const cents = hasCheckedJournals
+      ? summedCents
+      : Math.round(parseFloat(goalDollars) * 100)
     if (isNaN(cents) || cents < 0) {
       setValidationError("Please enter a valid goal amount.")
       return
@@ -122,6 +139,13 @@ export default function GoalPage() {
       setValidationError("Please enter a valid number of weeks (must be at least 1).")
       return
     }
+
+    // Reflect the summed total back into the visible input so the user sees the
+    // overwrite immediately.
+    if (hasCheckedJournals) {
+      setGoalDollars(String(cents / 100))
+    }
+
     updateGoal.mutate(
       {
         monthly_support_goal_cents: cents,

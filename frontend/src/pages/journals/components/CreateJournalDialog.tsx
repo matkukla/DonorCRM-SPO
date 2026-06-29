@@ -49,7 +49,7 @@ export const CreateJournalDialog = React.memo(function CreateJournalDialog({
     isSubmittingRef.current = true
 
     if (!name || !goalAmount) {
-      toast.error("Name and goal amount are required")
+      toast.error("Name and monthly goal are required")
       isSubmittingRef.current = false
       return
     }
@@ -95,10 +95,10 @@ export const CreateJournalDialog = React.memo(function CreateJournalDialog({
             />
           </div>
 
-          {/* Goal Amount */}
+          {/* Monthly Goal */}
           <div className="space-y-2">
             <Label htmlFor="goal-amount">
-              Goal Amount <span className="text-destructive">*</span>
+              Monthly Goal ($) <span className="text-destructive">*</span>
             </Label>
             <Input
               id="goal-amount"
@@ -106,9 +106,12 @@ export const CreateJournalDialog = React.memo(function CreateJournalDialog({
               inputMode="decimal"
               value={goalAmount}
               onChange={(e) => setGoalAmount(e.target.value)}
-              placeholder="e.g. 50000.00"
+              placeholder="e.g. 500"
               required
             />
+            <p className="text-xs text-muted-foreground">
+              Monthly fundraising target for this journal.
+            </p>
           </div>
 
           {/* Deadline */}

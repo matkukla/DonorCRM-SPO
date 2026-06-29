@@ -53,7 +53,9 @@ export function JournalHeader({ journal, members }: JournalHeaderProps) {
     // Count of decisions made
     const decisionCount = decisions.length
 
-    // Progress toward goal (goal_amount is a total campaign target)
+    // Progress toward goal. NOTE: goal_amount is now a MONTHLY figure (ADR 0008)
+    // while totalPledged is cumulative — this bar's math is a known apples-to-
+    // oranges inconsistency tracked as a follow-up; only the label was updated here.
     const goalAmount = parseFloat(journal.goal_amount)
     const progressPercent = goalAmount > 0
       ? Math.min((totalPledged / goalAmount) * 100, 100)
@@ -90,7 +92,7 @@ export function JournalHeader({ journal, members }: JournalHeaderProps) {
           <div className="flex items-center gap-1 text-muted-foreground">
             {isEditingGoal ? (
               <span className="flex items-center gap-1">
-                <span>Goal: $</span>
+                <span>Monthly Goal: $</span>
                 <Input
                   type="number"
                   min="0.01"
@@ -114,7 +116,7 @@ export function JournalHeader({ journal, members }: JournalHeaderProps) {
             ) : (
               <span className="flex items-center gap-1">
                 <span>
-                  Goal: ${parseFloat(journal.goal_amount).toLocaleString()}
+                  Monthly Goal: ${parseFloat(journal.goal_amount).toLocaleString()}
                 </span>
                 {!isViewingAs && (
                   <Button

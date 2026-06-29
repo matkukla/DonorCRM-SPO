@@ -41,11 +41,24 @@ const GOAL_DATA: GoalData = {
   decisions_percentage: 0,
 }
 
-function setup() {
+interface TestJournal {
+  id: string
+  name: string
+  goal_amount: string
+}
+
+interface SetupOptions {
+  goalData?: Partial<GoalData>
+  journals?: TestJournal[]
+}
+
+function setup(options: SetupOptions = {}) {
   const mutate = vi.fn()
+  const goalData = { ...GOAL_DATA, ...options.goalData }
+  const journals = options.journals ?? []
 
   vi.mocked(useGoalData).mockReturnValue({
-    data: GOAL_DATA,
+    data: goalData,
     isLoading: false,
   } as ReturnType<typeof useGoalData>)
 
@@ -55,7 +68,7 @@ function setup() {
   } as unknown as ReturnType<typeof useUpdateGoal>)
 
   vi.mocked(useJournals).mockReturnValue({
-    data: { results: [] },
+    data: { results: journals },
   } as unknown as ReturnType<typeof useJournals>)
 
   vi.mocked(useAuth).mockReturnValue({
@@ -118,5 +131,121 @@ describe("GoalPage — save behavior", () => {
     fireEvent.keyDown(input, { key: "a" })
 
     expect(mutate).not.toHaveBeenCalled()
+  })
+})
+
+describe("GoalPage — auto-populate Monthly Goal from selected journals", () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it("overwrites the Monthly Goal with the sum of checked journals on Save", () => {
+    const { mutate } = setup({
+      journals: [
+        { id: "j1", name: "Alpha", goal_amount: "500.00" },
+        { id: "j2", name: "Beta", goal_amount: "250.00" },
+      ],
+    })
+
+    // User typed a manual value that should be overwritten by the sum.
+    const input = screen.getByLabelText("Monthly Goal ($)")
+    fireEvent.change(input, { target: { value: "9999" } })
+
+    // Check both journals, then save.
+    fireEvent.click(screen.getByLabelText("Alpha"))
+    fireEvent.click(screen.getByLabelText("Beta"))
+    fireEvent.click(screen.getByRole("button", { name: /save settings/i }))
+
+    expect(mutate).toHaveBeenCalledTimes(1)
+    expect(mutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        monthly_support_goal_cents: 75_000, // $500 + $250 = $750
+        journal_ids: ["j1", "j2"],
+      }),
+      expect.anything(),
+    )
+  })
+
+  it("keeps the manually typed value when no journals are checked", () => {
+    const { mutate } = setup({
+      journals: [
+        { id: "j1", name: "Alpha", goal_amount: "500.00" },
+        { id: "j2", name: "Beta", goal_amount: "250.00" },
+      ],
+    })
+
+    // Journals exist but the user checks none — the typed value must survive.
+    const input = screen.getByLabelText("Monthly Goal ($)")
+    fireEvent.change(input, { target: { value: "4200" } })
+    fireEvent.click(screen.getByRole("button", { name: /save settings/i }))
+
+    expect(mutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        monthly_support_goal_cents: 420_000,
+        journal_ids: [],
+      }),
+      expect.anything(),
+    )
+  })
+
+  it("reflects the summed total back into the Monthly Goal input", () => {
+    setup({
+      journals: [
+        { id: "j1", name: "Alpha", goal_amount: "500.00" },
+        { id: "j2", name: "Beta", goal_amount: "250.00" },
+      ],
+    })
+
+    const input = screen.getByLabelText<HTMLInputElement>("Monthly Goal ($)")
+    fireEvent.change(input, { target: { value: "9999" } })
+    fireEvent.click(screen.getByLabelText("Alpha"))
+    fireEvent.click(screen.getByLabelText("Beta"))
+    fireEvent.click(screen.getByRole("button", { name: /save settings/i }))
+
+    expect(input.value).toBe("750")
+  })
+
+  it("sums to exact cents for fractional dollar amounts", () => {
+    const { mutate } = setup({
+      journals: [
+        { id: "j1", name: "Alpha", goal_amount: "333.33" },
+        { id: "j2", name: "Beta", goal_amount: "333.33" },
+        { id: "j3", name: "Gamma", goal_amount: "333.34" },
+      ],
+    })
+
+    fireEvent.click(screen.getByLabelText("Alpha"))
+    fireEvent.click(screen.getByLabelText("Beta"))
+    fireEvent.click(screen.getByLabelText("Gamma"))
+    fireEvent.click(screen.getByRole("button", { name: /save settings/i }))
+
+    expect(mutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        // 33333 + 33333 + 33334 = 100000 cents ($1,000.00), exact.
+        monthly_support_goal_cents: 100_000,
+      }),
+      expect.anything(),
+    )
+  })
+
+  it("sums the checked journals when saving via Enter", () => {
+    const { mutate } = setup({
+      journals: [
+        { id: "j1", name: "Alpha", goal_amount: "500.00" },
+        { id: "j2", name: "Beta", goal_amount: "250.00" },
+      ],
+    })
+
+    const input = screen.getByLabelText("Monthly Goal ($)")
+    fireEvent.change(input, { target: { value: "9999" } })
+    fireEvent.click(screen.getByLabelText("Alpha"))
+    fireEvent.click(screen.getByLabelText("Beta"))
+    fireEvent.keyDown(input, { key: "Enter" })
+
+    expect(mutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        monthly_support_goal_cents: 75_000,
+        journal_ids: ["j1", "j2"],
+      }),
+      expect.anything(),
+    )
   })
 })
