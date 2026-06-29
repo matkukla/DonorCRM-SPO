@@ -50,7 +50,7 @@ const stageChartConfig = {
   meet: { label: "Meet", color: "hsl(var(--chart-2))" },
   close: { label: "Close", color: "hsl(var(--chart-3))" },
   decision: { label: "Decision", color: "hsl(var(--chart-4))" },
-  thank: { label: "Thank", color: "hsl(var(--chart-5))" },
+  thank: { label: "Thank You", color: "hsl(var(--chart-5))" },
   next_steps: { label: "Next Steps", color: "hsl(var(--chart-6))" },
 } satisfies ChartConfig
 
