@@ -16,6 +16,7 @@ command (``check_pledge_followups``).
 
 import logging
 from datetime import date, timedelta
+from decimal import ROUND_HALF_UP, Decimal
 
 from django.db import transaction
 from django.utils import timezone
@@ -39,7 +40,10 @@ def is_pledge_fulfilled(decision) -> bool:
         return True
 
     pledge_date = decision.created_at.date()
-    amount_cents = int(decision.amount * 100)
+    # decision.amount is a Decimal (dollars). Quantize to whole cents with
+    # half-up rounding before converting to int, so the comparison against the
+    # integer-cents Gift.amount_cents is exact and never truncates a fraction.
+    amount_cents = int((decision.amount * 100).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
     return contact.gifts.filter(
         gift_date__gte=pledge_date,
         amount_cents__gte=amount_cents,
