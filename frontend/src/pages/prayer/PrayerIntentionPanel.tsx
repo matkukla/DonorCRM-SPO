@@ -140,7 +140,7 @@ export function PrayerIntentionPanel({
 
           {/* Title */}
           <div className="space-y-2">
-            <Label htmlFor="prayer-title">Title</Label>
+            <Label htmlFor="prayer-title">Prayer Intention</Label>
             <Input
               id="prayer-title"
               value={title}
@@ -212,23 +212,25 @@ export function PrayerIntentionPanel({
             )}
           </div>
 
-          {/* Status */}
-          <div className="space-y-2">
-            <Label>Status</Label>
-            <Select
-              value={status}
-              onValueChange={(v) => setStatus(v as PrayerIntentionStatus)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="answered">Answered</SelectItem>
-                <SelectItem value="archived">Archived</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Status — only on edit; new intentions default to "active" */}
+          {isEdit && (
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select
+                value={status}
+                onValueChange={(v) => setStatus(v as PrayerIntentionStatus)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="answered">Answered</SelectItem>
+                  <SelectItem value="archived">Archived</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex items-center gap-2 pt-4">
