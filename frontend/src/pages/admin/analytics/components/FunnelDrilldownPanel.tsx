@@ -8,7 +8,7 @@ const STAGE_LABELS: Record<string, string> = {
   meet: "Meet",
   close: "Close",
   decision: "Decision",
-  thank: "Thank",
+  thank: "Thank You",
   next_steps: "Next Steps",
   none: "No Activity",
 }
