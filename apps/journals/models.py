@@ -80,7 +80,7 @@ class Journal(TimeStampedModel):
         max_digits=10,
         decimal_places=2,
         validators=[MinValueValidator(Decimal("0.01"))],
-        help_text="Fundraising goal for this journal",
+        help_text="Monthly fundraising goal for this journal",
     )
 
     deadline = models.DateField(

@@ -43,6 +43,23 @@ no journals selected the Goal page reflects all owned donors (matching the dashb
 tile). Never includes [[Decision]] pipeline amounts — those are a separate forecast.
 See `docs/adr/0004-goal-page-falls-back-to-all-donors-when-no-journals-selected.md`.
 
+### Journal Goal
+A per-[[Journal]] fundraising target (`Journal.goal_amount`, dollars). It is a
+**monthly** figure — the monthly support target for that one journal — not a campaign
+lifetime total. Summing the Journal Goals of the journals checked under "Track Progress
+By Journals" yields a missionary's [[Support Goal]] (straight sum, no annualization,
+because the parts are already monthly). Today it also feeds the Goal page's **Decisions**
+forecast bar (sum of selected journals' goals as the denominator). See `docs/adr/0008-journal-goal-is-monthly.md`.
+
+### Support Goal
+The missionary's personal monthly fundraising target (`User.monthly_support_goal_cents`,
+integer cents), shown on the Goal page as **"Monthly Goal ($)"**. It is the denominator
+of the [[Monthly Support (effective)]] progress bar. On Save Settings, if at least one
+[[Journal]] is checked, it is **overwritten** with the sum of the checked journals'
+[[Journal Goal]]s; with no journals checked, the manually typed value is kept. Distinct
+from the org-wide **Annual Goal** (an organization setting used by the Admin Analytics
+pace tile), which this never touches.
+
 ### Pledge
 A donor's recorded commitment to give. In this codebase a pledge **is** a
 [[Decision]] in the `active` state — there is no separate "Pledged" status or table.

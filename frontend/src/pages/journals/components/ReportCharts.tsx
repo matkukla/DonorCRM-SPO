@@ -231,14 +231,14 @@ export function JournalReport({ journalId, goalAmount }: JournalReportProps) {
       {/* Goal progress bar */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Goal Progress</CardTitle>
+          <CardTitle className="text-sm font-medium">Monthly Goal Progress</CardTitle>
           <CardDescription>
             {formatCurrency(confirmed)} of {formatCurrency(goal)} confirmed
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Progress value={percentage} className="h-3" />
-          <p className="text-xs text-muted-foreground mt-1">{percentage}% of goal</p>
+          <p className="text-xs text-muted-foreground mt-1">{percentage}% of monthly goal</p>
         </CardContent>
       </Card>
 
