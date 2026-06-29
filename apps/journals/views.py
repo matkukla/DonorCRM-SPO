@@ -45,6 +45,7 @@ from apps.journals.serializers import (
     JournalStageEventSerializer,
     NextStepSerializer,
 )
+from apps.journals.services import get_journal_monthly_support
 
 
 class JournalListCreateView(generics.ListCreateAPIView):
@@ -662,6 +663,11 @@ class JournalAnalyticsViewSet(viewsets.ViewSet):
         pending_amount = (
             decisions.filter(status="pending").aggregate(total=Sum("amount"))["total"] or 0
         )
+        # Gift-based monthly support for this journal (issue #167): recurring
+        # monthly-equivalent + fiscal-year one-time gifts ÷ 12, scoped to the
+        # journal's member contacts. Financial figure — gated like the pledge
+        # aggregates above.
+        monthly_support = get_journal_monthly_support(journal) if show_financial else None
 
         # Contacts by stage (bar chart data)
         latest_stage = (
@@ -699,6 +705,7 @@ class JournalAnalyticsViewSet(viewsets.ViewSet):
                     "pending_amount": str(pending_amount) if show_financial else None,
                 },
                 "goal_amount": str(journal.goal_amount) if show_financial else None,
+                "monthly_support": monthly_support,
                 "stage_distribution": stage_distribution,
                 "decision_status": decision_status,
                 "alerts": {

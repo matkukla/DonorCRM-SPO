@@ -79,6 +79,16 @@ class TestFulfillmentRule:
         assert is_pledge_fulfilled(decision) is False
         assert run_pledge_followup_sweep() == 1
 
+    def test_exact_cents_pledge_is_fulfilled_by_exact_gift(self):
+        """An amount with cents (e.g. $100.07) must convert to exactly 10007 cents.
+
+        Guards the Decimal->cents conversion against float rounding error: a gift
+        of exactly the pledged cents must fulfill the pledge.
+        """
+        contact, decision = _make_pledge(amount="100.07")
+        GiftFactory(donor_contact=contact, amount_cents=10007, gift_date=timezone.now().date())
+        assert is_pledge_fulfilled(decision) is True
+
     def test_gift_before_pledge_date_does_not_fulfill(self):
         contact, decision = _make_pledge(amount="100.00", age_days=10)
         pledge_date = decision.created_at.date()

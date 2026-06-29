@@ -338,6 +338,17 @@ export interface JournalReportData {
     pending_amount: string
   }
   goal_amount: string
+  /**
+   * Gift-based monthly support for this journal (issue #167): recurring
+   * monthly-equivalent + fiscal-year one-time gifts ÷ 12. Dollars (floats).
+   * null when withheld from a non-financial role (coach).
+   */
+  monthly_support: {
+    recurring_monthly: number
+    one_time_monthly: number
+    effective_monthly_support: number
+    active_pledge_count: number
+  } | null
   stage_distribution: Array<{ stage: string | null; count: number }>
   decision_status: Array<{ status: DecisionStatus; count: number }>
   alerts: {
