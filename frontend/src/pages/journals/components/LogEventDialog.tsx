@@ -1,6 +1,6 @@
 import * as React from "react"
 import { format } from "date-fns"
-import { CalendarDays } from "lucide-react"
+import { CalendarDays, X } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -69,6 +69,7 @@ export const LogEventDialog = React.memo(function LogEventDialog({
   const [notes, setNotes] = React.useState("")
   const [scheduledDate, setScheduledDate] = React.useState<Date | undefined>(undefined)
   const [scheduledTime, setScheduledTime] = React.useState("")
+  const [calendarOpen, setCalendarOpen] = React.useState(false)
 
   // Fetch contact's journals when contactId is provided
   const { data: journals } = useContactJournals(contactId || "")
@@ -81,6 +82,7 @@ export const LogEventDialog = React.memo(function LogEventDialog({
       setNotes("")
       setScheduledDate(undefined)
       setScheduledTime("")
+      setCalendarOpen(false)
 
       if (preselectedJournalContactId) {
         setSelectedJournalContactId(preselectedJournalContactId)
@@ -216,7 +218,7 @@ export const LogEventDialog = React.memo(function LogEventDialog({
           {isScheduledStage && (
             <div className="space-y-2">
               <Label>Meeting Date <span className="text-destructive">*</span></Label>
-              <Popover>
+              <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
@@ -230,7 +232,26 @@ export const LogEventDialog = React.memo(function LogEventDialog({
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={scheduledDate} onSelect={setScheduledDate} />
+                  <div className="flex justify-end border-b p-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      aria-label="Close calendar"
+                      onClick={() => setCalendarOpen(false)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <Calendar
+                    mode="single"
+                    selected={scheduledDate}
+                    onSelect={(date) => {
+                      setScheduledDate(date)
+                      setCalendarOpen(false)
+                    }}
+                  />
                 </PopoverContent>
               </Popover>
             </div>
