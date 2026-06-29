@@ -102,9 +102,8 @@ export const CreateJournalDialog = React.memo(function CreateJournalDialog({
             </Label>
             <Input
               id="goal-amount"
-              type="number"
-              step="0.01"
-              min="0"
+              type="text"
+              inputMode="decimal"
               value={goalAmount}
               onChange={(e) => setGoalAmount(e.target.value)}
               placeholder="e.g. 50000.00"
