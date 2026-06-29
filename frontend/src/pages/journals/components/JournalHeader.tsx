@@ -3,7 +3,7 @@ import { Progress } from "@/components/ui/progress"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Pencil, Check } from "lucide-react"
-import { useUpdateJournal } from "@/hooks/useJournals"
+import { useJournalReport, useUpdateJournal } from "@/hooks/useJournals"
 import { useViewAs } from "@/providers/ViewAsProvider"
 import type { JournalDetail, JournalMember, DecisionSummary } from "@/types/journals"
 import { formatLocalDate } from "@/lib/utils"
@@ -32,37 +32,39 @@ export function JournalHeader({ journal, members }: JournalHeaderProps) {
   const { isViewingAs } = useViewAs()
   const updateJournal = useUpdateJournal()
 
+  // Gift-based monthly support for this journal (issue #167). React Query
+  // dedupes this with the Reports tab's identical query, so no extra request.
+  const { data: report } = useJournalReport(journal.id)
+  const monthlySupport = report?.monthly_support?.effective_monthly_support ?? null
+
   // Inline edit state for goal amount
   const [isEditingGoal, setIsEditingGoal] = React.useState(false)
   const [editGoalValue, setEditGoalValue] = React.useState("")
 
-  // Calculate stats from cached member data
-  // Memoize to prevent re-renders (per Phase 5 success criteria #7)
+  // Pledge/decision text stats from cached member data (informational; these
+  // are NOT the goal-progress measurement). Memoize to prevent re-renders.
   const stats = React.useMemo(() => {
-    // Filter to non-declined decisions
     const decisions = members
       .map((m) => m.decision)
       .filter((d): d is DecisionSummary => d !== null && d.status !== 'declined')
 
-    // Sum total pledged (raw amounts, not monthly equivalent)
     const totalPledged = decisions.reduce(
       (sum, d) => sum + parseFloat(d.amount),
       0
     )
-
-    // Count of decisions made
     const decisionCount = decisions.length
 
-    // Progress toward goal. NOTE: goal_amount is now a MONTHLY figure (ADR 0008)
-    // while totalPledged is cumulative — this bar's math is a known apples-to-
-    // oranges inconsistency tracked as a follow-up; only the label was updated here.
-    const goalAmount = parseFloat(journal.goal_amount)
-    const progressPercent = goalAmount > 0
-      ? Math.min((totalPledged / goalAmount) * 100, 100)
-      : 0
+    return { totalPledged, decisionCount }
+  }, [members])
 
-    return { totalPledged, decisionCount, progressPercent }
-  }, [members, journal.goal_amount])
+  // Goal progress (issue #167): gift-based monthly support ÷ the journal's
+  // MONTHLY goal — both monthly figures, replacing the prior cumulative-pledges
+  // ÷ monthly-goal apples-to-oranges bar (resolves the ADR 0008 follow-up).
+  const goalAmount = parseFloat(journal.goal_amount)
+  const progressPercent =
+    monthlySupport !== null && goalAmount > 0
+      ? Math.min((monthlySupport / goalAmount) * 100, 100)
+      : 0
 
   function handleStartEdit() {
     setEditGoalValue(parseFloat(journal.goal_amount).toString())
@@ -145,11 +147,19 @@ export function JournalHeader({ journal, members }: JournalHeaderProps) {
         </div>
       </div>
 
-      {/* Progress bar */}
+      {/* Goal progress: gift-based monthly support vs the monthly goal (#167) */}
       <div className="space-y-2">
-        <Progress value={stats.progressPercent} className="h-3" />
+        <Progress value={progressPercent} className="h-3" />
         <p className="text-xs text-muted-foreground text-center">
-          {stats.progressPercent.toFixed(0)}% of goal
+          {monthlySupport !== null ? (
+            <>
+              ${monthlySupport.toLocaleString()} / $
+              {goalAmount.toLocaleString()} monthly support &bull;{" "}
+              {progressPercent.toFixed(0)}% of goal
+            </>
+          ) : (
+            <>{progressPercent.toFixed(0)}% of goal</>
+          )}
         </p>
       </div>
     </div>
