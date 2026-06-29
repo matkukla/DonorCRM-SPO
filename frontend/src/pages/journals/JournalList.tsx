@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { Link } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 import { useAuth } from "@/providers/AuthProvider"
 import { useViewAs } from "@/providers/ViewAsProvider"
 import { Container } from "@/components/layout/Container"
@@ -12,13 +12,14 @@ import { useFilterParams, journalFilterParsers } from "@/hooks/useFilterParams"
 import { journalPresets } from "@/lib/filter-presets"
 import { FilterBar } from "@/components/shared/FilterBar"
 import { FilterCombobox } from "@/components/shared/FilterCombobox"
-import { BookOpen, ChevronRight, Plus, Search, Filter } from "lucide-react"
+import { BookOpen, Plus, Search, Filter } from "lucide-react"
 import { CreateJournalDialog } from "./components"
 import { formatLocalDate } from "@/lib/utils"
 
 export default function JournalList() {
   const { user } = useAuth()
   const { isViewingAs } = useViewAs()
+  const navigate = useNavigate()
   const canSeeOwner = user?.role === "admin" || user?.role === "supervisor" || user?.role === "coach"
   const ownerOptions = user?.role === "admin"
     ? [] // admin sees all; no dropdown needed without usersData
@@ -165,8 +166,23 @@ export default function JournalList() {
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {data?.results.map((journal) => (
-                <Card key={journal.id} className="hover:shadow-md transition-shadow">
+              {data?.results.map((journal) => {
+                const openJournal = () => navigate(`/journals/${journal.id}`)
+                return (
+                <Card
+                  key={journal.id}
+                  role="link"
+                  tabIndex={0}
+                  aria-label={`Open journal ${journal.name}`}
+                  onClick={openJournal}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault()
+                      openJournal()
+                    }
+                  }}
+                  className="cursor-pointer border-2 border-transparent transition-all duration-200 hover:border-primary hover:shadow-[0_0_0_1px_hsl(var(--primary)/0.4),0_4px_12px_hsl(var(--primary)/0.15)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
                   <CardHeader>
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-primary/10 rounded-lg">
@@ -183,23 +199,16 @@ export default function JournalList() {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm text-muted-foreground">
-                        <span>Created {formatLocalDate(journal.created_at)}</span>
-                        {canSeeOwner && journal.owner_name && (
-                          <span className="block text-xs mt-0.5">Owner: {journal.owner_name}</span>
-                        )}
-                      </div>
-                      <Link to={`/journals/${journal.id}`}>
-                        <Button variant="ghost" size="sm">
-                          View
-                          <ChevronRight className="h-4 w-4 ml-1" />
-                        </Button>
-                      </Link>
+                    <div className="text-sm text-muted-foreground">
+                      <span>Created {formatLocalDate(journal.created_at)}</span>
+                      {canSeeOwner && journal.owner_name && (
+                        <span className="block text-xs mt-0.5">Owner: {journal.owner_name}</span>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+                )
+              })}
 
               {data?.results.length === 0 && (
                 <div className="col-span-full text-center py-12 text-muted-foreground">
