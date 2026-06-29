@@ -196,6 +196,17 @@ export default function GoalPage() {
               placeholder="3500"
               value={goalDollars}
               onChange={(e) => setGoalDollars(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  // Save on Enter, identical to clicking "Save Settings".
+                  // preventDefault keeps it explicit/safe even though this
+                  // input is not inside a <form>.
+                  e.preventDefault()
+                  if (!isReadOnly && !updateGoal.isPending) {
+                    handleSaveSettings()
+                  }
+                }
+              }}
               disabled={isReadOnly}
             />
           </div>
