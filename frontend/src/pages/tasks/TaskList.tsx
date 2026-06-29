@@ -31,7 +31,9 @@ import {
   MessageSquare,
   MoreVertical,
   Megaphone,
+  ChevronDown,
 } from "lucide-react"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import type { ColumnDef } from "@tanstack/react-table"
 import type { Task, TaskStatus, TaskPriority, TaskType } from "@/api/tasks"
 import { taskStatusLabels, taskPriorityLabels, taskTypeLabels } from "@/api/tasks"
@@ -40,6 +42,10 @@ import { formatLocalDate } from "@/lib/utils"
 import BroadcastTaskDialog from "./BroadcastTaskDialog"
 
 const PAGE_SIZE = 20
+
+// Status options for the active section's filter. "completed" is excluded
+// because completed tasks live in their own section below (issue #168).
+const ACTIVE_STATUSES: TaskStatus[] = ["pending", "in_progress", "cancelled"]
 
 const statusVariants: Record<TaskStatus, "default" | "secondary" | "success" | "warning" | "info" | "destructive"> = {
   pending: "secondary",
@@ -69,6 +75,8 @@ export default function TaskList() {
   const { user } = useAuth()
   const { isViewingAs } = useViewAs()
   const [broadcastDialogOpen, setBroadcastDialogOpen] = useState(false)
+  // Completed Tasks section is expanded by default (issue #168).
+  const [completedOpen, setCompletedOpen] = useState(true)
   const canBroadcast = (user?.role === "admin" || user?.role === "supervisor") && !isViewingAs
   const canSeeOwner = user?.role === "admin" || user?.role === "supervisor" || user?.role === "coach"
   const ownerOptions = user?.role === "admin"
@@ -85,6 +93,7 @@ export default function TaskList() {
   const [searchParams, setSearchParams] = useSearchParams()
 
   const page = parseInt(searchParams.get("page") || "1", 10)
+  const completedPage = parseInt(searchParams.get("cpage") || "1", 10)
   const status = searchParams.get("status") as TaskStatus | undefined
   const priority = searchParams.get("priority") as TaskPriority | undefined
   const taskType = searchParams.get("task_type") as TaskType | undefined
@@ -92,9 +101,13 @@ export default function TaskList() {
   const ownerFilter = searchParams.get("owner") || undefined
   const ordering = searchParams.get("ordering") || undefined
 
+  // Active section: incomplete tasks only. Shared filters (priority, type,
+  // search, owner) apply here. The status filter here is limited to active
+  // statuses (see activeStatusLabels) so it can't contradict `completed: false`.
   const { data, isLoading } = useTasks({
     page,
     page_size: PAGE_SIZE,
+    completed: false,
     status,
     priority,
     task_type: taskType,
@@ -103,7 +116,28 @@ export default function TaskList() {
     ordering,
   })
 
+  // Completed section (issue #168): completed tasks only, most-recently-completed
+  // first. Shares the priority/type/search/owner filters so the two sections stay
+  // consistent, but is paginated independently via the `cpage` URL param.
+  const { data: completedData, isLoading: isCompletedLoading } = useTasks({
+    page: completedPage,
+    page_size: PAGE_SIZE,
+    completed: true,
+    priority,
+    task_type: taskType,
+    search: search || undefined,
+    owner: ownerFilter,
+    ordering: "-completed_at",
+  })
+
   const completeMutation = useCompleteTask()
+
+  // Shared filters drive both the active and completed sections, so reset both
+  // page cursors when they change.
+  const resetBothPages = (params: URLSearchParams) => {
+    params.set("page", "1")
+    params.set("cpage", "1")
+  }
 
   const handleStatusFilter = (newStatus: TaskStatus | null) => {
     const params = new URLSearchParams(searchParams)
@@ -112,6 +146,7 @@ export default function TaskList() {
     } else {
       params.delete("status")
     }
+    // Status only narrows the active section; the completed section is unaffected.
     params.set("page", "1")
     setSearchParams(params)
   }
@@ -123,7 +158,7 @@ export default function TaskList() {
     } else {
       params.delete("priority")
     }
-    params.set("page", "1")
+    resetBothPages(params)
     setSearchParams(params)
   }
 
@@ -134,7 +169,7 @@ export default function TaskList() {
     } else {
       params.delete("task_type")
     }
-    params.set("page", "1")
+    resetBothPages(params)
     setSearchParams(params)
   }
 
@@ -148,13 +183,19 @@ export default function TaskList() {
     } else {
       params.delete("search")
     }
-    params.set("page", "1")
+    resetBothPages(params)
     setSearchParams(params)
   }
 
   const handlePageChange = (newPage: number) => {
     const params = new URLSearchParams(searchParams)
     params.set("page", String(newPage + 1))
+    setSearchParams(params)
+  }
+
+  const handleCompletedPageChange = (newPage: number) => {
+    const params = new URLSearchParams(searchParams)
+    params.set("cpage", String(newPage + 1))
     setSearchParams(params)
   }
 
@@ -165,7 +206,7 @@ export default function TaskList() {
     } else {
       params.delete("owner")
     }
-    params.set("page", "1")
+    resetBothPages(params)
     setSearchParams(params)
   }
 
@@ -314,6 +355,8 @@ export default function TaskList() {
   ]
 
   const pageCount = data ? Math.ceil(data.count / PAGE_SIZE) : 1
+  const completedPageCount = completedData ? Math.ceil(completedData.count / PAGE_SIZE) : 1
+  const completedCount = completedData?.count ?? 0
 
   return (
     <Section>
@@ -374,7 +417,7 @@ export default function TaskList() {
                   <DropdownMenuItem onClick={() => handleStatusFilter(null)}>
                     All Status
                   </DropdownMenuItem>
-                  {(Object.keys(taskStatusLabels) as TaskStatus[]).map((s) => (
+                  {ACTIVE_STATUSES.map((s) => (
                     <DropdownMenuItem key={s} onClick={() => handleStatusFilter(s)}>
                       {taskStatusLabels[s]}
                     </DropdownMenuItem>
@@ -436,7 +479,7 @@ export default function TaskList() {
             </div>
           </Card>
 
-          {/* Data Table */}
+          {/* Active tasks */}
           <DataTable
             columns={columns}
             data={data?.results || []}
@@ -449,8 +492,43 @@ export default function TaskList() {
             onRowClick={(task) => navigate(`/tasks/${task.id}`)}
             ordering={ordering}
             onOrderingChange={handleOrderingChange}
-            aria-label="Tasks"
+            aria-label="Active tasks"
           />
+
+          {/* Completed tasks (issue #168) -- collapsible, paginated independently */}
+          <Collapsible open={completedOpen} onOpenChange={setCompletedOpen}>
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 text-left text-lg font-semibold tracking-tight hover:text-foreground/80 transition-colors"
+                aria-label={`${completedOpen ? "Collapse" : "Expand"} completed tasks`}
+              >
+                <ChevronDown
+                  className={`h-5 w-5 text-muted-foreground transition-transform ${
+                    completedOpen ? "" : "-rotate-90"
+                  }`}
+                />
+                Completed Tasks
+                <span className="text-sm font-normal text-muted-foreground">
+                  ({completedCount})
+                </span>
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-4">
+              <DataTable
+                columns={columns}
+                data={completedData?.results || []}
+                isLoading={isCompletedLoading}
+                pageCount={completedPageCount}
+                pageIndex={completedPage - 1}
+                pageSize={PAGE_SIZE}
+                totalCount={completedData?.count}
+                onPageChange={handleCompletedPageChange}
+                onRowClick={(task) => navigate(`/tasks/${task.id}`)}
+                aria-label="Completed tasks"
+              />
+            </CollapsibleContent>
+          </Collapsible>
         </div>
 
         {canBroadcast && <BroadcastTaskDialog open={broadcastDialogOpen} onOpenChange={setBroadcastDialogOpen} />}

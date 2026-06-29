@@ -66,6 +66,8 @@ export interface TaskFilters {
   search?: string
   ordering?: string
   owner?: string
+  // true = only completed tasks, false = only active (non-completed) tasks
+  completed?: boolean
 }
 
 export interface PaginatedResponse<T> {
@@ -112,6 +114,7 @@ export async function getTasks(filters: TaskFilters = {}): Promise<PaginatedResp
   if (filters.search) params.append("search", filters.search)
   if (filters.ordering) params.append("ordering", filters.ordering)
   if (filters.owner) params.append("owner", filters.owner)
+  if (filters.completed !== undefined) params.append("completed", String(filters.completed))
 
   const response = await apiClient.get(`/tasks/?${params.toString()}`)
   return response.data
