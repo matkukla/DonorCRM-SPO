@@ -185,7 +185,7 @@ export const STAGE_LABELS: Record<PipelineStage, string> = {
   meet: 'Meet',
   close: 'Close',
   decision: 'Decision',
-  thank: 'Thank',
+  thank: 'Thank You',
   next_steps: 'Next Steps',
 }
 
