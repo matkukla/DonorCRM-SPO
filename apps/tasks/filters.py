@@ -4,7 +4,7 @@ FilterSet for Task list filtering.
 
 import django_filters
 
-from apps.tasks.models import Task
+from apps.tasks.models import Task, TaskStatus
 
 
 class TaskFilterSet(django_filters.FilterSet):
@@ -15,6 +15,18 @@ class TaskFilterSet(django_filters.FilterSet):
     due_date_before = django_filters.DateFilter(field_name="due_date", lookup_expr="lte")
     contact = django_filters.UUIDFilter(field_name="contact_id")
     owner = django_filters.NumberFilter(field_name="owner_id")
+    # ``?completed=false`` returns active (non-completed) tasks; ``?completed=true``
+    # returns only completed tasks. Lets the Tasks tab (issue #168) split the list
+    # into an active section and a separate "Completed Tasks" section without a
+    # client-side filter that would break server-side pagination counts.
+    completed = django_filters.BooleanFilter(method="filter_completed")
+
+    def filter_completed(self, queryset, name, value):
+        if value is True:
+            return queryset.filter(status=TaskStatus.COMPLETED)
+        if value is False:
+            return queryset.exclude(status=TaskStatus.COMPLETED)
+        return queryset
 
     class Meta:
         model = Task
@@ -26,4 +38,5 @@ class TaskFilterSet(django_filters.FilterSet):
             "due_date_before",
             "contact",
             "owner",
+            "completed",
         ]

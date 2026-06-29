@@ -98,6 +98,121 @@ class TestTaskListCreateView:
 
 
 @pytest.mark.django_db
+class TestCompletedTaskGrouping:
+    """
+    Supports issue #168: the Tasks tab splits active tasks from a separate
+    "Completed Tasks" section. The frontend drives that split with two queries
+    against this list endpoint -- ``?status=completed`` for the completed
+    section and ``?ordering=-completed_at`` to show most-recently-completed
+    first. These tests pin the contract the frontend relies on.
+    """
+
+    def test_filter_status_completed_returns_only_completed(self):
+        """``?status=completed`` returns only the user's completed tasks."""
+        from apps.tasks.tests.factories import CompletedTaskFactory
+
+        user = UserFactory(role="missionary")
+        TaskFactory.create_batch(2, owner=user)  # active
+        CompletedTaskFactory.create_batch(3, owner=user)
+
+        client = APIClient()
+        client.force_authenticate(user=user)
+
+        response = client.get("/api/v1/tasks/?status=completed")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["count"] == 3
+        assert all(t["status"] == "completed" for t in response.data["results"])
+        assert all(t["completed_at"] is not None for t in response.data["results"])
+
+    def test_filter_completed_true_returns_only_completed(self):
+        """``?completed=true`` returns only completed tasks (completed section)."""
+        from apps.tasks.tests.factories import CompletedTaskFactory
+
+        user = UserFactory(role="missionary")
+        TaskFactory.create_batch(2, owner=user)  # active
+        CompletedTaskFactory.create_batch(3, owner=user)
+
+        client = APIClient()
+        client.force_authenticate(user=user)
+
+        response = client.get("/api/v1/tasks/?completed=true")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["count"] == 3
+        assert all(t["status"] == "completed" for t in response.data["results"])
+
+    def test_filter_completed_false_excludes_completed(self):
+        """
+        ``?completed=false`` returns active tasks only -- including non-completed
+        statuses like cancelled -- but never completed tasks (active section).
+        """
+        from apps.tasks.tests.factories import CompletedTaskFactory
+
+        user = UserFactory(role="missionary")
+        TaskFactory.create_batch(2, owner=user, status=TaskStatus.PENDING)
+        TaskFactory(owner=user, status=TaskStatus.CANCELLED)
+        CompletedTaskFactory.create_batch(3, owner=user)
+
+        client = APIClient()
+        client.force_authenticate(user=user)
+
+        response = client.get("/api/v1/tasks/?completed=false")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["count"] == 3
+        assert all(t["status"] != "completed" for t in response.data["results"])
+
+    def test_order_by_completed_at_descending(self):
+        """``?ordering=-completed_at`` lists most-recently-completed first."""
+        from apps.tasks.tests.factories import CompletedTaskFactory
+
+        user = UserFactory(role="missionary")
+        now = timezone.now()
+        older = CompletedTaskFactory(owner=user, completed_at=now - timedelta(days=2))
+        newer = CompletedTaskFactory(owner=user, completed_at=now - timedelta(hours=1))
+
+        client = APIClient()
+        client.force_authenticate(user=user)
+
+        response = client.get("/api/v1/tasks/?status=completed&ordering=-completed_at")
+
+        assert response.status_code == status.HTTP_200_OK
+        ids = [t["id"] for t in response.data["results"]]
+        assert ids == [str(newer.id), str(older.id)]
+
+    def test_completed_broadcast_copy_appears_per_user(self):
+        """
+        A user's own completed broadcast task copy appears in their completed
+        list with their completion data -- not another recipient's.
+        """
+        from apps.tasks.tests.factories import BroadcastTaskFactory
+
+        broadcast = BroadcastTaskFactory()
+        recipient = UserFactory(role="missionary")
+        other = UserFactory(role="missionary")
+        # One broadcast copy per recipient; only this user's copy is completed.
+        mine = TaskFactory(
+            owner=recipient,
+            broadcast=broadcast,
+            status=TaskStatus.COMPLETED,
+            completed_at=timezone.now(),
+            completed_by=recipient,
+        )
+        TaskFactory(owner=other, broadcast=broadcast)  # other recipient, still active
+
+        client = APIClient()
+        client.force_authenticate(user=recipient)
+
+        response = client.get("/api/v1/tasks/?status=completed")
+
+        assert response.status_code == status.HTTP_200_OK
+        ids = [t["id"] for t in response.data["results"]]
+        assert ids == [str(mine.id)]
+        assert response.data["results"][0]["broadcast_id"] == str(broadcast.id)
+
+
+@pytest.mark.django_db
 class TestTaskDetailView:
     """Tests for task detail endpoint."""
 

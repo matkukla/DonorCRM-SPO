@@ -25,7 +25,7 @@ class TaskListCreateView(generics.ListCreateAPIView):
 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["title", "description"]
-    ordering_fields = ["due_date", "priority", "created_at"]
+    ordering_fields = ["due_date", "priority", "created_at", "completed_at"]
     ordering = ["due_date", "-priority"]
     filterset_class = TaskFilterSet
     permission_classes = [permissions.IsAuthenticated]
