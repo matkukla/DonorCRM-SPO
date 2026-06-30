@@ -124,10 +124,17 @@ export function JournalReport({ journalId, goalAmount }: JournalReportProps) {
     }))
   }, [data])
 
-  // Goal progress
-  const confirmed = data ? parseFloat(data.metrics.confirmed_amount) : 0
+  // Goal progress (issue #170): compare gift-based monthly support to the
+  // journal's MONTHLY goal — both monthly figures — mirroring the header bar
+  // (#167). The old card divided CUMULATIVE confirmed pledges by the now-monthly
+  // goal, a time-basis mismatch that pinned the bar at 100%. monthly_support is
+  // null when withheld from a non-financial role (coach).
+  const monthlySupport = data?.monthly_support?.effective_monthly_support ?? null
   const goal = parseFloat(goalAmount) || 0
-  const percentage = goal === 0 ? 0 : Math.min(100, Math.round((confirmed / goal) * 100))
+  const percentage =
+    monthlySupport !== null && goal > 0
+      ? Math.min(100, Math.round((monthlySupport / goal) * 100))
+      : 0
 
   // Loading state
   if (isLoading) {
@@ -233,7 +240,9 @@ export function JournalReport({ journalId, goalAmount }: JournalReportProps) {
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium">Monthly Goal Progress</CardTitle>
           <CardDescription>
-            {formatCurrency(confirmed)} of {formatCurrency(goal)} confirmed
+            {monthlySupport !== null
+              ? `${formatCurrency(monthlySupport)} of ${formatCurrency(goal)} monthly support`
+              : "Monthly support not available"}
           </CardDescription>
         </CardHeader>
         <CardContent>
