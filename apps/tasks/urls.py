@@ -16,6 +16,7 @@ from apps.tasks.views import (
     TaskCompleteView,
     TaskDetailView,
     TaskListCreateView,
+    TaskReopenView,
     UpcomingTasksView,
 )
 
@@ -33,4 +34,5 @@ urlpatterns = [
     path("broadcasts/<uuid:pk>/copies/", BroadcastCopyListView.as_view(), name="broadcast-copies"),
     path("<uuid:pk>/", TaskDetailView.as_view(), name="task-detail"),
     path("<uuid:pk>/complete/", TaskCompleteView.as_view(), name="task-complete"),
+    path("<uuid:pk>/reopen/", TaskReopenView.as_view(), name="task-reopen"),
 ]

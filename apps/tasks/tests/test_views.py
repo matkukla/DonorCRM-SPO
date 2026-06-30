@@ -278,6 +278,81 @@ class TestTaskCompleteView:
 
 
 @pytest.mark.django_db
+class TestTaskReopenView:
+    """Tests for the task reopen (un-complete) endpoint (issue #176)."""
+
+    def test_reopen_completed_task(self):
+        """Reopening a completed task returns it to PENDING and clears completion."""
+        from apps.tasks.tests.factories import CompletedTaskFactory
+
+        user = UserFactory(role="missionary")
+        task = CompletedTaskFactory(owner=user, completed_by=user)
+
+        client = APIClient()
+        client.force_authenticate(user=user)
+
+        response = client.post(f"/api/v1/tasks/{task.id}/reopen/")
+
+        assert response.status_code == status.HTTP_200_OK
+        task.refresh_from_db()
+        assert task.status == TaskStatus.PENDING
+        assert task.completed_at is None
+        assert task.completed_by is None
+
+    def test_reopen_non_completed_task_returns_400(self):
+        """Reopening a task that isn't completed is a no-op error."""
+        user = UserFactory(role="missionary")
+        task = TaskFactory(owner=user, status=TaskStatus.PENDING)
+
+        client = APIClient()
+        client.force_authenticate(user=user)
+
+        response = client.post(f"/api/v1/tasks/{task.id}/reopen/")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        task.refresh_from_db()
+        assert task.status == TaskStatus.PENDING
+
+    def test_admin_can_reopen_any_task(self):
+        """Admins can reopen tasks they don't own."""
+        from apps.tasks.tests.factories import CompletedTaskFactory
+
+        owner = UserFactory(role="missionary")
+        admin = UserFactory(role="admin")
+        task = CompletedTaskFactory(owner=owner, completed_by=owner)
+
+        client = APIClient()
+        client.force_authenticate(user=admin)
+
+        response = client.post(f"/api/v1/tasks/{task.id}/reopen/")
+
+        assert response.status_code == status.HTTP_200_OK
+        task.refresh_from_db()
+        assert task.status == TaskStatus.PENDING
+
+    def test_coach_cannot_reopen_coached_users_task(self):
+        """
+        A coach who can *read* a coached user's task must not be able to reopen
+        it -- read visibility must not grant write authority (CWE-862), mirroring
+        the completion endpoint's authority model.
+        """
+        from apps.tasks.tests.factories import CompletedTaskFactory
+
+        missionary = UserFactory(role="missionary")
+        coach = UserFactory(role="coach")
+        task = CompletedTaskFactory(owner=missionary, completed_by=missionary)
+
+        client = APIClient()
+        client.force_authenticate(user=coach)
+
+        response = client.post(f"/api/v1/tasks/{task.id}/reopen/")
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        task.refresh_from_db()
+        assert task.status == TaskStatus.COMPLETED
+
+
+@pytest.mark.django_db
 class TestOverdueTasksView:
     """Tests for overdue tasks endpoint."""
 

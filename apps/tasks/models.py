@@ -204,3 +204,16 @@ class Task(TimeStampedModel):
         self.completed_at = timezone.now()
         self.completed_by = user
         self.save(update_fields=["status", "completed_at", "completed_by"])
+
+    def mark_incomplete(self):
+        """Reopen a completed task, returning it to the active list.
+
+        Resets status to PENDING and clears the completion tracking fields so
+        the task moves back out of the Completed section (issue #176). We reset
+        to PENDING rather than restoring a prior in_progress state because that
+        state isn't tracked; a user can re-set it via Edit if needed.
+        """
+        self.status = TaskStatus.PENDING
+        self.completed_at = None
+        self.completed_by = None
+        self.save(update_fields=["status", "completed_at", "completed_by"])

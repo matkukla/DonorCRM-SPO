@@ -2,7 +2,7 @@ import { useState } from "react"
 import { useNavigate, useSearchParams, Link } from "react-router-dom"
 import { useAuth } from "@/providers/AuthProvider"
 import { useViewAs } from "@/providers/ViewAsProvider"
-import { useTasks, useCompleteTask } from "@/hooks/useTasks"
+import { useTasks, useCompleteTask, useReopenTask } from "@/hooks/useTasks"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
 import { DataTable } from "@/components/shared/DataTable"
@@ -32,6 +32,7 @@ import {
   MoreVertical,
   Megaphone,
   ChevronDown,
+  RotateCcw,
 } from "lucide-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import type { ColumnDef } from "@tanstack/react-table"
@@ -131,6 +132,7 @@ export default function TaskList() {
   })
 
   const completeMutation = useCompleteTask()
+  const reopenMutation = useReopenTask()
 
   // Shared filters drive both the active and completed sections, so reset both
   // page cursors when they change.
@@ -225,6 +227,10 @@ export default function TaskList() {
     completeMutation.mutate(id)
   }
 
+  const handleReopen = (id: string) => {
+    reopenMutation.mutate(id)
+  }
+
   const columns: ColumnDef<Task>[] = [
     {
       accessorKey: "title",
@@ -307,6 +313,9 @@ export default function TaskList() {
         const isOwnItem = String(row.original.owner) === String(user?.id)
         const canEdit = (user?.role === "admin" || isOwnItem) && !(isBroadcast && user?.role === "missionary")
         const canComplete = !isViewingAs && (isOwnItem || user?.role === "admin") && row.original.status !== "completed" && row.original.status !== "cancelled"
+        // Reopen mirrors complete's authority: only the owner or an admin, and
+        // only for already-completed tasks (issue #176).
+        const canReopen = !isViewingAs && (isOwnItem || user?.role === "admin") && row.original.status === "completed"
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
@@ -344,6 +353,20 @@ export default function TaskList() {
                   >
                     <CheckCircle className="h-4 w-4 mr-2" />
                     Mark Complete
+                  </DropdownMenuItem>
+                </>
+              )}
+              {canReopen && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleReopen(row.original.id)
+                    }}
+                  >
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Mark Incomplete
                   </DropdownMenuItem>
                 </>
               )}

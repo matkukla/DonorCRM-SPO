@@ -118,6 +118,36 @@ class TaskCompleteView(APIView):
         return Response({"detail": "Task marked as completed."})
 
 
+class TaskReopenView(APIView):
+    """
+    POST: Reopen a completed task, returning it to the active list (issue #176).
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        user = request.user
+        # Reopening is a WRITE: mirror TaskCompleteView's authority model so read
+        # visibility (e.g. a coach reading coached users' tasks) never grants the
+        # ability to mutate. Restrict to the task owner, with admin retaining
+        # full access (CWE-862).
+        queryset = (
+            Task.objects.all() if user.role == "admin" else Task.objects.filter(owner_id=user.id)
+        )
+        try:
+            task = queryset.get(pk=pk)
+        except Task.DoesNotExist:
+            return Response({"detail": "Task not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if task.status != TaskStatus.COMPLETED:
+            return Response(
+                {"detail": "Task is not completed."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        task.mark_incomplete()
+        return Response({"detail": "Task reopened."})
+
+
 class OverdueTasksView(generics.ListAPIView):
     """
     GET: List overdue tasks
