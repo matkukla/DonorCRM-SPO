@@ -143,6 +143,11 @@ export async function completeTask(id: string): Promise<void> {
   await apiClient.post(`/tasks/${id}/complete/`)
 }
 
+// Reopen a completed task, returning it to the active list (issue #176).
+export async function reopenTask(id: string): Promise<void> {
+  await apiClient.post(`/tasks/${id}/reopen/`)
+}
+
 export async function getOverdueTasks(): Promise<PaginatedResponse<Task>> {
   const response = await apiClient.get("/tasks/overdue/")
   return response.data

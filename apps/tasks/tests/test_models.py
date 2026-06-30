@@ -61,6 +61,18 @@ class TestTaskModel:
         assert task.completed_at is not None
         assert task.completed_by == user
 
+    def test_mark_incomplete(self):
+        """Reopening a completed task resets status and clears completion fields."""
+        user = UserFactory()
+        task = TaskFactory(status=TaskStatus.PENDING)
+        task.mark_complete(user)
+
+        task.mark_incomplete()
+
+        assert task.status == TaskStatus.PENDING
+        assert task.completed_at is None
+        assert task.completed_by is None
+
     def test_task_types(self):
         """Test task type choices."""
         assert TaskType.CALL == "call"

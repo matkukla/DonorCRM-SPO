@@ -1,6 +1,6 @@
 import { useParams, useNavigate, Link } from "react-router-dom"
 import { useAuth } from "@/providers/AuthProvider"
-import { useTask, useCompleteTask, useDeleteTask } from "@/hooks/useTasks"
+import { useTask, useCompleteTask, useReopenTask, useDeleteTask } from "@/hooks/useTasks"
 import { Container } from "@/components/layout/Container"
 import { Section } from "@/components/layout/Section"
 import { Button } from "@/components/ui/button"
@@ -11,6 +11,7 @@ import {
   Edit,
   Trash2,
   CheckCircle,
+  RotateCcw,
   AlertTriangle,
   User,
   Calendar,
@@ -79,6 +80,7 @@ export default function TaskDetail() {
 
   const { data: task, isLoading, error } = useTask(id!)
   const completeMutation = useCompleteTask()
+  const reopenMutation = useReopenTask()
   const deleteMutation = useDeleteTask()
 
   const handleDelete = () => {
@@ -91,6 +93,10 @@ export default function TaskDetail() {
 
   const handleComplete = () => {
     completeMutation.mutate(id!)
+  }
+
+  const handleReopen = () => {
+    reopenMutation.mutate(id!)
   }
 
   if (isLoading) {
@@ -125,6 +131,8 @@ export default function TaskDetail() {
   }
 
   const canComplete = task.status !== "completed" && task.status !== "cancelled"
+  // A completed task can be reopened back into the active list (issue #176).
+  const canReopen = task.status === "completed"
   const isBroadcast = !!task.broadcast_id
   const canModify = !(isBroadcast && user?.role === "missionary")
 
@@ -182,6 +190,16 @@ export default function TaskDetail() {
                 >
                   <CheckCircle className="h-4 w-4 mr-2" />
                   Mark Complete
+                </Button>
+              )}
+              {canReopen && (
+                <Button
+                  variant="secondary"
+                  onClick={handleReopen}
+                  disabled={reopenMutation.isPending}
+                >
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Mark Incomplete
                 </Button>
               )}
               {canModify && (

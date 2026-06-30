@@ -6,6 +6,7 @@ import {
   updateTask,
   deleteTask,
   completeTask,
+  reopenTask,
   getOverdueTasks,
   getUpcomingTasks,
 } from "@/api/tasks"
@@ -68,6 +69,19 @@ export function useCompleteTask() {
 
   return useMutation({
     mutationFn: (id: string) => completeTask(id),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] })
+      queryClient.invalidateQueries({ queryKey: ["tasks", id] })
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] })
+    },
+  })
+}
+
+export function useReopenTask() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => reopenTask(id),
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] })
       queryClient.invalidateQueries({ queryKey: ["tasks", id] })
