@@ -107,7 +107,10 @@ halves on the [[Decision]]: `follow_up_created_at` (the idempotency timestamp) a
 by `apps/journals/pledge_followup.py` — set together in the sweep, cleared together
 by `release_followup(task)`, which fires from a Task `pre_delete` signal (pre_delete
 because `SET_NULL` would null the FK before `post_delete`, mirroring the RecurringGift
-precedent in `apps/gifts/signals.py`).
+precedent in `apps/gifts/signals.py`). The inverse path — deleting the [[Decision]]
+itself (contact merge or a `JournalContact` cascade) — is handled by
+`discard_followup(decision)` from a `Decision` `pre_delete` signal, which deletes the
+now-orphaned [[Follow-up]] Task so it is never left dangling (see ADR 0010, issue #183).
 
 ### Owner
 The `User` a piece of donor data belongs to. Most owner-scoped models carry a direct

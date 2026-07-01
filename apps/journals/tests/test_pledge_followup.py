@@ -210,6 +210,88 @@ class TestFollowUpLatchReset:
 
 
 @pytest.mark.django_db
+class TestDecisionDeleteCleansUpFollowUp:
+    """Deleting the Decision (the inverse of deleting its Task) must not orphan the
+    follow-up Task. See issue #183 and docs/adr/0010.
+
+    ADR 0010 handles Task deletion re-arming the sweep. This covers the mirror case:
+    when the Decision that owns the follow-up Task is destroyed (contact merge or a
+    JournalContact cascade), the auto-generated follow-up Task would otherwise be left
+    open forever, disconnected from any pledge.
+    """
+
+    def test_deleting_decision_deletes_its_followup_task(self):
+        _contact, decision = _make_pledge(amount="100.00")
+        assert run_pledge_followup_sweep() == 1
+        task = Task.objects.get()
+
+        decision.delete()
+
+        assert not Task.objects.filter(pk=task.pk).exists()
+
+    def test_deleting_decision_without_followup_is_noop(self):
+        """A Decision that never armed a follow-up leaves unrelated Tasks alone."""
+        owner = UserFactory(role="missionary")
+        contact, decision = _make_pledge(owner=owner, amount="100.00")
+        other = Task.objects.create(
+            owner=owner,
+            contact=contact,
+            title="Call the donor",
+            task_type=TaskType.CALL,
+            status=TaskStatus.PENDING,
+            due_date=timezone.now().date(),
+        )
+
+        decision.delete()
+
+        assert Task.objects.filter(pk=other.pk).exists()
+
+    def test_cascading_journalcontact_delete_deletes_followup_task(self):
+        """Deleting a JournalContact cascades to its Decision, which must clean up the
+        orphaned follow-up Task (reachable via JournalContactDestroyView)."""
+        _contact, decision = _make_pledge(amount="100.00")
+        assert run_pledge_followup_sweep() == 1
+        task = Task.objects.get()
+        jc = decision.journal_contact
+
+        jc.delete()
+
+        assert not Decision.objects.filter(pk=decision.pk).exists()
+        assert not Task.objects.filter(pk=task.pk).exists()
+
+    def test_merge_conflict_deletes_losers_followup_task(self):
+        """When a contact merge hard-deletes the loser's conflicting Decision, its
+        follow-up Task must not be orphaned."""
+        from apps.contacts.services import merge_contacts
+
+        owner = UserFactory(role="missionary")
+        journal = Journal.objects.create(owner=owner, name="Campaign", goal_amount="50000.00")
+
+        survivor = ContactFactory(owner=owner)
+        loser = ContactFactory(owner=owner)
+
+        # Both contacts share the journal; each has a Decision -> merge is a conflict
+        # that hard-deletes the loser's Decision at services.py.
+        survivor_jc = JournalContact.objects.create(journal=journal, contact=survivor)
+        loser_jc = JournalContact.objects.create(journal=journal, contact=loser)
+        Decision.objects.create(journal_contact=survivor_jc, amount="100.00")
+        loser_decision = Decision.objects.create(
+            journal_contact=loser_jc, amount="100.00", status=DecisionStatus.ACTIVE
+        )
+        aged = timezone.now() - timedelta(days=10)
+        Decision.objects.filter(pk=loser_decision.pk).update(created_at=aged)
+
+        # Arm a follow-up on the loser's pledge, then merge.
+        assert run_pledge_followup_sweep() == 1
+        followup = Task.objects.get(auto_generated=True)
+
+        merge_contacts(survivor.id, loser.id, merged_by=owner)
+
+        assert not Decision.objects.filter(pk=loser_decision.pk).exists()
+        assert not Task.objects.filter(pk=followup.pk).exists()
+
+
+@pytest.mark.django_db
 class TestBackfillAndHealMigration:
     """The 0011 data migration heals orphaned latches without duplicating live ones.
 

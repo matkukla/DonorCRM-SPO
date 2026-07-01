@@ -114,6 +114,42 @@ def release_followup(task) -> bool:
     return True
 
 
+def discard_followup(decision) -> bool:
+    """Delete the follow-up Task when its owning Decision is being deleted.
+
+    The inverse of ``release_followup``: that verb handles the Task being deleted (and
+    re-arms the sweep); this one handles the *Decision* being deleted (contact merge at
+    apps/contacts/services.py, or a JournalContact cascade). Without this, the
+    auto-generated follow-up Task would be orphaned — left open forever, referencing a
+    pledge that no longer exists (issue #183).
+
+    Must be called from a ``pre_delete`` signal on Decision: ``follow_up_task`` is
+    ``on_delete=SET_NULL``, so by the time the Decision row is gone the FK is already
+    nulled and the Task could not be found. Deleting the Task here still fires the Task
+    ``pre_delete`` handler (``release_followup``); it clears the latch on the
+    still-present (mid-delete) Decision row, which is harmless — the Decision is on its
+    way out.
+
+    Returns True if a follow-up Task was deleted.
+    """
+    from apps.tasks.models import Task
+
+    # Read the FK straight from the DB rather than trusting the in-memory instance:
+    # the sweep sets follow_up_task on a separately-locked row, so a Decision loaded
+    # before the sweep would carry a stale (None) cached FK. values_list avoids
+    # fetching the whole Decision.
+    task_id = (
+        type(decision)
+        .objects.filter(pk=decision.pk)
+        .values_list("follow_up_task_id", flat=True)
+        .first()
+    )
+    if task_id is None:
+        return False
+    Task.objects.filter(pk=task_id).delete()
+    return True
+
+
 def run_pledge_followup_sweep(today: date | None = None, dry_run: bool = False) -> int:
     """Find unfulfilled pledges past their 10-day mark and create follow-up Tasks.
 
