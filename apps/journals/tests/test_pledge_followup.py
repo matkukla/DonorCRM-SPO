@@ -20,7 +20,11 @@ from apps.gifts.tests.factories import (
     RecurringGiftFactory,
 )
 from apps.journals.models import Decision, DecisionStatus, Journal, JournalContact
-from apps.journals.pledge_followup import is_pledge_fulfilled, run_pledge_followup_sweep
+from apps.journals.pledge_followup import (
+    is_pledge_fulfilled,
+    release_followup,
+    run_pledge_followup_sweep,
+)
 from apps.tasks.models import Task, TaskStatus, TaskType
 from apps.users.tests.factories import UserFactory
 
@@ -122,6 +126,87 @@ class TestUnfulfilledPath:
 
         decision.refresh_from_db()
         assert decision.follow_up_created_at is not None
+        assert decision.follow_up_task == task
+
+
+@pytest.mark.django_db
+class TestFollowUpLatchReset:
+    """Deleting the follow-up Task re-arms the sweep; other actions do not.
+
+    See docs/adr/0010-follow-up-latch-resets-on-task-delete.md.
+    """
+
+    def test_deleting_task_clears_latch_and_fk(self):
+        _contact, decision = _make_pledge(amount="100.00")
+        assert run_pledge_followup_sweep() == 1
+        task = Task.objects.get()
+
+        task.delete()
+
+        decision.refresh_from_db()
+        assert decision.follow_up_created_at is None
+        assert decision.follow_up_task is None
+
+    def test_deleting_task_re_arms_sweep_when_still_unfulfilled(self):
+        _contact, decision = _make_pledge(amount="100.00")
+        assert run_pledge_followup_sweep() == 1
+        Task.objects.get().delete()
+
+        # Pledge is still unfulfilled, so a fresh follow-up is created.
+        assert run_pledge_followup_sweep() == 1
+        assert Task.objects.count() == 1
+        decision.refresh_from_db()
+        assert decision.follow_up_created_at is not None
+
+    def test_completing_task_does_not_re_arm(self):
+        owner = UserFactory(role="missionary")
+        _contact, decision = _make_pledge(owner=owner, amount="100.00")
+        assert run_pledge_followup_sweep() == 1
+        task = Task.objects.get()
+
+        task.mark_complete(owner)
+
+        # Completed Task still exists → latch stays set → no duplicate.
+        decision.refresh_from_db()
+        assert decision.follow_up_created_at is not None
+        assert decision.follow_up_task == task
+        assert run_pledge_followup_sweep() == 0
+        assert Task.objects.count() == 1
+
+    def test_reopening_task_does_not_duplicate(self):
+        owner = UserFactory(role="missionary")
+        _contact, decision = _make_pledge(owner=owner, amount="100.00")
+        assert run_pledge_followup_sweep() == 1
+        task = Task.objects.get()
+        task.mark_complete(owner)
+        task.mark_incomplete()
+
+        # A reopened Task is an open Task — the latch correctly suppresses a duplicate.
+        decision.refresh_from_db()
+        assert decision.follow_up_created_at is not None
+        assert run_pledge_followup_sweep() == 0
+        assert Task.objects.count() == 1
+
+    def test_deleting_non_followup_task_is_noop(self):
+        owner = UserFactory(role="missionary")
+        _contact, decision = _make_pledge(owner=owner, amount="100.00")
+        assert run_pledge_followup_sweep() == 1
+        followup = Task.objects.get()
+
+        other = Task.objects.create(
+            owner=owner,
+            title="Call the donor",
+            task_type=TaskType.CALL,
+            status=TaskStatus.PENDING,
+            due_date=timezone.now().date(),
+        )
+        assert release_followup(other) is False
+        other.delete()
+
+        # The follow-up latch is untouched by an unrelated Task's deletion.
+        decision.refresh_from_db()
+        assert decision.follow_up_created_at is not None
+        assert decision.follow_up_task == followup
 
 
 @pytest.mark.django_db

@@ -69,7 +69,7 @@ def _create_followup(decision, today: date) -> bool:
             return False
 
         contact = locked.journal_contact.contact
-        Task.objects.create(
+        task = Task.objects.create(
             owner=contact.owner,
             contact=contact,
             title=FOLLOW_UP_TITLE,
@@ -78,8 +78,39 @@ def _create_followup(decision, today: date) -> bool:
             auto_generated=True,
             due_date=today + timedelta(days=TASK_DUE_OFFSET_DAYS),
         )
+        # Latch + FK are two halves of one fact ("this pledge has a live follow-up
+        # Task"). Set them together; release_followup() clears them together.
         locked.follow_up_created_at = timezone.now()
-        locked.save(update_fields=["follow_up_created_at", "updated_at"])
+        locked.follow_up_task = task
+        locked.save(update_fields=["follow_up_created_at", "follow_up_task", "updated_at"])
+    return True
+
+
+def release_followup(task) -> bool:
+    """Clear the follow-up latch when its Task is deleted, re-arming the sweep.
+
+    Finds the Decision whose follow_up_task is this Task and nulls both halves of
+    the latch (follow_up_created_at + follow_up_task), so a later sweep may create a
+    fresh follow-up if the pledge is still unfulfilled. A no-op for Tasks that are
+    not a pledge follow-up (the common case, since this fires on every Task delete).
+
+    Must be called from a ``pre_delete`` signal: the follow_up_task FK is
+    ``on_delete=SET_NULL``, so by ``post_delete`` Django has already nulled it and
+    the lookup below would find nothing. (Same constraint the RecurringGift handler
+    in apps/gifts/signals.py documents.) Runs inside the ambient delete transaction
+    via a savepoint, so a rolled-back delete rolls back the latch clear too.
+
+    Returns True if a latch was cleared.
+    """
+    from apps.journals.models import Decision
+
+    with transaction.atomic():
+        decision = Decision.objects.select_for_update().filter(follow_up_task=task).first()
+        if decision is None:
+            return False
+        decision.follow_up_created_at = None
+        decision.follow_up_task = None
+        decision.save(update_fields=["follow_up_created_at", "follow_up_task", "updated_at"])
     return True
 
 
