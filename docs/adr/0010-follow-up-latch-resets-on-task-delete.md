@@ -57,6 +57,33 @@ Task still exists, then clears the latch for true orphans (Task already deleted)
 Backfill-before-heal avoids re-arming a pledge that still has a live Task (which would
 produce a duplicate on the next sweep). The migration is a no-op if the data is clean.
 
+### The inverse case: deleting the Decision (issue #183)
+
+The reset above handles the Task being deleted. The mirror case — the **Decision**
+being deleted while its follow-up Task is still live — was not covered, and orphaned the
+Task the same way in reverse:
+
+- A contact merge with a Decision conflict hard-deletes the loser's Decision
+  (`apps/contacts/services.py`).
+- Deleting a `JournalContact` cascades to its Decisions (`Decision.journal_contact` is
+  `on_delete=CASCADE`), reachable via `JournalContactDestroyView`.
+
+In both, the follow-up `Task` was left open forever, referencing a pledge that no longer
+exists — and the merge presented as a clean, complete operation.
+
+The fix mirrors the Task-delete handler: a `Decision` `pre_delete` signal (wired via
+`JournalsConfig.ready()`) calls `discard_followup(decision)`, which **deletes** the
+follow-up Task. `pre_delete`, not `post_delete`, for the same `SET_NULL` reason — after
+the delete the FK is already nulled. Deleting the Task then fires the existing
+`release_followup` handler harmlessly (it clears the latch on the mid-delete Decision).
+`discard_followup` reads `follow_up_task_id` straight from the DB rather than the
+in-memory instance, since the sweep sets that FK on a separately-locked row and a
+Decision loaded earlier would carry a stale (None) cached value.
+
+We **delete** the Task (rather than cancel it) because the follow-up exists only to chase
+this specific pledge; once the pledge is gone there is nothing to follow up on, and the
+latch/Task are "one fact in two halves" — both go together.
+
 ## Consequences
 
 - Deleting a follow-up Task re-arms the sweep; a fresh follow-up appears on a later run
