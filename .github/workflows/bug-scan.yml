@@ -1,0 +1,93 @@
+name: Nightly Bug Scan
+
+# Autonomous nightly bug hunt. Claude scans the codebase for real defects and
+# files a GitHub issue (labeled `needs-triage`) for each one it is confident
+# about. It NEVER fixes anything — filed issues flow through the normal triage
+# path, and a human can label an issue `ai-fix` to hand it to fix-issues.yml.
+#
+# Runs on GitHub's runners, so it does not need your machine to be on.
+
+on:
+  schedule:
+    # 03:17 UTC nightly. Off the :00 mark on purpose to avoid the cron rush.
+    - cron: "17 3 * * *"
+  # Allow manual runs from the Actions tab for testing.
+  workflow_dispatch:
+
+# Never run two scans at once (e.g. a manual run during the nightly window).
+concurrency:
+  group: bug-scan
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Scan for bugs and file issues
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: '--allowed-tools "Bash(gh:*),Bash(git:*),Bash(grep:*),Bash(rg:*),Bash(pytest:*),Read,Grep,Glob"'
+          prompt: |
+            You are an autonomous nightly bug scanner for this repository. Your
+            ONLY job is to find genuine defects and file them as GitHub issues.
+            You must NOT edit code, open PRs, or fix anything.
+
+            Read CLAUDE.md first for project conventions (money stored in cents,
+            owner-scoped data via get_visible_user_ids, isort sections, black
+            line-length 100, the #1 E2E rule, etc.). A "bug" is a real
+            correctness, security, or data-integrity defect — NOT a style nit, a
+            missing test, or a refactor suggestion. When in doubt, do NOT file.
+
+            Given this is a donor CRM handling real PII, prioritize: data-leak /
+            owner-scoping bypasses, permission/authorization gaps, money math
+            (cents), and anything that silently swallows errors.
+
+            Workflow (follow exactly, then stop):
+
+            1. Dedup FIRST. List existing open issues so you never file a
+               duplicate:
+                 gh issue list --state open --limit 200 \
+                   --json number,title,labels \
+                   --jq '[.[] | {number, title, labels: [.labels[].name]}]'
+               Treat an issue as a duplicate if it describes the same defect in
+               the same area, even if worded differently. Skip anything already
+               covered.
+
+            2. Investigate. Focus on code changed recently
+               (`git log --since="7 days ago" --name-only --pretty=format:`) but
+               you may look anywhere. Read the actual code paths — do not guess.
+               For each candidate defect, confirm it is real by tracing the code.
+               Discard anything you cannot substantiate with a concrete
+               file:line and a plausible failure scenario.
+
+            3. File issues — AT MOST 5 per run, highest-severity first. For each,
+               run:
+                 gh issue create \
+                   --title "<concise, specific title>" \
+                   --label "needs-triage" \
+                   --body "<body>"
+               The body MUST contain:
+                 - **File:** the `path:line` where the defect lives
+                 - **What's wrong:** one or two sentences
+                 - **Failure scenario:** concrete inputs/state -> wrong outcome
+                 - **Confidence:** high | medium (only file high/medium)
+                 - A trailing line: "Filed automatically by the nightly bug scan."
+
+            4. If you find nothing you are confident about, file NOTHING and
+               stop. A quiet night is a success, not a failure. Do not pad the
+               run with low-confidence or speculative issues.
+
+            Hard constraints:
+            - Never use Edit or Write. Never open a PR. Never apply the `ai-fix`
+              label (a human decides what gets auto-fixed).
+            - Cap: 5 issues per run, maximum.
+            - Prefer filing nothing over filing noise.
