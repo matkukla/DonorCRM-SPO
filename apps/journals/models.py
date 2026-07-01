@@ -257,6 +257,19 @@ class Decision(TimeStampedModel):
         blank=True,
         help_text="When the unfulfilled-pledge follow-up Task was created (idempotency guard).",
     )
+    follow_up_task = models.ForeignKey(
+        "tasks.Task",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+        help_text=(
+            "The live follow-up Task for this pledge, if any. Set together with "
+            "follow_up_created_at; both are cleared by release_followup() when the "
+            "Task is deleted. Invariant: follow_up_created_at is set iff this points "
+            "at a live Task."
+        ),
+    )
 
     class Meta:
         db_table = "journal_decisions"

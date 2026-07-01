@@ -90,10 +90,24 @@ A standing commitment that generates Gifts on a frequency (`RecurringGift`,
 `status=active` meaning live). An active Recurring Gift fulfills a [[Pledge]].
 
 ### Follow-up
-The single auto-generated Task created when a [[Pledge]] is **not** [[Fulfilled]] by
-its check date — titled "Donation still not received — follow up", assigned to the
-donor's owning missionary and linked to the donor. Exactly one follow-up is ever
-created per pledge.
+The auto-generated Task created when a [[Pledge]] is **not** [[Fulfilled]] by its
+check date — titled "Donation still not received — follow up", assigned to the
+donor's owning missionary and linked to the donor. At most **one live follow-up
+exists per pledge** at a time, enforced by the [[Follow-up Latch]]. Completing or
+reopening the Task leaves the latch set (no duplicate is created); **deleting** the
+Task clears the latch, re-arming the sweep so a fresh follow-up can be created on a
+later run if the pledge is still unfulfilled. See
+`docs/adr/0010-follow-up-latch-resets-on-task-delete.md`.
+
+### Follow-up Latch
+The single fact "this pledge currently has a live [[Follow-up]] Task", held as two
+halves on the [[Decision]]: `follow_up_created_at` (the idempotency timestamp) and
+`follow_up_task` (FK to the Task, `on_delete=SET_NULL`). The invariant:
+`follow_up_created_at` is set **iff** `follow_up_task` points at a live Task. Owned
+by `apps/journals/pledge_followup.py` — set together in the sweep, cleared together
+by `release_followup(task)`, which fires from a Task `pre_delete` signal (pre_delete
+because `SET_NULL` would null the FK before `post_delete`, mirroring the RecurringGift
+precedent in `apps/gifts/signals.py`).
 
 ### Owner
 The `User` a piece of donor data belongs to. Most owner-scoped models carry a direct
