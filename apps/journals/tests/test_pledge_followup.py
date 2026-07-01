@@ -210,6 +210,113 @@ class TestFollowUpLatchReset:
 
 
 @pytest.mark.django_db
+class TestBackfillAndHealMigration:
+    """The 0011 data migration heals orphaned latches without duplicating live ones.
+
+    Exercises the migration's backfill_and_heal function directly against the current
+    model registry (the fields it touches are unchanged from the historical state).
+    See docs/adr/0010-follow-up-latch-resets-on-task-delete.md.
+    """
+
+    @staticmethod
+    def _run_migration():
+        import importlib
+
+        from django.apps import apps as global_apps
+
+        mod = importlib.import_module(
+            "apps.journals.migrations.0011_backfill_and_heal_follow_up_latch"
+        )
+        mod.backfill_and_heal(global_apps, None)
+
+    def _latch(self, decision, when=None, task=None):
+        """Force the pre-migration latch state directly (bypassing the sweep)."""
+        Decision.objects.filter(pk=decision.pk).update(
+            follow_up_created_at=when or timezone.now(),
+            follow_up_task=task,
+        )
+        decision.refresh_from_db()
+
+    def test_true_orphan_is_healed(self):
+        # Latch set, Task already deleted (no FK) -> the bug. Migration clears it.
+        _contact, decision = _make_pledge(amount="100.00")
+        self._latch(decision, task=None)
+
+        self._run_migration()
+
+        decision.refresh_from_db()
+        assert decision.follow_up_created_at is None
+        assert decision.follow_up_task is None
+
+    def test_surviving_task_is_backfilled_not_healed(self):
+        # Latch set, follow-up Task still exists but FK not yet populated (pre-0010
+        # data). Migration must backfill the FK and KEEP the latch.
+        owner = UserFactory(role="missionary")
+        contact, decision = _make_pledge(owner=owner, amount="100.00")
+        task = Task.objects.create(
+            owner=owner,
+            contact=contact,
+            title="Donation still not received — follow up",
+            task_type=TaskType.FOLLOW_UP,
+            status=TaskStatus.PENDING,
+            due_date=timezone.now().date(),
+        )
+        self._latch(decision, task=None)  # FK unpopulated, mimicking old rows
+
+        self._run_migration()
+
+        decision.refresh_from_db()
+        assert decision.follow_up_created_at is not None  # kept
+        assert decision.follow_up_task == task  # backfilled
+
+    def test_backfilled_pledge_does_not_duplicate_on_next_sweep(self):
+        # The whole point of backfill-before-heal: a pledge with a live Task must not
+        # be re-armed (which would create a second follow-up).
+        owner = UserFactory(role="missionary")
+        contact, decision = _make_pledge(owner=owner, amount="100.00")
+        Task.objects.create(
+            owner=owner,
+            contact=contact,
+            title="Donation still not received — follow up",
+            task_type=TaskType.FOLLOW_UP,
+            status=TaskStatus.PENDING,
+            due_date=timezone.now().date(),
+        )
+        self._latch(decision, task=None)
+
+        self._run_migration()
+
+        assert run_pledge_followup_sweep() == 0
+        assert Task.objects.filter(task_type=TaskType.FOLLOW_UP).count() == 1
+
+    def test_completed_task_is_treated_as_orphan_and_healed(self):
+        # A completed/cancelled follow-up is not "live" — the pledge should heal so a
+        # fresh follow-up can arise if still unfulfilled.
+        owner = UserFactory(role="missionary")
+        contact, decision = _make_pledge(owner=owner, amount="100.00")
+        Task.objects.create(
+            owner=owner,
+            contact=contact,
+            title="Donation still not received — follow up",
+            task_type=TaskType.FOLLOW_UP,
+            status=TaskStatus.COMPLETED,
+            due_date=timezone.now().date(),
+        )
+        self._latch(decision, task=None)
+
+        self._run_migration()
+
+        decision.refresh_from_db()
+        assert decision.follow_up_created_at is None
+
+    def test_migration_is_noop_on_clean_data(self):
+        # No latched decisions -> nothing changes, no crash.
+        _make_pledge(amount="100.00")  # active pledge, no latch
+        self._run_migration()
+        assert Decision.objects.filter(follow_up_created_at__isnull=False).count() == 0
+
+
+@pytest.mark.django_db
 class TestIdempotency:
     """Re-running the sweep never duplicates follow-ups."""
 
