@@ -411,3 +411,101 @@ class TestMissionaryRestrictions:
         assert response.status_code == status.HTTP_200_OK
         task.refresh_from_db()
         assert task.title == "New title"
+
+
+@pytest.mark.django_db
+class TestSupervisorBroadcastRestrictions:
+    """Supervisors are recipients too (issue #184): their own broadcast Task
+    copies must be read-only, exactly like a missionary recipient's copy."""
+
+    def test_supervisor_cannot_edit_broadcast_task(self):
+        admin = UserFactory(role="admin")
+        supervisor = UserFactory(role="supervisor")
+
+        broadcast = create_broadcast(
+            sender=admin,
+            title="Cannot edit",
+            description="",
+            task_type="other",
+            priority="medium",
+            due_date=timezone.now().date() + timedelta(days=7),
+            target_type="specific_users",
+            specific_user_ids=[supervisor.id],
+        )
+
+        copy = Task.objects.get(broadcast=broadcast, owner=supervisor)
+
+        client = APIClient()
+        client.force_authenticate(user=supervisor)
+
+        response = client.patch(
+            _task_url(pk=copy.id),
+            {"title": "Edited title"},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        copy.refresh_from_db()
+        assert copy.title == "Cannot edit"
+
+    def test_supervisor_cannot_delete_broadcast_task(self):
+        admin = UserFactory(role="admin")
+        supervisor = UserFactory(role="supervisor")
+
+        broadcast = create_broadcast(
+            sender=admin,
+            title="Cannot delete",
+            description="",
+            task_type="other",
+            priority="medium",
+            due_date=timezone.now().date() + timedelta(days=7),
+            target_type="specific_users",
+            specific_user_ids=[supervisor.id],
+        )
+
+        copy = Task.objects.get(broadcast=broadcast, owner=supervisor)
+
+        client = APIClient()
+        client.force_authenticate(user=supervisor)
+
+        response = client.delete(_task_url(pk=copy.id))
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert Task.objects.filter(pk=copy.id).exists()
+
+    def test_supervisor_can_complete_broadcast_task(self):
+        admin = UserFactory(role="admin")
+        supervisor = UserFactory(role="supervisor")
+
+        broadcast = create_broadcast(
+            sender=admin,
+            title="Can complete",
+            description="",
+            task_type="other",
+            priority="medium",
+            due_date=timezone.now().date() + timedelta(days=7),
+            target_type="specific_users",
+            specific_user_ids=[supervisor.id],
+        )
+
+        copy = Task.objects.get(broadcast=broadcast, owner=supervisor)
+
+        client = APIClient()
+        client.force_authenticate(user=supervisor)
+
+        response = client.post(f"{_task_url(pk=copy.id)}complete/")
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_supervisor_can_edit_own_regular_task(self):
+        supervisor = UserFactory(role="supervisor")
+        task = TaskFactory(owner=supervisor, broadcast=None)
+
+        client = APIClient()
+        client.force_authenticate(user=supervisor)
+
+        response = client.patch(
+            _task_url(pk=task.id),
+            {"title": "New title"},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        task.refresh_from_db()
+        assert task.title == "New title"

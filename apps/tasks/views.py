@@ -63,10 +63,16 @@ class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def update(self, request, *args, **kwargs):
         task = self.get_object()
+        # Any non-admin recipient's own broadcast copy is read-only (issue #184).
+        # resolve_recipients() can hand copies to missionaries AND supervisors
+        # (and, via specific_users, any non-admin), so the guard must exclude
+        # only admins rather than allow-listing a single role. The sender is
+        # excluded from recipients (broadcast_services.py), so this never blocks
+        # the person who created the broadcast.
         if (
             task.broadcast_id
             and str(task.owner_id) == str(request.user.id)
-            and request.user.role == "missionary"
+            and request.user.role != "admin"
         ):
             return Response(
                 {"detail": "Broadcast tasks cannot be edited by recipients."},
@@ -76,10 +82,12 @@ class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def destroy(self, request, *args, **kwargs):
         task = self.get_object()
+        # Non-admin recipients cannot delete their broadcast copy; see update()
+        # for why the guard excludes admins rather than allow-listing a role.
         if (
             task.broadcast_id
             and str(task.owner_id) == str(request.user.id)
-            and request.user.role == "missionary"
+            and request.user.role != "admin"
         ):
             return Response(
                 {"detail": "Broadcast tasks cannot be deleted by recipients."},
