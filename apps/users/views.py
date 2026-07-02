@@ -3,6 +3,7 @@ Views for user management.
 """
 
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404
 
@@ -16,6 +17,9 @@ from apps.contacts.models import Contact
 from apps.core.audit import audit_event
 from apps.core.permissions import IsAdmin
 from apps.core.throttling import FailOpenSimpleRateThrottle
+from apps.groups.models import Group
+from apps.journals.models import Journal
+from apps.tasks.models import Task
 from apps.users.models import User
 from apps.users.serializers import (
     AdminPasswordResetSerializer,
@@ -102,14 +106,32 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 
 class UserReassignContactsView(APIView):
-    """POST: Reassign all of a user's contacts to a new active owner.
+    """POST: Reassign a departing user's contacts, journals, tasks, and groups.
 
     Offboarding control (admin only): when a missionary departs, move their
     donor relationships to a successor instead of stranding them on an inactive
-    account. Gifts, journals, and prayers follow their contact; the contact's
-    own giving stats derive from its gifts (not its owner), so a bulk owner
-    update is safe. The new owner must exist, be active, and differ from the
-    current owner. Audit-logged.
+    account.
+
+    Contacts, Journals, Tasks, and private Groups each carry their own ``owner``
+    FK — the field every view scopes by (``get_visible_user_ids``) — so all four
+    must be reassigned together; moving only Contact.owner would leave the
+    departing user's donor pipeline history (Journal), open follow-up tasks
+    (Task), and private tags/segments (Group) invisible to the successor
+    (issue #185).
+
+    Excluded by design: Gifts and prayers have no owner FK and genuinely follow
+    their contact. Broadcast task copies are recipient-owned distributions
+    (issue #184), not donor history. Org-wide Groups (``owner=None``) belong to
+    no one and stay shared. Funds and import runs are finance/audit metadata, not
+    per-user caseload data.
+
+    Group carries a ``unique_group_name_per_owner`` constraint, so a private
+    group whose name already exists among the successor's groups is skipped
+    (left on the departing user) rather than crashing the transaction on an
+    IntegrityError.
+
+    The reassignment runs in a single transaction. The new owner must exist, be
+    active, and differ from the current owner. Audit-logged.
     """
 
     permission_classes = [permissions.IsAuthenticated, IsAdmin]
@@ -138,18 +160,43 @@ class UserReassignContactsView(APIView):
                 {"detail": "new_owner must be an active user."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        count = Contact.objects.filter(owner=from_user).update(owner=to_user)
+        with transaction.atomic():
+            count = Contact.objects.filter(owner=from_user).update(owner=to_user)
+            journals_count = Journal.objects.filter(owner=from_user).update(owner=to_user)
+            # Broadcast copies are recipient-owned distributions (issue #184),
+            # not donor history that follows the contact — leave them behind.
+            tasks_count = Task.objects.filter(owner=from_user, broadcast__isnull=True).update(
+                owner=to_user
+            )
+            # Private groups follow their owner too, but unique_group_name_per_owner
+            # would raise IntegrityError (rolling back the whole reassignment) if
+            # the successor already has a same-named group. Skip those collisions;
+            # the group stays on the departing user rather than blocking offboarding.
+            successor_group_names = set(
+                Group.objects.filter(owner=to_user).values_list("name", flat=True)
+            )
+            groups_count = (
+                Group.objects.filter(owner=from_user)
+                .exclude(name__in=successor_group_names)
+                .update(owner=to_user)
+            )
         audit_event(
             "contacts.reassigned",
             actor_id=str(request.user.id),
             from_user_id=str(from_user.id),
             to_user_id=str(to_user.id),
             count=count,
+            journals_count=journals_count,
+            tasks_count=tasks_count,
+            groups_count=groups_count,
         )
         return Response(
             {
                 "detail": "Contacts reassigned.",
                 "reassigned": count,
+                "journals_reassigned": journals_count,
+                "tasks_reassigned": tasks_count,
+                "groups_reassigned": groups_count,
                 "from": str(from_user.id),
                 "to": str(to_user.id),
             }
